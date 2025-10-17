@@ -1,0 +1,50 @@
+<!-- Balance Display Partial -->
+<!-- Shows current journal balance status: balanced or unbalanced -->
+
+<div class="card border-primary mb-3">
+    <div class="card-body">
+        <div class="row align-items-center">
+            <!-- Totals -->
+            <div class="col-md-3">
+                <div class="text-center">
+                    <small class="text-muted d-block">Total Debit</small>
+                    <h5 class="mb-0 text-primary" id="total-debit">
+                        {{ total_debit|floatformat:2 }}
+                    </h5>
+                </div>
+            </div>
+
+            <!-- Balance Status -->
+            <div class="col-md-6">
+                <div class="text-center">
+                    <small class="text-muted d-block">Status</small>
+                    {% if is_balanced %}
+                        <div class="badge bg-success fs-6">
+                            <i class="bi bi-check-circle"></i> Balanced
+                        </div>
+                        <div class="small text-success mt-2">
+                            Debit = Credit ✓
+                        </div>
+                    {% else %}
+                        <div class="badge bg-danger fs-6">
+                            <i class="bi bi-x-circle"></i> Unbalanced
+                        </div>
+                        <div class="small text-danger mt-2">
+                            Difference: {{ difference|floatformat:2 }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Credit Total -->
+            <div class="col-md-3">
+                <div class="text-center">
+                    <small class="text-muted d-block">Total Credit</small>
+                    <h5 class="mb-0 text-success" id="total-credit">
+                        {{ total_credit|floatformat:2 }}
+                    </h5>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

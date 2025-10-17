@@ -1,0 +1,24 @@
+{% extends 'partials/base.html' %}
+
+{% block title %}Permissions{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <h2>Permissions</h2>
+            <a href="{% url 'permission_create' %}" class="btn btn-primary mb-3">Create Permission</a>
+            <ul>
+                {% for perm in permissions %}
+                <li>{{ perm.name }} - <a href="{% url 'permission_update' perm.pk %}">Edit</a></li>
+                {% empty %}
+                <li>No permissions found.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% block footer %}
+        {% include 'partials/footer.html' %}
+    {% endblock footer %}
+</div>
+{% endblock %}

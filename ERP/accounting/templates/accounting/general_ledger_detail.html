@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}General Ledger Entry Details{% endblock %}
+
+{% block page_title %}General Ledger Entry: {{ gl_entry.gl_entry_id }}{% endblock %}
+
+{% block breadcrumbs %}
+    <li class="breadcrumb-item"><a href="{% url 'accounting:general_ledger_list' %}">General Ledger</a></li>
+    <li class="breadcrumb-item active">Entry {{ gl_entry.gl_entry_id }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Entry Details</h3>
+                <div class="card-tools">
+                    {% if can_edit %}
+                        <a href="{% url 'accounting:general_ledger_update' gl_entry.pk %}" class="btn btn-warning">Edit</a>
+                    {% endif %}
+                    {% if can_delete %}
+                        <a href="{% url 'accounting:general_ledger_delete' gl_entry.pk %}" class="btn btn-danger">Delete</a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-3">ID</dt>
+                    <dd class="col-sm-9">{{ gl_entry.gl_entry_id }}</dd>
+
+                    <dt class="col-sm-3">Date</dt>
+                    <dd class="col-sm-9">{{ gl_entry.transaction_date }}</dd>
+
+                    <dt class="col-sm-3">Account</dt>
+                    <dd class="col-sm-9">{{ gl_entry.account.account_code }} - {{ gl_entry.account.account_name }}</dd>
+
+                    <dt class="col-sm-3">Journal</dt>
+                    <dd class="col-sm-9"><a href="{% url 'accounting:journal_detail' gl_entry.journal.pk %}">{{ gl_entry.journal.journal_number }}</a></dd>
+
+                    <dt class="col-sm-3">Period</dt>
+                    <dd class="col-sm-9">{{ gl_entry.period.name }}</dd>
+
+                    <dt class="col-sm-3">Debit</dt>
+                    <dd class="col-sm-9">{{ gl_entry.debit_amount }}</dd>
+
+                    <dt class="col-sm-3">Credit</dt>
+                    <dd class="col-sm-9">{{ gl_entry.credit_amount }}</dd>
+
+                    <dt class="col-sm-3">Description</dt>
+                    <dd class="col-sm-9">{{ gl_entry.description|default:"-" }}</dd>
+
+                    <dt class="col-sm-3">Department</dt>
+                    <dd class="col-sm-9">{{ gl_entry.department.name|default:"-" }}</dd>
+
+                    <dt class="col-sm-3">Project</dt>
+                    <dd class="col-sm-9">{{ gl_entry.project.name|default:"-" }}</dd>
+
+                    <dt class="col-sm-3">Cost Center</dt>
+                    <dd class="col-sm-9">{{ gl_entry.cost_center.name|default:"-" }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

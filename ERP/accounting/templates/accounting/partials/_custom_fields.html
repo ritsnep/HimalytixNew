@@ -1,0 +1,18 @@
+{% for field in custom_fields %}
+    <div class="mb-3">
+        <label for="id_{{ field.name }}" class="form-label">{{ field.label }}</label>
+        {% if field.field_type == 'text' %}
+            <input type="text" name="{{ field.name }}" id="id_{{ field.name }}" class="form-control">
+        {% elif field.field_type == 'number' %}
+            <input type="number" name="{{ field.name }}" id="id_{{ field.name }}" class="form-control">
+        {% elif field.field_type == 'date' %}
+            <input type="date" name="{{ field.name }}" id="id_{{ field.name }}" class="form-control">
+        {% elif field.field_type == 'select' %}
+            <select name="{{ field.name }}" id="id_{{ field.name }}" class="form-select">
+                {% for choice in field.choices %}
+                    <option value="{{ choice.value }}">{{ choice.label }}</option>
+                {% endfor %}
+            </select>
+        {% endif %}
+    </div>
+{% endfor %}

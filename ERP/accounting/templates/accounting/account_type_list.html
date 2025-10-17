@@ -1,0 +1,63 @@
+{% extends 'accounting/_list_base.html' %}
+{% load static %}
+
+{% block title %}Account Types{% endblock %}
+{% block breadcrumb %}Account Types{% endblock %}
+{% block add_url %}{% url 'accounting:account_type_create' %}{% endblock %}
+
+{% block list_header %}
+<h4 class="card-title">Account Types</h4>
+{% endblock %}
+
+{% block create_button %}
+<a href="{% url 'accounting:account_type_create' %}" class="btn btn-success mb-2">
+    <i class="mdi mdi-plus me-1"></i> New Account Type
+</a>
+{% endblock %}
+
+{% block table_head %}
+<thead>
+    <tr>
+        <th>Code</th>
+        <th>Name</th>
+        <th>Nature</th>
+        <th>Classification</th>
+        <th>Balance Sheet Category</th>
+        <th>Income Statement Category</th>
+        <th>Cash Flow Category</th>
+        <th>Display Order</th>
+        <th>Root Code Prefix</th>
+        <th>Root Code Step</th>
+        <th>System Type</th>
+        <th>Archived</th>
+        <th>Action</th>
+    </tr>
+</thead>
+{% endblock %}
+
+{% block table_body %}
+<tbody>
+    {% for type in account_types %}
+    <tr>
+        <td>{{ type.code }}</td>
+        <td>{{ type.name }}</td>
+        <td>{{ type.nature }}</td>
+        <td>{{ type.classification }}</td>
+        <td>{{ type.balance_sheet_category }}</td>
+        <td>{{ type.income_statement_category }}</td>
+        <td>{{ type.cash_flow_category }}</td>
+        <td>{{ type.display_order }}</td>
+        <td>{{ type.root_code_prefix }}</td>
+        <td>{{ type.root_code_step }}</td>
+        <td>{{ type.system_type|yesno:"Yes,No" }}</td>
+        <td>{{ type.is_archived|yesno:"Yes,No" }}</td>
+        <td>
+            <a href="{% url 'accounting:account_type_update' type.pk %}" class="btn btn-sm btn-primary">Edit</a>
+            <a href="{% url 'accounting:account_type_delete' type.pk %}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this account type?');">Delete</a>
+        </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="13">No account types found.</td></tr>
+    {% endfor %}
+</tbody>
+{% endblock %} 

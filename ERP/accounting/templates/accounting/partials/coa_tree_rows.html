@@ -1,0 +1,42 @@
+{% for acc in accounts %}
+  {% widthratio level 1 20 as indent_px %}
+  <tr class="align-middle coa-row" data-id="{{ acc.pk }}" data-parent="{{ acc.parent_account_id|default:'root' }}" data-level="{{ level }}">
+    <td class="ps-0">
+      {% if acc.children %}
+        <button type="button" class="tree-toggle btn btn-link btn-sm p-0 me-1 coa-toggle" data-id="{{ acc.pk }}" aria-label="Toggle">
+          <i class="mdi mdi-chevron-down"></i>
+        </button>
+      {% else %}
+        <span class="me-4"></span>
+      {% endif %}
+      <strong>{{ acc.account_code }}</strong>
+    </td>
+    <td class="text-muted small">{{ acc.tree_path }}</td>
+    <td class="ps-0" style="padding-left: {{ indent_px }}px;">{{ acc.account_name }}</td>
+    <td>
+      <span class="badge bg-light text-dark">{{ acc.account_type.name }}</span>
+    </td>
+    <td>
+      <span class="badge {% if acc.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+        {{ acc.is_active|yesno:"Active,Inactive" }}
+      </span>
+    </td>
+    <td>
+      <div class="btn-group btn-group-sm" role="group">
+        <a href="{% url 'accounting:chart_of_accounts_create' %}?parent={{ acc.pk }}&account_type={{ acc.account_type_id }}" class="btn btn-outline-success" title="Add Child">
+          <i class="mdi mdi-plus"></i>
+        </a>
+        <a href="{% url 'accounting:chart_of_accounts_update' acc.pk %}" class="btn btn-outline-primary" title="Edit">
+          <i class="mdi mdi-pencil"></i>
+        </a>
+        <a href="{% url 'accounting:chart_of_accounts_delete' acc.pk %}" class="btn btn-outline-danger" title="Delete">
+          <i class="mdi mdi-delete"></i>
+        </a>
+      </div>
+    </td>
+  </tr>
+  {% if acc.children %}
+    {% include 'accounting/partials/coa_tree_rows.html' with accounts=acc.children level=level|add:"1" %}
+  {% endif %}
+{% endfor %}
+

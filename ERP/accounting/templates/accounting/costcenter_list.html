@@ -1,0 +1,54 @@
+{% extends 'accounting/_list_base.html' %}
+{% load static %}
+
+{% block title %}Cost Centers{% endblock %}
+{% block breadcrumb %}Cost Centers{% endblock %}
+{% block add_url %}{% url 'accounting:costcenter_create' %}{% endblock %}
+
+{% block list_header %}
+<h4 class="card-title">Cost Centers</h4>
+{% endblock %}
+
+{% block create_button %}
+<a href="{% url 'accounting:costcenter_create' %}" class="btn btn-success mb-2">
+    <i class="mdi mdi-plus me-1"></i> New Cost Center
+</a>
+{% endblock %}
+
+{% block table_head %}
+<thead>
+    <tr>
+        <th>Code</th>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Status</th>
+        <th>Actions</th>
+    </tr>
+</thead>
+{% endblock %}
+
+{% block table_body %}
+<tbody>
+    {% for cc in cost_centers %}
+    <tr>
+        <td>{{ cc.code }}</td>
+        <td>{{ cc.name }}</td>
+        <td>{{ cc.description }}</td>
+        <td>
+            {% if cc.is_active %}
+                <span class="badge bg-success">Active</span>
+            {% else %}
+                <span class="badge bg-danger">Inactive</span>
+            {% endif %}
+        </td>
+        <td>
+            <a href="{% url 'accounting:costcenter_update' cc.cost_center_id %}" class="btn btn-sm btn-primary">
+                <i class="fas fa-edit"></i> Edit
+            </a>
+        </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="5" class="text-center">No cost centers found.</td></tr>
+    {% endfor %}
+</tbody>
+{% endblock %}

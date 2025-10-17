@@ -1,0 +1,9 @@
+{% if journal.status == 'approved' and perms.accounting.post_journal %}
+    <button type="button" class="btn btn-sm btn-success d-flex align-items-center gap-1" hx-post="{% url 'accounting:journal_post' pk=journal.pk %}" hx-target="#post-button-container" hx-swap="outerHTML">
+        <i class="fas fa-check-circle"></i> Post
+    </button>
+{% elif journal.status == 'posted' %}
+    <button type="button" class="btn btn-sm btn-success d-flex align-items-center gap-1" disabled>
+        <i class="fas fa-check-circle"></i> Posted
+    </button>
+{% endif %}

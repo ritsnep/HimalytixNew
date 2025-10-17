@@ -1,0 +1,178 @@
+{% extends 'accounting/_form_base.html' %}
+{% load static %}
+
+{% block title %}Voucher Default Line{% endblock %}
+
+{% block form_content %}
+    <div class="card">
+        <div class="card-header">
+            <h4 class="card-title">{{ form_title|default:"Voucher Default Line" }}</h4>
+            <p class="card-title-desc">Configure default line items for voucher entries.</p>
+        </div>
+        <div class="card-body">
+            <form id="voucher-default-form" method="post" novalidate>
+                {% csrf_token %}
+                
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {% for error in form.non_field_errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.account_code.id_for_label }}" class="form-label">Account (Code)</label>
+                            {{ form.account_code }}
+                            {% if form.account_code.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.account_code.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.account_type.id_for_label }}" class="form-label">Account Type</label>
+                            {{ form.account_type }}
+                            {% if form.account_type.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.account_type.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group mb-3">
+                            <div class="form-check">
+                                {{ form.default_debit }}
+                                <label class="form-check-label" for="{{ form.default_debit.id_for_label }}">
+                                    Default Debit
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group mb-3">
+                            <div class="form-check">
+                                {{ form.default_credit }}
+                                <label class="form-check-label" for="{{ form.default_credit.id_for_label }}">
+                                    Default Credit
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.default_amount.id_for_label }}" class="form-label">Default Amount</label>
+                            {{ form.default_amount }}
+                            {% if form.default_amount.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.default_amount.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.default_tax_code.id_for_label }}" class="form-label">Default Tax Code</label>
+                            {{ form.default_tax_code }}
+                            {% if form.default_tax_code.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.default_tax_code.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.default_department.id_for_label }}" class="form-label">Default Department</label>
+                            {{ form.default_department }}
+                            {% if form.default_department.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.default_department.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.default_project.id_for_label }}" class="form-label">Default Project</label>
+                            {{ form.default_project }}
+                            {% if form.default_project.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.default_project.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.default_cost_center.id_for_label }}" class="form-label">Default Cost Center</label>
+                            {{ form.default_cost_center }}
+                            {% if form.default_cost_center.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.default_cost_center.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.default_description.id_for_label }}" class="form-label">Default Description</label>
+                            {{ form.default_description }}
+                            {% if form.default_description.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.default_description.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group mb-3">
+                            <div class="form-check">
+                                {{ form.is_required }}
+                                <label class="form-check-label" for="{{ form.is_required.id_for_label }}">
+                                    Is Required
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.display_order.id_for_label }}" class="form-label">Display Order</label>
+                            {{ form.display_order }}
+                            {% if form.display_order.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.display_order.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <a href="{% url 'accounting:voucher_config_detail' config_id %}" class="btn btn-secondary">Back</a>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock form_content %} 

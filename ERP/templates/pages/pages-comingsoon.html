@@ -1,0 +1,114 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+{% block title %}Coming Soon{% endblock title %}
+
+{% block extra_css %}
+<!-- swiper css -->
+<link rel="stylesheet" href="{% static 'libs/swiper/swiper-bundle.min.css'%}">
+{% endblock extra_css %}
+    
+{% block header %}
+{% endblock header %}
+{% block left_sidebar %}
+{% endblock left_sidebar %}
+{% block content %}
+        <div class="preview-img">
+            <div class="swiper-container preview-thumb">
+                <div class="swiper-wrapper">
+                    <div class="swiper-slide">
+                        <div class="slide-bg" style="background-image: url(/static/images/bg-1.jpg);"></div>
+                    </div>
+                    <div class="swiper-slide">
+                        <div class="slide-bg" style="background-image: url(/static/images/bg-2.jpg);"></div>
+                    </div>
+                    <div class="swiper-slide">
+                        <div class="slide-bg" style="background-image: url(/static/images/bg-3.jpg);"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- preview-thumb -->
+            <div class="swiper-container preview-thumbsnav">
+                <div class="swiper-wrapper">
+                    <div class="swiper-slide">
+                        <div>
+                            <img src="{% static 'images/bg-1.jpg'%}" alt=""
+                                class="avatar-sm nav-img rounded-circle">
+                        </div>
+                    </div>
+                    <div class="swiper-slide">
+                        <div>
+                            <img src="{% static 'images/bg-2.jpg'%}" alt=""
+                                class="avatar-sm nav-img rounded-circle">
+                        </div>
+                    </div>
+                    <div class="swiper-slide">
+                        <div>
+                            <img src="{% static 'images/bg-3.jpg'%}" alt=""
+                                class="avatar-sm nav-img rounded-circle">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- preview-thumb -->
+        </div>
+        <!-- preview bg -->
+
+        <div class="coming-content min-vh-100 py-4 px-3 py-sm-5">
+            <div class="bg-overlay bg-primary"></div>
+            <div class="container">
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+                        <div class="text-center py-4 py-sm-5">
+
+                            <div class="mb-5">
+                                <a href="{% url 'dashboard' %}">
+                                    <img src="{% static 'images/logo-sm.svg' %}" alt="" height="30" class="me-1"><span class="logo-txt text-white font-size-22">Dason</span>
+                                </a>
+                            </div>
+                            <h3 class="text-white mt-5">Let's get started with Dason</h3>
+                            <p class="text-white-50 font-size-15">Donec pede justo fringilla vel aliquet nec vulputate eget arcu. In enim justo, rhoncus ut imperdiet a venenatis vitae, justo felis</p>
+                            
+                            <div data-countdown="2021/12/31" class="counter-number mt-5"></div>
+                        
+                            <form class="app-search mt-5 mx-auto">
+                                <div class="position-relative">
+                                    <input type="text" class="form-control" placeholder="Enter your email address">
+                                    <button class="btn btn-primary" type="button"><i class="bx bx-paper-plane align-middle"></i></button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    <!-- end col -->
+                </div>
+                <!-- end row -->
+            </div>
+            <!-- end container -->
+        </div>
+        <!-- coming-content -->
+{% endblock content %}
+{% block footer %}
+{% endblock footer %}
+{% block right_sidebar %}
+{% endblock right_sidebar %}
+
+{% block javascript %}
+    <!-- JAVASCRIPT -->
+    <script src="{% static 'libs/jquery/dist/jquery.min.js'%}"></script>
+    <script src="{% static 'libs/bootstrap/dist/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'libs/metismenu/dist/metisMenu.min.js'%}"></script>
+    <script src="{% static 'libs/simplebar/dist/simplebar.min.js'%}"></script>
+    <script src="{% static 'libs/node-waves/dist/waves.min.js'%}"></script>
+    <script src="{% static 'libs/feather-icons/dist/feather.min.js'%}"></script>
+    <!-- pace js -->
+    <script src="{% static 'libs/pace-js/pace.min.js'%}"></script>
+    
+    <!-- swiper js -->
+    <script src="{% static 'libs/swiper/swiper-bundle.min.js'%}"></script>
+    <!-- Plugins js-->
+    <script src="{% static 'libs/jquery-countdown/dist/jquery.countdown.min.js'%}"></script>
+
+    <!-- Countdown js -->
+    <script src="{% static 'js/pages/coming-soon.init.js'%}"></script>
+        
+{% endblock javascript %}
+    

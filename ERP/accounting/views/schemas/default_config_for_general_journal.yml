@@ -1,0 +1,63 @@
+header:
+  journal_type:
+    type: journal_type
+    label: "Journal Type"
+    required: true
+    help_text: "Select the type of journal/voucher."
+  period:
+    type: period
+    label: "Period"
+    required: true
+    help_text: "Accounting period for this voucher."
+  journal_date:
+    type: date
+    label: "Date"
+    required: true
+    help_text: "Date of the voucher."
+  reference:
+    type: char
+    label: "Reference"
+    required: false
+    help_text: "Reference number or document."
+  description:
+    type: text
+    label: "Description"
+    required: false
+    help_text: "Description for this voucher."
+
+lines:
+  account:
+    type: account
+    label: "Account"
+    required: true
+    help_text: "Select the account for this line."
+  description:
+    type: char
+    label: "Line Description"
+    required: false
+  debit_amount:
+    type: decimal
+    label: "Debit"
+    required: false
+    help_text: "Debit amount for this line."
+  credit_amount:
+    type: decimal
+    label: "Credit"
+    required: false
+    help_text: "Credit amount for this line."
+  department:
+    type: department
+    label: "Department"
+    required: false
+  project:
+    type: project
+    label: "Project"
+    required: false
+  cost_center:
+    type: cost_center
+    label: "Cost Center"
+    required: false
+  tax_code:
+    type: char
+    label: "Tax Code"
+    required: false

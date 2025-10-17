@@ -1,0 +1,34 @@
+{% extends "partials/base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Select Organization</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="organization">Select an organization to continue:</label>
+                            <select name="organization" id="organization" class="form-control">
+                                {% for user_org in organizations %}
+                                <option value="{{ user_org.organization.id }}">
+                                    {{ user_org.organization.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Continue</button>
+                    </form>
+                    {% if not organizations %}
+                    <p>You are not assigned to any organization. Please contact the administrator.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

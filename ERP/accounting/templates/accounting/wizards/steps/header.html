@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+{% load crispy_forms_tags %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pristinejs/dist/pristine.min.css">
+{% endblock %}
+
+{% block content %}
+<form id="voucher-header-form" method="post" hx-post="{% url 'accounting:voucher_wizard' %}" hx-target="#voucher-wizard-container">
+    {% csrf_token %}
+    {{ wizard.management_form }}
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title">{% trans "Step 2: Voucher Header" %}</h5>
+        </div>
+        <div class="card-body">
+            {{ wizard.form|crispy }}
+        </div>
+        <div class="card-footer">
+            <button type="submit" name="wizard_goto_step" value="{{ wizard.steps.first }}" class="btn btn-secondary">{% trans "Back" %}</button>
+            <button type="submit" class="btn btn-primary">{% trans "Next" %}</button>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/pristinejs/dist/pristine.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('voucher-header-form');
+        const pristine = new Pristine(form);
+
+        form.addEventListener('submit', function (e) {
+            const valid = pristine.validate();
+            if (!valid) {
+                e.preventDefault();
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{% trans "Voucher Entry Wizard" %}</h2>
+    {% include 'accounting/partials/_error_panel.html' %}
+    <div id="voucher-wizard-container" hx-get="{% url 'accounting:voucher_wizard' %}" hx-trigger="load" hx-target="#voucher-wizard-container">
+        {% include 'accounting/wizards/steps/'|add:wizard.steps.current|add:'.html' %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'accounting/js/validation.js' %}"></script>
+{% endblock %}

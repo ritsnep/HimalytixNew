@@ -1,0 +1,21 @@
+<tr id="row-{{ account.pk }}">
+    <td style="padding-left: {{ account.indent }}px;">
+        {% if account.has_children %}
+        <button class="btn btn-sm btn-link" hx-get="{% url 'accounting:chart_of_accounts_list_hx' %}?parent={{ account.pk }}&level={{ level|add:'1' }}" hx-target="#row-{{ account.pk }}" hx-swap="afterend">+</button>
+        {% endif %}
+        {{ account.account_code }}
+    </td>
+    <td>{{ account.account_name }}</td>
+    <td>{{ account.account_type.name }}</td>
+    <td>
+        {% if account.is_active %}
+            <span class="badge bg-success">Active</span>
+        {% else %}
+            <span class="badge bg-danger">Inactive</span>
+        {% endif %}
+    </td>
+    <td>
+        <a href="{% url 'accounting:chart_of_accounts_update' account.pk %}" class="btn btn-sm btn-primary">Edit</a>
+        <a href="{% url 'accounting:chart_of_accounts_delete' account.pk %}" class="btn btn-sm btn-danger">Delete</a>
+    </td>
+</tr>

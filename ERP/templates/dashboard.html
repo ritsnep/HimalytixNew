@@ -1,0 +1,264 @@
+{% extends "partials/base.html" %}
+{% load static %}
+
+{% block title %}Dashboard{% endblock title %}
+
+
+{% block extra_css %}
+    <!-- plugin css -->
+    <link href="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.css'%}" rel="stylesheet"
+        type="text/css" />
+{% endblock extra_css %}
+
+{% block content %}
+{% include "partials/content.html" with title='Dashboard' pageview='Dashboard' %}
+
+{% if error %}
+<div class="alert alert-warning" role="alert">
+    {{ error }}
+</div>
+{% else %}
+<!-- Organization Info -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Organization: {{ organization.name }}</h5>
+                {% if current_fiscal_year %}
+                <p class="card-text">
+                    <strong>Current Fiscal Year:</strong> {{ current_fiscal_year.name }} 
+                    {% if current_period %}
+                    | <strong>Current Period:</strong> {{ current_period.name }}
+                    {% endif %}
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Financial Summary Cards -->
+<div class="row">
+    <div class="col-xl-3 col-md-6">
+        <div class="card card-h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <span class="text-muted mb-3 lh-1 d-block text-truncate">Total Journals</span>
+                        <h4 class="mb-3">
+                            <span class="counter-value" data-target="{{ financial_summary.total_journals }}">{{ financial_summary.total_journals }}</span>
+                        </h4>
+                        <div class="text-nowrap">
+                            <span class="badge bg-soft-success text-success">{{ financial_summary.posted_journals }} Posted</span>
+                            <span class="badge bg-soft-warning text-warning">{{ financial_summary.draft_journals }} Draft</span>
+                        </div>
+                    </div>
+                    <div class="flex-shrink-0 text-end dash-widget">
+                        <i class="fas fa-book fa-2x text-primary"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="card card-h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <span class="text-muted mb-3 lh-1 d-block text-truncate">Total Assets</span>
+                        <h4 class="mb-3">
+                            $<span class="counter-value" data-target="{{ financial_summary.total_assets }}">{{ financial_summary.total_assets }}</span>
+                        </h4>
+                        <div class="text-nowrap">
+                            <span class="ms-1 text-muted font-size-13">Current Period</span>
+                        </div>
+                    </div>
+                    <div class="flex-shrink-0 text-end dash-widget">
+                        <i class="fas fa-chart-line fa-2x text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="card card-h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <span class="text-muted mb-3 lh-1 d-block text-truncate">Total Liabilities</span>
+                        <h4 class="mb-3">
+                            $<span class="counter-value" data-target="{{ financial_summary.total_liabilities }}">{{ financial_summary.total_liabilities }}</span>
+                        </h4>
+                        <div class="text-nowrap">
+                            <span class="ms-1 text-muted font-size-13">Current Period</span>
+                        </div>
+                    </div>
+                    <div class="flex-shrink-0 text-end dash-widget">
+                        <i class="fas fa-balance-scale fa-2x text-warning"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="card card-h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <span class="text-muted mb-3 lh-1 d-block text-truncate">Total Equity</span>
+                        <h4 class="mb-3">
+                            $<span class="counter-value" data-target="{{ financial_summary.total_equity }}">{{ financial_summary.total_equity }}</span>
+                        </h4>
+                        <div class="text-nowrap">
+                            <span class="ms-1 text-muted font-size-13">Current Period</span>
+                        </div>
+                    </div>
+                    <div class="flex-shrink-0 text-end dash-widget">
+                        <i class="fas fa-chart-pie fa-2x text-info"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Journals and Account Balances -->
+<div class="row">
+    <div class="col-xl-8">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex flex-wrap align-items-center mb-4">
+                    <h5 class="card-title me-2">Recent Journal Entries</h5>
+                    <div class="ms-auto">
+                        <a href="{% url 'accounting:journal_list' %}" class="btn btn-primary btn-sm">
+                            View All
+                        </a>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Journal #</th>
+                                <th>Description</th>
+                                <th>Status</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for journal in recent_journals %}
+                            <tr>
+                                <td>{{ journal.journal_date|date:"M d, Y" }}</td>
+                                <td>{{ journal.journal_number }}</td>
+                                <td>{{ journal.description|truncatechars:30 }}</td>
+                                <td>
+                                    {% if journal.status == 'posted' %}
+                                        <span class="badge bg-success">Posted</span>
+                                    {% elif journal.status == 'draft' %}
+                                        <span class="badge bg-warning">Draft</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ journal.status|title }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>${{ journal.total_debit|default:"0.00" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">No journal entries found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Account Balances</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Account</th>
+                                <th>Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for balance in account_balances %}
+                            <tr>
+                                <td>{{ balance.account__account_name|truncatechars:20 }}</td>
+                                <td class="{% if balance.net_balance < 0 %}text-danger{% else %}text-success{% endif %}">
+                                    ${{ balance.net_balance|floatformat:2 }}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="2" class="text-center text-muted">No account balances found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Quick Actions</h5>
+                <div class="row">
+                    <div class="col-md-2">
+                        <a href="{% url 'accounting:voucher_wizard' %}" class="btn btn-primary w-100 mb-2">
+                            <i class="fas fa-plus me-2"></i>New Journal Entry
+                        </a>
+                    </div>
+                    <div class="col-md-2">
+                        <a href="{% url 'accounting:chart_of_accounts_list' %}" class="btn btn-success w-100 mb-2">
+                            <i class="fas fa-list me-2"></i>Chart of Accounts
+                        </a>
+                    </div>
+                    <div class="col-md-2">
+                        <a href="{% url 'accounting:journal_list' %}" class="btn btn-info w-100 mb-2">
+                            <i class="fas fa-book me-2"></i>View Journals
+                        </a>
+                    </div>
+                    <div class="col-md-2">
+                        <a href="{% url 'accounting:fiscal_year_list' %}" class="btn btn-warning w-100 mb-2">
+                            <i class="fas fa-calendar me-2"></i>Fiscal Years
+                        </a>
+                    </div>
+                    <div class="col-md-2">
+                        <a href="{% url 'accounting:reports_list' %}" class="btn btn-secondary w-100 mb-2">
+                            <i class="fas fa-chart-bar me-2"></i>Reports
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock content %}
+
+{% block extra_js %}
+    <!-- apexcharts -->
+    <script src="{% static 'libs/apexcharts/dist/apexcharts.min.js'%}"></script>
+
+    <!-- Plugins js-->
+    <script src="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.min.js'%}"></script>
+    <script src="{% static 'libs/admin-resources/jquery.vectormap/maps/jquery-jvectormap-world-mill-en.js'%}"></script>
+    <!-- dashboard init -->
+    <script src="{% static 'js/pages/dashboard.init.js'%}"></script>
+{% endblock extra_js %}

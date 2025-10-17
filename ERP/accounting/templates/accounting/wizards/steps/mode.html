@@ -1,0 +1,22 @@
+{% extends "partials/base.html" %}
+{% load i18n %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<form method="post" hx-post="{% url 'accounting:voucher_wizard' %}" hx-target="#voucher-wizard-container">
+    {% csrf_token %}
+    {{ wizard.management_form }}
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title">{% trans "Step 1: Select Voucher Mode" %}</h5>
+        </div>
+        <div class="card-body">
+            {{ wizard.form|crispy }}
+        </div>
+        <div class="card-footer">
+            <button type="submit" class="btn btn-primary">{% trans "Next" %}</button>
+        </div>
+    </div>
+</form>
+{% endblock %}

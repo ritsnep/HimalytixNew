@@ -1,0 +1,333 @@
+{% extends "accounting/_list_base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "General Journal" %}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+    :root {
+        --primary: #4361ee;
+        --secondary: #3f37c9;
+        --accent: #4895ef;
+        --light: #f8f9fa;
+        --dark: #212529;
+    }
+    
+    .journal-entry {
+        transition: all 0.3s ease;
+        border-left: 4px solid var(--primary);
+    }
+    
+    .journal-entry:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .debit {
+        border-left-color: #4ade80;
+    }
+    
+    .credit {
+        border-left-color: #f87171;
+    }
+    
+    .account-select {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+        background-position: right 0.5rem center;
+        background-repeat: no-repeat;
+        background-size: 1.5em 1.5em;
+    }
+    
+    .print-only {
+        display: none;
+    }
+    
+    @media print {
+        .no-print {
+            display: none;
+        }
+        .print-only {
+            display: block;
+        }
+        body {
+            background-color: white;
+            font-size: 12px;
+        }
+    }
+    
+    .journal-line {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.375rem;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        background-color: #f9fafb;
+    }
+    
+    .journal-line:hover {
+        background-color: #f3f4f6;
+    }
+    
+    .remove-line {
+        color: #ef4444;
+        cursor: pointer;
+        padding: 0.25rem;
+        border-radius: 0.25rem;
+        transition: all 0.2s;
+    }
+    
+    .remove-line:hover {
+        background-color: #fef2f2;
+        color: #dc2626;
+    }
+    
+    .balance-indicator {
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+    
+    .balance-balanced {
+        background-color: #dcfce7;
+        color: #166534;
+    }
+    
+    .balance-unbalanced {
+        background-color: #fef2f2;
+        color: #dc2626;
+    }
+    
+    .loading {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+    
+    .alert {
+        padding: 0.75rem 1rem;
+        border-radius: 0.375rem;
+        margin-bottom: 1rem;
+    }
+    
+    .alert-success {
+        background-color: #dcfce7;
+        color: #166534;
+        border: 1px solid #bbf7d0;
+    }
+    
+    .alert-error {
+        background-color: #fef2f2;
+        color: #dc2626;
+        border: 1px solid #fecaca;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="main-content">
+    <div class="page-content">
+    <div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="h3 mb-0">
+                    <i class="fas fa-book text-primary me-2"></i>
+                    {% trans "General Journal" %}
+                </h1>
+                <div class="d-flex gap-2 no-print">
+                    {% if can_add %}
+                    <button id="newEntryBtn" class="btn btn-success">
+                        <i class="fas fa-plus me-2"></i>{% trans "New Entry" %}
+                    </button>
+                    {% endif %}
+                    <button id="printBtn" class="btn btn-outline-secondary">
+                        <i class="fas fa-print me-2"></i>{% trans "Print" %}
+                    </button>
+                    <button id="exportBtn" class="btn btn-outline-primary">
+                        <i class="fas fa-file-export me-2"></i>{% trans "Export" %}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label class="form-label">{% trans "Date Range" %}</label>
+                            <input type="date" id="startDate" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">{% trans "To" %}</label>
+                            <input type="date" id="endDate" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">{% trans "Account" %}</label>
+                            <select id="accountFilter" class="form-select account-select">
+                                <option value="">{% trans "All Accounts" %}</option>
+                                {% for account in accounts %}
+                                <option value="{{ account.account_id }}">{{ account.account_code }} - {{ account.account_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button id="filterBtn" class="btn btn-primary w-100">
+                                <i class="fas fa-filter me-2"></i>{% trans "Filter" %}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Print Header (hidden by default) -->
+    <div class="print-only mb-4">
+        <h1 class="text-center">{% trans "General Journal" %}</h1>
+        <div class="d-flex justify-content-between mt-2">
+            <p>{% trans "Company" %}: <span id="printCompanyName">{{ request.user.get_active_organization.name }}</span></p>
+            <p>{% trans "Date" %}: <span id="printDateRange">{% trans "All Dates" %}</span></p>
+        </div>
+    </div>
+
+    <!-- Alerts -->
+    <div id="alerts"></div>
+
+    <!-- Journal Entries -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h5 class="mb-0">{% trans "Journal Entries" %}</h5>
+                        </div>
+                        <div class="col-auto">
+                            <div id="balanceIndicator" class="balance-indicator balance-balanced">
+                                <i class="fas fa-check-circle me-1"></i>
+                                <span id="balanceText">{% trans "Balanced" %}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>{% trans "Date" %}</th>
+                                    <th>{% trans "Account" %}</th>
+                                    <th>{% trans "Ref" %}</th>
+                                    <th>{% trans "Description" %}</th>
+                                    <th class="text-end">{% trans "Debit" %}</th>
+                                    <th class="text-end">{% trans "Credit" %}</th>
+                                    <th class="text-center">{% trans "Actions" %}</th>
+                                </tr>
+                            </thead>
+                            <tbody id="journalEntries">
+                                <!-- Entries will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="d-flex justify-content-end">
+                        <div class="me-4">
+                            <span class="me-2">{% trans "Total Debit" %}:</span>
+                            <span id="totalDebit" class="text-success fw-medium">$0.00</span>
+                        </div>
+                        <div>
+                            <span class="me-2">{% trans "Total Credit" %}:</span>
+                            <span id="totalCredit" class="text-danger fw-medium">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Entry Modal -->
+<div id="entryModal" class="modal fade" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{% trans "New Journal Entry" %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {# Error display block #}
+                {% if error %}
+                <div class="alert alert-danger">{{ error }}</div>
+                {% endif %}
+                <form id="journalForm">
+                    {% csrf_token %}
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">{% trans "Date" %}</label>
+                            <input type="date" id="entryDate" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">{% trans "Journal Type" %}</label>
+                            {% if config.journal_type %}
+                                <input type="hidden" id="journalType" name="journalType" value="{{ config.journal_type.journal_type_id }}">
+                                <input type="text" class="form-control" value="{{ config.journal_type.name }}" readonly>
+                            {% else %}
+                                <select id="journalType" name="journalType" class="form-select" required>
+                                    <option value="">{% trans "Select Journal Type" %}</option>
+                                    {% for journal_type in journal_types %}
+                                    <option value="{{ journal_type.journal_type_id }}">{{ journal_type.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">{% trans "Journal Number" %}</label>
+                            <input type="text" id="journalNumber" class="form-control" value="{% if config.journal_type %}{{ config.journal_type.get_next_journal_number }}{% endif %}" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">{% trans "Reference" %}</label>
+                            <input type="text" id="entryRef" class="form-control" placeholder="{% trans 'Journal #' %}">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label class="form-label">{% trans "Description" %}</label>
+                            <input type="text" id="entryDescription" class="form-control" placeholder="{% trans 'Enter description...' %}">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{% trans "Entry Lines" %}</label>
+                        <div id="entryLines" class="space-y-3">
+                            <!-- Entry lines will be added here -->
+                        </div>
+                        <button type="button"
+                                class="btn btn-outline-secondary mt-3"
+                                hx-get="{% url 'accounting:htmx_journal_line_form' %}?index=__INDEX__"
+                                hx-target="#entryLines"
+                                hx-swap="beforeend"
+                                {% if not can_add %}disabled{% endif %}>
+                            <i class="fas fa-plus me-2"></i>{% trans "Add Line" %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Cancel" %}</button>
+                <button type="button" id="saveEntry" class="btn btn-primary">{% trans "Save Entry" %}</button>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+</div>
+{% endblock %}

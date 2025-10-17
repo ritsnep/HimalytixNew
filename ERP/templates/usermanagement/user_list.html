@@ -1,0 +1,8 @@
+<!-- user_list.html -->
+<h2>User List</h2>
+<a href="{% url 'user_create' %}">Create User</a>
+<ul>
+  {% for user in users %}
+    <li>{{ user.full_name }} - <a href="{% url 'user_delete' user.pk %}">Delete</a></li>
+  {% endfor %}
+</ul>

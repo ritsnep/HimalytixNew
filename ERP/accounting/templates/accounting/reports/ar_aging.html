@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Accounts Receivable Aging" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="mb-1">
+                    <i class="fas fa-hourglass-end me-2"></i>
+                    {% trans "Accounts Receivable Aging" %}
+                </h1>
+                <a href="{% url 'accounting:report_list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>
+                    {% trans "Back" %}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="as_of_date" class="form-label">{% trans "As Of Date" %}</label>
+                            <input type="date" name="as_of_date" id="as_of_date" class="form-control" value="{{ as_of_date }}">
+                        </div>
+                        <div class="col-md-8 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary">{% trans "Generate" %}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if report_data and not report_data.error %}
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <div class="d-flex justify-content-between">
+                        <h5 class="mb-0">{% trans "A/R Aging Analysis" %}</h5>
+                        <form method="post" action="{% url 'accounting:report_export' %}" style="display:inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="report_type" value="ar_aging">
+                            <input type="hidden" name="as_of_date" value="{{ as_of_date }}">
+                            <div class="btn-group btn-group-sm">
+                                <button type="submit" name="export_format" value="csv" class="btn btn-outline-secondary">CSV</button>
+                                <button type="submit" name="export_format" value="excel" class="btn btn-outline-secondary">Excel</button>
+                                <button type="submit" name="export_format" value="pdf" class="btn btn-outline-secondary">PDF</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>{% trans "Customer" %}</th>
+                                <th class="text-end">{% trans "Current (0-30)" %}</th>
+                                <th class="text-end">{% trans "31-60 Days" %}</th>
+                                <th class="text-end">{% trans "61-90 Days" %}</th>
+                                <th class="text-end">{% trans "90+ Days" %}</th>
+                                <th class="text-end">{% trans "Total" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for line in report_data.lines %}
+                            <tr>
+                                <td>{{ line.customer_name }}</td>
+                                <td class="text-end">{{ line.current_0_30|floatformat:2 }}</td>
+                                <td class="text-end">{{ line.days_31_60|floatformat:2 }}</td>
+                                <td class="text-end">{{ line.days_61_90|floatformat:2 }}</td>
+                                <td class="text-end">
+                                    <span class="badge bg-danger">{{ line.days_90_plus|floatformat:2 }}</span>
+                                </td>
+                                <td class="text-end fw-bold">{{ line.total_amount|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-light fw-bold">
+                            <tr>
+                                <td>{% trans "TOTAL" %}</td>
+                                <td class="text-end">{{ report_data.totals.total_0_30|floatformat:2 }}</td>
+                                <td class="text-end">{{ report_data.totals.total_31_60|floatformat:2 }}</td>
+                                <td class="text-end">{{ report_data.totals.total_61_90|floatformat:2 }}</td>
+                                <td class="text-end text-danger">{{ report_data.totals.total_90_plus|floatformat:2 }}</td>
+                                <td class="text-end">{{ report_data.totals.grand_total|floatformat:2 }}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aging Summary -->
+    <div class="row mt-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="text-muted">{% trans "Current" %}</h6>
+                    <h4 class="text-success">{{ report_data.totals.total_0_30|floatformat:2 }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="text-muted">{% trans "31-60 Days" %}</h6>
+                    <h4 class="text-warning">{{ report_data.totals.total_31_60|floatformat:2 }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="text-muted">{% trans "61-90 Days" %}</h6>
+                    <h4 class="text-info">{{ report_data.totals.total_61_90|floatformat:2 }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="text-muted">{% trans "90+ Days" %}</h6>
+                    <h4 class="text-danger">{{ report_data.totals.total_90_plus|floatformat:2 }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% elif report_data.error %}
+    <div class="alert alert-danger">{{ report_data.error }}</div>
+    {% else %}
+    <div class="alert alert-info">{% trans "Select a date and generate report" %}</div>
+    {% endif %}
+</div>
+{% endblock %}

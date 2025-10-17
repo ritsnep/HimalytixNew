@@ -1,0 +1,66 @@
++16
+-0
+
+{% extends 'accounting/_list_base.html' %}
+{% load static %}
+
+{% block title %}Currency Exchange Rates{% endblock %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+
+{% block create_button %}
+    {# You might want to add a permission check here like: {% if can_add %} #}
+    <a href="{{ create_url }}" class="btn btn-success mb-2">
+        <i class="mdi mdi-plus me-1"></i> {{ create_button_text }}
+    </a>
+{% endblock %}
+
+{% block custom_filters %}
+<form method="get" class="row g-2 mb-3">
+    <div class="col-auto">
+        <select name="currency" class="form-select">
+            <option value="">All Currencies</option>
+            {% for curr in currencies %}
+                <option value="{{ curr.currency_code }}" {% if selected_currency == curr.currency_code %}selected{% endif %}>{{ curr.currency_code }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-secondary">Filter</button>
+    </div>
+</form>
+{% endblock %}
+
+{% block table_head %}
+<thead>
+    <tr>
+        <th>From Currency</th>
+        <th>To Currency</th>
+        <th>Rate</th>
+        <th>Effective Date</th>
+        <th>Actions</th>
+    </tr>
+</thead>
+{% endblock %}
+
+{% block table_body %}
+<tbody>
+    {% for rate in exchange_rates %}
+    <tr>
+        <td>{{ rate.from_currency.currency_code }} - {{ rate.from_currency.currency_name }}</td>
+        <td>{{ rate.to_currency.currency_code }} - {{ rate.to_currency.currency_name }}</td>
+        <td>{{ rate.exchange_rate }}</td>
+        <td>{{ rate.rate_date|date:"Y-m-d" }}</td>
+        <td>
+            <a href="{% url 'accounting:exchange_rate_update' rate.pk %}" class="btn btn-sm btn-primary">
+                <i class="fas fa-edit"></i> Edit
+            </a>
+        </td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="5" class="text-center">No exchange rates found.</td>
+    </tr>
+    {% endfor %}
+</tbody>
+{% endblock %} 

@@ -1,0 +1,34 @@
+<tr id="form-__prefix__-row" class="journal-line-row">
+    <td data-label="#"></td>
+    <td data-label="Drag"><i class="fas fa-grip-vertical"></i></td>
+    {% load widget_tweaks %}
+    <td data-label="Account">{% render_field form.account class="form-select grid-cell" aria-label="Account" %}</td>
+    <td data-label="Description">{% render_field form.description class="form-control grid-cell" aria-label="Description" %}</td>
+    <td colspan="2">
+        <fieldset>
+            <legend class="visually-hidden">Debit and Credit Amounts</legend>
+            <div class="row g-2">
+                <div class="col">
+                    <label for="{{ form.debit_amount.id_for_label }}" class="visually-hidden">Debit Amount</label>
+                    {% render_field form.debit_amount class="form-control grid-cell text-end" placeholder="Debit" aria-label="Debit Amount" data-label="Debit" %}
+                </div>
+                <div class="col">
+                    <label for="{{ form.credit_amount.id_for_label }}" class="visually-hidden">Credit Amount</label>
+                    {% render_field form.credit_amount class="form-control grid-cell text-end" placeholder="Credit" aria-label="Credit Amount" data-label="Credit" %}
+                </div>
+            </div>
+        </fieldset>
+    </td>
+    <td data-label="Department">{% render_field form.department class="form-select grid-cell" aria-label="Department" %}</td>
+    <td data-label="Project">{% render_field form.project class="form-select grid-cell" aria-label="Project" %}</td>
+    <td data-label="Cost Center">{% render_field form.cost_center class="form-select grid-cell" aria-label="Cost Center" %}</td>
+    <td class="currency-col d-none">{% render_field form.currency class="form-select grid-cell" aria-label="Currency" %}</td>
+    <td class="currency-col d-none">{% render_field form.exchange_rate class="form-control grid-cell text-end" aria-label="Exchange Rate" %}</td>
+    <td class="text-center">
+        <input type="hidden" name="lines-__prefix__-DELETE" id="id_lines-__prefix__-DELETE" value="">
+        <button type="button" class="btn btn-sm btn-danger remove-row"><i class="fas fa-trash"></i></button>
+    </td>
+</tr>
+<tr id="form-__prefix__-error-row" class="journal-line-error-row d-none">
+    <td colspan="12" class="line-error-cell text-danger small"></td>
+</tr>

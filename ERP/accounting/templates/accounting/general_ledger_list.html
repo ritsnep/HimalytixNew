@@ -1,0 +1,134 @@
+{% extends 'accounting/_list_base.html' %}
+{% load static %}
+
+{% block title %}General Ledger{% endblock %}
+{% block breadcrumb %}General Ledger{% endblock %}
+
+{% block custom_filters %}
+<div class="card">
+  <div class="card-body">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label for="account-filter" class="form-label">Account</label>
+        <select id="account-filter" name="account" class="form-control"></select>
+      </div>
+      <div class="col-md-2">
+        <label for="start_date" class="form-label">Start Date</label>
+        <input type="date" class="form-control form-control-sm" id="start_date" name="start_date" value="{{ request.GET.start_date }}">
+      </div>
+      <div class="col-md-2">
+        <label for="end_date" class="form-label">End Date</label>
+        <input type="date" class="form-control form-control-sm" id="end_date" name="end_date" value="{{ request.GET.end_date }}">
+      </div>
+      <div class="col-md-2">
+        <label for="department" class="form-label">Department</label>
+        <select id="department" name="department" class="form-select form-select-sm">
+          <option value="">All</option>
+          {% for d in departments %}
+          <option value="{{ d.pk }}" {% if request.GET.department == d.pk|stringformat:'s' %}selected{% endif %}>{{ d.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label for="cost_center" class="form-label">Cost Center</label>
+        <select id="cost_center" name="cost_center" class="form-select form-select-sm">
+          <option value="">All</option>
+          {% for c in cost_centers %}
+          <option value="{{ c.pk }}" {% if request.GET.cost_center == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label for="project" class="form-label">Project</label>
+        <input type="text" id="project" name="project" class="form-control form-control-sm" value="{{ request.GET.project }}">
+      </div>
+      <div class="col-md-1">
+        <label class="form-label d-block">&nbsp;</label>
+        <button type="submit" class="btn btn-primary btn-sm w-100">Filter</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block table_head %}
+<thead>
+  <tr>
+    <th>Date</th>
+    <th>Journal</th>
+    <th>Account</th>
+    <th>Description</th>
+    <th class="text-end">Debit</th>
+    <th class="text-end">Credit</th>
+    <th>Department</th>
+    <th>Cost Center</th>
+  </tr>
+</thead>
+{% endblock %}
+
+{% block table_body %}
+<tbody>
+  {% for entry in gl_entries %}
+  <tr>
+    <td>{{ entry.transaction_date }}</td>
+    <td>{{ entry.journal.journal_number }}</td>
+    <td>{{ entry.account.account_code }} - {{ entry.account.account_name }}</td>
+    <td>{{ entry.description }}</td>
+    <td class="text-end">{{ entry.debit_amount }}</td>
+    <td class="text-end">{{ entry.credit_amount }}</td>
+    <td>{% if entry.department %}{{ entry.department.name }}{% endif %}</td>
+    <td>{% if entry.cost_center %}{{ entry.cost_center.name }}{% endif %}</td>
+  </tr>
+  {% empty %}
+  <tr>
+    <td colspan="8" class="text-center">No entries to display. Apply filters and run the report.</td>
+  </tr>
+  {% endfor %}
+</tbody>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script src="{% static 'libs/choices.js/public/assets/scripts/choices.min.js' %}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const accountElement = document.getElementById('account-filter');
+    if (accountElement) {
+      const accountChoices = new Choices(accountElement, {
+        removeItemButton: true,
+        searchPlaceholderValue: 'Type to search...',
+        itemSelectText: '',
+        allowHTML: true,
+      });
+
+      accountElement.addEventListener('search', function(event) {
+        const query = event.detail.value;
+        if (query.length < 2) {
+          accountChoices.clearChoices();
+          return;
+        }
+        accountChoices.setChoices(function() {
+          return fetch("{% url 'accounting:htmx_lookup' 'accounts' %}?query=" + encodeURIComponent(query))
+            .then(response => response.json())
+            .then(data => {
+              return data.results.map(function(account) {
+                return { value: account.id, label: account.text };
+              });
+            });
+        });
+      });
+
+      const initialAccountId = "{{ request.GET.account }}";
+      const initialAccountText = "{{ selected_account_text|escapejs }}";
+      if (initialAccountId && initialAccountText) {
+        accountChoices.setChoices(
+          [{ value: initialAccountId, label: initialAccountText, selected: true }],
+          'value',
+          'label',
+          false
+        );
+      }
+    }
+  });
+</script>
+{% endblock %}

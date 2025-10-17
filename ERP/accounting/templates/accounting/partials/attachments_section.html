@@ -1,0 +1,73 @@
+<!-- Attachments Section Partial -->
+<!-- Display and manage file attachments for journal entries -->
+
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Attachments</h5>
+        {% if not journal.is_posted %}
+            <button type="button" class="btn btn-sm btn-light" data-bs-toggle="collapse" data-bs-target="#attachment-upload">
+                <i class="bi bi-plus"></i> Add File
+            </button>
+        {% endif %}
+    </div>
+
+    <div class="card-body">
+        <!-- Attachment List -->
+        <div class="list-group mb-3">
+            {% for attachment in attachments %}
+                <a href="{{ attachment.file.url }}" class="list-group-item list-group-item-action" target="_blank">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="bi bi-file"></i>
+                            <strong>{{ attachment.filename }}</strong>
+                            <small class="text-muted d-block">
+                                {{ attachment.file.size|filesizeformat }} • 
+                                Uploaded {{ attachment.created_at|timesince }} ago
+                            </small>
+                        </div>
+                        {% if not journal.is_posted %}
+                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                    hx-delete="{% url 'accounting:attachment_delete_htmx' attachment_id=attachment.id %}"
+                                    hx-confirm="Delete this attachment?">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        {% endif %}
+                    </div>
+                </a>
+            {% empty %}
+                <p class="text-muted text-center py-3 mb-0">No attachments</p>
+            {% endfor %}
+        </div>
+
+        <!-- Upload Form (Collapsed) -->
+        {% if not journal.is_posted %}
+            <div class="collapse" id="attachment-upload">
+                <div class="border rounded p-3 mt-3">
+                    <form hx-post="{% url 'accounting:attachment_upload_htmx' journal_id=journal.id %}"
+                          hx-target="#attachment-list"
+                          hx-swap="innerHTML">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="attachment-file" class="form-label">Select File</label>
+                            <input type="file" class="form-control" id="attachment-file" 
+                                   name="file" required multiple>
+                            <small class="text-muted">
+                                Max file size: 10 MB. Allowed: PDF, Word, Excel, Images
+                            </small>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="bi bi-cloud-upload"></i> Upload
+                        </button>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="card-footer text-muted small">
+        <i class="bi bi-info-circle"></i>
+        {{ attachments|length }} file(s)
+    </div>
+</div>

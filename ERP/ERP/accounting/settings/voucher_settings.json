@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "fields": {
+    "header": {
+      "date": {
+        "required": true,
+        "type": "date",
+        "help": "Transaction date"
+      },
+      "reference": {
+        "required": false,
+        "type": "string",
+        "regex": "^[A-Z0-9-]*$",
+        "help": "Alphanumeric, optional"
+      }
+    },
+    "lines": {
+      "account": {
+        "required": true,
+        "type": "account",
+        "help": "GL Account"
+      },
+      "amount": {
+        "required": true,
+        "type": "decimal",
+        "min": 0.01,
+        "help": "Debit or credit amount"
+      }
+    }
+  },
+  "rules": [
+    {
+      "if": {
+        "<": [
+          {
+            "var": "amount"
+          },
+          0
+        ]
+      },
+      "then": {
+        "error": "Amount must be positive"
+      },
+      "priority": 1,
+      "enabled": true
+    }
+  ],
+  "feature_flags": {
+    "enable_custom_hooks": false,
+    "enable_diff_preview": true
+  }
+}

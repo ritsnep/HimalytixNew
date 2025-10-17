@@ -1,0 +1,98 @@
+{% extends 'accounting/_list_base.html' %}
+{% block title %}Journal Detail{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h4>Journal Detail</h4>
+  </div>
+  <div class="card-body">
+    <p><strong>Journal Number:</strong> {{ journal.journal_number }}</p>
+    <p><strong>Date:</strong> {{ journal.journal_date|date:"Y-m-d" }}</p>
+    <p><strong>Description:</strong> {{ journal.description }}</p>
+    <p><strong>Status:</strong> {% if journal.status == 'posted' %}Posted{% else %}Draft{% endif %}</p>
+    <hr>
+    <h5>Lines</h5>
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Account</th>
+          <th>Description</th>
+          <th>Debit</th>
+          <th>Credit</th>
+          <th>UDFs</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for line in journal.lines.all %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td>{{ line.account }}</td>
+          <td>{{ line.description }}</td>
+          <td>{{ line.debit_amount }}</td>
+          <td>{{ line.credit_amount }}</td>
+          <td>
+            {% if line.udf_data %}
+              <ul class="list-unstyled mb-0">
+                {% for key, value in line.udf_data.items %}
+                  <li><strong>{{ key }}:</strong> {{ value }}</li>
+                {% endfor %}
+              </ul>
+            {% else %}-{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <hr>
+    <h5>Header UDFs</h5>
+    {% if journal.udf_data %}
+      <ul class="list-unstyled">
+        {% for key, value in journal.udf_data.items %}
+          <li><strong>{{ key }}:</strong> {{ value }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-muted">No header UDFs</p>
+    {% endif %}
+    <a href="{% url 'accounting:journal_list' %}" class="btn btn-secondary mt-3">Back to List</a>
+    <button type="button" class="btn btn-info mt-3" data-bs-toggle="modal" data-bs-target="#auditTrailModal">
+      View Audit Trail
+    </button>
+  </div>
+</div>
+
+<div class="modal fade" id="auditTrailModal" tabindex="-1" aria-labelledby="auditTrailModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div id="audit-trail-content">
+        <!-- Content will be loaded here via HTMX -->
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var auditTrailModal = document.getElementById('auditTrailModal');
+    auditTrailModal.addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget;
+        var url = "{% url 'accounting:journal_audit_trail' journal.pk %}";
+        var modalContent = document.getElementById('audit-trail-content');
+
+        fetch(url)
+            .then(response => response.text())
+            .then(html => {
+                modalContent.innerHTML = html;
+            })
+            .catch(err => {
+                console.warn('Something went wrong.', err);
+                modalContent.innerHTML = '<div class="modal-body"><p>Error loading audit trail.</p></div>';
+            });
+    });
+});
+</script>
+{% endblock %}

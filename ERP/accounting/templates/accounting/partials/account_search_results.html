@@ -1,0 +1,11 @@
+<div class="list-group position-absolute" style="z-index: 1000; width: 300px;">
+    {% for account in accounts %}
+        <a href="#"
+           class="list-group-item list-group-item-action"
+           onclick="document.getElementById('id_lines-{{ forloop.counter0 }}-account').value = '{{ account.pk }}'; document.getElementById('account-search-results-{{ forloop.counter0 }}').innerHTML = ''; return false;">
+            <strong>{{ account.account_name }}</strong> ({{ account.account_code }})
+        </a>
+    {% empty %}
+        <div class="list-group-item">No results found</div>
+    {% endfor %}
+</div>

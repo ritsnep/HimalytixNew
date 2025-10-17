@@ -1,0 +1,20 @@
+<div class="card">
+    <div class="card-header bg-white">
+        <h6 class="card-title mb-0">Account Information</h6>
+    </div>
+    <div class="card-body">
+        {% if account %}
+            <h5>{{ account.name }}</h5>
+            <p class="text-muted">{{ account.code }}</p>
+            <dl class="row">
+                <dt class="col-sm-4">Type</dt>
+                <dd class="col-sm-8">{{ account.get_type_display }}</dd>
+
+                <dt class="col-sm-4">Balance</dt>
+                <dd class="col-sm-8">{{ account.balance }}</dd>
+            </dl>
+        {% else %}
+            <p class="text-muted">Select an account to see details.</p>
+        {% endif %}
+    </div>
+</div>

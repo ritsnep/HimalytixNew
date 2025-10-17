@@ -1,0 +1,9 @@
+states:
+  - Draft
+  - Park
+  - Approve
+  - Post
+
+role_matrix:
+  Accountant: [Park, Approve, Draft]
+  Manager: [Post, Draft]

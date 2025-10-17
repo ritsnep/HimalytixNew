@@ -1,0 +1,11 @@
+<div class="d-flex justify-content-end gap-3 py-2">
+  <div><strong>Total Debit:</strong> <span id="je-total-debit">{{ total_debit }}</span></div>
+  <div><strong>Total Credit:</strong> <span id="je-total-credit">{{ total_credit }}</span></div>
+  <div><strong>Diff:</strong> <span id="je-total-diff">{{ diff }}</span></div>
+  <button type="button" class="btn btn-outline-secondary btn-sm"
+          hx-post="{% url 'accounting:journal_entry_grid_add_row' %}"
+          hx-vals='{"next_index": {{ next_index|default:1 }} }'
+          hx-target="#je-grid-rows" hx-swap="beforeend">
+    + Row
+  </button>
+</div>

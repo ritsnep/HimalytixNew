@@ -1,0 +1,96 @@
+{% load static %}
+
+{% block form_content %}
+<div class="card">
+    <div class="card-header">
+        <h4 class="card-title">{{ form_title|default:"Form" }}</h4>
+        {% if form_description %}
+        <p class="card-title-desc">{{ form_description }}</p>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <form method="post" id="{{ form_id|default:'dynamic-form' }}" {% if multipart %}enctype="multipart/form-data"{% endif %}>
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {{ form.non_field_errors }}
+            </div>
+            {% endif %}
+            
+            <div class="row">
+                {% for field in form %}
+                <div class="col-md-{{ field.field.widget.attrs.col|default:'6' }}">
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ field.id_for_label }}">
+                            {{ field.label }}
+                            {% if field.field.required %}*{% endif %}
+                        </label>
+                        
+                        {{ field }}
+                        
+                        {% if field.help_text %}
+                        <div class="form-text">{{ field.help_text }}</div>
+                        {% endif %}
+                        
+                        {% if field.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ field.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary w-md">{{ submit_label|default:"Submit" }}</button>
+                {% if cancel_url %}
+                <a href="{{ cancel_url }}" class="btn btn-secondary w-md">Cancel</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Handle form submission
+    $('#{{ form_id|default:"dynamic-form" }}').on('submit', function(e) {
+        if ($(this).data('ajax')) {
+            e.preventDefault();
+            var form = $(this);
+            
+            $.ajax({
+                url: form.attr('action'),
+                type: 'POST',
+                data: new FormData(this),
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    if (response.status === 'success') {
+                        if (response.redirect_url) {
+                            window.location.href = response.redirect_url;
+                        }
+                        if (response.message) {
+                            toastr.success(response.message);
+                        }
+                    } else {
+                        // Handle errors
+                        $.each(response.errors, function(field, errors) {
+                            var input = form.find('[name="' + field + '"]');
+                            input.addClass('is-invalid');
+                            input.siblings('.invalid-feedback').html(errors.join('<br>'));
+                        });
+                    }
+                },
+                error: function() {
+                    toastr.error('An error occurred. Please try again.');
+                }
+            });
+        }
+    });
+});</script>
+{% endblock %}

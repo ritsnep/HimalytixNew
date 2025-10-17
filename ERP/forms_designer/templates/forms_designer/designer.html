@@ -1,0 +1,259 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dragula/3.7.3/dragula.min.css" />
+<style>
+    .gu-mirror {
+        position: fixed !important;
+        margin: 0 !important;
+        z-index: 9999 !important;
+        opacity: 0.8;
+        -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
+        filter: alpha(opacity=80);
+    }
+    .gu-hide {
+        display: none !important;
+    }
+    .gu-unselectable {
+        -webkit-user-select: none !important;
+        -moz-user-select: none !important;
+        -ms-user-select: none !important;
+        user-select: none !important;
+    }
+    .gu-transit {
+        opacity: 0.2;
+        -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=20)";
+        filter: alpha(opacity=20);
+    }
+    .draggable-field {
+        cursor: move;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">Field Palette</h5>
+                </div>
+                <div class="card-body">
+                    <h6>Header Fields</h6>
+                    <div id="palette-header" class="list-group">
+                        {% for field in udf_header %}
+                        <div class="list-group-item draggable-field" data-field-name="{{ field.field_name }}" data-field-type="{{ field.field_type }}">{{ field.display_name }}</div>
+                        {% endfor %}
+                    </div>
+                    <h6 class="mt-3">Line Fields</h6>
+                    <div id="palette-line" class="list-group">
+                        {% for field in udf_line %}
+                        <div class="list-group-item draggable-field" data-field-name="{{ field.field_name }}" data-field-type="{{ field.field_type }}">{{ field.display_name }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title">Form Designer: {{ config.name }}</h5>
+                    <div>
+                        <button id="save-form" class="btn btn-primary">Save Form</button>
+                        <a href="{% url 'forms_designer:preview' config.config_id %}" class="btn btn-secondary" target="_blank">Preview</a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <form id="designer-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="schema_json" id="schema_json_input">
+                        
+                        <div class="mb-4">
+                            <h5>Header</h5>
+                            <div id="header-dropzone" class="min-vh-25 border p-3">
+                                <!-- Draggable fields for header will be dropped here -->
+                            </div>
+                        </div>
+
+                        <div>
+                            <h5>Lines</h5>
+                            <div id="lines-dropzone" class="min-vh-50 border p-3">
+                                <!-- Draggable fields for lines will be dropped here -->
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dragula/3.7.3/dragula.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const schema = JSON.parse('{{ schema_json|escapejs }}');
+<!-- Field Properties Modal -->
+<div class="modal fade" id="fieldPropertiesModal" tabindex="-1" aria-labelledby="fieldPropertiesModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="fieldPropertiesModalLabel">Field Properties</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="field-properties-form">
+                    <input type="hidden" id="field-name-input" />
+                    <div class="mb-3">
+                        <label for="field-label-input" class="form-label">Label</label>
+                        <input type="text" class="form-control" id="field-label-input" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="field-help-text-input" class="form-label">Help Text</label>
+                        <textarea class="form-control" id="field-help-text-input" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="field-required-input" />
+                        <label class="form-check-label" for="field-required-input">Required</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="save-field-properties">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+    const headerDropzone = document.getElementById('header-dropzone');
+    const linesDropzone = document.getElementById('lines-dropzone');
+
+    function renderField(field) {
+        const el = document.createElement('div');
+        el.className = 'list-group-item draggable-field';
+        el.dataset.fieldName = field.name;
+        el.dataset.fieldType = field.type;
+        el.textContent = field.label || field.name;
+        return el;
+    }
+
+    function initializeDropzones() {
+        if (schema.header && Array.isArray(schema.header)) {
+            schema.header.forEach(field => headerDropzone.appendChild(renderField(field)));
+        }
+        if (schema.lines && Array.isArray(schema.lines)) {
+            schema.lines.forEach(field => linesDropzone.appendChild(renderField(field)));
+        }
+    }
+
+    const drake = dragula([document.getElementById('palette-header'), headerDropzone], {
+        copy: function (el, source) {
+            return source === document.getElementById('palette-header');
+        },
+        accepts: function (el, target) {
+            return target === headerDropzone;
+        }
+    });
+
+    const drakeLines = dragula([document.getElementById('palette-line'), linesDropzone], {
+        copy: function (el, source) {
+            return source === document.getElementById('palette-line');
+        },
+        accepts: function (el, target) {
+            return target === linesDropzone;
+        }
+    });
+
+    let selectedField = null;
+    const fieldPropertiesModal = new bootstrap.Modal(document.getElementById('fieldPropertiesModal'));
+
+    function editFieldProperties(fieldElement) {
+        selectedField = fieldElement;
+        const fieldName = selectedField.dataset.fieldName;
+        const field = findFieldInSchema(fieldName);
+
+        document.getElementById('field-name-input').value = fieldName;
+        document.getElementById('field-label-input').value = field ? field.label : '';
+        document.getElementById('field-help-text-input').value = field ? field.help_text : '';
+        document.getElementById('field-required-input').checked = field ? field.required : false;
+
+        fieldPropertiesModal.show();
+    }
+
+    document.getElementById('header-dropzone').addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('draggable-field')) {
+            editFieldProperties(e.target);
+        }
+    });
+
+    document.getElementById('lines-dropzone').addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('draggable-field')) {
+            editFieldProperties(e.target);
+        }
+    });
+
+    document.getElementById('save-field-properties').addEventListener('click', function() {
+        const fieldName = document.getElementById('field-name-input').value;
+        const field = findFieldInSchema(fieldName);
+
+        if (field) {
+            field.label = document.getElementById('field-label-input').value;
+            field.help_text = document.getElementById('field-help-text-input').value;
+            field.required = document.getElementById('field-required-input').checked;
+            selectedField.textContent = field.label;
+        }
+
+        fieldPropertiesModal.hide();
+    });
+
+    function findFieldInSchema(fieldName) {
+        let field = schema.header.find(f => f.name === fieldName);
+        if (!field) {
+            field = schema.lines.find(f => f.name === fieldName);
+        }
+        return field;
+    }
+
+    document.getElementById('save-form').addEventListener('click', function() {
+        const newSchema = {
+            header: [],
+            lines: []
+        };
+
+        document.querySelectorAll('#header-dropzone .draggable-field').forEach(el => {
+            newSchema.header.push(findFieldInSchema(el.dataset.fieldName));
+        });
+
+        document.querySelectorAll('#lines-dropzone .draggable-field').forEach(el => {
+            newSchema.lines.push(findFieldInSchema(el.dataset.fieldName));
+        });
+
+        fetch(`{% url 'forms_designer:save_schema_api' config.config_id %}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify(newSchema)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Form saved successfully!');
+            } else {
+                alert('Error saving form: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An unexpected error occurred.');
+        });
+    });
+
+    initializeDropzones();
+});
+</script>
+{% endblock %}

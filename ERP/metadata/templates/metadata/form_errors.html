@@ -1,0 +1,13 @@
+<div id="form-errors">
+    <div class="alert alert-danger">
+        {% for field, errors in errors.items %}
+            {% if field == '__all__' %}
+                <div>{{ errors|join:', ' }}</div>
+            {% else %}
+                <div data-field="{{ field }}">
+                    <strong>{{ field|title }}:</strong> {{ errors|join:', ' }}
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+</div> 

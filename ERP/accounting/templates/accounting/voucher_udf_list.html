@@ -1,0 +1,263 @@
+{% extends 'accounting/_list_base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+
+<div class="main-content">
+    <div class="page-content">
+<div class="container-fluid">
+    <!-- Breadcrumbs -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            {% for breadcrumb in breadcrumbs %}
+                {% if breadcrumb.1 %}
+                    <li class="breadcrumb-item"><a href="{{ breadcrumb.1 }}">{{ breadcrumb.0 }}</a></li>
+                {% else %}
+                    <li class="breadcrumb-item active">{{ breadcrumb.0 }}</li>
+                {% endif %}
+            {% endfor %}
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">{{ page_title }}</h2>
+            <p class="text-muted mb-0">Manage user-defined fields for voucher entry forms</p>
+        </div>
+        <div>
+            <a href="{% url 'accounting:voucher_udf_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>New UDF Configuration
+            </a>
+        </div>
+    </div>
+
+    <!-- UDF Configurations List -->
+    <div class="card">
+        <div class="card-body">
+            {% if udf_configs %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Field Name</th>
+                                <th>Display Name</th>
+                                <th>Type</th>
+                                <th>Scope</th>
+                                <th>Voucher Mode</th>
+                                <th>Required</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for udf in udf_configs %}
+                                <tr>
+                                    <td>
+                                        <code>{{ udf.field_name }}</code>
+                                    </td>
+                                    <td>
+                                        <strong>{{ udf.display_name }}</strong>
+                                        {% if udf.help_text %}
+                                            <br><small class="text-muted">{{ udf.help_text|truncatechars:50 }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ udf.get_field_type_display }}</span>
+                                        {% if udf.choices %}
+                                            <br><small class="text-muted">{{ udf.choices|length }} choices</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ udf.get_scope_display }}</span>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'accounting:voucher_config_detail' udf.voucher_mode.pk %}" 
+                                           class="text-decoration-none">
+                                            {{ udf.voucher_mode.name }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        {% if udf.is_required %}
+                                            <span class="badge bg-danger">Required</span>
+                                        {% else %}
+                                            <span class="badge bg-success">Optional</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if udf.is_active %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{% url 'accounting:voucher_udf_update' udf.pk %}" 
+                                               class="btn btn-sm btn-outline-secondary" 
+                                               title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-outline-danger" 
+                                                    title="Delete"
+                                                    onclick="confirmDelete('{{ udf.display_name }}', '{{ udf.pk }}')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if is_paginated %}
+                    <nav aria-label="UDF configurations pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1">&laquo; First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                                </li>
+                            {% endif %}
+
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                                </span>
+                            </li>
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-cogs fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No UDF Configurations Found</h5>
+                    <p class="text-muted">Get started by creating your first user-defined field configuration.</p>
+                    <a href="{% url 'accounting:voucher_udf_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i>Create First UDF Configuration
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Statistics Card -->
+    {% if udf_configs %}
+        <div class="row mt-4">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="mb-0">{{ udf_configs|length }}</h4>
+                                <small>Total UDFs</small>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-cogs fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="mb-0">{{ udf_configs|dictsort:"scope"|length }}</h4>
+                                <small>Header Fields</small>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-file-alt fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="mb-0">{{ udf_configs|dictsort:"scope"|length }}</h4>
+                                <small>Line Fields</small>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-list fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="mb-0">{{ udf_configs|dictsort:"is_required"|length }}</h4>
+                                <small>Required Fields</small>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-exclamation-triangle fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the UDF configuration "<strong id="deleteUDFName"></strong>"?</p>
+                <p class="text-danger"><small>This action cannot be undone and will remove the field from all voucher forms.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function confirmDelete(udfName, udfId) {
+    document.getElementById('deleteUDFName').textContent = udfName;
+    document.getElementById('deleteForm').action = "{% url 'accounting:voucher_udf_delete' 0 %}".replace('0', udfId);
+    
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    deleteModal.show();
+}
+</script>
+{% endblock %} 

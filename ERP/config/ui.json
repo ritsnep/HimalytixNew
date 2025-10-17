@@ -1,0 +1,11 @@
+{
+  "columnOrder": [
+    "date",
+    "account",
+    "debit",
+    "credit",
+    "description"
+  ],
+  "defaultDensity": "compact",
+  "theme": "light"
+}

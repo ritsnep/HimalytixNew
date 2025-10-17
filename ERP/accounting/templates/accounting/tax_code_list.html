@@ -1,0 +1,43 @@
+{% extends 'accounting/_list_base.html' %}
+{% load static %}
+
+{% block title %}Tax Codes{% endblock %}
+{% block breadcrumb %}Tax Codes{% endblock %}
+
+{% block list_header %}
+<h4 class="card-title">Tax Codes</h4>
+{% endblock %}
+
+{% block create_button %}
+<a href="{% url 'accounting:tax_code_create' %}" class="btn btn-success mb-2">
+    <i class="mdi mdi-plus me-1"></i> New Tax Code
+</a>
+{% endblock %}
+
+{% block table_head %}
+<thead>
+  <tr>
+    <th>Code</th>
+    <th>Name</th>
+    <th>Rate</th>
+    <th>Action</th>
+  </tr>
+</thead>
+{% endblock %}
+
+{% block table_body %}
+<tbody>
+  {% for tax_code in tax_codes %}
+  <tr>
+    <td>{{ tax_code.code }}</td>
+    <td>{{ tax_code.name }}</td>
+    <td>{{ tax_code.tax_rate }}</td>
+    <td>
+      <a href="{% url 'accounting:tax_code_update' tax_code.pk %}" class="btn btn-sm btn-primary">Edit</a>
+    </td>
+  </tr>
+  {% empty %}
+  <tr><td colspan="4">No tax codes found.</td></tr>
+  {% endfor %}
+</tbody>
+{% endblock %}

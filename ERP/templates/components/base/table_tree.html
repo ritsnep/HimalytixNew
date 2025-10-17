@@ -1,0 +1,74 @@
+{% comment %}
+Reusable tree table component.
+Context:
+- columns: list of dicts {name, label, width (optional), align (optional)}
+- data: list of dicts, each dict has keys for columns and 'children' (list)
+- actions: list of dicts {label, icon, url, method, ...} (optional)
+- table_id: string (optional)
+{% endcomment %}
+
+<div class="card">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h5 class="mb-0">{{ title|default:"Tree Table" }}</h5>
+      <div>
+        <button type="button" class="btn btn-outline-secondary btn-sm me-1" id="expand-all-btn">
+          <i class="mdi mdi-chevron-down"></i> Expand All
+        </button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="collapse-all-btn">
+          <i class="mdi mdi-chevron-up"></i> Collapse All
+        </button>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover align-middle" id="{{ table_id|default:'tree-table' }}">
+        <thead>
+          <tr>
+            {% for col in columns %}
+              <th{% if col.width %} style="width:{{ col.width }}"{% endif %}{% if col.align %} class="text-{{ col.align }}"{% endif %}>
+                {{ col.label }}
+              </th>
+            {% endfor %}
+            <th style="width: 100px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% include "components/base/table_tree_rows.html" with data=data columns=columns actions=actions level=0 parent_id="" %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  function setAllRows(expand) {
+    document.querySelectorAll('.tree-row-toggle').forEach(function(btn) {
+      const target = document.getElementById(btn.dataset.targetId);
+      if (target) {
+        if (expand) {
+          target.classList.remove('d-none');
+          btn.querySelector('i').classList.remove('mdi-chevron-right');
+          btn.querySelector('i').classList.add('mdi-chevron-down');
+        } else {
+          target.classList.add('d-none');
+          btn.querySelector('i').classList.remove('mdi-chevron-down');
+          btn.querySelector('i').classList.add('mdi-chevron-right');
+        }
+      }
+    });
+  }
+  document.getElementById('expand-all-btn').onclick = function() { setAllRows(true); };
+  document.getElementById('collapse-all-btn').onclick = function() { setAllRows(false); };
+  document.querySelectorAll('.tree-row-toggle').forEach(function(btn) {
+    btn.onclick = function() {
+      const target = document.getElementById(btn.dataset.targetId);
+      if (target) {
+        const expanded = !target.classList.contains('d-none');
+        target.classList.toggle('d-none');
+        btn.querySelector('i').classList.toggle('mdi-chevron-down', !expanded);
+        btn.querySelector('i').classList.toggle('mdi-chevron-right', expanded);
+      }
+    };
+  });
+});
+</script>

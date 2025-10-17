@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>General Journal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Custom styles for elements that can't be easily done with Tailwind */
+        .grid-cell:focus {
+            outline: 2px solid #3b82f6;
+            z-index: 10;
+        }
+        
+        .resize-handle {
+            width: 4px;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            cursor: col-resize;
+        }
+        
+        .resize-handle:hover {
+            background-color: #3b82f6;
+        }
+        
+        .drag-handle {
+            cursor: move;
+        }
+        
+        .imbalance-indicator {
+            width: 0;
+            transition: width 0.3s ease;
+        }
+        
+        .imbalance-indicator.show {
+            width: 100%;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-800">
+    <div class="flex flex-col h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow-sm py-3 px-4 flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <h1 class="text-xl font-bold text-blue-600">General Journal</h1>
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">New</span>
+                    <span class="text-sm bg-gray-100 text-gray-800 px-2 py-1 rounded">GJ-YYYY-NNNN</span>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-sm flex items-center space-x-1" hx-post="/save-journal">
+                    <i class="fas fa-save text-gray-600"></i>
+                    <span>Save</span>
+                </button>
+                <button class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded text-sm text-white flex items-center space-x-1" hx-post="/post-journal">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Post</span>
+                </button>
+                <button id="density-toggle" class="p-1.5 bg-gray-100 hover:bg-gray-200 rounded text-sm" aria-label="Toggle density">
+                    <i class="fas fa-compress-alt text-gray-600"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Alert Tiles -->
+        <div class="bg-white border-b px-4 py-2 flex overflow-x-auto space-x-3">
+            <div class="flex-shrink-0 bg-red-50 border border-red-200 rounded px-3 py-2 flex items-center space-x-2">
+                <i class="fas fa-exclamation-circle text-red-500"></i>
+                <span class="text-sm font-medium text-red-800">2 validation errors</span>
+            </div>
+            <div class="flex-shrink-0 bg-yellow-50 border border-yellow-200 rounded px-3 py-2 flex items-center space-x-2">
+                <i class="fas fa-clock text-yellow-500"></i>
+                <span class="text-sm font-medium text-yellow-800">3 pending approvals</span>
+            </div>
+            <div class="flex-shrink-0 bg-blue-50 border border-blue-200 rounded px-3 py-2 flex items-center space-x-2">
+                <i class="fas fa-info-circle text-blue-500"></i>
+                <span class="text-sm font-medium text-blue-800">5 batches on hold</span>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex flex-1 overflow-hidden">
+            <!-- Journal Entry Grid -->
+            <div class="flex-1 overflow-auto relative">
+                <!-- AI Assist Bar -->
+                <div class="bg-blue-50 border-b border-blue-200 px-4 py-2 flex items-center">
+                    <div class="flex-1 relative">
+                        <input type="text" id="ai-assist-input" placeholder="Describe your journal entry (e.g. 'Accrue March AWS bill')..." 
+                               class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button id="ai-suggest" class="absolute right-2 top-2 text-blue-500 hover:text-blue-700" aria-label="AI Suggest">
+                            <i class="fas fa-magic"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Grid Container -->
+                <div class="overflow-auto h-full">
+                    <table id="journal-grid" class="w-full border-collapse">
+                        <thead class="bg-gray-50 sticky top-0 z-20">
+                            <tr>
+                                <th class="sticky left-0 bg-gray-50 border-b border-r border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider z-30">
+                                    <div class="flex items-center justify-between">
+                                        <span>#</span>
+                                        <div class="drag-handle text-gray-400 hover:text-gray-600">
+                                            <i class="fas fa-grip-vertical"></i>
+                                        </div>
+                                    </div>
+                                </th>
+                                <th class="border-b border-r border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider relative">
+                                    <div class="flex items-center justify-between">
+                                        <span>Account</span>
+                                        <div class="resize-handle absolute"></div>
+                                    </div>
+                                </th>
+                                <th class="border-b border-r border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider relative">
+                                    <div class="flex items-center justify-between">
+                                        <span>Description</span>
+                                        <div class="resize-handle absolute"></div>
+                                    </div>
+                                </th>
+                                <th class="border-b border-r border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider relative">
+                                    <div class="flex items-center justify-between">
+                                        <span>Debit</span>
+                                        <div class="resize-handle absolute"></div>
+                                    </div>
+                                </th>
+                                <th class="border-b border-r border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider relative">
+                                    <div class="flex items-center justify-between">
+                                        <span>Credit</span>
+                                        <div class="resize-handle absolute"></div>
+                                    </div>
+                                </th>
+                                <th class="border-b border-r border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider relative">
+                                    <div class="flex items-center justify-between">
+                                        <span>Department</span>
+                                        <div class="resize-handle absolute"></div>
+                                    </div>
+                                </th>
+                                <th class="border-b border-r border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider relative">
+                                    <div class="flex items-center justify-between">
+                                        <span>Project</span>
+                                        <div class="resize-handle absolute"></div>
+                                    </div>
+                                </th>
+                                <th class="border-b border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <span>Status</span>
+                                </th>
+                            </tr>
+                        </thead>
+                        {% include 'accounting/partials/journal_line_formset.html' %}
+                    </table>
+                </div>
+
+                <!-- Balance Footer -->
+                <div id="balance-footer" class="sticky bottom-0 bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between shadow-lg">
+                    {% include 'accounting/partials/balance_footer.html' %}
+                </div>
+            </div>
+
+            <!-- Context Side Panel -->
+            <div id="side-panel" class="w-80 bg-white border-l border-gray-200 flex flex-col transition-all duration-300 ease-in-out">
+                <div class="border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+                    <h3 class="font-medium">Entry Details</h3>
+                    <button id="toggle-panel" class="text-gray-500 hover:text-gray-700" aria-label="Toggle side panel">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+                <div class="flex-1 overflow-auto p-4 space-y-6">
+                    <div id="empty-state" class="text-center py-10">
+                        <i class="fas fa-mouse-pointer text-gray-300 text-4xl mb-3"></i>
+                        <p class="text-gray-500">Select a row to view details</p>
+                    </div>
+                    <div id="detail-view" class="hidden space-y-6">
+                        <div>
+                            <h4 class="font-medium text-gray-700 mb-2">Account Information</h4>
+                            <div class="bg-blue-50 border border-blue-100 rounded p-3">
+                                <div class="flex items-start space-x-3">
+                                    <div class="bg-blue-100 p-2 rounded-full">
+                                        <i class="fas fa-wallet text-blue-600"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="font-medium" id="account-name">Account Name</h5>
+                                        <p class="text-sm text-gray-600" id="account-code">1000-00</p>
+                                        <p class="text-sm mt-1" id="account-type">Asset - Cash</p>
+                                    </div>
+                                </div>
+                                <div class="mt-3 grid grid-cols-2 gap-2 text-sm">
+                                    <div>
+                                        <span class="text-gray-500">Balance:</span>
+                                        <span id="account-balance" class="font-medium">$12,345.67</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-500">YTD Activity:</span>
+                                        <span id="account-ytd" class="font-medium">$45,678.90</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h4 class="font-medium text-gray-700 mb-2">Validation Messages</h4>
+                            <div id="validation-messages" class="space-y-2">
+                                <!-- Messages will be added here -->
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h4 class="font-medium text-gray-700 mb-2">AI Insights</h4>
+                            <div class="bg-green-50 border border-green-100 rounded p-3">
+                                <div class="flex items-start space-x-3">
+                                    <div class="bg-green-100 p-2 rounded-full">
+                                        <i class="fas fa-robot text-green-600"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm" id="ai-insight">This appears to be a standard monthly accrual based on historical patterns. Similar entries were posted on the 15th of each month.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h4 class="font-medium text-gray-700 mb-2">Attachments</h4>
+                            <div class="border rounded divide-y">
+                                <div class="p-2 flex items-center space-x-2 hover:bg-gray-50 cursor-pointer">
+                                    <i class="fas fa-file-pdf text-red-500"></i>
+                                    <span class="text-sm">Invoice_202303.pdf</span>
+                                </div>
+                                <div class="p-2 flex items-center space-x-2 hover:bg-gray-50 cursor-pointer">
+                                    <i class="fas fa-file-excel text-green-500"></i>
+                                    <span class="text-sm">Accruals_March.xlsx</span>
+                                </div>
+                            </div>
+                            <button class="mt-2 text-sm text-blue-600 hover:text-blue-800 flex items-center space-x-1">
+                                <i class="fas fa-plus"></i>
+                                <span>Add Attachment</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview Ledger Impact Modal -->
+    <div id="preview-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl w-2/3 max-h-[80vh] flex flex-col">
+            <div class="border-b px-6 py-4 flex items-center justify-between">
+                <h3 class="text-lg font-medium">Preview Ledger Impact</h3>
+                <button id="close-preview" class="text-gray-500 hover:text-gray-700" aria-label="Close preview">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-auto p-6">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Debit</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Credit</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Impact</th>
+                        </tr>
+                    </thead>
+                    <tbody id="preview-content" class="bg-white divide-y divide-gray-200">
+                        <!-- Preview content will be added here -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="border-t px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+                <button id="cancel-preview" class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    Cancel
+                </button>
+                <button class="px-4 py-2 bg-blue-600 rounded-md text-sm font-medium text-white hover:bg-blue-700">
+                    Confirm and Post
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shortcut Helper -->
+    <div id="shortcut-helper" class="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg border border-gray-200 p-4 hidden">
+        <div class="grid grid-cols-3 gap-3">
+            <div class="text-center">
+                <div class="bg-gray-100 rounded p-2 font-mono text-sm">Ctrl+Enter</div>
+                <p class="text-xs mt-1 text-gray-600">Save</p>
+            </div>
+            <div class="text-center">
+                <div class="bg-gray-100 rounded p-2 font-mono text-sm">Alt+A</div>
+                <p class="text-xs mt-1 text-gray-600">Add Row</p>
+            </div>
+            <div class="text-center">
+                <div class="bg-gray-100 rounded p-2 font-mono text-sm">Alt+B</div>
+                <p class="text-xs mt-1 text-gray-600">Auto-Balance</p>
+            </div>
+            <div class="text-center">
+                <div class="bg-gray-100 rounded p-2 font-mono text-sm">Tab</div>
+                <p class="text-xs mt-1 text-gray-600">Next Cell</p>
+            </div>
+            <div class="text-center">
+                <div class="bg-gray-100 rounded p-2 font-mono text-sm">Shift+Tab</div>
+                <p class="text-xs mt-1 text-gray-600">Prev Cell</p>
+            </div>
+            <div class="text-center">
+                <div class="bg-gray-100 rounded p-2 font-mono text-sm">Ctrl+D</div>
+                <p class="text-xs mt-1 text-gray-600">Duplicate Row</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Sample data for the grid - starting with an empty row for a general journal
+            const sampleData = [
+                { id: 1, account: '', description: '', debit: '', credit: '', department: '', project: '', status: '' }
+            ];
+
+            // Initialize the grid with sample data
+            const grid = document.getElementById('journal-grid').getElementsByTagName('tbody')[0];
+            
+            sampleData.forEach(row => {
+                addRowToGrid(row);
+            });
+
+            // Add event listeners
+
+            document.getElementById('close-preview').addEventListener('click', hidePreviewModal);
+            document.getElementById('cancel-preview').addEventListener('click', hidePreviewModal);
+            document.getElementById('density-toggle').addEventListener('click', toggleDensity);
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                // Show shortcut helper when Alt is pressed
+                if (e.key === 'Alt') {
+                    document.getElementById('shortcut-helper').classList.remove('hidden');
+                }
+                
+                // Add row with Alt+A
+                if (e.altKey && e.key === 'a') {
+                    e.preventDefault();
+                    document.getElementById('add-row').click();
+                }
+                
+                // Auto-balance with Alt+B
+                if (e.altKey && e.key === 'b') {
+                    e.preventDefault();
+                    document.getElementById('auto-balance').click();
+                }
+                
+                // Save with Ctrl+Enter
+            });
+            
+            document.addEventListener('keyup', function(e) {
+                if (e.key === 'Alt') {
+                    document.getElementById('shortcut-helper').classList.add('hidden');
+                }
+            });
+
+            // Handle drag and drop for files
+            document.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                document.body.classList.add('border-2', 'border-blue-500');
+            });
+
+            document.addEventListener('dragleave', function() {
+                document.body.classList.remove('border-2', 'border-blue-500');
+            });
+
+            document.addEventListener('drop', function(e) {
+                e.preventDefault();
+                document.body.classList.remove('border-2', 'border-blue-500');
+                alert('Excel file would be processed here');
+                // In a real app, you would parse the Excel file and add rows to the grid
+            });
+
+            // Functions
+            function addRowToGrid(data) {
+                const row = document.createElement('tr');
+                row.dataset.id = data.id;
+                row.className = 'hover:bg-gray-50';
+                
+                // Add click handler to show details in side panel
+                row.addEventListener('click', function() {
+                    showRowDetails(data.id);
+                });
+                
+                row.innerHTML = `
+                    <td class="sticky left-0 bg-white border-r border-gray-200 px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <div class="flex items-center justify-between">
+                            <span>${data.id}</span>
+                            <div class="drag-handle text-gray-400 hover:text-gray-600 cursor-move">
+                                <i class="fas fa-grip-vertical"></i>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="border-r border-gray-200 px-3 py-2 whitespace-nowrap">
+                        <input type="text" value="${data.account}" class="grid-cell w-full px-2 py-1 border border-transparent hover:border-gray-300 focus:border-blue-500 rounded" data-col="account">
+                    </td>
+                    <td class="border-r border-gray-200 px-3 py-2 whitespace-nowrap">
+                        <input type="text" value="${data.description}" class="grid-cell w-full px-2 py-1 border border-transparent hover:border-gray-300 focus:border-blue-500 rounded" data-col="description">
+                    </td>
+                    <td class="border-r border-gray-200 px-3 py-2 whitespace-nowrap">
+                        <input type="text" value="${data.debit}" class="grid-cell w-full px-2 py-1 border border-transparent hover:border-gray-300 focus:border-blue-500 rounded text-right" data-col="debit">
+                    </td>
+                    <td class="border-r border-gray-200 px-3 py-2 whitespace-nowrap">
+                        <input type="text" value="${data.credit}" class="grid-cell w-full px-2 py-1 border border-transparent hover:border-gray-300 focus:border-blue-500 rounded text-right" data-col="credit">
+                    </td>
+                    <td class="border-r border-gray-200 px-3 py-2 whitespace-nowrap">
+                        <input type="text" value="${data.department}" class="grid-cell w-full px-2 py-1 border border-transparent hover:border-gray-300 focus:border-blue-500 rounded" data-col="department">
+                    </td>
+                    <td class="border-r border-gray-200 px-3 py-2 whitespace-nowrap">
+                        <input type="text" value="${data.project}" class="grid-cell w-full px-2 py-1 border border-transparent hover:border-gray-300 focus:border-blue-500 rounded" data-col="project">
+                    </td>
+                    <td class="px-3 py-2 whitespace-nowrap">
+                        <div class="text-xs inline-flex items-center px-2 py-0.5 rounded ${getStatusClass(data.status)}">
+                            ${data.status || '—'}
+                        </div>
+                    </td>
+                `;
+                
+                grid.appendChild(row);
+                
+                // Add event listeners to the new cells
+                const cells = row.querySelectorAll('.grid-cell');
+                cells.forEach(cell => {
+                    cell.addEventListener('input', validateCell);
+                    cell.addEventListener('keydown', handleCellNavigation);
+                    cell.addEventListener('focus', function() {
+                        row.classList.add('bg-blue-50');
+                    });
+                    cell.addEventListener('blur', function() {
+                        row.classList.remove('bg-blue-50');
+                    });
+                });
+                
+                // Update totals
+                updateTotals();
+            }
+            
+            function getStatusClass(status) {
+                if (!status) return 'bg-gray-100 text-gray-800';
+                if (status.includes('Error')) return 'bg-red-100 text-red-800';
+                if (status.includes('Warning')) return 'bg-yellow-100 text-yellow-800';
+                return 'bg-green-100 text-green-800';
+            }
+            
+            function validateCell(e) {
+                const cell = e.target;
+                const row = cell.closest('tr');
+                const col = cell.dataset.col;
+                const value = cell.value.trim();
+                
+                // Simple validation examples
+                let status = '';
+                
+                if (col === 'account' && value && !/^\d{4}-\d{2}$/.test(value)) {
+                    status = 'Error: Invalid account format';
+                }
+                
+                if ((col === 'debit' || col === 'credit') && value) {
+                    if (isNaN(parseFloat(value))) {
+                        status = 'Error: Invalid number';
+                    } else if (parseFloat(value) <= 0) {
+                        status = 'Error: Must be positive';
+                    }
+                }
+                
+                // Update status cell
+                const statusCell = row.querySelector('td:last-child');
+                if (status) {
+                    statusCell.innerHTML = `<div class="text-xs inline-flex items-center px-2 py-0.5 rounded bg-red-100 text-red-800">${status}</div>`;
+                } else {
+                    statusCell.innerHTML = '<div class="text-xs inline-flex items-center px-2 py-0.5 rounded bg-gray-100 text-gray-800">—</div>';
+                }
+                
+                // Update totals
+                updateTotals();
+            }
+            
+            function handleCellNavigation(e) {
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    
+                    const cell = e.target;
+                    const row = cell.closest('tr');
+                    const cells = Array.from(row.querySelectorAll('.grid-cell'));
+                    const currentIndex = cells.indexOf(cell);
+                    
+                    if (e.shiftKey) {
+                        // Move to previous cell
+                        if (currentIndex > 0) {
+                            cells[currentIndex - 1].focus();
+                        } else {
+                            // Move to last cell of previous row
+                            const prevRow = row.previousElementSibling;
+                            if (prevRow) {
+                                const prevCells = Array.from(prevRow.querySelectorAll('.grid-cell'));
+                                prevCells[prevCells.length - 1].focus();
+                            }
+                        }
+                    } else {
+                        // Move to next cell
+                        if (currentIndex < cells.length - 1) {
+                            cells[currentIndex + 1].focus();
+                        } else {
+                            // Move to first cell of next row
+                            const nextRow = row.nextElementSibling;
+                            if (nextRow) {
+                                nextRow.querySelector('.grid-cell').focus();
+                            } else {
+                                // Add new row if we're at the end
+                                document.getElementById('add-row').click();
+                                const newRow = grid.lastElementChild;
+                                newRow.querySelector('.grid-cell').focus();
+                            }
+                        }
+                    }
+                }
+                
+                // Enter key moves down to same cell in next row
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const cell = e.target;
+                    const row = cell.closest('tr');
+                    const nextRow = row.nextElementSibling;
+                    
+                    if (nextRow) {
+                        const colIndex = Array.from(row.querySelectorAll('.grid-cell')).indexOf(cell);
+                        nextRow.querySelectorAll('.grid-cell')[colIndex].focus();
+                    } else {
+                        document.getElementById('add-row').click();
+                        const newRow = grid.lastElementChild;
+                        const colIndex = Array.from(row.querySelectorAll('.grid-cell')).indexOf(cell);
+                        newRow.querySelectorAll('.grid-cell')[colIndex].focus();
+                    }
+                }
+            }
+            
+            function updateTotals() {
+                let totalDebit = 0;
+                let totalCredit = 0;
+                
+                const rows = grid.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const debitCell = row.querySelector('[data-col="debit"]');
+                    const creditCell = row.querySelector('[data-col="credit"]');
+                    
+                    if (debitCell && debitCell.value) {
+                        totalDebit += parseFloat(debitCell.value) || 0;
+                    }
+                    
+                    if (creditCell && creditCell.value) {
+                        totalCredit += parseFloat(creditCell.value) || 0;
+                    }
+                });
+                
+                document.getElementById('total-debit').textContent = totalDebit.toFixed(2);
+                document.getElementById('total-credit').textContent = totalCredit.toFixed(2);
+                
+                // Update balance status
+                const imbalance = Math.abs(totalDebit - totalCredit);
+                const balanceStatus = document.getElementById('balance-status');
+                const imbalanceBar = document.getElementById('imbalance-bar');
+                
+                if (imbalance > 0.01) {
+                    balanceStatus.textContent = `Imbalance: ${imbalance.toFixed(2)}`;
+                    balanceStatus.classList.remove('text-green-600');
+                    balanceStatus.classList.add('text-red-600');
+                    
+                    imbalanceBar.classList.add('show');
+                } else {
+                    balanceStatus.textContent = 'Balanced';
+                    balanceStatus.classList.remove('text-red-600');
+                    balanceStatus.classList.add('text-green-600');
+                    
+                    imbalanceBar.classList.remove('show');
+                }
+            }
+            
+            function autoBalance() {
+                let totalDebit = 0;
+                let totalCredit = 0;
+                
+                const rows = grid.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const debitCell = row.querySelector('[data-col="debit"]');
+                    const creditCell = row.querySelector('[data-col="credit"]');
+                    
+                    if (debitCell && debitCell.value) {
+                        totalDebit += parseFloat(debitCell.value) || 0;
+                    }
+                    
+                    if (creditCell && creditCell.value) {
+                        totalCredit += parseFloat(creditCell.value) || 0;
+                    }
+                });
+                
+                const imbalance = totalDebit - totalCredit;
+                
+                if (Math.abs(imbalance) > 0.01) {
+                    // Find first empty row or add a new one
+                    let emptyRow = null;
+                    for (let row of rows) {
+                        const accountCell = row.querySelector('[data-col="account"]');
+                        if (accountCell && !accountCell.value.trim()) {
+                            emptyRow = row;
+                            break;
+                        }
+                    }
+                    
+                    if (!emptyRow) {
+                        const newId = rows.length + 1;
+                        addRowToGrid({ id: newId, account: '', description: '', debit: '', credit: '', department: '', project: '', status: '' });
+                        emptyRow = grid.lastElementChild;
+                    }
+                    
+                    // Set the balancing amount
+                    if (imbalance > 0) {
+                        // Need credit to balance
+                        emptyRow.querySelector('[data-col="credit"]').value = imbalance.toFixed(2);
+                        emptyRow.querySelector('[data-col="description"]').value = 'Auto-balancing entry';
+                    } else {
+                        // Need debit to balance
+                        emptyRow.querySelector('[data-col="debit"]').value = (-imbalance).toFixed(2);
+                        emptyRow.querySelector('[data-col="description"]').value = 'Auto-balancing entry';
+                    }
+                    
+                    // Trigger validation
+                    emptyRow.querySelector('[data-col="credit"]').dispatchEvent(new Event('input'));
+                    
+                    updateTotals();
+                }
+            }
+            
+            function toggleSidePanel() {
+                const panel = document.getElementById('side-panel');
+                const toggleBtn = document.getElementById('toggle-panel');
+                
+                if (panel.classList.contains('w-80')) {
+                    panel.classList.remove('w-80');
+                    panel.classList.add('w-0', 'overflow-hidden');
+                    toggleBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+                } else {
+                    panel.classList.remove('w-0', 'overflow-hidden');
+                    panel.classList.add('w-80');
+                    toggleBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+                }
+            }
+            
+            function showRowDetails(rowId) {
+                const row = grid.querySelector(`tr[data-id="${rowId}"]`);
+                if (!row) return;
+                
+                // Highlight selected row
+                grid.querySelectorAll('tr').forEach(r => r.classList.remove('bg-blue-50', 'ring-2', 'ring-blue-400'));
+                row.classList.add('bg-blue-50', 'ring-2', 'ring-blue-400');
+                
+                // Show details in side panel
+                document.getElementById('empty-state').classList.add('hidden');
+                document.getElementById('detail-view').classList.remove('hidden');
+                
+                // Populate account info (simulated)
+                const accountCell = row.querySelector('[data-col="account"]');
+                const accountValue = accountCell ? accountCell.value : '';
+                
+                if (accountValue) {
+                    document.getElementById('account-name').textContent = getAccountName(accountValue);
+                    document.getElementById('account-code').textContent = accountValue;
+                    document.getElementById('account-type').textContent = getAccountType(accountValue);
+                    document.getElementById('account-balance').textContent = getRandomBalance();
+                    document.getElementById('account-ytd').textContent = getRandomYTD();
+                } else {
+                    document.getElementById('account-name').textContent = 'No account selected';
+                    document.getElementById('account-code').textContent = '—';
+                    document.getElementById('account-type').textContent = '—';
+                    document.getElementById('account-balance').textContent = '—';
+                    document.getElementById('account-ytd').textContent = '—';
+                }
+                
+                // Populate validation messages
+                const validationContainer = document.getElementById('validation-messages');
+                validationContainer.innerHTML = '';
+                
+                const statusCell = row.querySelector('td:last-child');
+                if (statusCell.textContent.includes('Error')) {
+                    const message = document.createElement('div');
+                    message.className = 'bg-red-50 border border-red-200 rounded px-3 py-2 flex items-start space-x-2 fade-in';
+                    message.innerHTML = `
+                        <i class="fas fa-exclamation-circle text-red-500 mt-0.5"></i>
+                        <div>
+                            <p class="text-sm font-medium text-red-800">${statusCell.textContent}</p>
+                            <p class="text-xs text-red-600 mt-1">Please correct this entry before posting.</p>
+                        </div>
+                    `;
+                    validationContainer.appendChild(message);
+                } else {
+                    const message = document.createElement('div');
+                    message.className = 'bg-green-50 border border-green-200 rounded px-3 py-2 flex items-start space-x-2 fade-in';
+                    message.innerHTML = `
+                        <i class="fas fa-check-circle text-green-500 mt-0.5"></i>
+                        <div>
+                            <p class="text-sm font-medium text-green-800">No validation errors</p>
+                            <p class="text-xs text-green-600 mt-1">This entry appears valid.</p>
+                        </div>
+                    `;
+                    validationContainer.appendChild(message);
+                }
+                
+                // AI insight based on description
+                const descCell = row.querySelector('[data-col="description"]');
+                const description = descCell ? descCell.value : '';
+                
+                if (description.toLowerCase().includes('supplies')) {
+                    document.getElementById('ai-insight').textContent = 'This appears to be a standard office supplies purchase. Consider allocating to the correct department if not already specified.';
+                } else if (description.toLowerCase().includes('aws') || description.toLowerCase().includes('amazon')) {
+                    document.getElementById('ai-insight').textContent = 'AWS cloud service charge detected. Based on past entries, this is likely a monthly recurring expense that should be accrued if not yet invoiced.';
+                } else {
+                    document.getElementById('ai-insight').textContent = 'No specific insights available for this entry. The description could be more detailed to enable better analysis.';
+                }
+            }
+            
+            function getAccountName(code) {
+                const accounts = {
+                    '1000-00': 'Cash - Operating Account',
+                    '2000-00': 'Accounts Payable',
+                    '5000-00': 'Office Expenses',
+                    '6000-00': 'Software Subscriptions',
+                    '7000-00': 'Professional Services'
+                };
+                return accounts[code] || 'Unknown Account';
+            }
+            
+            function getAccountType(code) {
+                if (code.startsWith('1')) return 'Asset';
+                if (code.startsWith('2')) return 'Liability';
+                if (code.startsWith('3')) return 'Equity';
+                if (code.startsWith('4')) return 'Revenue';
+                if (code.startsWith('5') || code.startsWith('6') || code.startsWith('7')) return 'Expense';
+                return 'Unknown';
+            }
+            
+            function getRandomBalance() {
+                return '$' + (Math.random() * 10000).toFixed(2);
+            }
+            
+            function getRandomYTD() {
+                return '$' + (Math.random() * 50000).toFixed(2);
+            }
+            
+            function showPreviewModal() {
+                const modal = document.getElementById('preview-modal');
+                const content = document.getElementById('preview-content');
+                
+                // Clear previous content
+                content.innerHTML = '';
+                
+                // Add sample preview data
+                const previewData = [
+                    { account: '5000-00', description: 'Office Supplies', debit: '1250.00', credit: '', impact: 'Expense increase' },
+                    { account: '2000-00', description: 'Accounts Payable', debit: '', credit: '1250.00', impact: 'Liability increase' }
+                ];
+                
+                previewData.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50';
+                    row.innerHTML = `
+                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">${item.account}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${item.description}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">${item.debit}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">${item.credit}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${item.impact}</td>
+                    `;
+                    content.appendChild(row);
+                });
+                
+                modal.classList.remove('hidden');
+            }
+            
+            function hidePreviewModal() {
+                document.getElementById('preview-modal').classList.add('hidden');
+            }
+            
+            function toggleDensity() {
+                const toggleBtn = document.getElementById('density-toggle');
+                const gridCells = document.querySelectorAll('.grid-cell');
+                const rows = document.querySelectorAll('#journal-grid tbody tr');
+                
+                if (document.body.classList.contains('compact-mode')) {
+                    // Switch to cozy mode
+                    document.body.classList.remove('compact-mode');
+                    toggleBtn.innerHTML = '<i class="fas fa-compress-alt text-gray-600"></i>';
+                    
+                    gridCells.forEach(cell => {
+                        cell.classList.add('py-1');
+                        cell.classList.remove('py-0.5');
+                    });
+                    
+                    rows.forEach(row => {
+                        row.classList.remove('text-xs');
+                    });
+                } else {
+                    // Switch to compact mode
+                    document.body.classList.add('compact-mode');
+                    toggleBtn.innerHTML = '<i class="fas fa-expand-alt text-gray-600"></i>';
+                    
+                    gridCells.forEach(cell => {
+                        cell.classList.add('py-0.5');
+                        cell.classList.remove('py-1');
+                    });
+                    
+                    rows.forEach(row => {
+                        row.classList.add('text-xs');
+                    });
+                }
+            }
+            
+            // AI suggestion functionality removed as it was too specific for a general journal.
+            // The input field for AI assist remains.
+            // function suggestEntries() { ... }
+            
+            // Initialize with first row selected
+            if (grid.rows.length > 0) {
+                showRowDetails(1);
+            }
+        });
+    </script>
+</body>
+</html>

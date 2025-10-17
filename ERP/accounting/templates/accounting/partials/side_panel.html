@@ -1,0 +1,74 @@
+<div id="side-panel" class="side-panel">
+    <div class="panel-header">
+        <h3 class="font-medium">Entry Details</h3>
+        <button id="toggle-panel" class="panel-toggle-button" aria-label="Toggle side panel">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+    </div>
+    <div class="panel-content">
+        <div id="detail-view" class="detail-view-section">
+            <div>
+                <h4 class="section-title">Account Information</h4>
+                <div class="account-info-card">
+                    <div class="account-info-header">
+                        <div class="account-icon-wrapper">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <div>
+                            <h5 class="account-name" id="account-name">Account Name</h5>
+                            <p class="account-code" id="account-code">1000-00</p>
+                            <p class="account-type" id="account-type">Asset - Cash</p>
+                        </div>
+                    </div>
+                    <div class="account-balances">
+                        <div>
+                            <span class="balance-label">Balance:</span>
+                            <span id="account-balance" class="balance-value">$12,345.67</span>
+                        </div>
+                        <div>
+                            <span class="balance-label">YTD Activity:</span>
+                            <span id="account-ytd" class="balance-value">$45,678.90</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div>
+                <h4 class="section-title">Validation Messages</h4>
+                <div id="validation-messages" class="validation-messages-container">
+                    <!-- Messages will be added here -->
+                </div>
+            </div>
+            
+            <div>
+                <h4 class="section-title">AI Insights</h4>
+                <div class="ai-insight-card">
+                    <div class="ai-insight-icon-wrapper">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm" id="ai-insight">This appears to be a standard monthly accrual based on historical patterns. Similar entries were posted on the 15th of each month.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div>
+                <h4 class="section-title">Attachments</h4>
+                <div class="attachment-list">
+                    <div class="attachment-item">
+                        <i class="fas fa-file-pdf"></i>
+                        <span class="attachment-name">Invoice_202303.pdf</span>
+                    </div>
+                    <div class="attachment-item">
+                        <i class="fas fa-file-excel"></i>
+                        <span class="attachment-name">Accruals_March.xlsx</span>
+                    </div>
+                </div>
+                <button class="add-attachment-button">
+                    <i class="fas fa-plus"></i>
+                    <span>Add Attachment</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

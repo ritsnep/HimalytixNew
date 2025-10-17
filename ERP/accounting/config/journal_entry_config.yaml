@@ -1,0 +1,40 @@
+# Journal Entry Configurations
+
+# General settings
+max_lines_per_entry: 100
+allow_negative_entries: false
+enforce_fiscal_year: true
+
+# Supported currencies
+supported_currencies:
+  - USD
+  - EUR
+  - GBP
+  - JPY
+
+# UI settings
+ui:
+  date_format: "YYYY-MM-DD"
+  default_entry_type: "JN"
+  theme: "default"
+
+# Default accounts
+default_accounts:
+  cash: "10100"
+  accounts_receivable: "11000"
+  accounts_payable: "20100"
+  revenue: "40100"
+  expense: "50100"
+
+# Allowable journal entry types
+allowable_journal_entry_types:
+  - name: "Journal Entry"
+    value: "JN"
+  - name: "Sales Invoice"
+    value: "SI"
+  - name: "Purchase Invoice"
+    value: "PI"
+  - name: "Cash Receipt"
+    value: "CR"
+  - name: "Cash Disbursement"
+    value: "CD"

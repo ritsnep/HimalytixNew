@@ -1,0 +1,122 @@
+{% extends 'accounting/_form_base.html' %}
+{% load static %}
+{% block content %}
+<h2>Chart of Accounts</h2>
+<div class="main-content">
+  <div class="page-content">
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px;">
+      <button id="toggle-view-btn" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:6px;border:1px solid #ccc;background:#f8f9fa;cursor:pointer;transition:background 0.2s;">
+        <span id="toggle-view-icon" style="font-size:18px;">🌳</span>
+        <span id="toggle-view-label">Tree View</span>
+      </button>
+      <input id="quick-search" placeholder="Quick search by Name..." />
+      <button id="advanced-filter-btn">Filter</button>
+      <button id="validate-hierarchy-btn">Validate Hierarchy</button>
+    </div>
+    <div id="advanced-filter-modal" style="display:none;position:fixed;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.2);z-index:10000;align-items:center;justify-content:center;">
+      <div style="background:#fff;padding:24px 32px;max-width:400px;margin:10vh auto;border-radius:8px;box-shadow:0 2px 16px #0002;position:relative;">
+        <h3>Advanced Filter</h3>
+        <input placeholder="Name" id="filter-name" style="width:100%;margin-bottom:8px;" />
+        <input placeholder="Code" id="filter-code" style="width:100%;margin-bottom:8px;" />
+        <select id="filter-type" style="width:100%;margin-bottom:8px;">
+          <option value="">All Types</option>
+          <option value="asset">Asset</option>
+          <option value="liability">Liability</option>
+          <option value="equity">Equity</option>
+          <option value="income">Income</option>
+          <option value="expense">Expense</option>
+        </select>
+        <div style="text-align:right;">
+          <button id="apply-filter" style="margin-right:8px;">Apply</button>
+          <button id="close-filter-modal">Close</button>
+        </div>
+      </div>
+    </div>
+    <div id="chart-list" class="page-content" style="display:none;"></div>
+    <div id="chart-tree" class="page-content"></div>
+  </div>
+</div>
+<script src="{% static 'accounting/js/chart_tree.js' %}"></script>
+<script>
+// Toggle between tree and flat list views with improved UI/UX
+const toggleBtn = document.getElementById('toggle-view-btn');
+const toggleIcon = document.getElementById('toggle-view-icon');
+const toggleLabel = document.getElementById('toggle-view-label');
+const chartTree = document.getElementById('chart-tree');
+const chartList = document.getElementById('chart-list');
+let treeView = true;
+function setView(tree) {
+  treeView = tree;
+  if (treeView) {
+    chartTree.style.display = '';
+    chartList.style.display = 'none';
+    toggleIcon.textContent = '🌳'; // Tree icon
+    toggleLabel.textContent = 'Tree View';
+    toggleBtn.title = 'Switch to List View';
+    renderTreeTable();
+  } else {
+    chartTree.style.display = 'none';
+    chartList.style.display = '';
+    toggleIcon.textContent = '📋'; // List icon
+    toggleLabel.textContent = 'List View';
+    toggleBtn.title = 'Switch to Tree View';
+    renderFlatList();
+  }
+}
+toggleBtn.onclick = function() { setView(!treeView); };
+
+function renderFlatList() {
+  // Use treeData from chart_tree.js
+  if (!window.treeData) return;
+  chartList.innerHTML = '';
+  const table = document.createElement('table');
+  table.className = 'table table-striped';
+  table.style.width = '100%';
+  table.innerHTML = '<thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Parent</th></tr></thead>';
+  const tbody = document.createElement('tbody');
+  function flatten(nodes, parentName='') {
+    nodes.forEach(n => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${n.code}</td><td>${n.name}</td><td>${n.account_type}</td><td>${parentName}</td>`;
+      tbody.appendChild(tr);
+      if (n.children && n.children.length) flatten(n.children, n.name);
+    });
+  }
+  flatten(window.treeData);
+  table.appendChild(tbody);
+  chartList.appendChild(table);
+}
+
+// Render the tree view as a Bootstrap-styled table
+function renderTreeTable() {
+  if (!window.treeData) return;
+  chartTree.innerHTML = '';
+  const table = document.createElement('table');
+  table.className = 'table table-striped';
+  table.style.width = '100%';
+  table.innerHTML = '<thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Parent</th></tr></thead>';
+  const tbody = document.createElement('tbody');
+  function renderNode(node, level = 0, parentName = '') {
+    const tr = document.createElement('tr');
+    // Indent the name cell for tree effect, but use a <span> for better alignment
+    const indentSpan = `<span style="display:inline-block;width:${level * 2}em;"></span>`;
+    tr.innerHTML = `<td>${node.code}</td><td>${indentSpan}<span style="font-weight:${node.children && node.children.length ? 'bold' : 'normal'}">${node.name}</span></td><td>${node.account_type}</td><td>${parentName}</td>`;
+    tbody.appendChild(tr);
+    if (node.children && node.children.length) {
+      node.children.forEach(child => renderNode(child, level + 1, node.name));
+    }
+  }
+  window.treeData.forEach(node => renderNode(node));
+  table.appendChild(tbody);
+  chartTree.appendChild(table);
+}
+
+// Close filter modal
+const closeBtn = document.getElementById('close-filter-modal');
+if (closeBtn) closeBtn.onclick = () => {
+  document.getElementById('advanced-filter-modal').style.display = 'none';
+};
+// Set default view to tree
+setView(true);
+</script>
+{% endblock %}

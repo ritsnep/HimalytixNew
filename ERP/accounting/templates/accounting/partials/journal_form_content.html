@@ -1,0 +1,50 @@
+{% load widget_tweaks %}
+
+<!-- Header Section -->
+<div class="journal-header mb-3">
+    {% for field in header_form %}
+        <div class="form-group">
+            {{ field.label_tag }}
+            {% render_field field class="form-control" %}
+            {{ field.errors }}
+        </div>
+    {% endfor %}
+</div>
+
+<!-- Dropzone for OCR -->
+<div id="receipt-dropzone" class="text-center p-5 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary">
+    <p class="text-muted">Drag and drop a receipt image here, or click to select a file.</p>
+</div>
+<input type="file" id="receipt-upload" class="d-none" accept="image/*">
+<!-- Toolbar -->
+<div class="d-flex justify-content-end mb-2">
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="toggle-currency-cols">
+        <i class="fas fa-dollar-sign"></i> Show/Hide Currency
+    </button>
+</div>
+
+<!-- Lines Grid -->
+<div class="journal-lines-grid">
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Account</th>
+                <th>Description</th>
+                <th>Debit</th>
+                <th>Credit</th>
+                <th class="currency-col" style="display: none;">Currency</th>
+                <th class="currency-col" style="display: none;">Exch. Rate</th>
+                <th>Department</th>
+                <th>Project</th>
+                <th>Cost Center</th>
+                <th>Memo</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="lines-container">
+            {% for form in line_formset %}
+                {% include "accounting/partials/journal_line_form.html" with form=form %}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

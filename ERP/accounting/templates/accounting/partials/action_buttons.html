@@ -1,0 +1,73 @@
+<!-- Action Buttons Partial -->
+<!-- Display context-aware action buttons based on journal status -->
+
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="btn-group d-flex flex-wrap gap-2" role="group">
+            
+            <!-- Edit Button (Draft/Pending) -->
+            {% if can_edit %}
+                <a href="{% url 'accounting:journal_edit' pk=journal.id %}" 
+                   class="btn btn-warning" title="Edit this journal entry">
+                    <i class="bi bi-pencil"></i> Edit
+                </a>
+            {% endif %}
+
+            <!-- Post Button (Draft/Pending) -->
+            {% if can_post %}
+                <button type="button" class="btn btn-success"
+                        hx-get="{% url 'accounting:journal_action_confirm_htmx' journal_id=journal.id action='post' %}"
+                        hx-target="#action-modal"
+                        hx-swap="innerHTML"
+                        title="Post this journal entry">
+                    <i class="bi bi-check-circle"></i> Post
+                </button>
+            {% endif %}
+
+            <!-- Delete Button (Draft only) -->
+            {% if can_delete %}
+                <button type="button" class="btn btn-danger"
+                        hx-get="{% url 'accounting:journal_action_confirm_htmx' journal_id=journal.id action='delete' %}"
+                        hx-target="#action-modal"
+                        hx-swap="innerHTML"
+                        title="Delete this journal entry">
+                    <i class="bi bi-trash"></i> Delete
+                </button>
+            {% endif %}
+
+            <!-- Duplicate Button (All statuses) -->
+            {% if can_duplicate %}
+                <button type="button" class="btn btn-info"
+                        hx-post="{% url 'accounting:journal_duplicate' pk=journal.id %}"
+                        hx-confirm="Create a duplicate of this journal entry?"
+                        hx-swap="none"
+                        title="Create a duplicate of this entry">
+                    <i class="bi bi-copy"></i> Duplicate
+                </button>
+            {% endif %}
+
+            <!-- Reverse Button (Posted/Approved) -->
+            {% if can_reverse %}
+                <button type="button" class="btn btn-secondary"
+                        hx-get="{% url 'accounting:journal_action_confirm_htmx' journal_id=journal.id action='reverse' %}"
+                        hx-target="#action-modal"
+                        hx-swap="innerHTML"
+                        title="Create reversing journal entry">
+                    <i class="bi bi-arrow-counterclockwise"></i> Reverse
+                </button>
+            {% endif %}
+        </div>
+
+        <!-- Status Badge -->
+        <div class="mt-3">
+            <span class="badge bg-{% if is_draft %}warning{% elif is_posted %}success{% elif is_approved %}primary{% else %}secondary{% endif %}">
+                Status: {{ journal.get_status_display|upper }}
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- Action Modal (for confirmations) -->
+<div id="action-modal" class="modal fade" tabindex="-1" role="dialog">
+    <!-- Modal content loaded via HTMX -->
+</div>

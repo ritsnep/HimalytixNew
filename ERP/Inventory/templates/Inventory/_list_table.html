@@ -1,0 +1,58 @@
+{% load static inventory_table_tags %}
+
+<div class="mt-8 flex flex-col">
+    <div class="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
+        <div class="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
+            <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+                <table class="min-w-full divide-y divide-gray-300">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            {% for header in headers %}
+                            <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
+                                {{ header }}
+                            </th>
+                            {% endfor %}
+                            {% if show_actions %}
+                            <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                                <span class="sr-only">Actions</span>
+                            </th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 bg-white">
+                        {% for item in items %}
+                        <tr>
+                            {% for field in fields %}
+                            <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
+                                {{ item|getattribute:field }}
+                            </td>
+                            {% endfor %}
+                            {% if show_actions %}
+                            <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                                {% if update_url_name %}
+                                <a href="{% url update_url_name item.pk %}" class="text-indigo-600 hover:text-indigo-900 mr-4">Edit</a>
+                                {% endif %}
+                                {% if delete_url_name %}
+                                <a href="{% url delete_url_name item.pk %}" class="text-red-600 hover:text-red-900">Delete</a>
+                                {% endif %}
+                                {% if extra_actions %}
+                                    {% for action in extra_actions %}
+                                        <a href="{% url action.url_name item.pk %}" class="text-{{ action.color|default:'blue' }}-600 hover:text-{{ action.color|default:'blue' }}-900 ml-4">{{ action.label }}</a>
+                                    {% endfor %}
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="{{ headers|length|add:1 }}" class="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-500 text-center sm:pl-6">
+                                No items found.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

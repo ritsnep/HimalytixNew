@@ -1,0 +1,39 @@
+.sidebar {
+    width: 250px;
+    min-height: 100vh;
+}
+
+.main-content {
+    min-height: 100vh;
+}
+
+.remove-row {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.table-responsive {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+#journal-table tfoot {
+    position: sticky;
+    bottom: 0;
+    background-color: #f8f9fa;
+}
+
+#balance.text-success {
+    color: #198754 !important;
+}
+
+#balance.text-danger {
+    color: #dc3545 !important;
+}

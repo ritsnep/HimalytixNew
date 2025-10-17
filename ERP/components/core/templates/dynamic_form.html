@@ -1,0 +1,27 @@
+<form method="post">
+  {% csrf_token %}
+  {% for f in schema.fields %}
+    <div class="form-group">
+      <label for="{{ f.name }}">{{ f.label }}</label>
+      {% if f.input_type == 'select' %}
+        <select id="{{ f.name }}" name="{{ f.name }}" class="form-control"{% if f.required %} required{% endif %}>
+          {% for opt in f.options %}
+            <option value="{{ opt.value }}">{{ opt.label }}</option>
+          {% endfor %}
+        </select>
+      {% elif f.input_type == 'checkbox' %}
+        <input type="checkbox" id="{{ f.name }}" name="{{ f.name }}" class="form-check-input" {% if f.required %} required{% endif %}>
+      {% else %}
+        <input id="{{ f.name }}" name="{{ f.name }}" type="{{ f.input_type }}"
+               class="form-control"
+               placeholder="{{ f.placeholder or '' }}"
+               {% if f.required %} required{% endif %}
+               {% if f.pattern %} pattern="{{ f.pattern }}"{% endif %}>
+      {% endif %}
+      {% if f.help_text %}
+        <small class="form-text text-muted">{{ f.help_text }}</small>
+      {% endif %}
+    </div>
+  {% endfor %}
+  <button type="submit" class="btn btn-primary">Submit</button>
+</form>

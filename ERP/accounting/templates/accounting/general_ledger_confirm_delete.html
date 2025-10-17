@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load crispy_forms_tags %}
+
+{% block title %}Delete General Ledger Entry{% endblock %}
+
+{% block page_title %}Delete General Ledger Entry{% endblock %}
+
+{% block breadcrumbs %}
+    <li class="breadcrumb-item"><a href="{% url 'accounting:general_ledger_list' %}">General Ledger</a></li>
+    <li class="breadcrumb-item active">Delete General Ledger Entry</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Confirm Deletion</h3>
+            </div>
+            <div class="card-body">
+                <p>Are you sure you want to delete the General Ledger Entry with ID: <strong>{{ object.gl_entry_id }}</strong>?</p>
+                <p>This action cannot be undone.</p>
+                
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <form method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                    <a href="{% url 'accounting:general_ledger_list' %}" class="btn btn-secondary">Cancel</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

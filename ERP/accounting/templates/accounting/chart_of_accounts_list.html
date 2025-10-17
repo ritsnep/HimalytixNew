@@ -1,0 +1,81 @@
+{% extends 'accounting/_list_base.html' %}
+{% load static %}
+
+{% block title %}Chart of Accounts{% endblock %}
+{% block breadcrumb %}Chart of Accounts{% endblock %}
+{% block add_url %}{{ create_url }}{% endblock %}
+
+{% block list_header %}
+<h4 class="card-title">Chart of Accounts</h4>
+{% endblock %}
+
+{% block create_button %}
+<a href="{{ create_url }}" class="btn btn-success mb-2">
+    <i class="mdi mdi-plus me-1"></i> New Chart of Account
+</a>
+{% endblock %}
+
+{% block table_head %}
+<thead>
+  <tr>
+    <th>Code</th>
+    <th>Path</th>
+    <th>Name</th>
+    <th>Type</th>
+    <th>Status</th>
+    <th>Actions</th>
+  </tr>
+</thead>
+{% endblock %}
+
+{% block table_body %}
+<tbody>
+  {% if account_tree %}
+    {% include 'accounting/partials/coa_tree_rows.html' with accounts=account_tree level=0 %}
+  {% else %}
+    <tr><td colspan="6" class="text-center">No chart of accounts found.</td></tr>
+  {% endif %}
+</tbody>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script id="datatable-config" type="application/json">{
+  "columnDefs": [
+    {"targets": -1, "orderable": false},
+    {"targets": 1, "visible": true}
+  ],
+  "order": [[0, "asc"]]
+}</script>
+<script>
+// Lightweight tree toggle within the table
+document.addEventListener('click', function(e){
+  const btn = e.target.closest('.coa-toggle');
+  if (!btn) return;
+  e.preventDefault();
+  const id = btn.getAttribute('data-id');
+  const currentlyCollapsed = btn.getAttribute('data-collapsed') === 'true';
+  const willExpand = currentlyCollapsed; // if collapsed, expand; else collapse
+  btn.setAttribute('data-collapsed', willExpand ? 'false' : 'true');
+  const icon = btn.querySelector('i');
+  if (icon) icon.className = willExpand ? 'mdi mdi-chevron-down' : 'mdi mdi-chevron-right';
+
+  function setChildrenVisibility(parentId, visible){
+    const rows = document.querySelectorAll('tr.coa-row[data-parent="'+parentId+'"]');
+    rows.forEach(row => {
+      row.style.display = visible ? '' : 'none';
+      const childId = row.getAttribute('data-id');
+      const childBtn = row.querySelector('.coa-toggle');
+      const childCollapsed = childBtn && childBtn.getAttribute('data-collapsed') === 'true';
+      if (!visible){
+        setChildrenVisibility(childId, false);
+      } else {
+        setChildrenVisibility(childId, !childCollapsed);
+      }
+    });
+  }
+
+  setChildrenVisibility(id, !currentlyCollapsed);
+});
+</script>
+{% endblock %}

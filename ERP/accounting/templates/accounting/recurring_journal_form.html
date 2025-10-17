@@ -1,0 +1,54 @@
+{% extends "partials/base.html" %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <h4 class="card-title">{% if object %}Edit{% else %}Create{% endif %} Recurring Journal</h4>
+                            <form method="post">
+                                {% csrf_token %}
+                                {{ form.as_p }}
+                                <hr>
+                                <h5>Lines</h5>
+                                {{ formset.management_form }}
+                                <div id="formset-container">
+                                    {% for form in formset %}
+                                        <div class="row formset-row">
+                                            {{ form.as_p }}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                                <button type="button" id="add-form" class="btn btn-secondary">Add Line</button>
+                                <hr>
+                                <button type="submit" class="btn btn-primary">Save</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const addFormButton = document.getElementById('add-form');
+    const formsetContainer = document.getElementById('formset-container');
+    const totalForms = document.getElementById('id_{{ formset.prefix }}-TOTAL_FORMS');
+    let formCount = parseInt(totalForms.value);
+
+    addFormButton.addEventListener('click', function() {
+        const newForm = formsetContainer.children[0].cloneNode(true);
+        const formRegex = new RegExp(`{{ formset.prefix }}-(\\d+)-`, 'g');
+        newForm.innerHTML = newForm.innerHTML.replace(formRegex, `{{ formset.prefix }}-${formCount}-`);
+        formsetContainer.appendChild(newForm);
+        totalForms.value = ++formCount;
+    });
+});
+</script>
+{% endblock %}

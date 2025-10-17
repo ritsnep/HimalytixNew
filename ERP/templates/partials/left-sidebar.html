@@ -1,0 +1,464 @@
+{% load static %}
+{% block left_sidebar %}
+<!-- ========== Left Sidebar Start ========== -->
+<nav class="vertical-menu">
+
+    <div data-simplebar class="h-100">
+
+        <!--- Sidemenu -->
+        <div id="sidebar-menu">
+            <!-- Left Menu Start -->
+            <ul class="metismenu list-unstyled" id="side-menu">
+                <li class="menu-title" data-key="t-menu">Menu</li>
+
+                <li>
+                    <a href="{% url 'dashboard' %}">
+                    {% comment %} <a href="{% url 'dashboard' %}" hx-get="{% url 'dashboard' %}.hx/" hx-target="#main-container" hx-push-url="true" class="nav-link"> {% endcomment %}
+                        <i data-feather="home"></i>
+                        <span class="badge rounded-pill bg-soft-success text-success float-end">9+</span>
+                        <span data-key="t-dashboard">Dashboard</span>
+                    </a>
+                </li>
+  <!-- Accounting Section -->
+  <li>
+    <a href="javascript: void(0);" class="has-arrow">
+        <i data-feather="book"></i>
+        <span data-key="t-accounting">Accounting</span>
+    </a>
+    <ul class="sub-menu" aria-expanded="false">
+        <!-- Chart of Accounts -->
+        <li>
+            <a href="{% url 'accounting:chart_of_accounts_list' %}">
+            {% comment %} <a href="{% url 'accounting:chart_of_accounts_list' %}" hx-get="{% url 'accounting:chart_of_accounts_list' %}.hx/" hx-target="#main-container" hx-push-url="true" class="nav-link"> {% endcomment %}
+                <span>Chart of Accounts</span>
+            </a>
+        </li>
+        <!-- Account Types -->
+        <li>
+            <a href="{% url 'accounting:account_type_list' %}">
+            {% comment %} <a href="{% url 'accounting:account_type_list' %}" hx-get="{% url 'accounting:account_type_list' %}.hx/" hx-target="#main-container" hx-push-url="true" class="nav-link"> {% endcomment %}
+                <span>Account Types</span>
+            </a>
+        </li>
+        <!-- Currencies -->
+        <li>
+            <a href="{% url 'accounting:currency_list' %}" >
+                <span>Currencies</span>
+            </a>
+        </li>
+        <!-- Exchange Rates -->
+        <li>
+            <a href="{% url 'accounting:exchange_rate_list' %}" >
+                <span>Exchange Rates</span>
+            </a>
+        </li>
+        <!-- Fiscal Years -->
+        <li>
+            <a href="{% url 'accounting:fiscal_year_list' %}" >
+                <span>Fiscal Years</span>
+            </a>
+        </li>
+        <!-- Cost Centers -->
+        <li>
+            <a href="{% url 'accounting:costcenter_list' %}">
+                <span>Cost Centers</span>
+            </a>
+        </li>
+        <!-- Departments -->
+        <li>
+            <a href="{% url 'accounting:department_list' %}">
+                <span>Departments</span>
+            </a>
+        </li>
+        <!-- Journals -->
+        <li>
+            <a href="{% url 'accounting:journal_list' %}" >
+                <span>Journals</span>
+            </a>
+        </li>
+        <!-- Voucher Entry -->
+        <li>
+            <a href="{% url 'accounting:voucher_wizard' %}" >
+                <span>Voucher Entry</span>
+            </a>
+        </li>
+        <!-- Voucher Configurations -->
+        <li>
+            <a href="{% url 'accounting:voucher_config_list' %}">
+                <span>Voucher Configurations</span>
+            </a>
+        </li>
+        <!-- Voucher Settings -->
+        <li>
+            <a href="{% url 'accounting:voucher_settings' %}">
+                <span>Voucher Settings</span>
+            </a>
+        </li>
+        <!-- Tax Authorities -->
+        <li>
+            <a href="{% url 'accounting:tax_authority_list' %}">
+                <span>Tax Authorities</span>
+            </a>
+        </li>
+        <!-- Tax Types -->
+        <li>
+            <a href="{% url 'accounting:tax_type_list' %}" >
+                <span>Tax Types</span>
+            </a>
+        </li>
+        <!-- Projects -->
+        <li>
+            <a href="{% url 'accounting:project_list' %}" >
+                <span>Projects</span>
+            </a>
+        </li>
+         <!-- Accounting Periods -->
+        <li>
+            <a href="{% url 'accounting:accounting_period_list' %}">
+                <span>Accounting Periods</span>
+            </a>
+        </li>
+        <!-- Journal Types -->
+        <li>
+            <a href="{% url 'accounting:journal_type_list' %}">
+                <span>Journal Types</span>
+            </a>
+        </li>
+    </ul>
+</li>
+
+                <!-- Account Section -->
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="user"></i>
+                        <span data-key="t-account">Account</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="{% url 'account:profile' %}">Profile</a></li>
+                        <li><a href="{% url 'account:security' %}">Security</a></li>
+                        <li><a href="{% url 'account:billing' %}">Billing</a></li>
+                    </ul>
+                </li>
+
+                <!-- Inventory Section -->
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="archive"></i>
+                        <span data-key="t-inventory">Inventory</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="{% url 'inventory:dashboard' %}">Dashboard</a></li>
+                        <li><a href="{% url 'inventory:products' %}">Products</a></li>
+                        <li><a href="{% url 'inventory:categories' %}">Categories</a></li>
+                        <li><a href="{% url 'inventory:warehouses' %}">Warehouses</a></li>
+                        <li><a href="{% url 'inventory:stock_movements' %}">Stock Movements</a></li>
+                    </ul>
+                </li>
+
+                <li class="menu-title" data-key="t-apps">Apps</li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="shopping-cart"></i>
+                        <span data-key="t-ecommerce">Ecommerce</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="{% url 'apps:ecommerce.products'%}" key="t-products">Products</a></li>
+                        <li><a href="{% url 'apps:ecommerce.product_detail'%}" data-key="t-product-detail">Product
+                                Detail</a></li>
+                        <li><a href="{% url 'apps:ecommerce.orders'%}" data-key="t-orders">Orders</a></li>
+                        <li><a href="{% url 'apps:ecommerce.customers'%}" data-key="t-customers">Customers</a></li>
+                        <li><a href="{% url 'apps:ecommerce.cart'%}" data-key="t-cart">Cart</a></li>
+                        <li><a href="{% url 'apps:ecommerce.checkout'%}" data-key="t-checkout">Checkout</a></li>
+                        <li><a href="{% url 'apps:ecommerce.shops'%}" data-key="t-shops">Shops</a></li>
+                        <li><a href="{% url 'apps:ecommerce.add_product'%}" data-key="t-add-product">Add Product</a>
+                        </li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a href="{% url 'apps:chat'%}">
+                        <i data-feather="message-square"></i>
+                        <span data-key="t-chat">Chat</span>
+                    </a>
+                </li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="mail"></i>
+                        <span data-key="t-email">Email</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="{% url 'apps:email.inbox'%}" data-key="t-inbox">Inbox</a></li>
+                        <li><a href="{% url 'apps:email.read'%}" data-key="t-read-email">Read Email</a></li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a href="{% url 'apps:calendar' %}">
+                        <i data-feather="calendar"></i>
+                        <span data-key="t-calendar">Calendar</span>
+                    </a>
+                </li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="users"></i>
+                        <span data-key="t-contacts">Contacts</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="{% url 'apps:contacts.usergrid'%}" data-key="t-user-grid">User Grid</a></li>
+                        <li><a href="{% url 'apps:contacts.userlist'%}" data-key="t-user-list">User List</a></li>
+                        <li><a href="{% url 'apps:contacts.profile'%}" data-key="t-profile">Profile</a></li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="trello"></i>
+                        <span data-key="t-tasks">Tasks</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="{% url 'apps:tasks.list'%}" key="t-task-list">Task List</a></li>
+                        <li><a href="{% url 'apps:tasks.kanban'%}" key="t-kanban-board">Kanban Board</a></li>
+                        <li><a href="{% url 'apps:tasks.create'%}" key="t-create-task">Create Task</a></li>
+                    </ul>
+                </li>
+
+                <li class="menu-title" data-key="t-pages">Pages</li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="layers"></i>
+                        <span data-key="t-authentication">Authentication</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="{% url 'pages:pages.authentication.login' %}" data-key="t-login">Login</a></li>
+                        <li><a href="{% url 'pages:pages.authentication.register' %}" data-key="t-register">Register</a>
+                        </li>
+                        <li><a href="{% url 'pages:pages.authentication.recoverpw' %}"
+                                data-key="t-recover-password">Recover Password</a></li>
+                        <li><a href="{% url 'pages:pages.authentication.lockscreen' %}" data-key="t-lock-screen">Lock
+                                Screen</a></li>
+                        <li><a href="{% url 'pages:pages.authentication.logout' %}" data-key="t-logout">Log Out</a></li>
+                        <li><a href="{% url 'pages:pages.authentication.confirm_mail' %}"
+                                data-key="t-confirm-mail">Confirm Mail</a></li>
+                        <li><a href="{% url 'pages:pages.authentication.email_verification' %}"
+                                data-key="t-email-verification">Email Verification</a></li>
+                        <li><a href="{% url 'pages:pages.authentication.two_step_verification' %}"
+                                data-key="t-two-step-verification">Two Step Verification</a></li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="file-text"></i>
+                        <span data-key="t-pages">Pages</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="{% url 'pages:pages.starter_page' %}" data-key="t-starter-page">Starter Page</a>
+                        </li>
+                        <li><a href="{% url 'pages:pages.maintenance' %}" data-key="t-maintenance">Maintenance</a></li>
+                        <li><a href="{% url 'pages:pages.comingsoon' %}" data-key="t-coming-soon">Coming Soon</a></li>
+                        <li><a href="{% url 'pages:pages.timeline' %}" data-key="t-timeline">Timeline</a></li>
+                        <li><a href="{% url 'pages:pages.faqs' %}" data-key="t-faqs">FAQs</a></li>
+                        <li><a href="{% url 'pages:pages.pricing' %}" data-key="t-pricing">Pricing</a></li>
+                        <li><a href="{% url 'pages:pages.error_404' %}" data-key="t-error-404">Error 404</a></li>
+                        <li><a href="{% url 'pages:pages.error_500' %}" data-key="t-error-500">Error 500</a></li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a href="{% url 'pages:pages.layout.horizontal' %}">
+                        <i data-feather="layout"></i>
+                        <span data-key="t-horizontal">Horizontal</span>
+                    </a>
+                </li>
+
+                <li class="menu-title mt-2" data-key="t-components">Components</li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="briefcase"></i>
+                        <span data-key="t-components">Bootstrap</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="{% url 'components:components.bootstrap.alerts' %}" data-key="t-alerts">Alerts</a>
+                        </li>
+                        <li><a href="{% url 'components:components.bootstrap.buttons' %}"
+                                data-key="t-buttons">Buttons</a></li>
+                        <li><a href="{% url 'components:components.bootstrap.cards' %}" data-key="t-cards">Cards</a>
+                        </li>
+                        <li><a href="{% url 'components:components.bootstrap.carousel' %}"
+                                data-key="t-carousel">Carousel</a></li>
+                        <li><a href="{% url 'components:components.bootstrap.dropdowns' %}"
+                                data-key="t-dropdowns">Dropdowns</a></li>
+                        <li><a href="{% url 'components:components.bootstrap.grid' %}" data-key="t-grid">Grid</a></li>
+                        <li><a href="{% url 'components:components.bootstrap.images' %}" data-key="t-images">Images</a>
+                        </li>
+                        <li><a href="{% url 'components:components.bootstrap.modals' %}" data-key="t-modals">Modals</a>
+                        </li>
+                        <li><a href="{% url 'components:components.bootstrap.offcanvas' %}"
+                                data-key="t-offcanvas">Offcanvas</a></li>
+                        <li><a href="{% url 'components:components.bootstrap.progressbars' %}"
+                                data-key="t-progress-bars">Progress Bars</a></li>
+                        <li><a href="{% url 'components:components.bootstrap.placeholders' %}"
+                                data-key="t-progress-bars">Placeholders</a></li>
+                        <li><a href="{% url 'components:components.bootstrap.tabs' %}" data-key="t-tabs-accordions">Tabs
+                                & Accordions</a></li>
+                        <li><a href="{% url 'components:components.bootstrap.typography' %}"
+                                data-key="t-typography">Typography</a></li>
+                        <li><a href="{% url 'components:components.bootstrap.video' %}" data-key="t-video">Video</a>
+                        </li>
+                        <li><a href="{% url 'components:components.bootstrap.general' %}"
+                                data-key="t-general">General</a></li>
+                        <li><a href="{% url 'components:components.bootstrap.colors' %}" data-key="t-colors">Colors</a>
+                        </li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="gift"></i>
+                        <span data-key="t-ui-elements">Extended</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="{% url 'components:components.extended.lightbox' %}"
+                                data-key="t-lightbox">Lightbox</a></li>
+                        <li><a href="{% url 'components:components.extended.rangeslider' %}"
+                                data-key="t-range-slider">Range Slider</a></li>
+                        <li><a href="{% url 'components:components.extended.sweetalerts2' %}"
+                                data-key="t-sweet-alert">SweetAlert 2</a></li>
+                        <li><a href="{% url 'components:components.extended.sessiontimeout' %}"
+                                data-key="t-session-timeout">Session Timeout</a></li>
+                        <li><a href="{% url 'components:components.extended.rating' %}" data-key="t-rating">Rating</a>
+                        </li>
+                        <li><a href="{% url 'components:components.extended.notifications' %}"
+                                data-key="t-notifications">Notifications</a></li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a href="javascript: void(0);">
+                        <i data-feather="box"></i>
+                        <span class="badge rounded-pill bg-soft-danger text-danger float-end">7</span>
+                        <span data-key="t-forms">Forms</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="{% url 'components:components.forms.basic_elements' %}"
+                                data-key="t-form-elements">Basic Elements</a></li>
+                        <li><a href="{% url 'components:components.forms.validation' %}"
+                                data-key="t-form-validation">Validation</a></li>
+                        <li><a href="{% url 'components:components.forms.advancedplugins' %}"
+                                data-key="t-form-advanced">Advanced Plugins</a></li>
+                        <li><a href="{% url 'components:components.forms.editors' %}"
+                                data-key="t-form-editors">Editors</a></li>
+                        <li><a href="{% url 'components:components.forms.fileupload' %}" data-key="t-form-upload">File
+                                Upload</a></li>
+                        <li><a href="{% url 'components:components.forms.wizard' %}" data-key="t-form-wizard">Wizard</a>
+                        </li>
+                        <li><a href="{% url 'components:components.forms.mask' %}" data-key="t-form-mask">Mask</a></li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="sliders"></i>
+                        <span data-key="t-tables">Tables</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="{% url 'components:components.tables.bootstrap_basic' %}"
+                                data-key="t-basic-tables">Bootstrap Basic</a></li>
+                        <li><a href="{% url 'components:components.tables.datatables' %}"
+                                data-key="t-data-tables">DataTables</a></li>
+                        <li><a href="{% url 'components:components.tables.responsive_tables' %}"
+                                data-key="t-responsive-table">Responsive</a></li>
+                        <li><a href="{% url 'components:components.tables.editable_tables' %}"
+                                data-key="t-editable-table">Editable</a></li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="pie-chart"></i>
+                        <span data-key="t-charts">Charts</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="{% url 'components:components.charts.apexcharts' %}"
+                                data-key="t-apex-charts">Apexcharts</a></li>
+                        <li><a href="{% url 'components:components.charts.echarts' %}" data-key="t-e-charts">Echarts</a>
+                        </li>
+                        <li><a href="{% url 'components:components.charts.chartjs' %}"
+                                data-key="t-chartjs-charts">Chartjs</a></li>
+                        <li><a href="{% url 'components:components.charts.knob' %}" data-key="t-knob-charts">Jquery
+                                Knob</a></li>
+                        <li><a href="{% url 'components:components.charts.sparkline' %}"
+                                data-key="t-sparkline-charts">Sparkline</a></li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="cpu"></i>
+                        <span data-key="t-icons">Icons</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="{% url 'components:components.icons.feather' %}" data-key="t-feather">Feather</a>
+                        </li>
+                        <li><a href="{% url 'components:components.icons.boxicons' %}"
+                                data-key="t-boxicons">Boxicons</a></li>
+                        <li><a href="{% url 'components:components.icons.materialdesign' %}"
+                                data-key="t-material-design">Material Design</a></li>
+                        <li><a href="{% url 'components:components.icons.dripicons' %}"
+                                data-key="t-dripicons">Dripicons</a></li>
+                        <li><a href="{% url 'components:components.icons.fontawesome' %}" data-key="t-font-awesome">Font
+                                Awesome 5</a></li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="map"></i>
+                        <span data-key="t-maps">Maps</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="{% url 'components:components.maps.googlemaps' %}" data-key="t-g-maps">Google</a>
+                        </li>
+                        <li><a href="{% url 'components:components.maps.vectormaps' %}" data-key="t-v-maps">Vector</a>
+                        </li>
+                        <li><a href="{% url 'components:components.maps.leaflet' %}" data-key="t-l-maps">Leaflet</a>
+                        </li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="share-2"></i>
+                        <span data-key="t-multi-level">Multi Level</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="true">
+                        <li><a href="javascript: void(0);" data-key="t-level-1-1">Level 1.1</a></li>
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow" data-key="t-level-1-2">Level 1.2</a>
+                            <ul class="sub-menu" aria-expanded="true">
+                                <li><a href="javascript: void(0);" data-key="t-level-2-1">Level 2.1</a></li>
+                                <li><a href="javascript: void(0);" data-key="t-level-2-2">Level 2.2</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+                <li class="menu-title" data-key="t-settings">Settings</li>
+                <li>
+                    <a href="{% url 'permission_list' %}">
+                        <i data-feather="shield"></i>
+                        <span data-key="t-permissions">Permissions</span>
+                    </a>
+                </li>
+
+            </ul>
+
+        </div>
+        <!-- Sidebar -->
+    </div>
+</nav>
+<!-- Left Sidebar End -->
+{% endblock left_sidebar %}

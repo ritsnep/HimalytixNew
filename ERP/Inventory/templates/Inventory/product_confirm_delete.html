@@ -1,0 +1,32 @@
+{% extends "Inventory/base.html" %}
+{% load static %}
+
+{% block inventory_title %}Delete Product{% endblock %}
+
+{% block inventory_content %}
+<div class="bg-white shadow overflow-hidden sm:rounded-lg max-w-md mx-auto">
+    <div class="px-4 py-5 sm:px-6">
+        <h3 class="text-lg leading-6 font-medium text-gray-900">
+            Confirm Delete Product
+        </h3>
+    </div>
+    <div class="border-t border-gray-200 px-4 py-5 sm:p-6">
+        <p class="text-sm text-gray-700 mb-4">
+            Are you sure you want to delete the product "{{ object.name }}" ({{ object.code }})?
+        </p>
+        <p class="text-sm text-red-600 mb-6">This action cannot be undone.</p>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="flex justify-end">
+                <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                    Delete
+                </button>
+                <a href="{% url 'inventory:product_list' %}" class="ml-3 inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

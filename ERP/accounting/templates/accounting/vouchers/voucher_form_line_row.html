@@ -1,0 +1,28 @@
+{% comment %} Single Journal Line Row (HTMX-ready) {% endcomment %}
+{% if skeleton %}
+<tr class="animate-pulse bg-gray-100">
+  <td colspan="99" class="h-10"><div class="h-6 bg-gray-300 rounded"></div></td>
+</tr>
+{% elif error %}
+<tr><td colspan="99" class="text-red-600">{{ error }}</td></tr>
+{% elif form %}
+<tr class="journal-line">
+    <td><span class="line-number"></span></td>
+    <td>{{ form.account }}</td>
+    <td>{{ form.description }}</td>
+    <td>{{ form.debit_amount }}</td>
+    <td>{{ form.credit_amount }}</td>
+    {% if voucher_config.show_dimensions %}
+    <td>{{ form.department }}</td>
+    <td>{{ form.project }}</td>
+    <td>{{ form.cost_center }}</td>
+    {% endif %}
+    {% if voucher_config.show_tax_details %}
+    <td>{{ form.tax_code }}</td>
+    {% endif %}
+    <td>
+        {{ form.DELETE }}
+        <button type="button" class="btn btn-remove-line" onclick="this.closest('tr').remove();">Remove</button>
+    </td>
+</tr>
+{% endif %} 

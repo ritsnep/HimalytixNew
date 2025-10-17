@@ -1,0 +1,106 @@
+graph TD
+    subgraph Posting Lifecycle
+        draft --> awaiting_approval;
+        awaiting_approval --> approved;
+        approved --> posted;
+        posted --> reversed;
+    end
+
+    subgraph Permissions
+        A[User] -- create --> draft;
+        B[Approver] -- approve --> awaiting_approval;
+        C[Poster] -- post --> approved;
+        D[Reverser] -- reverse --> posted;
+        E[Period Controller] -- reopen --> closed_period;
+    end
+
+    subgraph Invariants & Controls
+        posted -- debits == credits --> server_validation[Server-side Validation];
+        server_validation -- reject --> draft;
+        posted -- not in closed period --> period_control[Period Control];
+        period_control -- reject --> draft;
+        posted -- auto-numbering --> sequence_generation[Auto Numbering];
+    end
+
+    subgraph Schema Versioning
+        schema_version[Schema Version] --> journal_entry[Journal Entry];
+        journal_entry -- persists --> old_entries[Old Entries];
+        schema_version -- drives --> forms[Forms];
+        schema_version -- drives --> posting_service[Posting Service];
+    end
+
+    subgraph Service Layer
+        PostingService[PostingService] -- validate --> journal_validation[Validate Journal];
+        PostingService -- post --> atomic_write[Atomic Write GL Lines, Balances, Audit Trail];
+        PostingService -- reverse --> reversing_voucher[Create Reversing Voucher];
+    end
+
+    subgraph Concurrency
+        idempotent_endpoint[Idempotent Post Endpoint] --> detect_duplicates[Detect Duplicate Submissions];
+        row_locks[Row-level Locks] --> sequence_update[Sequence + Balance Buckets Update];
+    end
+
+    subgraph Multi-currency
+        txn_currency[Transaction Currency] --> fx_rate[FX Rate];
+        fx_rate --> amount_txn[Amount Transaction];
+        fx_rate --> amount_base[Amount Base];
+        revaluation[End-period Revaluation] --> unrealized_fx[Unrealized FX Gains/Losses];
+        rates_master[Rates Master Table] --> ui_default[UI Selects Default Rate];
+    end
+
+    subgraph Budgets & Controls
+        budget_scopes[Org / Account Group / Cost Center] --> evaluation_point[Evaluation at Post];
+        actions[Block / Warn / Require Override] --> ui_copy[UI Copy];
+        actions --> audit_trail_override[Audit Trail of Overrides];
+    end
+
+    subgraph UI/UX
+        keyboard_map[Keyboard Map] --> help_overlay[Help Overlay];
+        auto_balance[Auto-balance Helper] --> last_line_suggest[Last Line Auto-suggests Difference];
+        accessibility[WCAG 2.2 AA] --> focus_order[Focus Order, ARIA Labels, Contrast Targets];
+        error_ux[Uniform Error UX] --> banner_inline[Banner + Inline Errors];
+        error_ux --> copy_deck[Copy Deck for Common Failures];
+    end
+
+    subgraph Security & Permissions
+        rbac_matrix[RBAC Matrix] --> create_approve_post_reverse[Create/Approve/Post/Reverse/Close-period];
+        org_isolation[Org/Tenant Isolation] --> filter_by_org_id[Every Query Filters by organization_id];
+        csrf_htmx[CSRF/HTMX] --> csrf_token_handling[CSRF Token Handling on Fragment Posts];
+        audit_trail_security[Audit Trail] --> immutable_logs[Immutable Logs];
+    end
+
+    subgraph Observability & Ops
+        structured_logging[Structured Logging] --> journal_code_org_id[journal_code, org_id, status, duration];
+        error_tracking[Error Tracking] --> sentry_rollbar[Sentry/Rollbar Event Naming];
+        apm[APM] --> trace_posting[Trace Posting Transaction, Slow Queries];
+        metrics[Metrics] --> posted_per_hour[Posted per Hour, Failure Rates, Latency];
+        metrics --> alert_thresholds[Alert Thresholds];
+    end
+
+    subgraph Testing
+        unit_tests[Unit Tests] --> closed_period_permission_denial[Closed Period, Permission Denial, Voucher Rules, Rounding, FX];
+        integration_tests[Integration Tests] --> full_lifecycle_reversal[Full Lifecycle + Reversal + Cross-module];
+        concurrency_tests[Concurrency Tests] --> racing_sequence[Two Posts Racing for Same Sequence];
+        performance_tests[Performance Tests] --> post_50_line_journal[Post 50-line Journal <1s, Trial Balance 1k txns <2s];
+        recovery_tests[Recovery Tests] --> forced_db_outage[Forced DB Outage Mid-post];
+    end
+
+    subgraph Deployment & Data Migration
+        migrations[Migrations] --> dry_run_staging[Dry-run on Staging Snapshot];
+        migrations --> backfill_scripts[Backfill Scripts];
+        release_gates[Release Gates] --> coverage_ci_tag[≥80% Coverage, CI Green, Tag v1.0.0-production];
+        release_gates --> pipeline_migrate_collectstatic[Pipeline Runs Migrate + Collectstatic];
+        post_deploy_smoke[Post-deploy Smoke Tests] --> create_post_voucher[Create/Post One Voucher, Run Trial Balance, Check Logs];
+        rollback_plan[Rollback Plan] --> documented[Documented];
+    end
+
+    subgraph Documentation Artifacts
+        state_machine_diagram[State Machine Diagram for Journal Status];
+        voucher_validation_table[Voucher-type Validation Table];
+        posting_sequence_diagram[Posting Sequence Diagram];
+        error_catalogue[Error Catalogue];
+        keyboard_shortcut_map[Keyboard Shortcut Map & Accessibility Checklist];
+        rbac_matrix_doc[RBAC Matrix];
+        observability_spec[Observability Spec];
+        test_plan_matrix[Test Plan Matrix];
+    end

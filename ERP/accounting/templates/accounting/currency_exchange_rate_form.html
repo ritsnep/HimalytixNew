@@ -1,0 +1,142 @@
+{% extends 'accounting/_form_base.html' %}
+{% load static %}
+
+{% block title %}Currency Exchange Rate{% endblock %}
+
+{% block form_content %}
+    <div class="card">
+        <div class="card-header">
+            <h4 class="card-title">{{ form_title|default:"Currency Exchange Rate" }}</h4>
+            <p class="card-title-desc">Manage your currency exchange rates.</p>
+        </div>
+        <div class="card-body">
+            <form id="currency-exchange-rate-form" method="post" novalidate>
+                {% csrf_token %}
+                
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {% for error in form.non_field_errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.from_currency.id_for_label }}" class="form-label">From Currency</label>
+                            {{ form.from_currency }}
+                            {% if form.from_currency.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.from_currency.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.to_currency.id_for_label }}" class="form-label">To Currency</label>
+                            {{ form.to_currency }}
+                            {% if form.to_currency.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.to_currency.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.rate_date.id_for_label }}" class="form-label">Rate Date</label>
+                            {{ form.rate_date }}
+                            {% if form.rate_date.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.rate_date.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.exchange_rate.id_for_label }}" class="form-label">Exchange Rate</label>
+                            {{ form.exchange_rate }}
+                            {% if form.exchange_rate.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.exchange_rate.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <div class="form-check">
+                                {{ form.is_average_rate }}
+                                <label class="form-check-label" for="{{ form.is_average_rate.id_for_label }}">
+                                    Is Average Rate
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.source.id_for_label }}" class="form-label">Source</label>
+                            {{ form.source }}
+                            {% if form.source.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.source.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <a href="{% url 'accounting:exchange_rate_list' %}" class="btn btn-secondary">Back</a>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    <!-- Datepicker initialization -->
+    <script>
+        $(function() {
+            $('.datepicker').datepicker({
+                format: 'yyyy-mm-dd',
+                autoclose: true,
+                todayHighlight: true
+            });
+        });
+    </script>
+
+    <!-- Pristine.js Initialization for this specific form -->
+    <script src="{% static 'libs/pristinejs/dist/pristine.min.js' %}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var form = document.getElementById('currency-exchange-rate-form');
+            if (form) {
+                var pristine = new Pristine(form);
+
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault(); // Prevent default form submission initially
+                    var valid = pristine.validate();
+                    if (valid) {
+                        // If valid, submit the form normally
+                        form.submit();
+                    } else {
+                        // Optional: Scroll to the first error or show a general message
+                        console.log('Form is invalid!');
+                    }
+                });
+            }
+        });
+    </script>
+{% endblock %} 

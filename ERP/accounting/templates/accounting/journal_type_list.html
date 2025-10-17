@@ -1,0 +1,199 @@
+{% extends 'accounting/_list_base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+
+<div class="main-content">
+    <div class="page-content">
+<div class="container-fluid">
+    <!-- Breadcrumbs -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            {% for breadcrumb in breadcrumbs %}
+                {% if breadcrumb.1 %}
+                    <li class="breadcrumb-item"><a href="{{ breadcrumb.1 }}">{{ breadcrumb.0 }}</a></li>
+                {% else %}
+                    <li class="breadcrumb-item active">{{ breadcrumb.0 }}</li>
+                {% endif %}
+            {% endfor %}
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">{{ page_title }}</h2>
+            <p class="text-muted mb-0">Manage journal types and their numbering configurations</p>
+        </div>
+        <div>
+            <a href="{{ create_url }}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>{{ create_button_text }}
+            </a>
+        </div>
+    </div>
+
+    <!-- Journal Types List -->
+    <div class="card">
+        <div class="card-body">
+            {% if journal_types %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Code</th>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Numbering</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for journal_type in journal_types %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-primary">{{ journal_type.code }}</span>
+                                    </td>
+                                    <td>
+                                        <strong>{{ journal_type.name }}</strong>
+                                        {% if journal_type.is_system_type %}
+                                            <span class="badge bg-secondary ms-1">System</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if journal_type.description %}
+                                            {{ journal_type.description|truncatechars:50 }}
+                                        {% else %}
+                                            <span class="text-muted">No description</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {% if journal_type.auto_numbering_prefix or journal_type.auto_numbering_suffix %}
+                                                {{ journal_type.auto_numbering_prefix|default:"" }}{{ journal_type.auto_numbering_next|stringformat:"04d" }}{{ journal_type.auto_numbering_suffix|default:"" }}
+                                            {% else %}
+                                                Manual
+                                            {% endif %}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        {% if journal_type.is_active %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Inactive</span>
+                                        {% endif %}
+                                        {% if journal_type.requires_approval %}
+                                            <span class="badge bg-warning ms-1">Approval Required</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{% url 'accounting:journal_type_detail' journal_type.journal_type_id %}" 
+                                               class="btn btn-sm btn-outline-primary" 
+                                               title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{% url 'accounting:journal_type_update' journal_type.journal_type_id %}" 
+                                               class="btn btn-sm btn-outline-secondary" 
+                                               title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            {% if not journal_type.is_system_type %}
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-outline-danger" 
+                                                        title="Delete"
+                                                        onclick="confirmDelete('{{ journal_type.name }}', '{{ journal_type.journal_type_id }}')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if is_paginated %}
+                    <nav aria-label="Journal types pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1">&laquo; First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                                </li>
+                            {% endif %}
+
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                                </span>
+                            </li>
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No Journal Types Found</h5>
+                    <p class="text-muted">Get started by creating your first journal type.</p>
+                    <a href="{{ create_url }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i>Create First Journal Type
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the journal type "<strong id="deleteJournalTypeName"></strong>"?</p>
+                <p class="text-danger"><small>This action cannot be undone and will affect all related journals.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function confirmDelete(journalTypeName, journalTypeId) {
+    document.getElementById('deleteJournalTypeName').textContent = journalTypeName;
+    document.getElementById('deleteForm').action = `/accounting/journal-types/${journalTypeId}/delete/`;
+    
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    deleteModal.show();
+}
+</script>
+{% endblock %} 

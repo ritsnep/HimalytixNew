@@ -1,0 +1,155 @@
+<!-- Line Items Table Partial -->
+<!-- Displays journal lines in an editable table format -->
+
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Journal Line Items</h5>
+        <button type="button" class="btn btn-sm btn-light" 
+                hx-get="{% url 'accounting:journal_create_line_htmx' %}"
+                hx-target="#line-formset"
+                hx-swap="beforeend"
+                title="Add new line">
+            <i class="bi bi-plus-circle"></i> Add Line
+        </button>
+    </div>
+
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 5%">#</th>
+                        <th style="width: 20%">Account</th>
+                        <th style="width: 25%">Description</th>
+                        <th style="width: 10%" class="text-end">Debit</th>
+                        <th style="width: 10%" class="text-end">Credit</th>
+                        <th style="width: 15%" class="text-end">Amount</th>
+                        <th style="width: 10%">Actions</th>
+                        <th style="width: 5%"></th>
+                    </tr>
+                </thead>
+                <tbody id="line-formset">
+                    {% for line_form in line_formset %}
+                        {% if line_form.non_field_errors %}
+                            <tr class="table-danger">
+                                <td colspan="8">
+                                    <small>
+                                        {% for error in line_form.non_field_errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </small>
+                                </td>
+                            </tr>
+                        {% endif %}
+
+                        <tr class="{% if line_form.DELETE.value %}table-secondary opacity-50{% endif %}" 
+                            id="line-{{ line_form.instance.id|default:'new' }}">
+                            <!-- Line Number -->
+                            <td>
+                                <small class="text-muted">
+                                    {{ line_form.instance.line_number|default:'New' }}
+                                </small>
+                            </td>
+
+                            <!-- Account (Read-only on edit) -->
+                            <td>
+                                {% if is_edit and line_form.instance.id %}
+                                    <small>{{ line_form.instance.account }}</small>
+                                    {{ line_form.account }}
+                                {% else %}
+                                    <div class="position-relative">
+                                        {{ line_form.account }}
+                                        {% if line_form.account.errors %}
+                                            <small class="text-danger d-block">
+                                                {{ line_form.account.errors|first }}
+                                            </small>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </td>
+
+                            <!-- Description -->
+                            <td>
+                                {{ line_form.description }}
+                                {% if line_form.description.errors %}
+                                    <small class="text-danger d-block">
+                                        {{ line_form.description.errors|first }}
+                                    </small>
+                                {% endif %}
+                            </td>
+
+                            <!-- Debit Amount -->
+                            <td class="text-end">
+                                <div class="position-relative">
+                                    {{ line_form.debit_amount }}
+                                    {% if line_form.debit_amount.errors %}
+                                        <small class="text-danger d-block">
+                                            {{ line_form.debit_amount.errors|first }}
+                                        </small>
+                                    {% endif %}
+                                </div>
+                            </td>
+
+                            <!-- Credit Amount -->
+                            <td class="text-end">
+                                <div class="position-relative">
+                                    {{ line_form.credit_amount }}
+                                    {% if line_form.credit_amount.errors %}
+                                        <small class="text-danger d-block">
+                                            {{ line_form.credit_amount.errors|first }}
+                                        </small>
+                                    {% endif %}
+                                </div>
+                            </td>
+
+                            <!-- Total Amount (Display only) -->
+                            <td class="text-end">
+                                <small class="text-muted">
+                                    {% with debit=line_form.debit_amount.value credit=line_form.credit_amount.value %}
+                                        {% if debit %}
+                                            {{ debit|floatformat:2 }}
+                                        {% elif credit %}
+                                            {{ credit|floatformat:2 }}
+                                        {% else %}
+                                            0.00
+                                        {% endif %}
+                                    {% endwith %}
+                                </small>
+                            </td>
+
+                            <!-- Actions -->
+                            <td>
+                                {% if is_edit and line_form.instance.id and not line_form.DELETE.value %}
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            hx-delete="{% url 'accounting:journal_line_delete_htmx' journal_id=journal.id line_id=line_form.instance.id %}"
+                                            hx-confirm="Delete this line?"
+                                            title="Delete line">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                {% endif %}
+                            </td>
+
+                            <!-- Delete Checkbox (Hidden) -->
+                            <td style="display: none;">
+                                {{ line_form.DELETE }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Management Form (Hidden) -->
+        {{ line_formset.management_form }}
+
+        <!-- Empty Form Template for HTMX -->
+        <template id="line-form-template">
+            {{ line_formset.empty_form.as_table }}
+        </template>
+    </div>
+
+    <div class="card-footer text-muted small">
+        <i class="bi bi-info-circle"></i>
+        {{ line_formset.total_form_count }} line(s)
+    </div>
+</div>

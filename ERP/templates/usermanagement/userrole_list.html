@@ -1,0 +1,24 @@
+{% extends 'partials/base.html' %}
+
+{% block title %}User Roles{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <h2>User Roles</h2>
+            <a href="{% url 'userrole_create' %}" class="btn btn-primary mb-3">Assign Role</a>
+            <ul>
+                {% for ur in userroles %}
+                <li>{{ ur.user }} - {{ ur.role }} - <a href="{% url 'userrole_update' ur.pk %}">Edit</a></li>
+                {% empty %}
+                <li>No assignments found.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% block footer %}
+        {% include 'partials/footer.html' %}
+    {% endblock footer %}
+</div>
+{% endblock %}

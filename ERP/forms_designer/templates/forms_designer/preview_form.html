@@ -1,0 +1,65 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h2 class="mb-0">Preview: {{ config.name }}</h2>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <h3>Header Fields</h3>
+                {% for field in form %}
+                    <div class="mb-3">
+                        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}
+                            <small id="{{ field.id_for_label }}_help" class="form-text text-muted">{{ field.help_text }}</small>
+                        {% endif %}
+                        {% if field.errors %}
+                            <div class="text-danger">
+                                {% for error in field.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+
+                <h3 class="mt-4">Line Items</h3>
+                {{ line_formset.management_form }}
+                <div id="line-items-container">
+                    {% for line_form in line_formset %}
+                        <div class="card mb-2">
+                            <div class="card-body">
+                                {% for field in line_form %}
+                                    <div class="mb-3">
+                                        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                                        {{ field }}
+                                        {% if field.help_text %}
+                                            <small id="{{ field.id_for_label }}_help" class="form-text text-muted">{{ field.help_text }}</small>
+                                        {% endif %}
+                                        {% if field.errors %}
+                                            <div class="text-danger">
+                                                {% for error in field.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </form>
+        </div>
+        <div class="card-footer text-end">
+            <a href="{% url 'forms_designer:designer' config.config_id %}" class="btn btn-secondary">Back to Designer</a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

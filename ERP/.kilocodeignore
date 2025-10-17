@@ -1,0 +1,28 @@
+# Python specific
+**/__pycache__/
+*.pyc
+
+# Django specific
+**/migrations/
+db.sqlite3
+
+# Third-party libraries and static assets
+static/libs/
+node_modules/
+
+# Log files
+logs/
+*.log
+
+# Environment folders
+venv/
+.venv/
+env/
+.env
+
+# IDE and editor specific
+.vscode/
+.idea/
+
+# Git
+.git/

@@ -1,0 +1,30 @@
+{% load crispy_forms_tags %}
+
+<div class="bg-white shadow overflow-hidden sm:rounded-lg max-w-2xl mx-auto">
+    <div class="px-4 py-5 sm:px-6">
+        <h3 class="text-lg leading-6 font-medium text-gray-900">
+            {{ title }}
+        </h3>
+        {% if subtitle %}
+        <p class="mt-1 max-w-2xl text-sm text-gray-500">
+            {{ subtitle }}
+        </p>
+        {% endif %}
+    </div>
+    <div class="border-t border-gray-200 px-4 py-5 sm:p-6">
+        <form method="post" {% if form_id %}id="{{ form_id }}"{% endif %}>
+            {% csrf_token %}
+            {% crispy form %}
+            <div class="mt-6 flex justify-end">
+                <button type="submit" class="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Save
+                </button>
+                {% if cancel_url %}
+                <a href="{{ cancel_url }}" class="ml-3 inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Cancel
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>

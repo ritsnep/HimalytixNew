@@ -1,0 +1,256 @@
+{% load static %}
+{% load table_tags %}
+
+{% block table_content %}
+<div class="card" 
+     id="{{ table_id|default:'table-component' }}"
+     hx-target="this" 
+     hx-swap="outerHTML">
+    <div class="card-body">
+        {% if filter_config and filter_config.filters %}
+        <div class="mb-4">
+            <button type="button" 
+                    class="btn btn-outline-primary" 
+                    hx-get="{% url view.filterpanel_url %}"
+                    hx-target="#filterPanel"
+                    hx-swap="innerHTML">
+                <i class="fas fa-filter me-1"></i> Filters
+                {% if request.GET %}<span class="badge bg-primary ms-1">Applied</span>{% endif %}
+            </button>
+            
+            <div id="filterPanel" class="mt-3">
+                {% include "components/base/table_filters.html" %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="d-flex gap-2">
+                {% if bulk_actions %}
+                <div class="dropdown">
+                    <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-cog me-1"></i> Actions
+                    </button>
+                    <ul class="dropdown-menu">
+                        {% for action in bulk_actions %}
+                        <li>
+                            <button class="dropdown-item" 
+                                   hx-post="{% url view.bulk_action_url %}"
+                                   hx-vals='{"action": "{{ action.name }}"}'
+                                   hx-include=".row-checkbox:checked"
+                                   {% if action.confirm %}
+                                   hx-confirm="{{ action.confirm }}"
+                                   {% endif %}>
+                                {% if action.icon %}<i class="{{ action.icon }} me-2"></i>{% endif %}
+                                {{ action.label }}
+                            </button>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="d-flex gap-2">
+                {% if export_formats %}
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-download me-1"></i> Export
+                    </button>
+                    <ul class="dropdown-menu">
+                        {% for format in export_formats %}
+                        <li>
+                            <a class="dropdown-item" 
+                               href="{% url view.export_url %}?format={{ format.name }}&{{ request.GET.urlencode }}">
+                                <i class="{{ format.icon }} me-2"></i> {{ format.label }}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <div class="btn-group">
+                    <button class="btn btn-light" 
+                            hx-get="{{ request.path }}"
+                            hx-target="#{{ table_id|default:'table-component' }}"
+                            title="Refresh">
+                        <i class="fas fa-sync"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover" id="{{ table_id|default:'datatable' }}">
+                <thead>
+                    <tr>
+                        {% if bulk_actions %}
+                        <th style="width: 20px;">
+                            <input type="checkbox" class="form-check-input select-all">
+                        </th>
+                        {% endif %}
+                        
+                        {% for column in columns %}
+                        <th {% if column.width %}style="width: {{ column.width }}"{% endif %} 
+                            class="{% if column.sortable %}sortable{% endif %} {% if column.align %}text-{{ column.align }}{% endif %}">
+                            {% if column.sortable %}
+                            <button class="btn btn-link p-0 text-decoration-none"
+                                    hx-get="{{ request.path }}"
+                                    hx-target="#{{ table_id|default:'table-component' }}"
+                                    hx-include="[name='search']"
+                                    hx-vals='{"sort": "{{ column.name }}",
+                                             "order": "{% if sort_by == column.name and not sort_desc %}desc{% else %}asc{% endif %}"}'
+                                    type="button">
+                                {{ column.label }}
+                                {% if sort_by == column.name %}
+                                <i class="fas fa-sort-{{ sort_desc|yesno:'down,up' }}"></i>
+                                {% endif %}
+                            </button>
+                            {% else %}
+                            {{ column.label }}
+                            {% endif %}
+                        </th>
+                        {% endfor %}
+                        
+                        {% if row_actions %}
+                        <th style="width: 100px;">Actions</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in object_list %}
+                    <tr data-id="{{ item.pk }}">
+                        {% if bulk_actions %}
+                        <td>
+                            <input type="checkbox" name="selected" value="{{ item.pk }}" class="form-check-input row-checkbox">
+                        </td>
+                        {% endif %}
+                        
+                        {% for column in columns %}
+                        <td class="{% if column.align %}text-{{ column.align }}{% endif %}">
+                            {% render_column_value item column %}
+                        </td>
+                        {% endfor %}
+                        
+                        {% if row_actions %}
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                {% for action in row_actions %}
+                                {% if action.dialog %}
+                                <button type="button" 
+                                        class="btn btn-{{ action.style|default:'light' }}"
+                                        hx-get="{% url action.dialog_url item.pk %}"
+                                        hx-target="#{{ action.dialog }}"
+                                        title="{{ action.tooltip|default:action.label }}">
+                                    {% if action.icon %}<i class="{{ action.icon }}"></i>{% endif %}
+                                    {% if not action.icon_only %}<span>{{ action.label }}</span>{% endif %}
+                                </button>
+                                {% else %}
+                                <button type="button" 
+                                        class="btn btn-{{ action.style|default:'light' }}"
+                                        hx-{{ action.method|default:'post' }}="{% url action.url item.pk %}"
+                                        {% if action.confirm %}
+                                        hx-confirm="{{ action.confirm }}"
+                                        {% endif %}
+                                        {% if action.target %}
+                                        hx-target="{{ action.target }}"
+                                        {% else %}
+                                        hx-target="#{{ table_id|default:'table-component' }}"
+                                        {% endif %}
+                                        title="{{ action.tooltip|default:action.label }}">
+                                    {% if action.icon %}<i class="{{ action.icon }}"></i>{% endif %}
+                                    {% if not action.icon_only %}<span>{{ action.label }}</span>{% endif %}
+                                </button>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{{ columns|length|add:1 }}" class="text-center text-muted py-4">
+                            {{ empty_message|default:"No records found." }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if is_paginated %}
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <div class="text-muted">
+                Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ paginator.count }} entries
+            </div>
+            
+            <nav aria-label="Page navigation">
+                <ul class="pagination mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <button class="page-link" 
+                                hx-get="{{ request.path }}?page=1{{ query_params }}"
+                                hx-target="#{{ table_id|default:'table-component' }}">&laquo;</button>
+                    </li>
+                    <li class="page-item">
+                        <button class="page-link" 
+                                hx-get="{{ request.path }}?page={{ page_obj.previous_page_number }}{{ query_params }}"
+                                hx-target="#{{ table_id|default:'table-component' }}">&lsaquo;</button>
+                    </li>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                    {% if num == page_obj.number %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <button class="page-link" 
+                                hx-get="{{ request.path }}?page={{ num }}{{ query_params }}"
+                                hx-target="#{{ table_id|default:'table-component' }}">{{ num }}</button>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <button class="page-link" 
+                                hx-get="{{ request.path }}?page={{ page_obj.next_page_number }}{{ query_params }}"
+                                hx-target="#{{ table_id|default:'table-component' }}">&rsaquo;</button>
+                    </li>
+                    <li class="page-item">
+                        <button class="page-link" 
+                                hx-get="{{ request.path }}?page={{ page_obj.paginator.num_pages }}{{ query_params }}"
+                                hx-target="#{{ table_id|default:'table-component' }}">&raquo;</button>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block table_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle select all checkbox
+    htmx.on('click', '.select-all', function(evt) {
+        const checkboxes = evt.target.closest('table').querySelectorAll('.row-checkbox');
+        checkboxes.forEach(cb => cb.checked = evt.target.checked);
+        updateBulkActionsState();
+    });
+
+    // Handle individual checkboxes
+    htmx.on('click', '.row-checkbox', updateBulkActionsState);
+
+    function updateBulkActionsState() {
+        const hasChecked = document.querySelector('.row-checkbox:checked') !== null;
+        document.querySelectorAll('[hx-include=".row-checkbox:checked"]').forEach(btn => {
+            btn.classList.toggle('disabled', !hasChecked);
+        });
+    }
+});
+</script>
+{% endblock %}

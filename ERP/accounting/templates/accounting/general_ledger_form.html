@@ -1,0 +1,26 @@
+{% extends "partials/base.html" %}
+{% load i18n %}
+{% load crispy_forms_tags %}
+
+{% block title %} {% trans "General Ledger" %} {% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="card-title">{% trans "General Ledger" %}</h4>
+                    <p class="card-title-desc">{% trans "Create a new General Ledger entry." %}</p>
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        <div class="d-flex justify-content-end">
+                            <a href="{% url 'accounting:generalledger-list' %}" class="btn btn-secondary waves-effect waves-light">{% trans "Cancel" %}</a>
+                            <button type="submit" class="btn btn-primary waves-effect waves-light ms-2">{% trans "Save" %}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,6 @@
+<tbody hx-post="{% url 'accounting:update_totals' %}" hx-trigger="change" hx-target="#balance-footer" hx-swap="innerHTML">
+  {{ formset.management_form }}
+  {% for form in formset %}
+    {% include 'accounting/partials/journal_line_form.html' with form=form %}
+  {% endfor %}
+</tbody>

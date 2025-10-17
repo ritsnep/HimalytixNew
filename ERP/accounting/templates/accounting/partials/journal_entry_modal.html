@@ -1,0 +1,32 @@
+<div class="modal fade" id="journalEntryModal" tabindex="-1" aria-labelledby="journalEntryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="journalEntryModalLabel">New Journal Entry</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="journal-entry-form" action="{% url 'accounting:voucher_wizard' %}" method="post">
+                    {% csrf_token %}
+                    {{ form.as_p }}
+                    <div id="journal-lines-formset">
+                        {{ formset.management_form }}
+                        {% for form in formset %}
+                            <div class="row journal-line-form">
+                                <div class="col-md-4">{{ form.account }}</div>
+                                <div class="col-md-3">{{ form.debit_amount }}</div>
+                                <div class="col-md-3">{{ form.credit_amount }}</div>
+                                <div class="col-md-2"><button type="button" class="btn btn-danger btn-sm remove-line">Remove</button></div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <button type="button" id="add-line" class="btn btn-secondary btn-sm">Add Line</button>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Save Journal</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

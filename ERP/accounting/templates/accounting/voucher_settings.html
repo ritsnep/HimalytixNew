@@ -1,0 +1,101 @@
+{% extends 'accounting/_form_base.html' %}
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <h2>Voucher Settings</h2>
+        <form id="voucher-settings-form">
+            <h3>Fields</h3>
+            <div>
+                <label>Date <input id="date-required" type="checkbox"> Required</label>
+                <span class="help">Transaction date</span>
+            </div>
+            <div>
+                <label>Reference <input id="reference-required" type="checkbox"> Required</label>
+                <span class="help">Alphanumeric, optional</span>
+            </div>
+            <h3>Rules</h3>
+            <div>
+                <textarea id="rules-json" rows="6"></textarea>
+                <span class="help">Edit rules in JSONLogic format</span>
+            </div>
+            <h3>Feature Flags</h3>
+            <label><input id="enable-custom-hooks" type="checkbox"> Enable Custom Hooks</label>
+            <button type="submit">Save</button>
+            <button type="button" id="preview-diff">Preview Diff</button>
+            <button type="button" id="rollback">Rollback</button>
+        </form>
+        <div id="diff-preview"></div>
+    </div>
+</div>
+<script>
+// Load settings from context
+var settings = JSON.parse('{{ settings|escapejs }}');
+// Set initial values
+window.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('date-required').checked = settings.fields.header.date.required;
+    document.getElementById('reference-required').checked = settings.fields.header.reference.required;
+    document.getElementById('rules-json').value = JSON.stringify(settings.rules, null, 2);
+    document.getElementById('enable-custom-hooks').checked = settings.feature_flags.enable_custom_hooks;
+});
+
+function collectSettings() {
+    return JSON.stringify({
+        version: settings.version,
+        fields: {
+            header: {
+                date: { ...settings.fields.header.date, required: document.getElementById('date-required').checked },
+                reference: { ...settings.fields.header.reference, required: document.getElementById('reference-required').checked }
+            },
+            lines: settings.fields.lines
+        },
+        rules: JSON.parse(document.getElementById('rules-json').value),
+        feature_flags: {
+            ...settings.feature_flags,
+            enable_custom_hooks: document.getElementById('enable-custom-hooks').checked
+        }
+    }, null, 2);
+}
+
+document.getElementById('voucher-settings-form').onsubmit = function(e) {
+    e.preventDefault();
+    const settings_json = collectSettings();
+    fetch('', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'settings_json=' + encodeURIComponent(settings_json)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Settings saved!');
+            window.location.reload();
+        } else {
+            alert('Error: ' + (data.errors || 'Unknown error'));
+        }
+    });
+};
+document.getElementById('preview-diff').onclick = function() {
+    const settings_json = collectSettings();
+    fetch('{% url "accounting:voucher_settings_diff" %}', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'settings_json=' + encodeURIComponent(settings_json)
+    })
+    .then(r => r.json())
+    .then(data => {
+        document.getElementById('diff-preview').textContent = data.diff;
+    });
+};
+document.getElementById('rollback').onclick = function() {
+    if (!confirm('Are you sure you want to rollback to the previous settings?')) return;
+    fetch('{% url "accounting:voucher_settings_rollback" %}', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) window.location.reload();
+    });
+};
+</script>
+{% endblock %}

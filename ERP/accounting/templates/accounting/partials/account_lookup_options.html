@@ -1,0 +1,7 @@
+{% for acc in accounts %}
+  <button type="button" class="dropdown-item je-acc-opt" data-value="{{ acc.id }}" data-label="{{ acc.account_code }} - {{ acc.name }}">
+    {{ acc.account_code }} – {{ acc.name }}
+  </button>
+{% empty %}
+  <div class="dropdown-item text-muted">No results</div>
+{% endfor %}

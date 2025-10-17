@@ -1,0 +1,11 @@
+{
+  "column_order": [
+    "journal_date",
+    "account",
+    "debit",
+    "credit",
+    "description"
+  ],
+  "default_density": "compact",
+  "theme": "light"
+}

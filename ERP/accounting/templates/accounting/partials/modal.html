@@ -1,0 +1,34 @@
+<div id="preview-modal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Preview Ledger Impact</h3>
+            <button id="close-preview" class="modal-close-button" aria-label="Close preview">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <table class="preview-table">
+                <thead class="preview-table-header">
+                    <tr>
+                        <th class="preview-header-cell">Account</th>
+                        <th class="preview-header-cell">Description</th>
+                        <th class="preview-header-cell">Debit</th>
+                        <th class="preview-header-cell">Credit</th>
+                        <th class="preview-header-cell">Impact</th>
+                    </tr>
+                </thead>
+                <tbody id="preview-content" class="preview-table-body">
+                    <!-- Preview content will be added here -->
+                </tbody>
+            </table>
+        </div>
+        <div class="modal-footer">
+            <button id="cancel-preview" class="button-secondary">
+                Cancel
+            </button>
+            <button class="button-primary">
+                Confirm and Post
+            </button>
+        </div>
+    </div>
+</div>

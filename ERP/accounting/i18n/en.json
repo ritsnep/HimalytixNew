@@ -1,0 +1,8 @@
+{
+  "journal_date": "Journal Date",
+  "journal_entry_title": "Journal Entry",
+  "account": "Account",
+  "debit": "Debit",
+  "credit": "Credit",
+  "description": "Description"
+}

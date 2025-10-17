@@ -1,0 +1,120 @@
+{% extends "metadata/base.html" %}
+
+{% block metadata_content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="mb-0">{{ metadata.label }}</h3>
+        <div>
+            <button class="btn btn-outline-secondary btn-sm"
+                    hx-get="{% url 'metadata:get_entity_schema' entity_name %}"
+                    hx-target="#schema-modal .modal-body"
+                    hx-trigger="click"
+                    data-bs-toggle="modal"
+                    data-bs-target="#schema-modal">
+                View Schema
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <form hx-post="{% url 'metadata:validate_entity_form' entity_name %}"
+              hx-target="#form-errors"
+              hx-swap="outerHTML"
+              hx-indicator="#form-indicator">
+            
+            {% csrf_token %}
+            
+            <div id="form-errors"></div>
+            
+            {{ form_html|safe }}
+            
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary">
+                    Save
+                    <span id="form-indicator" class="htmx-indicator">
+                        <span class="loading-spinner"></span>
+                    </span>
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="resetForm()">
+                    Reset
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Schema Modal -->
+<div class="modal fade" id="schema-modal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Entity Schema</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="htmx-indicator">
+                    <div class="d-flex justify-content-center">
+                        <div class="loading-spinner"></div>
+                    </div>
+                </div>
+                <pre id="schema-content"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function resetForm() {
+    const form = document.querySelector('form');
+    form.reset();
+    const errorDiv = document.getElementById('form-errors');
+    if (errorDiv) {
+        errorDiv.innerHTML = '';
+    }
+    // Remove error classes
+    document.querySelectorAll('.form-group.has-error').forEach(el => {
+        el.classList.remove('has-error');
+    });
+}
+
+// Handle form submission response
+document.body.addEventListener('htmx:afterRequest', function(evt) {
+    if (evt.detail.target.id === 'form-errors') {
+        const response = JSON.parse(evt.detail.xhr.response);
+        if (response.valid) {
+            // Form is valid, you can handle success here
+            // For example, redirect or show success message
+            window.location.href = '{% url "metadata:get_entity_form" entity_name %}';
+        } else {
+            // Show validation errors
+            const errorDiv = document.getElementById('form-errors');
+            let errorHtml = '<div class="alert alert-danger">';
+            for (const [field, errors] of Object.entries(response.errors)) {
+                if (field === '__all__') {
+                    errorHtml += `<div>${errors.join(', ')}</div>`;
+                } else {
+                    const formGroup = document.querySelector(`[data-field="${field}"]`);
+                    if (formGroup) {
+                        formGroup.classList.add('has-error');
+                        const errorMessage = document.createElement('div');
+                        errorMessage.className = 'error-message';
+                        errorMessage.textContent = errors.join(', ');
+                        formGroup.appendChild(errorMessage);
+                    }
+                }
+            }
+            errorHtml += '</div>';
+            errorDiv.innerHTML = errorHtml;
+        }
+    }
+});
+
+// Handle schema modal content
+document.body.addEventListener('htmx:afterRequest', function(evt) {
+    if (evt.detail.target.closest('#schema-modal')) {
+        const response = JSON.parse(evt.detail.xhr.response);
+        const schemaContent = document.getElementById('schema-content');
+        schemaContent.textContent = JSON.stringify(response.schema, null, 2);
+    }
+});
+</script>
+{% endblock %} 

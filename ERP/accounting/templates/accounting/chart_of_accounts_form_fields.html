@@ -1,0 +1,101 @@
+{% load static %}
+
+<!-- Bank Account Fields -->
+{% if form.is_bank_account.value %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="mb-3">
+            <label for="{{ form.bank_name.id_for_label }}" class="form-label">Bank Name</label>
+            {{ form.bank_name }}
+            {% if form.bank_name.errors %}
+            <div class="error-message">{{ form.bank_name.errors }}</div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="mb-3">
+            <label for="{{ form.bank_branch.id_for_label }}" class="form-label">Bank Branch</label>
+            {{ form.bank_branch }}
+            {% if form.bank_branch.errors %}
+            <div class="error-message">{{ form.bank_branch.errors }}</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-6">
+        <div class="mb-3">
+            <label for="{{ form.account_number.id_for_label }}" class="form-label required-field">Account Number</label>
+            {{ form.account_number }}
+            {% if form.account_number.errors %}
+            <div class="error-message">{{ form.account_number.errors }}</div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="mb-3">
+            <label for="{{ form.swift_code.id_for_label }}" class="form-label">SWIFT Code</label>
+            {{ form.swift_code }}
+            {% if form.swift_code.errors %}
+            <div class="error-message">{{ form.swift_code.errors }}</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Control Account Fields -->
+{% if form.is_control_account.value %}
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="mb-3">
+            <label for="{{ form.control_account_type.id_for_label }}" class="form-label">Control Account Type</label>
+            {{ form.control_account_type }}
+            {% if form.control_account_type.errors %}
+            <div class="error-message">{{ form.control_account_type.errors }}</div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="mb-3">
+            <label for="{{ form.last_reconciled_date.id_for_label }}" class="form-label">Last Reconciled Date</label>
+            {{ form.last_reconciled_date }}
+            {% if form.last_reconciled_date.errors %}
+            <div class="error-message">{{ form.last_reconciled_date.errors }}</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Hidden Fields -->
+{{ form.account_code }}
+{{ form.account_level }}
+{{ form.tree_path }}
+{{ form.display_order }}
+
+<script>
+// Reinit local form scripts after HTMX swaps
+document.addEventListener('htmx:afterSwap', function(evt) {
+    if (evt.target && evt.target.id === 'dynamic-fields') {
+        if (window.initCoaForm) window.initCoaForm('fieldsSwap');
+    }
+});
+</script> 
+<script>
+// Toggle required attribute for bank account number
+function toggleBankRequirements() {
+    var isBank = document.getElementById('id_is_bank_account');
+    var acctNo = document.getElementById('id_account_number');
+    if (isBank && acctNo) {
+        acctNo.required = !!isBank.checked;
+        acctNo.toggleAttribute('required', isBank.checked);
+    }
+}
+document.addEventListener('DOMContentLoaded', toggleBankRequirements);
+document.body.addEventListener('change', function(e){
+    if (e.target && e.target.id === 'id_is_bank_account') {
+        toggleBankRequirements();
+    }
+});
+</script>

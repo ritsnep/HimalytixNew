@@ -1,0 +1,1776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Journal Entry - ERP Module</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --secondary-color: #64748b;
+            --success-color: #059669;
+            --warning-color: #d97706;
+            --error-color: #dc2626;
+            --bg-color: #f8fafc;
+            --surface-color: #ffffff;
+            --border-color: #e2e8f0;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --focus-ring: 0 0 0 2px rgba(37, 99, 235, 0.2);
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --border-radius: 6px;
+            --font-size-sm: 0.875rem;
+            --font-size-base: 1rem;
+            --font-size-lg: 1.125rem;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: var(--font-size-base);
+            line-height: 1.5;
+            color: var(--text-primary);
+            background-color: var(--bg-color);
+        }
+
+        /* Layout */
+        .app-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 320px;
+            background: var(--surface-color);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar.collapsed {
+            width: 0;
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-bottom: none;
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .header h1::before {
+            content: "📊";
+            font-size: 1.75rem;
+        }
+
+        .journal-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--surface-color);
+            margin: 0.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .journal-header {
+            padding: 2rem;
+            border-bottom: 1px solid var(--border-color);
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            position: relative;
+        }
+
+        .journal-header::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        /* Form Controls */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+            color: var(--text-primary);
+            font-size: var(--font-size-sm);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-size: var(--font-size-base);
+            transition: all 0.2s;
+            min-height: 44px;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: var(--focus-ring);
+        }
+
+        .form-input:invalid {
+            border-color: var(--error-color);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-height: 44px;
+            min-width: 44px;
+        }
+
+        .btn:focus {
+            outline: none;
+            box-shadow: var(--focus-ring);
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            background: var(--bg-color);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: #f1f5f9;
+        }
+
+        /* Journal Header */
+        .journal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            background: #fafbfc;
+        }
+
+        .header-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        /* Journal Lines Grid */
+        .journal-lines {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .grid-container {
+            height: 100%;
+            overflow: auto;
+            position: relative;
+        }
+
+        .grid-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            position: relative;
+        }
+
+        .grid-header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: var(--bg-color);
+        }
+
+        /* Enhanced Journal Entry Focused Design */
+        .grid-header th {
+            padding: 1rem 0.75rem;
+            text-align: left;
+            font-weight: 700;
+            font-size: var(--font-size-sm);
+            color: var(--text-primary);
+            border-bottom: 3px solid var(--primary-color);
+            border-right: 1px solid var(--border-color);
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            position: relative;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .grid-row {
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .grid-row:hover {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-left-color: var(--primary-color);
+            transform: translateX(2px);
+        }
+
+        .grid-row.selected {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            border-left-color: var(--primary-color);
+            box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.2);
+        }
+
+        .grid-row.error {
+            background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+            border-left-color: var(--error-color);
+        }
+
+        .grid-cell {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+            position: relative;
+            min-height: 52px;
+            vertical-align: middle;
+        }
+
+        .grid-cell input, .grid-cell select {
+            width: 100%;
+            border: 1px solid transparent;
+            background: transparent;
+            padding: 0.5rem;
+            font-size: var(--font-size-sm);
+            color: var(--text-primary);
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .grid-cell input:focus, .grid-cell select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .grid-cell.editing {
+            background: white;
+            box-shadow: inset 0 0 0 2px var(--primary-color);
+            border-radius: 4px;
+        }
+
+        /* Validation & Errors */
+        .validation-error {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--error-color);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            z-index: 20;
+            border-radius: 0 0 4px 4px;
+        }
+
+        .balance-display {
+            position: sticky;
+            bottom: 0;
+            background: var(--surface-color);
+            border-top: 2px solid var(--border-color);
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+        }
+
+        .balance-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .balance-amount {
+            font-size: var(--font-size-lg);
+        }
+
+        .balance-amount.balanced {
+            color: var(--success-color);
+        }
+
+        .balance-amount.unbalanced {
+            color: var(--error-color);
+        }
+
+        /* Sidebar Panels */
+        .sidebar-panel {
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .panel-header {
+            padding: 1rem;
+            background: var(--bg-color);
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+            font-size: var(--font-size-sm);
+            display: flex;
+            justify-content: between;
+            align-items: center;
+        }
+
+        .panel-content {
+            padding: 1rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .error-list {
+            list-style: none;
+        }
+
+        .error-item {
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+            background: #fef2f2;
+            border-left: 3px solid var(--error-color);
+            border-radius: 0 var(--border-radius) var(--border-radius) 0;
+            font-size: var(--font-size-sm);
+            cursor: pointer;
+        }
+
+        .error-item:hover {
+            background: #fecaca;
+        }
+
+        /* AI Suggestions */
+        .suggestion-item {
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+        }
+
+        .suggestion-item:hover {
+            border-color: var(--primary-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .suggestion-account {
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .suggestion-amount {
+            color: var(--text-secondary);
+            font-size: var(--font-size-sm);
+        }
+
+        /* Keyboard Shortcut Palette */
+        .shortcut-palette {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            width: 500px;
+            max-height: 400px;
+            z-index: 1000;
+            display: none;
+        }
+
+        .shortcut-palette.visible {
+            display: block;
+        }
+
+        .palette-search {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-bottom: 1px solid var(--border-color);
+            font-size: var(--font-size-base);
+        }
+
+        .palette-search:focus {
+            outline: none;
+        }
+
+        .shortcut-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .shortcut-item {
+            padding: 0.75rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .shortcut-item:hover,
+        .shortcut-item.selected {
+            background: var(--bg-color);
+        }
+
+        .shortcut-key {
+            background: var(--bg-color);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-family: monospace;
+        }
+
+        /* Drag & Drop */
+        .drop-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            text-align: center;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            margin: 1rem 0;
+        }
+
+        .drop-zone.drag-over {
+            border-color: var(--primary-color);
+            background: #dbeafe;
+        }
+
+        /* Loading & Status */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border-color);
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                position: fixed;
+                top: 0;
+                right: -100%;
+                height: 100vh;
+                z-index: 500;
+                transition: right 0.3s;
+            }
+
+            .sidebar.open {
+                right: 0;
+            }
+
+            .header-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* High Contrast Mode */
+        @media (prefers-contrast: high) {
+            :root {
+                --border-color: #000000;
+                --text-secondary: #000000;
+            }
+        }
+
+        /* Reduced Motion */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Print Styles */
+        @media print {
+            .sidebar, .shortcut-palette {
+                display: none !important;
+            }
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 6px;
+            background: var(--primary-color);
+            color: white;
+            padding: 8px;
+            text-decoration: none;
+            border-radius: 4px;
+            z-index: 1000;
+        }
+
+        .skip-link:focus {
+            top: 6px;
+        }
+
+        /* Currency Inputs */
+        .currency-input {
+            text-align: right;
+            font-family: monospace;
+        }
+
+        .currency-symbol {
+            position: absolute;
+            left: 0.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+
+        /* Status Indicators */
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .status-draft { background: var(--secondary-color); }
+        .status-park { background: var(--warning-color); }
+        .status-approve { background: var(--primary-color); }
+        .status-post { background: var(--success-color); }
+
+        /* Toolbar */
+        .toolbar {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-group {
+            display: flex;
+            gap: 0.25rem;
+            align-items: center;
+        }
+
+        .toolbar-separator {
+            width: 1px;
+            height: 24px;
+            background: var(--border-color);
+            margin: 0 0.5rem;
+        }
+
+        /* Attachment Preview */
+        .attachment-preview {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            background: var(--bg-color);
+            border-radius: var(--border-radius);
+            margin-top: 0.5rem;
+        }
+
+        .attachment-thumbnail {
+            width: 40px;
+            height: 40px;
+            background: var(--border-color);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* Recurring Template */
+        .template-badge {
+            background: var(--warning-color);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        /* Multi-currency display */
+        .fx-display {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        .period-warning {
+            background: #fef3c7;
+            border: 1px solid var(--warning-color);
+            padding: 0.75rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .warning-icon {
+            color: var(--warning-color);
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Skip Navigation -->
+        <a href="#main-content" class="skip-link">Skip to main content</a>
+
+        <!-- Header -->
+        <header class="header" role="banner">
+            <h1>Journal Entry</h1>
+            <div class="toolbar-group">
+                <button class="btn btn-secondary" id="shortcut-btn" aria-label="Open keyboard shortcuts" title="Ctrl+K">
+                    <span aria-hidden="true">⌘K</span>
+                </button>
+                <button class="btn btn-secondary" id="help-btn" aria-label="Help">
+                    <span aria-hidden="true">?</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content" id="main-content">
+            <div class="journal-panel">
+                <!-- Period Warning -->
+                <div class="period-warning" id="period-warning" style="display: none;" role="alert">
+                    <span class="warning-icon" aria-hidden="true">⚠️</span>
+                    <span id="period-warning-text"></span>
+                </div>
+
+                <!-- Journal Header -->
+                <section class="journal-header" aria-labelledby="header-title">
+                    <h2 id="header-title" class="sr-only">Journal Entry Header</h2>
+                    <div class="header-grid">
+                        <div class="form-group">
+                            <label for="journal-date" class="form-label">Journal Date *</label>
+                            <input type="date" id="journal-date" class="form-input" required aria-required="true">
+                        </div>
+                        <div class="form-group">
+                            <label for="document-no" class="form-label">Document No *</label>
+                            <input type="text" id="document-no" class="form-input" required aria-required="true" aria-describedby="doc-no-help">
+                            <div id="doc-no-help" class="sr-only">Auto-generated if left blank</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="reference" class="form-label">Reference</label>
+                            <input type="text" id="reference" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="currency" class="form-label">Currency</label>
+                            <select id="currency" class="form-input">
+                                <option value="USD">USD - US Dollar</option>
+                                <option value="EUR">EUR - Euro</option>
+                                <option value="GBP">GBP - British Pound</option>
+                                <option value="NPR">NPR - Nepalese Rupee</option>
+                            </select>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Toolbar -->
+                <div class="toolbar" role="toolbar" aria-label="Journal entry actions">
+                    <div class="toolbar-group">
+                        <button class="btn btn-primary" id="add-line-btn" aria-label="Add new line">
+                            <span aria-hidden="true">+</span> Add Line
+                        </button>
+                        <button class="btn btn-secondary" id="delete-line-btn" aria-label="Delete selected line" disabled>
+                            <span aria-hidden="true">−</span> Delete
+                        </button>
+                    </div>
+                    <div class="toolbar-separator" aria-hidden="true"></div>
+                    <div class="toolbar-group">
+                        <button class="btn btn-secondary" id="import-btn" aria-label="Import from CSV" title="Import CSV file">
+                            <span aria-hidden="true">📁</span> Import CSV
+                        </button>
+                        <button class="btn btn-secondary" id="export-btn" aria-label="Export to CSV" title="Export to CSV">
+                            <span aria-hidden="true">💾</span> Export
+                        </button>
+                    </div>
+                    <div class="toolbar-separator" aria-hidden="true"></div>
+                    <div class="toolbar-group">
+                        <button class="btn btn-secondary" id="copy-btn" aria-label="Copy selected lines" title="Ctrl+C" disabled>
+                            <span aria-hidden="true">📋</span> Copy
+                        </button>
+                        <button class="btn btn-secondary" id="paste-btn" aria-label="Paste lines" title="Ctrl+V" disabled>
+                            <span aria-hidden="true">📄</span> Paste
+                        </button>
+                    </div>
+                    <div class="toolbar-separator" aria-hidden="true"></div>
+                    <div class="toolbar-group">
+                        <button class="btn btn-secondary" id="template-btn" aria-label="Save as template" title="Save as recurring template">
+                            <span aria-hidden="true">📝</span> Template
+                        </button>
+                        <button class="btn btn-secondary" id="recurring-btn" aria-label="Set up recurring entry" title="Schedule recurring entry">
+                            <span aria-hidden="true">🔄</span> Recurring
+                        </button>
+                    </div>
+                </div>
+
+                <!-- File Drop Zone -->
+                <div class="drop-zone" id="drop-zone" style="display: none;">
+                    <p>Drop CSV files or receipts here to import</p>
+                    <p><small>Or click to browse files</small></p>
+                    <input type="file" id="file-input" multiple accept=".csv,.jpg,.jpeg,.png,.pdf" style="display: none;">
+                </div>
+
+                <!-- Journal Lines Grid -->
+                <div class="journal-lines">
+                    <div class="grid-container" role="grid" aria-label="Journal entry lines">
+                        <table class="grid-table">
+                            <thead class="grid-header">
+                                <tr role="row">
+                                    <th role="columnheader" style="width: 40px;">#</th>
+                                    <th role="columnheader" style="width: 150px;">Account Code *</th>
+                                    <th role="columnheader" style="width: 200px;">Description *</th>
+                                    <th role="columnheader" style="width: 120px;">Debit</th>
+                                    <th role="columnheader" style="width: 120px;">Credit</th>
+                                    <th role="columnheader" style="width: 100px;">Department</th>
+                                    <th role="columnheader" style="width: 100px;">Project</th>
+                                    <th role="columnheader" style="width: 80px;">Currency</th>
+                                    <th role="columnheader" style="width: 100px;">Exchange Rate</th>
+                                    <th role="columnheader" style="width: 80px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="grid-body" role="rowgroup">
+                                <!-- Dynamic rows will be inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Loading Overlay -->
+                    <div class="loading-overlay" id="loading-overlay" style="display: none;" aria-hidden="true">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+
+                <!-- Balance Display -->
+                <div class="balance-display" role="status" aria-live="polite">
+                    <div class="balance-item">
+                        <span class="form-label">Total Debit</span>
+                        <span class="balance-amount" id="total-debit">0.00</span>
+                    </div>
+                    <div class="balance-item">
+                        <span class="form-label">Total Credit</span>
+                        <span class="balance-amount" id="total-credit">0.00</span>
+                    </div>
+                    <div class="balance-item">
+                        <span class="form-label">Difference</span>
+                        <span class="balance-amount" id="balance-diff">0.00</span>
+                    </div>
+                    <div class="balance-item">
+                        <button class="btn btn-primary" id="post-btn" disabled>Post Journal</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <aside class="sidebar" role="complementary" aria-label="Validation and assistance panel">
+                <!-- Validation Errors Panel -->
+                <div class="sidebar-panel">
+                    <div class="panel-header">
+                        <span>Validation Errors</span>
+                        <span id="error-count" class="error-count">0</span>
+                    </div>
+                    <div class="panel-content">
+                        <ul id="error-list" class="error-list" role="list" aria-live="polite">
+                            <li role="listitem">No errors found</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- AI Suggestions Panel -->
+                <div class="sidebar-panel">
+                    <div class="panel-header">
+                        <span>AI Suggestions</span>
+                        <button class="btn btn-secondary" id="refresh-suggestions" aria-label="Refresh suggestions" style="padding: 0.25rem;">
+                            <span aria-hidden="true">🔄</span>
+                        </button>
+                    </div>
+                    <div class="panel-content">
+                        <div id="suggestions-list">
+                            <div class="suggestion-item" role="button" tabindex="0">
+                                <div class="suggestion-account">Office Supplies</div>
+                                <div class="suggestion-amount">Based on recent entries</div>
+                            </div>
+                            <div class="suggestion-item" role="button" tabindex="0">
+                                <div class="suggestion-account">Travel Expenses</div>
+                                <div class="suggestion-amount">Frequently used account</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Attachments Panel -->
+                <div class="sidebar-panel">
+                    <div class="panel-header">
+                        <span>Attachments</span>
+                        <button class="btn btn-secondary" id="attach-btn" aria-label="Add attachment" style="padding: 0.25rem;">
+                            <span aria-hidden="true">📎</span>
+                        </button>
+                    </div>
+                    <div class="panel-content">
+                        <div id="attachments-list">
+                            <p class="text-secondary">No attachments</p>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <!-- Keyboard Shortcut Palette -->
+        <div class="shortcut-palette" id="shortcut-palette" role="dialog" aria-labelledby="palette-title" aria-modal="true">
+            <h2 id="palette-title" class="sr-only">Keyboard Shortcuts</h2>
+            <input type="text" class="palette-search" id="palette-search" placeholder="Search commands..." aria-label="Search commands">
+            <div class="shortcut-list" id="shortcut-list" role="listbox">
+                <!-- Dynamic shortcut items -->
+            </div>
+        </div>
+    </div>
+
+            <script>
+        // Configuration Management
+        const CONFIG = {
+            ui: {
+                columnOrder: ['line', 'account', 'description', 'debit', 'credit', 'department', 'project', 'currency', 'rate', 'actions'],
+                defaultDensity: 'comfortable',
+                theme: 'light',
+                autoSave: true,
+                validateOnType: true
+            },
+            validation: [
+                { field: 'account', expression: 'value.length >= 3', severity: 'error', message: 'Account code must be at least 3 characters' },
+                { field: 'description', expression: 'value.trim().length > 0', severity: 'error', message: 'Description is required' },
+                { field: 'amount', expression: 'parseFloat(value) > 0', severity: 'error', message: 'Amount must be greater than 0' }
+            ],
+            shortcuts: [
+                { key: 'Ctrl+K', action: 'openShortcuts', description: 'Open command palette' },
+                { key: 'Ctrl+N', action: 'addLine', description: 'Add new journal line' },
+                { key: 'Ctrl+D', action: 'deleteLine', description: 'Delete selected line' },
+                { key: 'Ctrl+S', action: 'save', description: 'Save journal entry' },
+                { key: 'Ctrl+P', action: 'post', description: 'Post journal entry' },
+                { key: 'F2', action: 'editCell', description: 'Edit selected cell' },
+                { key: 'Escape', action: 'cancelEdit', description: 'Cancel current edit' },
+                { key: 'Tab', action: 'nextCell', description: 'Move to next cell' },
+                { key: 'Shift+Tab', action: 'prevCell', description: 'Move to previous cell' },
+                { key: 'Enter', action: 'nextRow', description: 'Move to next row' },
+                { key: 'Ctrl+C', action: 'copy', description: 'Copy selected lines' },
+                { key: 'Ctrl+V', action: 'paste', description: 'Paste lines' },
+                { key: 'Ctrl+Z', action: 'undo', description: 'Undo last action' },
+                { key: 'Ctrl+Y', action: 'redo', description: 'Redo last action' }
+            ]
+        };
+
+        // State Management
+        let journalLines = [];
+        let selectedRow = -1;
+        let editingCell = null;
+        let validationErrors = [];
+        let clipboard = [];
+        let undoStack = [];
+        let redoStack = [];
+        let sidebarCollapsed = false;
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeUI();
+            setupEventListeners();
+            setupKeyboardNavigation();
+            addInitialLine();
+            setupValidation();
+            checkPeriodStatus();
+        });
+
+        function initializeUI() {
+            // Set default date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('journal-date').value = today;
+            
+            // Generate document number
+            const docNo = 'JE' + Date.now().toString().slice(-6);
+            document.getElementById('document-no').value = docNo;
+            
+            // Add status indicator to header
+            const statusDiv = document.createElement('div');
+            statusDiv.innerHTML = '<span class="status-indicator status-draft"></span>Draft';
+            statusDiv.style.cssText = 'color: white; font-size: 0.875rem; font-weight: 500;';
+            document.querySelector('.header h1').appendChild(statusDiv);
+        }
+
+        function addInitialLine() {
+            // Start with 3 empty lines for better UX
+            addJournalLine();
+            addJournalLine();
+            addJournalLine();
+            
+            // Focus on first account field
+            setTimeout(() => {
+                const firstAccountInput = document.querySelector('[data-field="account"]');
+                if (firstAccountInput) {
+                    firstAccountInput.focus();
+                }
+            }, 100);
+        }
+
+        function setupEventListeners() {
+            // Add line button
+            document.getElementById('add-line-btn').addEventListener('click', addJournalLine);
+            
+            // Delete line button
+            document.getElementById('delete-line-btn').addEventListener('click', deleteSelectedLine);
+            
+            // Shortcut palette
+            document.getElementById('shortcut-btn').addEventListener('click', toggleShortcutPalette);
+            
+            // Sidebar toggle
+            const sidebarToggle = document.createElement('button');
+            sidebarToggle.className = 'btn btn-secondary';
+            sidebarToggle.id = 'sidebar-toggle';
+            sidebarToggle.innerHTML = '<span aria-hidden="true">📊</span>';
+            sidebarToggle.setAttribute('aria-label', 'Toggle validation panel');
+            sidebarToggle.setAttribute('title', 'Toggle validation panel');
+            sidebarToggle.addEventListener('click', toggleSidebar);
+            document.querySelector('.header .toolbar-group').appendChild(sidebarToggle);
+
+            // Start with sidebar collapsed for focus
+            setTimeout(() => toggleSidebar(), 100);
+
+            // File upload
+            document.getElementById('import-btn').addEventListener('click', () => {
+                document.getElementById('file-input').click();
+            });
+
+            // Currency change
+            document.getElementById('currency').addEventListener('change', updateCurrency);
+
+            // Post button
+            document.getElementById('post-btn').addEventListener('click', postJournal);
+        }
+
+        function setupKeyboardNavigation() {
+            document.addEventListener('keydown', handleGlobalKeydown);
+            
+            // Shortcut palette navigation
+            const paletteSearch = document.getElementById('palette-search');
+            paletteSearch.addEventListener('input', filterShortcuts);
+            paletteSearch.addEventListener('keydown', handlePaletteKeydown);
+        }
+
+        function handleGlobalKeydown(e) {
+            // Global shortcuts
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 'k':
+                        e.preventDefault();
+                        toggleShortcutPalette();
+                        break;
+                    case 'n':
+                        e.preventDefault();
+                        addJournalLine();
+                        break;
+                    case 'd':
+                        e.preventDefault();
+                        deleteSelectedLine();
+                        break;
+                    case 's':
+                        e.preventDefault();
+                        saveJournal();
+                        break;
+                    case 'p':
+                        e.preventDefault();
+                        postJournal();
+                        break;
+                    case 'c':
+                        if (selectedRow >= 0) {
+                            e.preventDefault();
+                            copySelectedLines();
+                        }
+                        break;
+                    case 'v':
+                        if (clipboard.length > 0) {
+                            e.preventDefault();
+                            pasteLines();
+                        }
+                        break;
+                    case 'z':
+                        e.preventDefault();
+                        if (e.shiftKey) {
+                            redo();
+                        } else {
+                            undo();
+                        }
+                        break;
+                    case 'y':
+                        e.preventDefault();
+                        redo();
+                        break;
+                }
+            }
+
+            // Navigation shortcuts
+            if (e.key === 'Escape') {
+                if (document.getElementById('shortcut-palette').classList.contains('visible')) {
+                    toggleShortcutPalette();
+                } else if (editingCell) {
+                    cancelCellEdit();
+                }
+            }
+
+            // Grid navigation
+            if (editingCell === null) {
+                switch(e.key) {
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        navigateGrid(-1, 0);
+                        break;
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        navigateGrid(1, 0);
+                        break;
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        navigateGrid(0, -1);
+                        break;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        navigateGrid(0, 1);
+                        break;
+                    case 'F2':
+                        e.preventDefault();
+                        editSelectedCell();
+                        break;
+                    case 'Enter':
+                        e.preventDefault();
+                        navigateGrid(1, 0);
+                        break;
+                    case 'Tab':
+                        e.preventDefault();
+                        navigateGrid(0, e.shiftKey ? -1 : 1);
+                        break;
+                }
+            }
+        }
+
+        function addJournalLine() {
+            const lineNumber = journalLines.length + 1;
+            const newLine = {
+                id: Date.now() + Math.random(),
+                line: lineNumber,
+                account: '',
+                description: '',
+                debit: '',
+                credit: '',
+                department: '',
+                project: '',
+                currency: document.getElementById('currency').value,
+                rate: '1.00',
+                errors: []
+            };
+
+            journalLines.push(newLine);
+            renderGridRow(newLine, journalLines.length - 1);
+            
+            // Focus on new line
+            selectedRow = journalLines.length - 1;
+            updateRowSelection();
+            
+            // Enable delete button
+            document.getElementById('delete-line-btn').disabled = false;
+            
+            updateBalanceDisplay();
+            saveState();
+        }
+
+        function deleteSelectedLine() {
+            if (selectedRow >= 0 && selectedRow < journalLines.length) {
+                journalLines.splice(selectedRow, 1);
+                
+                // Renumber lines
+                journalLines.forEach((line, index) => {
+                    line.line = index + 1;
+                });
+                
+                renderAllRows();
+                
+                // Adjust selection
+                if (selectedRow >= journalLines.length) {
+                    selectedRow = journalLines.length - 1;
+                }
+                
+                updateRowSelection();
+                updateBalanceDisplay();
+                
+                // Disable delete if no rows
+                if (journalLines.length === 0) {
+                    document.getElementById('delete-line-btn').disabled = true;
+                    selectedRow = -1;
+                }
+                
+                saveState();
+            }
+        }
+
+        function renderGridRow(line, index) {
+            const tbody = document.getElementById('grid-body');
+            const row = document.createElement('tr');
+            row.className = 'grid-row';
+            row.setAttribute('role', 'row');
+            row.setAttribute('data-row-index', index);
+            
+            row.innerHTML = `
+                <td class="grid-cell" role="gridcell">
+                    <span>${line.line}</span>
+                </td>
+                <td class="grid-cell" role="gridcell">
+                    <input type="text" value="${line.account}" data-field="account" 
+                           aria-label="Account code for line ${line.line}" 
+                           placeholder="e.g. 1200" required>
+                </td>
+                <td class="grid-cell" role="gridcell">
+                    <input type="text" value="${line.description}" data-field="description" 
+                           aria-label="Description for line ${line.line}" 
+                           placeholder="Enter description" required>
+                </td>
+                <td class="grid-cell" role="gridcell">
+                    <input type="number" value="${line.debit}" data-field="debit" 
+                           aria-label="Debit amount for line ${line.line}" 
+                           step="0.01" min="0" class="currency-input">
+                </td>
+                <td class="grid-cell" role="gridcell">
+                    <input type="number" value="${line.credit}" data-field="credit" 
+                           aria-label="Credit amount for line ${line.line}" 
+                           step="0.01" min="0" class="currency-input">
+                </td>
+                <td class="grid-cell" role="gridcell">
+                    <input type="text" value="${line.department}" data-field="department" 
+                           aria-label="Department for line ${line.line}" 
+                           placeholder="Dept">
+                </td>
+                <td class="grid-cell" role="gridcell">
+                    <input type="text" value="${line.project}" data-field="project" 
+                           aria-label="Project for line ${line.line}" 
+                           placeholder="Project">
+                </td>
+                <td class="grid-cell" role="gridcell">
+                    <select data-field="currency" aria-label="Currency for line ${line.line}">
+                        <option value="USD" ${line.currency === 'USD' ? 'selected' : ''}>USD</option>
+                        <option value="EUR" ${line.currency === 'EUR' ? 'selected' : ''}>EUR</option>
+                        <option value="GBP" ${line.currency === 'GBP' ? 'selected' : ''}>GBP</option>
+                        <option value="NPR" ${line.currency === 'NPR' ? 'selected' : ''}>NPR</option>
+                    </select>
+                </td>
+                <td class="grid-cell" role="gridcell">
+                    <input type="number" value="${line.rate}" data-field="rate" 
+                           aria-label="Exchange rate for line ${line.line}" 
+                           step="0.0001" min="0.0001" class="currency-input">
+                </td>
+                <td class="grid-cell" role="gridcell">
+                    <button class="btn btn-secondary" onclick="duplicateLine(${index})" 
+                            aria-label="Duplicate line ${line.line}" style="padding: 0.25rem;">
+                        <span aria-hidden="true">📋</span>
+                    </button>
+                </td>
+            `;
+
+            // Add event listeners to inputs
+            row.querySelectorAll('input, select').forEach(input => {
+                input.addEventListener('input', (e) => updateLineData(index, e.target.dataset.field, e.target.value));
+                input.addEventListener('focus', (e) => setActiveCell(index, e.target.dataset.field));
+                input.addEventListener('blur', (e) => validateCell(index, e.target.dataset.field));
+                
+                // Enhanced keyboard navigation within cells
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        navigateGrid(1, 0);
+                    } else if (e.key === 'Tab') {
+                        e.preventDefault();
+                        navigateGrid(0, e.shiftKey ? -1 : 1);
+                    }
+                });
+            });
+
+            // Row click selection
+            row.addEventListener('click', () => selectRow(index));
+
+            tbody.appendChild(row);
+        }
+
+        function renderAllRows() {
+            const tbody = document.getElementById('grid-body');
+            tbody.innerHTML = '';
+            journalLines.forEach((line, index) => renderGridRow(line, index));
+        }
+
+        function updateLineData(index, field, value) {
+            if (journalLines[index]) {
+                journalLines[index][field] = value;
+                
+                // Auto-balance logic
+                if (field === 'debit' && value) {
+                    journalLines[index].credit = '';
+                } else if (field === 'credit' && value) {
+                    journalLines[index].debit = '';
+                }
+                
+                updateBalanceDisplay();
+                validateLine(index);
+                saveState();
+            }
+        }
+
+        function selectRow(index) {
+            selectedRow = index;
+            updateRowSelection();
+            document.getElementById('delete-line-btn').disabled = false;
+        }
+
+        function updateRowSelection() {
+            document.querySelectorAll('.grid-row').forEach((row, index) => {
+                row.classList.toggle('selected', index === selectedRow);
+            });
+        }
+
+        function setActiveCell(rowIndex, field) {
+            editingCell = { row: rowIndex, field: field };
+        }
+
+        function updateBalanceDisplay() {
+            let totalDebit = 0;
+            let totalCredit = 0;
+
+            journalLines.forEach(line => {
+                const debit = parseFloat(line.debit) || 0;
+                const credit = parseFloat(line.credit) || 0;
+                
+                // Convert to base currency if needed
+                const rate = parseFloat(line.rate) || 1;
+                totalDebit += debit * rate;
+                totalCredit += credit * rate;
+            });
+
+            const difference = Math.abs(totalDebit - totalCredit);
+            const isBalanced = difference < 0.01;
+
+            document.getElementById('total-debit').textContent = formatCurrency(totalDebit);
+            document.getElementById('total-credit').textContent = formatCurrency(totalCredit);
+            document.getElementById('balance-diff').textContent = formatCurrency(difference);
+
+            // Update balance styling
+            const diffElement = document.getElementById('balance-diff');
+            diffElement.className = `balance-amount ${isBalanced ? 'balanced' : 'unbalanced'}`;
+            
+            // Enable/disable post button
+            document.getElementById('post-btn').disabled = !isBalanced || journalLines.length === 0 || validationErrors.length > 0;
+        }
+
+        function validateLine(index) {
+            const line = journalLines[index];
+            line.errors = [];
+
+            // Run validation rules
+            CONFIG.validation.forEach(rule => {
+                const value = line[rule.field] || '';
+                let isValid = true;
+
+                try {
+                    // Simple expression evaluation
+                    if (rule.field === 'account') {
+                        isValid = value.length >= 3;
+                    } else if (rule.field === 'description') {
+                        isValid = value.trim().length > 0;
+                    } else if (rule.field === 'amount') {
+                        const debit = parseFloat(line.debit) || 0;
+                        const credit = parseFloat(line.credit) || 0;
+                        isValid = (debit > 0 && credit === 0) || (credit > 0 && debit === 0);
+                    }
+                } catch (e) {
+                    isValid = false;
+                }
+
+                if (!isValid) {
+                    line.errors.push({
+                        field: rule.field,
+                        message: rule.message,
+                        severity: rule.severity
+                    });
+                }
+            });
+
+            updateValidationUI();
+        }
+
+        function updateValidationUI() {
+            // Collect all errors
+            validationErrors = [];
+            journalLines.forEach((line, index) => {
+                line.errors.forEach(error => {
+                    validationErrors.push({
+                        ...error,
+                        lineIndex: index,
+                        lineNumber: line.line
+                    });
+                });
+            });
+
+            // Update error count
+            document.getElementById('error-count').textContent = validationErrors.length;
+
+            // Update error list
+            const errorList = document.getElementById('error-list');
+            if (validationErrors.length === 0) {
+                errorList.innerHTML = '<li role="listitem">No errors found</li>';
+            } else {
+                errorList.innerHTML = validationErrors.map(error => `
+                    <li class="error-item" role="listitem" onclick="goToError(${error.lineIndex}, '${error.field}')">
+                        <strong>Line ${error.lineNumber}:</strong> ${error.message}
+                    </li>
+                `).join('');
+            }
+
+            // Update grid row styling
+            document.querySelectorAll('.grid-row').forEach((row, index) => {
+                const hasErrors = journalLines[index] && journalLines[index].errors.length > 0;
+                row.classList.toggle('error', hasErrors);
+            });
+
+            updateBalanceDisplay();
+        }
+
+        function goToError(lineIndex, field) {
+            selectedRow = lineIndex;
+            updateRowSelection();
+            
+            // Focus on the problematic field
+            const row = document.querySelector(`[data-row-index="${lineIndex}"]`);
+            if (row) {
+                const input = row.querySelector(`[data-field="${field}"]`);
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            }
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const toggleBtn = document.getElementById('sidebar-toggle');
+            
+            sidebarCollapsed = !sidebarCollapsed;
+            
+            if (sidebarCollapsed) {
+                sidebar.classList.add('collapsed');
+                toggleBtn.innerHTML = '<span aria-hidden="true">📊</span>';
+                toggleBtn.setAttribute('aria-label', 'Show validation panel');
+            } else {
+                sidebar.classList.remove('collapsed');
+                toggleBtn.innerHTML = '<span aria-hidden="true">❌</span>';
+                toggleBtn.setAttribute('aria-label', 'Hide validation panel');
+            }
+        }
+
+        function toggleShortcutPalette() {
+            const palette = document.getElementById('shortcut-palette');
+            const isVisible = palette.classList.contains('visible');
+            
+            if (isVisible) {
+                palette.classList.remove('visible');
+                document.body.style.overflow = '';
+            } else {
+                palette.classList.add('visible');
+                document.body.style.overflow = 'hidden';
+                document.getElementById('palette-search').focus();
+                renderShortcuts();
+            }
+        }
+
+        function renderShortcuts() {
+            const shortcutList = document.getElementById('shortcut-list');
+            shortcutList.innerHTML = CONFIG.shortcuts.map((shortcut, index) => `
+                <div class="shortcut-item" role="option" data-index="${index}" onclick="executeShortcut('${shortcut.action}')">
+                    <span>${shortcut.description}</span>
+                    <span class="shortcut-key">${shortcut.key}</span>
+                </div>
+            `).join('');
+        }
+
+        function filterShortcuts() {
+            const search = document.getElementById('palette-search').value.toLowerCase();
+            const shortcuts = document.querySelectorAll('.shortcut-item');
+            
+            shortcuts.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(search) ? 'flex' : 'none';
+            });
+        }
+
+        function handlePaletteKeydown(e) {
+            if (e.key === 'Enter') {
+                const visibleItems = Array.from(document.querySelectorAll('.shortcut-item')).filter(item => item.style.display !== 'none');
+                if (visibleItems.length > 0) {
+                    const selected = document.querySelector('.shortcut-item.selected') || visibleItems[0];
+                    selected.click();
+                }
+            } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                navigateShortcutList(e.key === 'ArrowDown' ? 1 : -1);
+            }
+        }
+
+        function navigateShortcutList(direction) {
+            const items = Array.from(document.querySelectorAll('.shortcut-item')).filter(item => item.style.display !== 'none');
+            const current = document.querySelector('.shortcut-item.selected');
+            let newIndex = 0;
+
+            if (current) {
+                const currentIndex = items.indexOf(current);
+                newIndex = Math.max(0, Math.min(items.length - 1, currentIndex + direction));
+                current.classList.remove('selected');
+            }
+
+            if (items[newIndex]) {
+                items[newIndex].classList.add('selected');
+                items[newIndex].scrollIntoView({ block: 'nearest' });
+            }
+        }
+
+        function executeShortcut(action) {
+            toggleShortcutPalette();
+            
+            switch(action) {
+                case 'addLine':
+                    addJournalLine();
+                    break;
+                case 'deleteLine':
+                    deleteSelectedLine();
+                    break;
+                case 'save':
+                    saveJournal();
+                    break;
+                case 'post':
+                    postJournal();
+                    break;
+                case 'copy':
+                    copySelectedLines();
+                    break;
+                case 'paste':
+                    pasteLines();
+                    break;
+                case 'undo':
+                    undo();
+                    break;
+                case 'redo':
+                    redo();
+                    break;
+            }
+        }
+
+        function navigateGrid(rowDelta, colDelta) {
+            // Implementation for grid navigation
+            const rows = document.querySelectorAll('.grid-row');
+            if (rows.length === 0) return;
+
+            selectedRow = Math.max(0, Math.min(rows.length - 1, selectedRow + rowDelta));
+            updateRowSelection();
+        }
+
+        function validateCell(index, field) {
+            validateLine(index);
+        }
+
+        function formatCurrency(amount, currency = 'USD') {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: currency,
+                minimumFractionDigits: 2
+            }).format(amount);
+        }
+
+        function updateCurrency() {
+            const currency = document.getElementById('currency').value;
+            // Update all line currencies to match header
+            journalLines.forEach(line => {
+                line.currency = currency;
+            });
+            renderAllRows();
+            updateBalanceDisplay();
+        }
+
+        function checkPeriodStatus() {
+            // Mock period validation
+            const journalDate = new Date(document.getElementById('journal-date').value);
+            const today = new Date();
+            const daysDiff = Math.abs(today - journalDate) / (1000 * 60 * 60 * 24);
+
+            if (daysDiff > 30) {
+                showPeriodWarning('Journal date is more than 30 days old. Please verify the posting period is open.');
+            }
+        }
+
+        function showPeriodWarning(message) {
+            const warning = document.getElementById('period-warning');
+            document.getElementById('period-warning-text').textContent = message;
+            warning.style.display = 'flex';
+        }
+
+        function saveJournal() {
+            // Mock save functionality
+            showLoading(true);
+            setTimeout(() => {
+                showLoading(false);
+                showNotification('Journal entry saved successfully', 'success');
+            }, 1000);
+        }
+
+        function postJournal() {
+            if (validationErrors.length > 0) {
+                showNotification('Please fix all validation errors before posting', 'error');
+                return;
+            }
+
+            if (!isBalanced()) {
+                showNotification('Journal must be balanced before posting', 'error');
+                return;
+            }
+
+            showLoading(true);
+            setTimeout(() => {
+                showLoading(false);
+                showNotification('Journal entry posted successfully', 'success');
+            }, 2000);
+        }
+
+        function isBalanced() {
+            let totalDebit = 0;
+            let totalCredit = 0;
+
+            journalLines.forEach(line => {
+                totalDebit += parseFloat(line.debit) || 0;
+                totalCredit += parseFloat(line.credit) || 0;
+            });
+
+            return Math.abs(totalDebit - totalCredit) < 0.01;
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading-overlay').style.display = show ? 'flex' : 'none';
+        }
+
+        function showNotification(message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? 'var(--success-color)' : type === 'error' ? 'var(--error-color)' : 'var(--primary-color)'};
+                color: white;
+                padding: 1rem;
+                border-radius: var(--border-radius);
+                box-shadow: var(--shadow-md);
+                z-index: 1000;
+                max-width: 300px;
+                animation: slideIn 0.3s ease-out;
+            `;
+            notification.textContent = message;
+
+            document.body.appendChild(notification);
+
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease-in';
+                setTimeout(() => notification.remove(), 300);
+            }, 5000);
+        }
+
+        function copySelectedLines() {
+            if (selectedRow >= 0) {
+                clipboard = [{ ...journalLines[selectedRow] }];
+                document.getElementById('paste-btn').disabled = false;
+                showNotification('Line copied to clipboard', 'success');
+            }
+        }
+
+        function pasteLines() {
+            if (clipboard.length > 0) {
+                clipboard.forEach(clipLine => {
+                    const newLine = {
+                        ...clipLine,
+                        id: Date.now() + Math.random(),
+                        line: journalLines.length + 1
+                    };
+                    journalLines.push(newLine);
+                    renderGridRow(newLine, journalLines.length - 1);
+                });
+                
+                updateBalanceDisplay();
+                saveState();
+                showNotification(`${clipboard.length} line(s) pasted`, 'success');
+            }
+        }
+
+        function duplicateLine(index) {
+            const line = journalLines[index];
+            const newLine = {
+                ...line,
+                id: Date.now() + Math.random(),
+                line: journalLines.length + 1
+            };
+            
+            journalLines.push(newLine);
+            renderGridRow(newLine, journalLines.length - 1);
+            updateBalanceDisplay();
+            saveState();
+        }
+
+        function saveState() {
+            // Save current state for undo
+            undoStack.push(JSON.stringify(journalLines));
+            if (undoStack.length > 50) undoStack.shift();
+            redoStack = []; // Clear redo stack on new action
+        }
+
+        function undo() {
+            if (undoStack.length > 1) {
+                redoStack.push(undoStack.pop());
+                const prevState = undoStack[undoStack.length - 1];
+                journalLines = JSON.parse(prevState);
+                renderAllRows();
+                updateBalanceDisplay();
+                updateValidationUI();
+            }
+        }
+
+        function redo() {
+            if (redoStack.length > 0) {
+                const nextState = redoStack.pop();
+                undoStack.push(nextState);
+                journalLines = JSON.parse(nextState);
+                renderAllRows();
+                updateBalanceDisplay();
+                updateValidationUI();
+            }
+        }
+
+        function setupValidation() {
+            // Validate all lines on load
+            journalLines.forEach((line, index) => validateLine(index));
+            updateValidationUI();
+        }
+
+        // Add CSS animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Click outside to close palette
+        document.addEventListener('click', (e) => {
+            const palette = document.getElementById('shortcut-palette');
+            if (palette.classList.contains('visible') && !palette.contains(e.target) && e.target.id !== 'shortcut-btn') {
+                toggleShortcutPalette();
+            }
+        });
+
+        // Initialize first validation
+        setTimeout(() => {
+            if (journalLines.length > 0) {
+                journalLines.forEach((line, index) => validateLine(index));
+            }
+        }, 100);
+    </script>
+</body>
+</html>

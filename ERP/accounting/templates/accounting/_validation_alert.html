@@ -1,0 +1,6 @@
+{% if validation_error_count > 0 %}
+<div class="alert alert-danger d-flex align-items-center p-2 mb-0" role="alert">
+  <i class="fas fa-exclamation-circle me-2"></i>
+  <div class="small">{{ validation_error_count }} validation error{{ validation_error_count|pluralize }}</div>
+</div>
+{% endif %}

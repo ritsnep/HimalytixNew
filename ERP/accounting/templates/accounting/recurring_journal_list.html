@@ -1,0 +1,45 @@
+{% extends "partials/base.html" %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <h4 class="card-title">Recurring Journals</h4>
+                            <a href="{% url 'accounting:recurring-journal-create' %}" class="btn btn-primary mb-3">Create Recurring Journal</a>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Frequency</th>
+                                        <th>Next Run Date</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for rj in recurring_journals %}
+                                    <tr>
+                                        <td>{{ rj.name }}</td>
+                                        <td>{{ rj.get_frequency_display }}</td>
+                                        <td>{{ rj.next_run_date }}</td>
+                                        <td>{{ rj.get_status_display }}</td>
+                                        <td>
+                                            <a href="{% url 'accounting:recurring-journal-update' pk=rj.pk %}" class="btn btn-sm btn-primary">Edit</a>
+                                            <a href="{% url 'accounting:recurring-journal-delete' pk=rj.pk %}" class="btn btn-sm btn-danger">Delete</a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

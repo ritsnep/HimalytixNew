@@ -1,0 +1,26 @@
+<div class="table-responsive">
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                {% for header in data.headers %}
+                    <th>{{ header }}</th>
+                {% endfor %}
+                <th>Errors</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in data.rows %}
+                <tr class="{% if row.errors %}table-danger{% else %}table-success{% endif %}">
+                    {% for cell in row.data %}
+                        <td>{{ cell }}</td>
+                    {% endfor %}
+                    <td>
+                        {% for error in row.errors %}
+                            <span class="badge bg-danger">{{ error }}</span>
+                        {% endfor %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,18 @@
+<div id="validation-panel">
+    <div class="card border {% if validation_results.is_valid %}border-success{% else %}border-danger{% endif %}">
+        <div class="card-header bg-{% if validation_results.is_valid %}success{% else %}danger{% endif %}} text-white p-2">
+            <h6 class="mb-0">{% if validation_results.is_valid %}<i class="fas fa-check-circle me-1"></i> Valid{% else %}<i class="fas fa-exclamation-triangle me-1"></i> Invalid{% endif %} Journal Entry</h6>
+        </div>
+        <div class="card-body p-2 small">
+            {% if validation_results.is_valid %}
+                <p class="text-success mb-0">All checks passed. This journal entry is ready to be posted.</p>
+            {% else %}
+                <ul class="list-unstyled mb-0">
+                    {% for error in validation_results.errors %}
+                        <li class="text-danger"><i class="fas fa-times-circle me-1"></i> {{ error }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </div>
+    </div>
+</div>

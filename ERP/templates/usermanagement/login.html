@@ -1,0 +1,38 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block title %}Starter Page{% endblock title %} {"title": "Starter Page"})
+
+{% block content %}
+<!-- ============================================================== -->
+<!-- Start right Content here -->
+<!-- ============================================================== -->
+<div class="main-content">
+
+    <div class="page-content">
+        <div class="container-fluid">
+
+            <!-- start page title -->
+           
+
+<h2>Login</h2>
+<form method="post">
+  {% csrf_token %}
+  <input type="text" name="username" placeholder="Username">
+  <input type="password" name="password" placeholder="Password">
+  <button type="submit">Login</button>
+</form>
+
+            <!-- end page title -->
+            
+        </div> <!-- container-fluid -->
+    </div>
+    <!-- End Page-content -->
+
+    
+    {% block footer %}
+        {% include 'partials/footer.html' %}
+    {% endblock footer %}
+</div>
+<!-- end main content-->
+{% endblock content %}

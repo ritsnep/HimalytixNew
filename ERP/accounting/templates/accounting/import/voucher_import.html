@@ -1,0 +1,48 @@
+{% extends "partials/base.html" %}
+{% block content %}
+<div class="container">
+    <h2>Import Vouchers</h2>
+    <form method="post" enctype="multipart/form-data" id="import-form">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">Import</button>
+    </form>
+    <div id="import-results" class="mt-4"></div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.getElementById('import-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const resultsContainer = document.getElementById('import-results');
+
+    fetch("{% url 'accounting:journal_import_api' %}", {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            resultsContainer.innerHTML = '<div class="alert alert-success">Import successful!</div>';
+            // Optionally, display the imported data
+        } else {
+            let errorHtml = '<div class="alert alert-danger"><ul>';
+            for (const error of data.errors) {
+                errorHtml += `<li>${error}</li>`;
+            }
+            errorHtml += '</ul></div>';
+            resultsContainer.innerHTML = errorHtml;
+        }
+    })
+    .catch(error => {
+        resultsContainer.innerHTML = '<div class="alert alert-danger">An error occurred.</div>';
+        console.error(error);
+    });
+});
+</script>
+{% endblock %}

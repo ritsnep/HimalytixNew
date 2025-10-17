@@ -1,0 +1,15 @@
+states:
+  - Draft
+  - Park
+  - Approve
+  - Post
+
+role_matrix:
+  Accountant:
+    - from: Draft
+      to: [Park, Approve]
+    - from: Park
+      to: [Draft]
+  Manager:
+    - from: Approve
+      to: [Post, Draft]

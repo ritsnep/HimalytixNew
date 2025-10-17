@@ -1,0 +1,14 @@
+[
+  {
+    "field": "account",
+    "expression": "is_valid_account_number",
+    "severity": "error",
+    "autoFix": "suggest_similar_account()"
+  },
+  {
+    "field": "amount",
+    "expression": "is_positive_decimal",
+    "severity": "warning",
+    "autoFix": "abs(field_value)"
+  }
+]

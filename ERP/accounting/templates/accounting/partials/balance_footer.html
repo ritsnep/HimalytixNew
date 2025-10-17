@@ -1,0 +1,16 @@
+<div class="flex items-center space-x-6">
+    <div class="text-sm">
+        <span class="font-medium text-gray-500">Total Debit:</span>
+        <span id="total-debit" class="ml-2 font-bold">{{ total_debit|default:"0.00" }}</span>
+    </div>
+    <div class="text-sm">
+        <span class="font-medium text-gray-500">Total Credit:</span>
+        <span id="total-credit" class="ml-2 font-bold">{{ total_credit|default:"0.00" }}</span>
+    </div>
+    <div class="relative w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div id="imbalance-bar" class="absolute h-full imbalance-indicator {% if not is_balanced %}bg-red-500 show{% endif %}"></div>
+    </div>
+    <div id="balance-status" class="text-sm font-medium {% if is_balanced %}text-green-600{% else %}text-red-600{% endif %}">
+        {% if is_balanced %}Balanced{% else %}Imbalance: {{ imbalance|default:"0.00" }}{% endif %}
+    </div>
+</div>

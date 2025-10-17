@@ -1,0 +1,448 @@
+{% extends 'accounting/_form_base.html' %} 
+{% load static %} 
+{% block title %}
+{{page_title }}
+{% endblock %}
+ {% block content %}
+<div class="main-content">
+  <div class="page-content">
+    <div class="container-fluid">
+      <!-- Breadcrumbs -->
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          {% for breadcrumb in breadcrumbs %} {% if breadcrumb.1 %}
+          <li class="breadcrumb-item">
+            <a href="{{ breadcrumb.1 }}">{{ breadcrumb.0 }}</a>
+          </li>
+          {% else %}
+          <li class="breadcrumb-item active">{{ breadcrumb.0 }}</li>
+          {% endif %} {% endfor %}
+        </ol>
+      </nav>
+
+      <!-- Page Header -->
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h2 class="mb-1">{{ form_title }}</h2>
+          <p class="text-muted mb-0">
+            Configure journal type settings and numbering
+          </p>
+        </div>
+        <div>
+          <a
+            href="{% url 'accounting:journal_type_list' %}"
+            class="btn btn-secondary"
+          >
+            <i class="fas fa-arrow-left me-1"></i>Back to List
+          </a>
+        </div>
+      </div>
+
+      <!-- Journal Type Form -->
+      <div class="row">
+        <div class="col-lg-8">
+          <div class="card">
+            <div class="card-body">
+              <form
+                method="post"
+                id="journalTypeForm"
+                class="needs-validation"
+                novalidate
+              >
+                {% csrf_token %}
+
+                <!-- Basic Information -->
+                <div class="row mb-4">
+                  <div class="col-md-6">
+                    <div class="mb-3">
+                      <label
+                        for="{{ form.code.id_for_label }}"
+                        class="form-label"
+                      >
+                        Code <span class="text-danger">*</span>
+                      </label>
+                      {{ form.code }} {% if form.code.errors %}
+                      <div class="invalid-feedback d-block">
+                        {{ form.code.errors.0 }}
+                      </div>
+                      {% endif %}
+                      <div class="form-text">
+                        Unique identifier for this journal type (e.g., GJ, CR,
+                        CP)
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="mb-3">
+                      <label
+                        for="{{ form.name.id_for_label }}"
+                        class="form-label"
+                      >
+                        Name <span class="text-danger">*</span>
+                      </label>
+                      {{ form.name }} {% if form.name.errors %}
+                      <div class="invalid-feedback d-block">
+                        {{ form.name.errors.0 }}
+                      </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mb-4">
+                  <label
+                    for="{{ form.description.id_for_label }}"
+                    class="form-label"
+                    >Description</label
+                  >
+                  {{ form.description }} {% if form.description.errors %}
+                  <div class="invalid-feedback d-block">
+                    {{ form.description.errors.0 }}
+                  </div>
+                  {% endif %}
+                </div>
+
+                <!-- Auto Numbering Configuration -->
+                <div class="card bg-light mb-4">
+                  <div class="card-header">
+                    <h6 class="mb-0">
+                      <i class="fas fa-hashtag me-2"></i>Auto Numbering
+                      Configuration
+                    </h6>
+                  </div>
+                  <div class="card-body">
+                    <div class="row">
+                      <div class="col-md-4">
+                        <div class="mb-3">
+                          <label
+                            for="{{ form.auto_numbering_prefix.id_for_label }}"
+                            class="form-label"
+                            >Prefix</label
+                          >
+                          {{ form.auto_numbering_prefix }} 
+                          {% if form.auto_numbering_prefix.errors %}
+                          <div class="invalid-feedback d-block">
+                            {{ form.auto_numbering_prefix.errors.0 }}
+                          </div>
+                          {% endif %}
+                          <div class="form-text">e.g., GJ, CR, CP</div>
+                        </div>
+                      </div>
+                      <div class="col-md-4">
+                        <div class="mb-3">
+                          <label
+                            for="{{ form.auto_numbering_suffix.id_for_label }}"
+                            class="form-label"
+                            >Suffix</label
+                          >
+                          {{ form.auto_numbering_suffix }} {% if form.auto_numbering_suffix.errors %}
+                          <div class="invalid-feedback d-block">
+                            {{ form.auto_numbering_suffix.errors.0 }}
+                          </div>
+                          {% endif %}
+                          <div class="form-text">e.g., -2024</div>
+                        </div>
+                      </div>
+                      <div class="col-md-4">
+                        <div class="mb-3">
+                          <label
+                            for="{{ form.auto_numbering_next.id_for_label }}"
+                            class="form-label"
+                            >Next Number</label
+                          >
+                          {{ form.auto_numbering_next }} {% if form.auto_numbering_next.errors %}
+                          <div class="invalid-feedback d-block">
+                            {{ form.auto_numbering_next.errors.0 }}
+                          </div>
+                          {% endif %}
+                          <div class="form-text">
+                            Starting number for auto-increment
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Numbering Preview -->
+                    <div class="alert alert-info">
+                      <strong>Numbering Preview:</strong>
+                      <span id="numberingPreview">No numbering configured</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Settings -->
+                <div class="card bg-light mb-4">
+                  <div class="card-header">
+                    <h6 class="mb-0">
+                      <i class="fas fa-cog me-2"></i>Settings
+                    </h6>
+                  </div>
+                  <div class="card-body">
+                    <div class="row">
+                      <div class="col-md-6">
+                        <div class="form-check mb-3">
+                          {{ form.is_system_type }}
+                          <label
+                            class="form-check-label"
+                            for="{{ form.is_system_type.id_for_label }}"
+                          >
+                            System Type
+                          </label>
+                          <div class="form-text">
+                            System types cannot be deleted and are managed by
+                            the system
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <div class="form-check mb-3">
+                          {{ form.requires_approval }}
+                          <label
+                            class="form-check-label"
+                            for="{{ form.requires_approval.id_for_label }}"
+                          >
+                            Requires Approval
+                          </label>
+                          <div class="form-text">
+                            Journals of this type require approval before
+                            posting
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="form-check">
+                      {{ form.is_active }}
+                      <label
+                        class="form-check-label"
+                        for="{{ form.is_active.id_for_label }}"
+                      >
+                        Active
+                      </label>
+                      <div class="form-text">
+                        Only active journal types can be used for new journals
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-flex justify-content-between">
+                  <a
+                    href="{% url 'accounting:journal_type_list' %}"
+                    class="btn btn-secondary"
+                  >
+                    <i class="fas fa-times me-1"></i>Cancel
+                  </a>
+                  <div>
+                    <button
+                      type="button"
+                      class="btn btn-info me-2"
+                      onclick="saveAsDraft()"
+                    >
+                      <i class="fas fa-save me-1"></i>Save as Draft
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                      <i class="fas fa-check me-1"></i>Save Journal Type
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Help Panel -->
+        <div class="col-lg-4">
+          <div class="card">
+            <div class="card-header">
+              <h6 class="mb-0">
+                <i class="fas fa-question-circle me-2"></i>Help & Guidelines
+              </h6>
+            </div>
+            <div class="card-body">
+              <h6>Journal Type Code</h6>
+              <ul class="list-unstyled small">
+                <li>• Use uppercase letters and numbers</li>
+                <li>• Keep it short and meaningful</li>
+                <li>
+                  • Examples: GJ (General), CR (Cash Receipt), CP (Cash Payment)
+                </li>
+              </ul>
+
+              <h6>Auto Numbering</h6>
+              <ul class="list-unstyled small">
+                <li>• Prefix: Added before the number (e.g., GJ)</li>
+                <li>• Suffix: Added after the number (e.g., -2024)</li>
+                <li>• Next Number: Starting sequence number</li>
+                <li>• Format: GJ0001-2024</li>
+              </ul>
+
+              <h6>Common Journal Types</h6>
+              <ul class="list-unstyled small">
+                <li><strong>GJ</strong> - General Journal</li>
+                <li><strong>CR</strong> - Cash Receipt</li>
+                <li><strong>CP</strong> - Cash Payment</li>
+                <li><strong>AR</strong> - Accounts Receivable</li>
+                <li><strong>AP</strong> - Accounts Payable</li>
+                <li><strong>ADJ</strong> - Adjustment</li>
+              </ul>
+
+              <div class="alert alert-warning mt-3">
+                <small>
+                  <i class="fas fa-exclamation-triangle me-1"></i>
+                  <strong>Note:</strong> Once a journal type is created and
+                  used, changing the numbering configuration may affect existing
+                  journals.
+                </small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} 
+{% block extra_js %}
+<script>
+  $(document).ready(function () {
+    // Initialize form validation
+    initializeValidation();
+
+    // Initialize numbering preview
+    initializeNumberingPreview();
+
+    // Auto-format code field
+    $("#{{ form.code.id_for_label }}").on("input", function () {
+      this.value = this.value.toUpperCase().replace(/[^A-Z0-9_-]/g, "");
+    });
+  });
+
+  function initializeValidation() {
+    // Form validation
+    $("#journalTypeForm").on("submit", function (e) {
+      if (!validateForm()) {
+        e.preventDefault();
+        return false;
+      }
+    });
+
+    // Real-time validation
+    $("input, select, textarea").on("blur", function () {
+      validateField($(this));
+    });
+  }
+
+  function validateForm() {
+    let isValid = true;
+
+    // Validate required fields
+    $("[required]").each(function () {
+      if (!validateField($(this))) {
+        isValid = false;
+      }
+    });
+
+    // Validate numbering configuration
+    const prefix = $("#{{ form.auto_numbering_prefix.id_for_label }}").val();
+    const suffix = $("#{{ form.auto_numbering_suffix.id_for_label }}").val();
+
+    if (!prefix && !suffix) {
+      showError(
+        "{{ form.auto_numbering_prefix.id_for_label }}",
+        "Either prefix or suffix must be provided for auto numbering."
+      );
+      isValid = false;
+    }
+
+    return isValid;
+  }
+
+  function validateField(field) {
+    const value = field.val();
+    const isRequired = field.prop("required");
+
+    // Remove existing error styling
+    field.removeClass("is-invalid");
+    field.siblings(".invalid-feedback").remove();
+
+    // Check if required field is empty
+    if (isRequired && (!value || value.trim() === "")) {
+      field.addClass("is-invalid");
+      field.after(
+        '<div class="invalid-feedback">This field is required.</div>'
+      );
+      return false;
+    }
+
+    // Validate code field
+    if (field.attr("id") === "{{ form.code.id_for_label }}") {
+      if (value && !/^[A-Z0-9_-]+$/.test(value)) {
+        field.addClass("is-invalid");
+        field.after(
+          '<div class="invalid-feedback">Code must contain only uppercase letters, numbers, hyphens, and underscores.</div>'
+        );
+        return false;
+      }
+    }
+
+    // Validate next number field
+    if (field.attr("id") === "{{ form.auto_numbering_next.id_for_label }}") {
+      const num = parseInt(value);
+      if (value && (isNaN(num) || num < 1)) {
+        field.addClass("is-invalid");
+        field.after(
+          '<div class="invalid-feedback">Next number must be a positive integer.</div>'
+        );
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  function showError(fieldId, message) {
+    const field = $("#" + fieldId);
+    field.addClass("is-invalid");
+    field.siblings(".invalid-feedback").remove();
+    field.after('<div class="invalid-feedback">' + message + "</div>");
+  }
+
+  function initializeNumberingPreview() {
+    function updatePreview() {
+      const prefix =
+        $("#{{ form.auto_numbering_prefix.id_for_label }}").val() || "";
+      const next =
+        $("#{{ form.auto_numbering_next.id_for_label }}").val() || "1";
+      const suffix =
+        $("#{{ form.auto_numbering_suffix.id_for_label }}").val() || "";
+
+      const formattedNext = String(parseInt(next)).padStart(4, "0");
+      const preview = prefix + formattedNext + suffix;
+
+      $("#numberingPreview").text(preview || "No numbering configured");
+    }
+
+    // Update preview on input
+    $(
+      "#{{ form.auto_numbering_prefix.id_for_label }}, #{{ form.auto_numbering_suffix.id_for_label }}, #{{ form.auto_numbering_next.id_for_label }}"
+    ).on("input", updatePreview);
+
+    // Initial preview
+    updatePreview();
+  }
+
+  function saveAsDraft() {
+    // Add a hidden field to indicate draft status
+    $("<input>")
+      .attr({
+        type: "hidden",
+        name: "save_as_draft",
+        value: "true",
+      })
+      .appendTo("#journalTypeForm");
+
+    $("#journalTypeForm").submit();
+  }
+</script>
+{% endblock %}

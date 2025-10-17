@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}User Permissions{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">User Permissions</h3>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Roles</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user_role in user_roles %}
+                                <tr>
+                                    <td>{{ user_role.user.full_name }}</td>
+                                    <td>
+                                        {% for role in user_role.user.userrole_set.all %}
+                                        <span class="badge badge-info">{{ role.role.name }}</span>
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        {% if perms.usermanagement.change_userrole %}
+                                        <button type="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#roleModal{{ user_role.user.id }}">
+                                            <i class="fas fa-edit"></i> Manage Roles
+                                        </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center">No user roles found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Entity Permissions by Role</h3>
+                </div>
+                <div class="card-body">
+                    {% for module in active_modules %}
+                    <h4>{{ module.name }}</h4>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Entity</th>
+                                    {% for role in roles %}
+                                    <th>{{ role.name }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for entity in module.entities.all %}
+                                <tr>
+                                    <td>{{ entity.name }}</td>
+                                    {% for role in roles %}
+                                    <td>
+                                        {% for action in 'view,create,edit,delete'.split %}
+                                        {% with permission=entity.entitypermission_set.filter(role=role, action=action).first %}
+                                        {% if permission %}
+                                        <span class="badge badge-{{ permission.is_active|yesno:'success,danger' }}">
+                                            {{ action }}
+                                        </span>
+                                        {% endif %}
+                                        {% endwith %}
+                                        {% endfor %}
+                                        {% if perms.usermanagement.change_entitypermission %}
+                                        <button type="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#permissionModal{{ entity.id }}_{{ role.id }}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        {% endif %}
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% for user_role in user_roles %}
+<!-- Role Management Modal -->
+<div class="modal fade" id="roleModal{{ user_role.user.id }}" tabindex="-1" role="dialog" aria-labelledby="roleModalLabel{{ user_role.user.id }}" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="roleModalLabel{{ user_role.user.id }}">Manage Roles for {{ user_role.user.full_name }}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="post" action="{% url 'usermanagement:update_user_permissions' %}">
+                {% csrf_token %}
+                <input type="hidden" name="user_id" value="{{ user_role.user.id }}">
+                <div class="modal-body">
+                    {% for role in roles %}
+                    <div class="custom-control custom-checkbox">
+                        <input type="checkbox" class="custom-control-input" id="role{{ user_role.user.id }}_{{ role.id }}" name="roles" value="{{ role.id }}"
+                            {% if role in user_role.user.userrole_set.all %}checked{% endif %}>
+                        <label class="custom-control-label" for="role{{ user_role.user.id }}_{{ role.id }}">{{ role.name }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% for module in active_modules %}
+{% for entity in module.entities.all %}
+{% for role in roles %}
+<!-- Permission Management Modal -->
+<div class="modal fade" id="permissionModal{{ entity.id }}_{{ role.id }}" tabindex="-1" role="dialog" aria-labelledby="permissionModalLabel{{ entity.id }}_{{ role.id }}" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="permissionModalLabel{{ entity.id }}_{{ role.id }}">Manage Permissions for {{ entity.name }} - {{ role.name }}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="post" action="{% url 'usermanagement:entity_permission_update' entity.id role.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    {% for action in 'view,create,edit,delete'.split %}
+                    {% with permission=entity.entitypermission_set.filter(role=role, action=action).first %}
+                    <div class="custom-control custom-switch">
+                        <input type="checkbox" class="custom-control-input" id="permission{{ entity.id }}_{{ role.id }}_{{ action }}" name="actions" value="{{ action }}"
+                            {% if permission and permission.is_active %}checked{% endif %}>
+                        <label class="custom-control-label" for="permission{{ entity.id }}_{{ role.id }}_{{ action }}">{{ action|title }}</label>
+                    </div>
+                    {% endwith %}
+                    {% endfor %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endfor %}
+ 

@@ -1,0 +1,311 @@
+{% extends "accounting/base_voucher.html" %}
+{% load i18n %}
+
+{% block title %}{{ i18n["approval.queue.title"]|default:"Approval Queue" }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2>{{ i18n["approval.queue.title"]|default:"Approval Queue" }}</h2>
+                <a href="{% url 'accounting:approval_dashboard' %}" class="btn btn-info">
+                    <i class="bi bi-graph-up"></i> {{ i18n["approval.queue.dashboard"]|default:"Dashboard" }}
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Queue Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark">
+                <div class="card-body">
+                    <h6 class="card-title">{{ i18n["approval.queue.assigned_to_me"]|default:"Assigned to Me" }}</h6>
+                    <h3>{{ queue_stats.assigned_to_me }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h6 class="card-title">{{ i18n["approval.queue.overdue"]|default:"Overdue" }}</h6>
+                    <h3>{{ queue_stats.overdue }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h6 class="card-title">{{ i18n["approval.queue.high_priority"]|default:"High Priority" }}</h6>
+                    <h3>{{ queue_stats.high_priority }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-secondary text-white">
+                <div class="card-body">
+                    <h6 class="card-title">{{ i18n["approval.queue.total_pending"]|default:"Total Pending" }}</h6>
+                    <h3>{{ queue_stats.total_pending }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <input 
+                        type="text" 
+                        name="q" 
+                        class="form-control" 
+                        placeholder="{{ i18n["approval.queue.search_ref_placeholder"]|default:"Search by reference..." }}"
+                        value="{{ request.GET.q }}"
+                    >
+                </div>
+                <div class="col-md-3">
+                    <select name="journal_type" class="form-select">
+                        <option value="">{{ i18n["approval.queue.all_types"]|default:"All Types" }}</option>
+                        {% for jtype in journal_types %}
+                            <option value="{{ jtype.id }}" {% if request.GET.journal_type == jtype.id|stringformat:"s" %}selected{% endif %}>
+                                {{ jtype.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select name="sort" class="form-select">
+                        <option value="-submitted_for_approval_at" {% if request.GET.sort == "-submitted_for_approval_at" %}selected{% endif %}>
+                            {{ i18n["approval.queue.newest_first"]|default:"Newest First" }}
+                        </option>
+                        <option value="submitted_for_approval_at" {% if request.GET.sort == "submitted_for_approval_at" %}selected{% endif %}>
+                            {{ i18n["approval.queue.oldest_first"]|default:"Oldest First" }}
+                        </option>
+                        <option value="-total_debit" {% if request.GET.sort == "-total_debit" %}selected{% endif %}>
+                            {{ i18n["approval.queue.highest_amount"]|default:"Highest Amount" }}
+                        </option>
+                        <option value="total_debit" {% if request.GET.sort == "total_debit" %}selected{% endif %}>
+                            {{ i18n["approval.queue.lowest_amount"]|default:"Lowest Amount" }}
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> {{ i18n["approval.queue.filter"]|default:"Filter" }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Pending Approvals Table -->
+    {% if pending_approvals %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>{{ i18n["approval.queue.reference"]|default:"Reference" }}</th>
+                        <th>{{ i18n["approval.queue.type"]|default:"Type" }}</th>
+                        <th>{{ i18n["approval.queue.date"]|default:"Date" }}</th>
+                        <th>{{ i18n["approval.queue.amount"]|default:"Amount" }}</th>
+                        <th>{{ i18n["approval.queue.submitted_by"]|default:"Submitted By" }}</th>
+                        <th>{{ i18n["approval.queue.current_step"]|default:"Current Step" }}</th>
+                        <th>{{ i18n["approval.queue.days_pending"]|default:"Days Pending" }}</th>
+                        <th>{{ i18n["approval.queue.actions"]|default:"Actions" }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for journal in pending_approvals %}
+                        <tr>
+                            <td>
+                                <strong>{{ journal.reference_no }}</strong>
+                            </td>
+                            <td>{{ journal.journal_type.name }}</td>
+                            <td>{{ journal.journal_date|date:"Y-m-d" }}</td>
+                            <td class="text-end">
+                                <span class="badge bg-info">
+                                    {{ journal.total_debit|floatformat:2 }}
+                                </span>
+                            </td>
+                            <td>{{ journal.created_by.get_full_name }}</td>
+                            <td>
+                                {% if journal.approval_log %}
+                                    <span class="badge bg-secondary">
+                                        {% blocktrans with step=journal.approval_log.current_step %}Step {{ step }}{% endblocktrans %}
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if journal.approval_log %}
+                                    {% with days=journal.approval_log.submitted_at|timesince %}
+                                        <span class="badge bg-{% if days > 5 %}danger{% else %}warning{% endif %}">
+                                            {{ journal.approval_log.submitted_at|timesince }}
+                                        </span>
+                                    {% endwith %}
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button 
+                                    class="btn btn-sm btn-success" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#approveModal{{ journal.id }}"
+                                >
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                                <button 
+                                    class="btn btn-sm btn-danger" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#rejectModal{{ journal.id }}"
+                                >
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                                <a 
+                                    href="{% url 'accounting:approval_history' journal.id %}" 
+                                    class="btn btn-sm btn-info"
+                                >
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        
+                        <!-- Approve Modal -->
+                        <div class="modal fade" id="approveModal{{ journal.id }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-success text-white">
+                                        <h5 class="modal-title">{% trans "Approve Journal" %}</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form method="post" action="{% url 'approval:approve_journal' journal.id %}">
+                                        {% csrf_token %}
+                                        <div class="modal-body">
+                                            <p>
+                                                {% blocktrans with ref=journal.reference_no %}Are you sure you want to approve journal {{ ref }}?{% endblocktrans %}
+                                            </p>
+                                            <div class="form-group">
+                                                <label for="comments{{ journal.id }}" class="form-label">
+                                                    {% trans "Comments (Optional)" %}
+                                                </label>
+                                                <textarea 
+                                                    id="comments{{ journal.id }}" 
+                                                    name="comments" 
+                                                    class="form-control" 
+                                                    rows="3"
+                                                    placeholder="{% trans 'Add approval comments...' %}"
+                                                ></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                {% trans "Cancel" %}
+                                            </button>
+                                            <button type="submit" class="btn btn-success">
+                                                <i class="bi bi-check-lg"></i> {% trans "Approve" %}
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Reject Modal -->
+                        <div class="modal fade" id="rejectModal{{ journal.id }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-danger text-white">
+                                        <h5 class="modal-title">{{ i18n["approval.queue.reject_journal"]|default:"Reject Journal" }}</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form method="post" action="{% url 'approval:reject_journal' journal.id %}">
+                                        {% csrf_token %}
+                                        <div class="modal-body">
+                                            <p>
+                                                {% blocktrans with ref=journal.reference_no %}You are about to reject journal {{ ref }}. This will return it to draft status.{% endblocktrans %}
+                                            </p>
+                                            <div class="form-group">
+                                                <label for="reason{{ journal.id }}" class="form-label">
+                                                    {{ i18n["approval.queue.reject_reason"]|default:"Rejection Reason" }} <span class="text-danger">*</span>
+                                                </label>
+                                                <textarea 
+                                                    id="reason{{ journal.id }}" 
+                                                    name="reason" 
+                                                    class="form-control" 
+                                                    rows="3"
+                                                    required
+                                                    placeholder="{{ i18n["approval.queue.reject_reason_placeholder"]|default:"Please provide reason for rejection..." }}"
+                                                ></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                {{ i18n["approval.queue.cancel"]|default:"Cancel" }}
+                                            </button>
+                                            <button type="submit" class="btn btn-danger">
+                                                <i class="bi bi-x-lg"></i> {{ i18n["approval.queue.reject"]|default:"Reject" }}
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if is_paginated %}
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1">{{ i18n["approval.queue.first"]|default:"First" }}</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">{{ i18n["approval.queue.previous"]|default:"Previous" }}</a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                        <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                        </li>
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">{{ i18n["approval.queue.next"]|default:"Next" }}</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">{{ i18n["approval.queue.last"]|default:"Last" }}</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+    {% else %}
+            <div class="alert alert-info" role="alert">
+            <i class="bi bi-info-circle"></i> {{ i18n["approval.queue.none"]|default:"No pending approvals at this time." }}
+        </div>
+    {% endif %}
+</div>
+
+<style>
+    .card {
+        border: none;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .card-body h3 {
+        margin: 0;
+        font-size: 2.5rem;
+        font-weight: 700;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: #f5f5f5;
+    }
+</style>
+{% endblock %}

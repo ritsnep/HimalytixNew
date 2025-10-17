@@ -1,0 +1,190 @@
+{% extends 'accounting/_form_base.html' %}
+{% load static %}
+
+{% block title %}Account Type{% endblock %}
+
+{% block form_content %}
+    <div class="card">
+
+        <div class="card-body">
+            <form id="account-type-form" method="post" novalidate>
+                {% csrf_token %}
+                
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {% for error in form.non_field_errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">Name</label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.name.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.code.id_for_label }}" class="form-label">Code</label>
+                            {{ form.code }}
+                            {% if form.code.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.code.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.nature.id_for_label }}" class="form-label">Nature</label>
+                            {{ form.nature }}
+                            {% if form.nature.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.nature.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.classification.id_for_label }}" class="form-label">Classification</label>
+                            {{ form.classification }}
+                            {% if form.classification.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.classification.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.balance_sheet_category.id_for_label }}" class="form-label">Balance Sheet Category</label>
+                            {{ form.balance_sheet_category }}
+                            {% if form.balance_sheet_category.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.balance_sheet_category.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.cash_flow_category.id_for_label }}" class="form-label">Cash Flow Category</label>
+                            {{ form.cash_flow_category }}
+                            {% if form.cash_flow_category.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.cash_flow_category.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.income_statement_category.id_for_label }}" class="form-label">Income Statement Category</label>
+                            {{ form.income_statement_category }}
+                            {% if form.income_statement_category.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.income_statement_category.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.display_order.id_for_label }}" class="form-label">Display Order</label>
+                            {{ form.display_order }}
+                            {% if form.display_order.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.display_order.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.root_code_prefix.id_for_label }}" class="form-label">Root Code Prefix</label>
+                            {{ form.root_code_prefix }}
+                            {% if form.root_code_prefix.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.root_code_prefix.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.root_code_step.id_for_label }}" class="form-label">Root Code Step</label>
+                            {{ form.root_code_step }}
+                            {% if form.root_code_step.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.root_code_step.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <div class="form-check">
+                                {{ form.system_type }}
+                                <label class="form-check-label" for="{{ form.system_type.id_for_label }}">
+                                    System Type
+                                </label>
+                            </div>
+                            {% if form.system_type.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.system_type.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <div class="form-check">
+                                {{ form.is_archived }}
+                                <label class="form-check-label" for="{{ form.is_archived.id_for_label }}">
+                                    Archived
+                                </label>
+                            </div>
+                            {% if form.is_archived.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.is_archived.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <a href="{% url 'accounting:account_type_list' %}" class="btn btn-secondary">Back</a>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock form_content %}
+
+{% block extra_js %}
+  {{ block.super }}
+{% endblock %} 

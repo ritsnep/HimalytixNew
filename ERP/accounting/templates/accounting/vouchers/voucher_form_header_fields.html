@@ -1,0 +1,35 @@
+{% comment %} Journal Header Fields {% endcomment %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="mb-3">
+            <label class="form-label">Journal Type</label>
+            {{ journal_form.journal_type }}
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="mb-3">
+            <label class="form-label">Period</label>
+            {{ journal_form.period }}
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="mb-3">
+            <label class="form-label">Date</label>
+            {{ journal_form.journal_date }}
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-6">
+        <div class="mb-3">
+            <label class="form-label">Reference</label>
+            {{ journal_form.reference }}
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="mb-3">
+            <label class="form-label">Description</label>
+            {{ journal_form.description }}
+        </div>
+    </div>
+</div> 

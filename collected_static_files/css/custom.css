@@ -1,0 +1,79 @@
+/* Layout shell */
+body, html {
+  height: 100%;
+  min-height: 100%;
+}
+#layout-wrapper {
+  display: flex;
+  min-height: 100vh;
+  background: #191e22;
+}
+.vertical-menu {
+  width: 250px;
+  min-width: 60px;
+  z-index: 1001;
+  position: fixed;
+  top: 70px; /* height of topnav */
+  left: 0;
+  bottom: 0;
+  background: #23272b;
+}
+@media (max-width: 991px) {
+  .vertical-menu { width: 60px; }
+}
+@media (max-width: 600px) {
+  .vertical-menu { width: 0; }
+}
+
+/* Main content area */
+.main-content {
+  margin-left: 250px;
+  padding: 24px 16px 16px 16px;
+  background: #191e22;
+  min-height: 100vh;
+  transition: margin-left 0.2s;
+}
+@media (max-width: 991px) {
+  .main-content { margin-left: 60px; }
+}
+@media (max-width: 600px) {
+  .main-content { margin-left: 0; }
+}
+
+/* Tab-bar is sticky so it doesn't cover page content */
+#tab-bar {
+  position: sticky;
+  top: 70px; /* height of topnav */
+  z-index: 1031;
+  height: 42px; /* reserve space below */
+  background: #23272b;
+  border-bottom: 1px solid #30373f;
+  padding: 0 12px;
+}
+
+#open-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  align-items: center;
+}
+#open-tabs::-webkit-scrollbar { height: 4px; }
+#open-tabs::-webkit-scrollbar-thumb { background: var(--bs-gray-600); }
+
+/* Right-hand drawer placeholder */
+.context-drawer {
+  position: fixed;
+  right: 0;
+  top: 70px;
+  bottom: 0;
+  width: 260px;
+  overflow-y: auto;
+  background: var(--bs-dark);
+  transition: transform .3s;
+}
+
+/* Loading overlay unchanged */
+#loading-overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);z-index:1080}
+#loading-overlay.show{display:flex}

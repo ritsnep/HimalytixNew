@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Journal Entry Test</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Journal Entry</h1>
+        <table id="journal-grid" class="table">
+            <thead>
+                <tr>
+                    <th>Account</th>
+                    <th>Debit</th>
+                    <th>Credit</th>
+                </tr>
+            </thead>
+            <tbody id="journal-grid-body">
+                <tr>
+                    <td><input class="grid-cell" value="Cash" readonly></td>
+                    <td><input class="grid-cell" value="100" readonly></td>
+                    <td><input class="grid-cell" value="0" readonly></td>
+                </tr>
+                <tr>
+                    <td><input class="grid-cell" value="Revenue" readonly></td>
+                    <td><input class="grid-cell" value="0" readonly></td>
+                    <td><input class="grid-cell" value="100" readonly></td>
+                </tr>
+            </tbody>
+        </table>
+        <button id="add-row">Add Line</button>
+        <div class="modal" id="command-palette-modal" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">Command Palette</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+              <div class="modal-body">
+                <p>Modal body text goes here.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        // Simplified keyboard shortcuts for testing
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'k') {
+                e.preventDefault();
+                $('#command-palette-modal').modal('toggle');
+            }
+        });
+        document.querySelectorAll('.grid-cell').forEach(cell => {
+            cell.addEventListener('keydown', (e) => {
+                const row = e.target.closest('tr');
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    row.classList.add('editing');
+                    row.querySelectorAll('.grid-cell').forEach(c => c.removeAttribute('readonly'));
+                }
+            });
+        });
+    </script>
+</body>
+</html>

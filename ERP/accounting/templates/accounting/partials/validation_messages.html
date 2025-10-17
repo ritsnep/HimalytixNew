@@ -1,0 +1,97 @@
+{% if form.errors %}
+    <div class="alert alert-danger">
+        <strong>Please correct the errors below:</strong>
+        <ul>
+            {% for field, errors in form.errors.items %}
+                {% for error in errors %}
+                    <li>{{ field }}: {{ error }}</li>
+                {% endfor %}
+            {% endfor %}
+            {% for form in form.forms %}
+                {% for field, errors in form.errors.items %}
+                     {% for error in errors %}
+                        <li>Line {{ forloop.parentloop.counter }}: {{ form.prefix }}-{{ field }}: {{ error }}</li>
+                     {% endfor %}
+                {% endfor %}
+            {% endfor %}
+        </ul>
+    </div>
+{% else %}
+    <div class="text-center text-muted small">
+        <i class="fas fa-check-circle text-success"></i> No validation issues.
+    </div>
+{% endif %}
+
+<style>
+.validation-container {
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+}
+
+.validation-summary {
+    margin-bottom: 1rem;
+}
+
+.validation-item {
+    padding: 0.5rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.validation-item:last-child {
+    border-bottom: none;
+}
+</style>
+
+<div class="validation-container">
+    <div class="validation-summary mb-2">
+        <div class="progress">
+            <div class="progress-bar" role="progressbar" style="width: {{ validation_percentage }}%"></div>
+        </div>
+        <small class="text-muted">{{ valid_fields }}/{{ total_fields }} fields validated</small>
+    </div>
+    
+    {% for message in validation_messages %}
+    <div class="validation-item d-flex align-items-center gap-2 {% if message.type == 'error' %}text-danger{% endif %}">
+        <i class="fas fa-{{ message.icon }}"></i>
+        <span>{{ message.text }}</span>
+    </div>
+    {% endfor %}
+</div>
+
+{% load static %}
+
+<div class="validation-messages">
+    <style>
+        .validation-messages {
+            margin: 1rem 0;
+            padding: 1rem;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        
+        .validation-item {
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+            border-radius: 3px;
+        }
+        
+        .validation-error {
+            background-color: #fee;
+            border: 1px solid #fcc;
+            color: #c00;
+        }
+        
+        .validation-warning {
+            background-color: #ffd;
+            border: 1px solid #eeb;
+            color: #660;
+        }
+    </style>
+
+    {% for message in validation_messages %}
+        <div class="validation-item validation-{{ message.type }}">
+            {{ message.text }}
+        </div>
+    {% endfor %}
+</div>

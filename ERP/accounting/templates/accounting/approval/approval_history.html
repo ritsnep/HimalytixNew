@@ -1,0 +1,218 @@
+{% extends "accounting/base_voucher.html" %}
+{% load i18n %}
+
+{% block title %}{{ i18n["approval.history.title"]|default:"Approval History" }} - {{ journal.reference_no }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2>{{ i18n["approval.history.title"]|default:"Approval History" }} - {{ journal.reference_no }}</h2>
+                <a href="{% url 'accounting:approval_queue' %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> {{ i18n["approval.history.back_to_queue"]|default:"Back to Queue" }}
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Journal Details -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5>{{ i18n["approval.history.journal_details"]|default:"Journal Details" }}</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>{{ i18n["approval.history.reference"]|default:"Reference:" }}</strong> {{ journal.reference_no }}</p>
+                    <p><strong>{{ i18n["approval.history.type"]|default:"Type:" }}</strong> {{ journal.journal_type.name }}</p>
+                    <p><strong>{{ i18n["approval.history.date"]|default:"Date:" }}</strong> {{ journal.journal_date|date:"Y-m-d" }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>{{ i18n["approval.history.amount"]|default:"Amount:" }}</strong> {{ journal.total_debit|floatformat:2 }}</p>
+                    <p><strong>{{ i18n["approval.history.created_by"]|default:"Created By:" }}</strong> {{ journal.created_by.get_full_name }}</p>
+                    <p><strong>{{ i18n["approval.history.status"]|default:"Status:" }}</strong> 
+                        <span class="badge bg-{% if journal.status == 'draft' %}warning{% elif journal.status == 'posted' %}success{% else %}info{% endif %}">
+                            {{ journal.get_status_display }}
+                        </span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Approval Status -->
+    {% if approval_log %}
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5>{{ i18n["approval.history.approval_status"]|default:"Approval Status" }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <p><strong>{{ i18n["approval.history.workflow"]|default:"Workflow:" }}</strong> {{ approval_log.workflow.name }}</p>
+                    </div>
+                    <div class="col-md-4">
+                        <p><strong>{{ i18n["approval.history.status"]|default:"Status:" }}</strong>
+                            <span class="badge bg-{% if approval_log.status == 'approved' %}success{% elif approval_log.status == 'rejected' %}danger{% else %}warning{% endif %}">
+                                {{ approval_log.get_status_display }}
+                            </span>
+                        </p>
+                    </div>
+                    <div class="col-md-4">
+                        <p><strong>{{ i18n["approval.history.current_step"]|default:"Current Step:" }}</strong> {{ approval_log.current_step }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Timeline of Approvals -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5>{{ i18n["approval.history.approval_timeline"]|default:"Approval Timeline" }}</h5>
+            </div>
+            <div class="card-body">
+                {% if decisions %}
+                    <div class="timeline">
+                        <!-- Submission -->
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-info">
+                                <i class="bi bi-send"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h6>{{ i18n["approval.history.submitted_for_approval"]|default:"Submitted for Approval" }}</h6>
+                                <p class="text-muted mb-0">{{ i18n["approval.history.submitted_by_on"]|default:"Submitted by {user} on {date}" }}</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Decisions -->
+                        {% for decision in decisions %}
+                            <div class="timeline-item">
+                                <div class="timeline-marker bg-{% if decision.decision == 'approve' %}success{% else %}danger{% endif %}">
+                                    {% if decision.decision == 'approve' %}
+                                        <i class="bi bi-check-lg"></i>
+                                    {% else %}
+                                        <i class="bi bi-x-lg"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="timeline-content">
+                                    <h6>
+                                        {% if decision.decision == 'approve' %}
+                                            {% trans "Approved" %}
+                                        {% else %}
+                                            {% trans "Rejected" %}
+                                        {% endif %}
+                                        by {{ decision.approver.get_full_name }}
+                                    </h6>
+                                    <p class="text-muted">
+                                        {% blocktrans with date=decision.decided_at|date:"Y-m-d H:i" step=decision.step.name %}
+                                            Step: {{ step }} on {{ date }}
+                                        {% endblocktrans %}
+                                    </p>
+                                    {% if decision.comments %}
+                                        <div class="alert alert-light">
+                                            <strong>{% trans "Comments:" %}</strong>
+                                            <p>{{ decision.comments }}</p>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                        
+                        <!-- Completion -->
+                        {% if approval_log.status == 'approved' %}
+                            <div class="timeline-item">
+                                <div class="timeline-marker bg-success">
+                                    <i class="bi bi-check-circle"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <h6>{{ i18n["approval.history.approval_complete"]|default:"Approval Complete" }}</h6>
+                                    <p class="text-muted mb-0">{{ i18n["approval.history.completed_on"]|default:"Completed on {date}" }}</p>
+                                </div>
+                            </div>
+                        {% elif approval_log.status == 'rejected' %}
+                            <div class="timeline-item">
+                                <div class="timeline-marker bg-danger">
+                                    <i class="bi bi-x-circle"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <h6>{{ i18n["approval.history.approval_rejected"]|default:"Approval Rejected" }}</h6>
+                                    <p class="text-muted">{{ i18n["approval.history.rejected_on"]|default:"Rejected on {date}" }}</p>
+                                    {% if approval_log.rejection_reason %}
+                                        <div class="alert alert-danger">
+                                            <strong>{{ i18n["approval.history.reason"]|default:"Reason:" }}</strong>
+                                            <p>{{ approval_log.rejection_reason }}</p>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <p class="text-muted">{{ i18n["approval.history.no_decisions"]|default:"No decisions yet." }}</p>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+    
+    <!-- Actions -->
+    <div class="row">
+        <div class="col-md-12">
+            <a href="{% url 'accounting:voucher_detail' journal.id %}" class="btn btn-info">
+                <i class="bi bi-eye"></i> {{ i18n["approval.history.view_journal"]|default:"View Journal" }}
+            </a>
+            {% if journal.status == 'draft' %}
+                <a href="{% url 'accounting:voucher_edit' journal.id %}" class="btn btn-warning">
+                    <i class="bi bi-pencil"></i> {{ i18n["approval.history.edit_journal"]|default:"Edit Journal" }}
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .timeline {
+        position: relative;
+        padding: 20px 0;
+    }
+    
+    .timeline-item {
+        display: flex;
+        margin-bottom: 30px;
+        position: relative;
+    }
+    
+    .timeline-item:not(:last-child)::before {
+        content: '';
+        position: absolute;
+        left: 15px;
+        top: 50px;
+        width: 2px;
+        height: calc(100% + 20px);
+        background-color: #dee2e6;
+    }
+    
+    .timeline-marker {
+        min-width: 40px;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        margin-right: 20px;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .timeline-content {
+        flex: 1;
+    }
+    
+    .timeline-content h6 {
+        margin-bottom: 5px;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}

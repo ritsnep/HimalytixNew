@@ -1,0 +1,43 @@
+
+<!-- accounting/templates/accounting/journal_entry_grid.html -->
+{% extends 'accounting/_form_base.html' %}
+{% load static %}
+{% block content %}
+<div class="card-body">
+    <form id="je-grid-form">
+        {% csrf_token %}
+        {{ header_form.as_p }}
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm" role="grid" aria-label="Journal grid">
+                <thead>
+                    <tr>
+                        <th>Account</th>
+                        <th>Description</th>
+                        <th>Debit</th>
+                        <th>Credit</th>
+                        <th>Department</th>
+                        <th>Project</th>
+                        <th>Cost Center</th>
+                        <th>Currency</th>
+                        <th>Rate</th>
+                    </tr>
+                </thead>
+                <tbody id="je-grid-rows"
+                       hx-target="this"
+                       hx-swap="beforeend"
+                       data-next-index="{{ next_index|default:1 }}"
+                       data-csrf-token="{{ csrf_token }}"
+                       data-add-row-url="{% url 'accounting:journal_entry_grid_add_row' %}">
+                    {% include 'accounting/partials/journal_grid_row.html' with form=line_forms.0 %}
+                </tbody>
+            </table>
+        </div>
+        <div id="je-grid-footer">
+            {% include 'accounting/partials/journal_grid_footer.html' with total_debit=totals.debit total_credit=totals.credit diff=totals.diff %}
+        </div>
+        <button id="add-row-btn" type="button" class="btn btn-secondary">Add Row</button>
+    </form>
+</div>
+<script src="{% static 'accounting/js/journal_entry_grid.js' %}" defer></script>
+{% endblock %}
+

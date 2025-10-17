@@ -1,0 +1,17 @@
+{% if perms.forms_designer.change_voucherschema %}
+  <button 
+    class="btn btn-sm {% if not config.is_archived %}btn-success{% else %}btn-outline-secondary{% endif %}"
+    hx-post="{% url 'forms_designer:toggle_voucher_config_status' config.config_id %}"
+    hx-target="#status-cell-{{ config.config_id }}"
+    hx-swap="outerHTML"
+    hx-vals='{}'
+    aria-pressed="{% if not config.is_archived %}true{% else %}false{% endif %}"
+    aria-label="Toggle Active Status"
+    >
+    {% if not config.is_archived %}<i class="fas fa-check"></i> Active{% else %}<i class="fas fa-times"></i> Inactive{% endif %}
+  </button>
+{% else %}
+  <span class="badge {% if not config.is_archived %}bg-success{% else %}bg-secondary{% endif %}">
+    {% if not config.is_archived %}Active{% else %}Inactive{% endif %}
+  </span>
+ {% endif %} 

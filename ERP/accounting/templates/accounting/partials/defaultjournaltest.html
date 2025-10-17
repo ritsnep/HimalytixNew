@@ -1,0 +1,308 @@
+{% extends 'accounting/partials/demobase.html' %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+    <div class="main-content-wrapper">
+        <!-- Header -->
+        <header class="page-header">
+            <div class="header-title-section">
+                <h1 class="text-xl font-bold text-blue-600">General Journal</h1>
+                <div class="status-indicators">
+                    <span class="status-new">New</span>
+                    <span class="status-id">GJ-YYYY-NNNN</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="action-button" hx-post="/save-journal">
+                    <i class="fas fa-save"></i>
+                    <span>Save</span>
+                </button>
+                <button class="action-button primary" hx-post="/post-journal">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Post</span>
+                </button>
+                <button id="density-toggle" class="action-button" aria-label="Toggle density">
+                    <i class="fas fa-compress-alt"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Alert Tiles -->
+        <div class="alert-tiles-container">
+            <div class="alert-tile alert-error">
+                <i class="fas fa-exclamation-circle"></i>
+                <span class="alert-text">2 validation errors</span>
+            </div>
+            <div class="alert-tile alert-warning">
+                <i class="fas fa-clock"></i>
+                <span class="alert-text">3 pending approvals</span>
+            </div>
+            <div class="alert-tile alert-info">
+                <i class="fas fa-info-circle"></i>
+                <span class="alert-text">5 batches on hold</span>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="content-wrapper">
+            <!-- Journal Entry Grid -->
+            <div class="journal-grid-container">
+                <!-- AI Assist Bar -->
+                <div class="ai-assist-bar">
+                    <div class="ai-assist-input-wrapper">
+                        <input type="text" id="ai-assist-input" placeholder="Describe your journal entry (e.g. 'Accrue March AWS bill')..."
+                               class="input-field">
+                        <button id="ai-suggest" class="ai-suggest-button" aria-label="AI Suggest">
+                            <i class="fas fa-magic"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Grid Container -->
+                <div class="grid-container">
+                    <table id="journal-grid" class="data-grid">
+                        <thead class="grid-header">
+                            <tr>
+                                <th class="grid-header-cell sticky-col">
+                                    <div class="header-content-wrapper">
+                                        <span>#</span>
+                                        <div class="drag-handle">
+                                            <i class="fas fa-grip-vertical"></i>
+                                        </div>
+                                    </div>
+                                </th>
+                                <th class="grid-header-cell">
+                                    <div class="header-content-wrapper">
+                                        <span>Account</span>
+                                        <div class="resize-handle"></div>
+                                    </div>
+                                </th>
+                                <th class="grid-header-cell">
+                                    <div class="header-content-wrapper">
+                                        <span>Description</span>
+                                        <div class="resize-handle"></div>
+                                    </div>
+                                </th>
+                                <th class="grid-header-cell">
+                                    <div class="header-content-wrapper">
+                                        <span>Debit</span>
+                                        <div class="resize-handle"></div>
+                                    </div>
+                                </th>
+                                <th class="grid-header-cell">
+                                    <div class="header-content-wrapper">
+                                        <span>Credit</span>
+                                        <div class="resize-handle"></div>
+                                    </div>
+                                </th>
+                                <th class="grid-header-cell">
+                                    <div class="header-content-wrapper">
+                                        <span>Department</span>
+                                        <div class="resize-handle"></div>
+                                    </div>
+                                </th>
+                                <th class="grid-header-cell">
+                                    <div class="header-content-wrapper">
+                                        <span>Project</span>
+                                        <div class="resize-handle"></div>
+                                    </div>
+                                </th>
+                                <th class="grid-header-cell">
+                                    <span>Status</span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="grid-body">
+                            <!-- Rows will be added dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Balance Footer -->
+                <div class="footer-bar">
+                    <div class="footer-actions">
+                        <button id="add-row" class="action-button" hx-post="/add-journal-row" hx-target="#journal-grid tbody" hx-swap="beforeend">
+                            <i class="fas fa-plus"></i>
+                            <span>Add Row</span>
+                        </button>
+                        <button id="auto-balance" class="action-button success" hx-post="/auto-balance-journal" hx-target="#journal-grid tbody" hx-swap="innerHTML">
+                            <i class="fas fa-balance-scale"></i>
+                            <span>Auto-Balance</span>
+                        </button>
+                    </div>
+                    <div class="footer-totals">
+                        <div class="total-section">
+                            <span class="total-label">Total Debit:</span>
+                            <span id="total-debit" class="total-value">0.00</span>
+                        </div>
+                        <div class="total-section">
+                            <span class="total-label">Total Credit:</span>
+                            <span id="total-credit" class="total-value">0.00</span>
+                        </div>
+                        <div class="imbalance-container">
+                            <div id="imbalance-bar" class="imbalance-indicator"></div>
+                        </div>
+                        <div id="balance-status" class="balance-status">
+                            Balanced
+                        </div>
+                    </div>
+                    <div>
+                        <button id="preview-impact" class="action-button info" hx-get="/preview-impact" hx-target="#preview-modal" hx-swap="outerHTML">
+                            <i class="fas fa-eye"></i>
+                            <span>Preview Ledger Impact</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Context Side Panel -->
+            <div id="side-panel" class="side-panel">
+                <div class="panel-header">
+                    <h3 class="font-medium">Entry Details</h3>
+                    <button id="toggle-panel" class="panel-toggle-button" aria-label="Toggle side panel">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+                <div class="panel-content">
+                    <div id="empty-state" class="empty-state-message">
+                        <i class="fas fa-mouse-pointer"></i>
+                        <p>Select a row to view details</p>
+                    </div>
+                    <div id="detail-view" class="hidden detail-view-section">
+                        <div>
+                            <h4 class="section-title">Account Information</h4>
+                            <div class="account-info-card">
+                                <div class="account-info-header">
+                                    <div class="account-icon-wrapper">
+                                        <i class="fas fa-wallet"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="account-name" id="account-name">Account Name</h5>
+                                        <p class="account-code" id="account-code">1000-00</p>
+                                        <p class="account-type" id="account-type">Asset - Cash</p>
+                                    </div>
+                                </div>
+                                <div class="account-balances">
+                                    <div>
+                                        <span class="balance-label">Balance:</span>
+                                        <span id="account-balance" class="balance-value">$12,345.67</span>
+                                    </div>
+                                    <div>
+                                        <span class="balance-label">YTD Activity:</span>
+                                        <span id="account-ytd" class="balance-value">$45,678.90</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h4 class="section-title">Validation Messages</h4>
+                            <div id="validation-messages" class="validation-messages-container">
+                                <!-- Messages will be added here -->
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h4 class="section-title">AI Insights</h4>
+                            <div class="ai-insight-card">
+                                <div class="ai-insight-icon-wrapper">
+                                    <i class="fas fa-robot"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm" id="ai-insight">This appears to be a standard monthly accrual based on historical patterns. Similar entries were posted on the 15th of each month.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h4 class="section-title">Attachments</h4>
+                            <div class="attachment-list">
+                                <div class="attachment-item">
+                                    <i class="fas fa-file-pdf"></i>
+                                    <span class="attachment-name">Invoice_202303.pdf</span>
+                                </div>
+                                <div class="attachment-item">
+                                    <i class="fas fa-file-excel"></i>
+                                    <span class="attachment-name">Accruals_March.xlsx</span>
+                                </div>
+                            </div>
+                            <button class="add-attachment-button">
+                                <i class="fas fa-plus"></i>
+                                <span>Add Attachment</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview Ledger Impact Modal -->
+    <div id="preview-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Preview Ledger Impact</h3>
+                <button id="close-preview" class="modal-close-button" aria-label="Close preview">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <table class="preview-table">
+                    <thead class="preview-table-header">
+                        <tr>
+                            <th class="preview-header-cell">Account</th>
+                            <th class="preview-header-cell">Description</th>
+                            <th class="preview-header-cell">Debit</th>
+                            <th class="preview-header-cell">Credit</th>
+                            <th class="preview-header-cell">Impact</th>
+                        </tr>
+                    </thead>
+                    <tbody id="preview-content" class="preview-table-body">
+                        <!-- Preview content will be added here -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-preview" class="button-secondary">
+                    Cancel
+                </button>
+                <button class="button-primary">
+                    Confirm and Post
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shortcut Helper -->
+    <div id="shortcut-helper" class="shortcut-helper">
+        <div class="shortcut-grid">
+            <div class="shortcut-item">
+                <div class="shortcut-key">Ctrl+Enter</div>
+                <p class="shortcut-desc">Save</p>
+            </div>
+            <div class="shortcut-item">
+                <div class="shortcut-key">Alt+A</div>
+                <p class="shortcut-desc">Add Row</p>
+            </div>
+            <div class="shortcut-item">
+                <div class="shortcut-key">Alt+B</div>
+                <p class="shortcut-desc">Auto-Balance</p>
+            </div>
+            <div class="shortcut-item">
+                <div class="shortcut-key">Tab</div>
+                <p class="shortcut-desc">Next Cell</p>
+            </div>
+            <div class="shortcut-item">
+                <div class="shortcut-key">Shift+Tab</div>
+                <p class="shortcut-desc">Prev Cell</p>
+            </div>
+            <div class="shortcut-item">
+                <div class="shortcut-key">Ctrl+D</div>
+                <p class="shortcut-desc">Duplicate Row</p>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}

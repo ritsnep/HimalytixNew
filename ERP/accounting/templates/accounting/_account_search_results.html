@@ -1,0 +1,17 @@
+{% if accounts %}
+    {% for account in accounts %}
+    <a href="javascript:void(0);" class="list-group-item list-group-item-action"
+       onclick="
+           const targetInput = document.querySelector(`#line-{{ index }} input[name='lines-{{ index }}-account']`);
+           if (targetInput) {
+               targetInput.value = '{{ account.account_code }}';
+               htmx.trigger(targetInput, 'change');
+           }
+           this.closest('.list-group').innerHTML = '';
+       ">
+        <strong>{{ account.account_code }}</strong> - {{ account.account_name }}
+    </a>
+    {% endfor %}
+{% else %}
+    <div class="list-group-item text-muted">No results found</div>
+{% endif %}

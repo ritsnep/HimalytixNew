@@ -1,0 +1,5 @@
+django>=4.2.0
+htmx>=0.0.1  # For Python HTMX helpers
+django-htmx>=1.17.0  # Django integration for HTMX
+python-dateutil>=2.8.2  # For date handling
+openpyxl>=3.1.2  # For Excel export support

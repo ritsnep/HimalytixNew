@@ -1,0 +1,43 @@
+<div class="modal-header">
+    <h5 class="modal-title">Audit Trail for Journal #{{ journal.journal_number }}</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>User</th>
+                <th>Action</th>
+                <th>Changes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in audit_logs %}
+            <tr>
+                <td>{{ log.timestamp|date:"Y-m-d H:i:s" }}</td>
+                <td>{{ log.user.username|default:"System" }}</td>
+                <td>{{ log.get_action_display }}</td>
+                <td>
+                    {% if log.changes %}
+                        <ul>
+                        {% for key, value in log.changes.items %}
+                            <li><strong>{{ key }}:</strong> {{ value }}</li>
+                        {% endfor %}
+                        </ul>
+                    {% else %}
+                        No changes recorded.
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" class="text-center">No audit history found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+</div>

@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Trial Balance" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-1">
+                        <i class="fas fa-balance-scale me-2"></i>
+                        {% trans "Trial Balance" %}
+                    </h1>
+                    <p class="text-muted">{% trans "Verify debits and credits balance for all accounts" %}</p>
+                </div>
+                <a href="{% url 'accounting:report_list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>
+                    {% trans "Back to Reports" %}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Form -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="as_of_date" class="form-label">{% trans "As Of Date" %}</label>
+                            <input type="date" name="as_of_date" id="as_of_date" class="form-control" value="{{ as_of_date }}">
+                        </div>
+                        <div class="col-md-8 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-filter me-2"></i>
+                                {% trans "Generate" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Data -->
+    {% if report_data %}
+        {% if report_data.error %}
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>{% trans "Error:" %}</strong> {{ report_data.error }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% else %}
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-light">
+                            <div class="row">
+                                <div class="col">
+                                    <h5 class="mb-0">{% trans "Trial Balance" %}</h5>
+                                    <small class="text-muted">
+                                        {% trans "Organization" %}: {{ report_data.organization }}
+                                        | {% trans "As Of" %}: {{ report_data.as_of_date|date:"Y-m-d" }}
+                                    </small>
+                                </div>
+                                <div class="col text-end">
+                                    {% if report_data.is_balanced %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check-circle me-1"></i>
+                                        {% trans "Balanced" %}
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-danger">
+                                        <i class="fas fa-exclamation-circle me-1"></i>
+                                        {% trans "Out of Balance" %}
+                                    </span>
+                                    {% endif %}
+                                    
+                                    <form method="post" action="{% url 'accounting:report_export' %}" style="display: inline; margin-left: 20px;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="report_type" value="trial_balance">
+                                        <input type="hidden" name="as_of_date" value="{{ as_of_date }}">
+                                        
+                                        <div class="btn-group" role="group">
+                                            <button type="submit" name="export_format" value="csv" class="btn btn-sm btn-outline-secondary">
+                                                <i class="fas fa-file-csv me-1"></i>CSV
+                                            </button>
+                                            <button type="submit" name="export_format" value="excel" class="btn btn-sm btn-outline-secondary">
+                                                <i class="fas fa-file-excel me-1"></i>Excel
+                                            </button>
+                                            <button type="submit" name="export_format" value="pdf" class="btn btn-sm btn-outline-secondary">
+                                                <i class="fas fa-file-pdf me-1"></i>PDF
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>{% trans "Account Code" %}</th>
+                                        <th>{% trans "Account Name" %}</th>
+                                        <th>{% trans "Account Type" %}</th>
+                                        <th class="text-end">{% trans "Debit Balance" %}</th>
+                                        <th class="text-end">{% trans "Credit Balance" %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for line in report_data.lines %}
+                                    <tr>
+                                        <td><strong>{{ line.account_code }}</strong></td>
+                                        <td>{{ line.account_name }}</td>
+                                        <td>
+                                            <span class="badge bg-secondary">{{ line.account_type }}</span>
+                                        </td>
+                                        <td class="text-end">
+                                            {% if line.debit_balance %}
+                                            <span class="fw-bold text-success">{{ line.debit_balance|floatformat:2 }}</span>
+                                            {% else %}
+                                            —
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            {% if line.credit_balance %}
+                                            <span class="fw-bold text-danger">{{ line.credit_balance|floatformat:2 }}</span>
+                                            {% else %}
+                                            —
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot class="table-light fw-bold">
+                                    <tr>
+                                        <td colspan="3" class="text-end">{% trans "Grand Totals" %}:</td>
+                                        <td class="text-end text-success">{{ report_data.totals.total_debits|floatformat:2 }}</td>
+                                        <td class="text-end text-danger">{{ report_data.totals.total_credits|floatformat:2 }}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            <i class="fas fa-info-circle me-2"></i>
+            {% trans "Select a date and click Generate to view the trial balance." %}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

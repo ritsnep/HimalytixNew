@@ -1,0 +1,71 @@
+{% if filter_config and filter_config.filters %}
+<div class="card card-body {% if not request.GET %}collapse{% endif %}">
+    <form hx-get="{{ request.path }}"
+          hx-target="#{{ table_id|default:'table-component' }}"
+          hx-trigger="submit"
+          hx-indicator="#filter-indicator"
+          class="row g-3">
+        {% for field_name, config in filter_config.filters.items %}
+        <div class="col-md-4">
+            <label class="form-label">{{ config.label|default:field_name|title }}</label>
+            {% if config.type == 'select' %}
+                <select name="{{ field_name }}" 
+                        class="form-select"
+                        {% if config.multiple %}multiple{% endif %}>
+                    <option value="">{{ config.placeholder|default:'Select...' }}</option>
+                    {% for choice in config.choices %}
+                    <option value="{{ choice.value }}" 
+                            {% if choice.value|stringformat:"s" == request.GET|get:field_name|stringformat:"s" %}selected{% endif %}>
+                        {{ choice.label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            {% elif config.type == 'date' %}
+                <input type="date" 
+                       name="{{ field_name }}" 
+                       class="form-control datepicker"
+                       value="{{ request.GET|get:field_name|default:'' }}">
+            {% elif config.type == 'daterange' %}
+                <div class="input-group">
+                    <input type="date" 
+                           name="{{ field_name }}_from" 
+                           class="form-control datepicker"
+                           value="{{ request.GET|get:field_name|add:'_from'|default:'' }}"
+                           placeholder="From">
+                    <span class="input-group-text">to</span>
+                    <input type="date" 
+                           name="{{ field_name }}_to" 
+                           class="form-control datepicker"
+                           value="{{ request.GET|get:field_name|add:'_to'|default:'' }}"
+                           placeholder="To">
+                </div>
+            {% else %}
+                <input type="{{ config.type|default:'text' }}" 
+                       name="{{ field_name }}" 
+                       class="form-control"
+                       placeholder="{{ config.placeholder|default:'' }}"
+                       value="{{ request.GET|get:field_name|default:'' }}">
+            {% endif %}
+            {% if config.help_text %}
+            <div class="form-text">{{ config.help_text }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        <div class="col-12">
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary" id="filter-btn">
+                    <span id="filter-indicator" class="htmx-indicator spinner-border spinner-border-sm me-1"></span>
+                    Apply Filters
+                </button>
+                <button type="button" 
+                        class="btn btn-secondary"
+                        hx-get="{{ request.path }}"
+                        hx-target="#{{ table_id|default:'table-component' }}"
+                        hx-indicator="#filter-indicator">
+                    <i class="fas fa-times me-1"></i> Reset
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endif %}

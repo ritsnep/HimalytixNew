@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  viewBox="0 0 256 256"
+  role="img"
+  aria-labelledby="title desc">
+  <title id="title">Himalytix icon</title>
+  <desc id="desc">
+    Navy cloud with three ascending white bars and an orange arrow symbolising growth.
+  </desc>
+
+  <!-- ===== COLOUR VARIABLES ===== -->
+  <defs>
+    <style>
+      :root {
+        --navy:   #002A53;
+        --orange: #FF7F11;
+      }
+      /* arrowhead for a crisp triangular tip */
+      .arrowHead { fill: var(--orange); }
+    </style>
+
+    <!-- Arrowhead marker -->
+    <marker id="ah" viewBox="0 0 10 10"
+            refX="5" refY="5"
+            markerWidth="8" markerHeight="8"
+            orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" class="arrowHead"/>
+    </marker>
+  </defs>
+
+  <!-- ===== CLOUD SHAPE ===== -->
+  <!-- Constructed with smooth Bézier curves for a rounded cloud -->
+  <path
+    d="
+      M48 160
+      C28 160 12 144 12 124
+      C12 104 27 88 46 84
+      C54 56 80 36 112 36
+      C134 36 154 48 166 66
+      C170 64 176 64 180 64
+      C208 64 232 88 232 116
+      C232 118 232 121 232 124
+      C250 128 264 144 264 162
+      C264 184 246 200 224 200
+      L72 200
+      C58 200 48 188 48 174
+      Z"
+    fill="var(--navy)"/>
+
+  <!-- ===== WHITE BARS (negative-space columns) ===== -->
+  <!-- heights tuned to mimic the ascending bars in the original -->
+  <rect x="76"  y="122" width="26" height="78" fill="#FFFFFF"/>
+  <rect x="114" y="90"  width="26" height="110" fill="#FFFFFF"/>
+  <rect x="152" y="58"  width="26" height="142" fill="#FFFFFF"/>
+
+  <!-- ===== GROWTH ARROW ===== -->
+  <polyline
+    points="76 142 127 102 178 70 228 28"
+    fill="none"
+    stroke="var(--orange)"
+    stroke-width="12"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    marker-end="url(#ah)"/>
+</svg>

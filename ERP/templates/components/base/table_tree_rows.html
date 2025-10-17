@@ -1,0 +1,42 @@
+{% for row in data %}
+  <tr>
+    {% for col in columns %}
+      <td{% if col.align %} class="text-{{ col.align }}"{% endif %} style="{% if forloop.first %}padding-left:{{ level|add:"0"|add:"0"|add:"0"|add:"0"|add:"0"|add:"0"|add:"0"|add:"0"|add:"0"|add:"0"|add:"0"|add:"0"|add:"0"|add:"0"|add:"0"|add:"0"|add:"0"|add:"0"|add:"0"|add:"0"|mul:level|add:"0" %}px;{% endif %}">
+        {% if forloop.first %}
+          {% if row.children %}
+            <button type="button" class="tree-row-toggle btn btn-link btn-sm p-0 me-1"
+                    data-target-id="children-{{ row.id }}">
+              <i class="mdi mdi-chevron-down"></i>
+            </button>
+          {% else %}
+            <span class="me-4"></span>
+          {% endif %}
+        {% endif %}
+        {{ row|get_item:col.name }}
+      </td>
+    {% endfor %}
+    <td>
+      {% if actions %}
+        <div class="btn-group btn-group-sm" role="group">
+          {% for action in actions %}
+            <a href="{{ action.url|default:'#' }}" class="btn btn-outline-{{ action.style|default:'primary' }}" title="{{ action.label }}">
+              {% if action.icon %}<i class="{{ action.icon }}"></i>{% endif %}
+              {% if not action.icon_only %}{{ action.label }}{% endif %}
+            </a>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </td>
+  </tr>
+  {% if row.children %}
+    <tr id="children-{{ row.id }}">
+      <td colspan="{{ columns|length|add:'1' }}" class="p-0 border-0">
+        <table class="table table-sm table-hover mb-0">
+          <tbody>
+            {% include "components/base/table_tree_rows.html" with data=row.children columns=columns actions=actions level=level|add:"1" parent_id=row.id %}
+          </tbody>
+        </table>
+      </td>
+    </tr>
+  {% endif %}
+{% endfor %}

@@ -1,0 +1,77 @@
+<!-- Validation Errors Display Partial -->
+<!-- Displays form and formset validation errors in alert boxes -->
+
+{% if journal_form.errors or line_formset.non_form_errors or errors %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong><i class="bi bi-exclamation-circle"></i> Validation Errors</strong>
+        
+        <!-- Journal Form Errors -->
+        {% if journal_form.non_field_errors %}
+            <div class="mt-2">
+                <small class="d-block fw-bold">Journal Entry:</small>
+                {% for error in journal_form.non_field_errors %}
+                    <div>• {{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- Field-specific errors -->
+        {% for field in journal_form %}
+            {% if field.errors %}
+                <div class="mt-2">
+                    <small class="d-block fw-bold">{{ field.label }}:</small>
+                    {% for error in field.errors %}
+                        <div>• {{ error }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endfor %}
+
+        <!-- Line Formset Errors -->
+        {% if line_formset.non_form_errors %}
+            <div class="mt-2">
+                <small class="d-block fw-bold">Line Items:</small>
+                {% for error in line_formset.non_form_errors %}
+                    <div>• {{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- Line Form Errors -->
+        {% for form in line_formset %}
+            {% if form.non_field_errors or form.errors %}
+                <div class="mt-2">
+                    <small class="d-block fw-bold">Line {{ forloop.counter }}:</small>
+                    {% for error in form.non_field_errors %}
+                        <div>• {{ error }}</div>
+                    {% endfor %}
+                    {% for field in form %}
+                        {% if field.errors and field.name != 'DELETE' %}
+                            {% for error in field.errors %}
+                                <div>• {{ field.label }}: {{ error }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endfor %}
+
+        <!-- Custom Errors from View -->
+        {% if errors %}
+            {% for key, error_list in errors.items %}
+                <div class="mt-2">
+                    <small class="d-block fw-bold">{{ key|title }}:</small>
+                    {% if error_list|is_list %}
+                        {% for error in error_list %}
+                            <div>• {{ error }}</div>
+                        {% endfor %}
+                    {% else %}
+                        <div>• {{ error_list }}</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+{% endif %}

@@ -1,0 +1,11 @@
+<button
+    class="btn btn-sm btn-primary d-flex align-items-center gap-1"
+    {% if journal.id and journal.status != 'posted' %}
+        hx-post="{% url 'accounting:journal_post' pk=journal.pk %}"
+        hx-target="#post-button-container"
+        hx-swap="outerHTML"
+    {% else %}
+        disabled
+    {% endif %}>
+    <i class="fas fa-check-circle"></i> Post
+</button>

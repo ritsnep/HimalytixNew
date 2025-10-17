@@ -1,0 +1,46 @@
+{% comment %} Journal Lines Table and Add/Remove Logic (HTMX) {% endcomment %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="table-responsive">
+            <table class="table table-bordered" id="journalLines">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Account</th>
+                        <th>Description</th>
+                        <th>Debit</th>
+                        <th>Credit</th>
+                        {% if voucher_config.show_dimensions %}
+                        <th>Department</th>
+                        <th>Project</th>
+                        <th>Cost Center</th>
+                        {% endif %}
+                        {% if voucher_config.show_tax_details %}
+                        <th>Tax Code</th>
+                        {% endif %}
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="journal-lines-body">
+                    {% for form in formset.forms %}
+                        {% include 'accounting/vouchers/voucher_form_line_row.html' with form=form forloop=forloop %}
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="3" class="text-end">Totals:</th>
+                        <th class="debit-total">0.00</th>
+                        <th class="credit-total">0.00</th>
+                        <th colspan="5"></th>
+                    </tr>
+                </tfoot>
+            </table>
+            <button type="button" class="btn btn-add-line mt-2" id="add-journal-line"
+                hx-get="{% url 'accounting:htmx_journal_line_form' %}?index={{ formset.total_form_count }}"
+                hx-target="#journal-lines-body" hx-swap="afterend">
+                Add Line
+            </button>
+            {# The Add Line button uses HTMX to fetch a new row from the server #}
+        </div>
+    </div>
+</div> 

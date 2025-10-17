@@ -1,0 +1,54 @@
+{% extends 'components/icons/icons-materialdesign.html' %}
+{% load static %}
+
+{% block title %}Material Design Icons Tree Demo{% endblock %}
+
+{% block content %}
+    <!-- ...existing code... -->
+    <div class="main-content">
+        <div class="page-content">
+            <div class="container-fluid">
+                <!-- ...existing code... -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h4 class="card-title">Tree/Expand-Collapse Icons Demo</h4>
+                                <p class="card-title-desc">
+                                    Example usage of Material Design icons for tree expand/collapse toggles.
+                                </p>
+                            </div>
+                            <div class="card-body">
+                                <div>
+                                    <i class="mdi mdi-chevron-right"></i> Collapsed<br>
+                                    <i class="mdi mdi-chevron-down"></i> Expanded<br>
+                                    <i class="mdi mdi-menu-right"></i> Collapsed (alt)<br>
+                                    <i class="mdi mdi-menu-down"></i> Expanded (alt)<br>
+                                </div>
+                                <hr>
+                                <div>
+                                    <strong>Example in a tree:</strong>
+                                    <ul style="list-style: none; padding-left: 0;">
+                                        <li>
+                                            <i class="mdi mdi-chevron-down"></i> Parent Node
+                                            <ul style="list-style: none; padding-left: 24px;">
+                                                <li>
+                                                    <i class="mdi mdi-chevron-right"></i> Child Node (collapsed)
+                                                </li>
+                                                <li>
+                                                    <i class="mdi mdi-chevron-down"></i> Child Node (expanded)
+                                                </li>
+                                            </ul>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- ...existing code... -->
+            </div>
+        </div>
+    </div>
+    <!-- ...existing code... -->
+{% endblock %}

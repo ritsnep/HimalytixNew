@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+<script src="https://unpkg.com/hyperscript.org@0.9.12"></script>
+<style>
+    .htmx-indicator {
+        display: none;
+    }
+    .htmx-request .htmx-indicator {
+        display: inline;
+    }
+    .htmx-request.htmx-indicator {
+        display: inline;
+    }
+    .error-message {
+        color: #dc3545;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    .form-group.has-error input,
+    .form-group.has-error select {
+        border-color: #dc3545;
+    }
+    .loading-spinner {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #3498db;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    {% block metadata_content %}{% endblock %}
+</div>
+{% endblock %} 

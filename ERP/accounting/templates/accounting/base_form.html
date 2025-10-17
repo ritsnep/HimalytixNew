@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accounting Journal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --accent: #4895ef;
+            --light: #f8f9fa;
+            --dark: #212529;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+        }
+        
+        .journal-entry {
+            transition: all 0.3s ease;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .journal-entry:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .debit {
+            border-left-color: #4ade80;
+        }
+        
+        .credit {
+            border-left-color: #f87171;
+        }
+        
+        .account-select {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+        }
+        
+        .print-only {
+            display: none;
+        }
+        
+        @media print {
+            .no-print {
+                display: none;
+            }
+            .print-only {
+                display: block;
+            }
+            body {
+                background-color: white;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="mb-8">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-3xl font-bold text-gray-800">
+                    <i class="fas fa-book mr-2 text-blue-600"></i> Accounting Journal
+                </h1>
+                <div class="flex space-x-2 no-print">
+                    <button id="printBtn" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md flex items-center">
+                        <i class="fas fa-print mr-2"></i> Print
+                    </button>
+                    <button id="exportBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md flex items-center">
+                        <i class="fas fa-file-export mr-2"></i> Export
+                    </button>
+                    <button id="newEntryBtn" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md flex items-center">
+                        <i class="fas fa-plus mr-2"></i> New Entry
+                    </button>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-6 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
+                        <input type="date" id="startDate" class="w-full p-2 border rounded-md">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">To</label>
+                        <input type="date" id="endDate" class="w-full p-2 border rounded-md">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Account</label>
+                        <select id="accountFilter" class="w-full p-2 border rounded-md account-select">
+                            <option value="">All Accounts</option>
+                            <option value="cash">Cash</option>
+                            <option value="accounts-receivable">Accounts Receivable</option>
+                            <option value="inventory">Inventory</option>
+                            <option value="equipment">Equipment</option>
+                            <option value="accounts-payable">Accounts Payable</option>
+                            <option value="revenue">Revenue</option>
+                            <option value="expenses">Expenses</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button id="filterBtn" class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md">
+                            <i class="fas fa-filter mr-2"></i> Filter
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Print Header (hidden by default) -->
+        <div class="print-only mb-4">
+            <h1 class="text-2xl font-bold text-center">General Journal</h1>
+            <div class="flex justify-between mt-2">
+                <p>Company: <span id="printCompanyName">Your Company Name</span></p>
+                <p>Date: <span id="printDateRange">All Dates</span></p>
+            </div>
+        </div>
+
+        <!-- Journal Entries -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="grid grid-cols-12 bg-gray-100 p-4 font-semibold text-gray-700">
+                <div class="col-span-1">Date</div>
+                <div class="col-span-2">Account</div>
+                <div class="col-span-1">Ref</div>
+                <div class="col-span-4">Description</div>
+                <div class="col-span-2 text-right">Debit</div>
+                <div class="col-span-2 text-right">Credit</div>
+            </div>
+            
+            <div id="journalEntries">
+                <!-- Sample entries -->
+                <div class="journal-entry grid grid-cols-12 p-4 border-b hover:bg-gray-50">
+                    <div class="col-span-1">2023-06-15</div>
+                    <div class="col-span-2">Cash</div>
+                    <div class="col-span-1">101</div>
+                    <div class="col-span-4">Initial investment</div>
+                    <div class="col-span-2 text-right text-green-600 font-medium">$10,000.00</div>
+                    <div class="col-span-2 text-right">-</div>
+                </div>
+                
+                <div class="journal-entry grid grid-cols-12 p-4 border-b hover:bg-gray-50">
+                    <div class="col-span-1">2023-06-15</div>
+                    <div class="col-span-2">Owner's Equity</div>
+                    <div class="col-span-1">301</div>
+                    <div class="col-span-4">Initial investment</div>
+                    <div class="col-span-2 text-right">-</div>
+                    <div class="col-span-2 text-right text-red-600 font-medium">$10,000.00</div>
+                </div>
+                
+                <div class="journal-entry grid grid-cols-12 p-4 border-b hover:bg-gray-50">
+                    <div class="col-span-1">2023-06-18</div>
+                    <div class="col-span-2">Equipment</div>
+                    <div class="col-span-1">140</div>
+                    <div class="col-span-4">Purchase of computer</div>
+                    <div class="col-span-2 text-right text-green-600 font-medium">$2,500.00</div>
+                    <div class="col-span-2 text-right">-</div>
+                </div>
+                
+                <div class="journal-entry grid grid-cols-12 p-4 border-b hover:bg-gray-50">
+                    <div class="col-span-1">2023-06-18</div>
+                    <div class="col-span-2">Cash</div>
+                    <div class="col-span-1">101</div>
+                    <div class="col-span-4">Purchase of computer</div>
+                    <div class="col-span-2 text-right">-</div>
+                    <div class="col-span-2 text-right text-red-600 font-medium">$2,500.00</div>
+                </div>
+            </div>
+            
+            <div class="bg-gray-100 p-4 font-semibold text-gray-700">
+                <div class="flex justify-end">
+                    <div class="mr-8">
+                        <span class="mr-4">Total Debit:</span>
+                        <span class="text-green-600">$12,500.00</span>
+                    </div>
+                    <div>
+                        <span class="mr-4">Total Credit:</span>
+                        <span class="text-red-600">$12,500.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- New Entry Modal -->
+        <div id="entryModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+                <div class="flex justify-between items-center border-b p-4">
+                    <h3 class="text-lg font-semibold">New Journal Entry</h3>
+                    <button id="closeModal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                            <input type="date" id="entryDate" class="w-full p-2 border rounded-md" value="">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Reference</label>
+                            <input type="text" id="entryRef" class="w-full p-2 border rounded-md" placeholder="Journal #">
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <textarea id="entryDescription" class="w-full p-2 border rounded-md" rows="2" placeholder="Enter description..."></textarea>
+                    </div>
+                    
+                    <div class="mt-6">
+                        <h4 class="font-medium text-gray-700 mb-2">Entry Lines</h4>
+                        <div id="entryLines" class="space-y-4">
+                            <!-- Entry line template will be added here -->
+                        </div>
+                        
+                        <button id="addLineBtn" class="mt-4 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md flex items-center">
+                            <i class="fas fa-plus mr-2"></i> Add Line
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end border-t p-4">
+                    <button id="cancelEntry" class="px-4 py-2 mr-2 bg-gray-200 hover:bg-gray-300 rounded-md">
+                        Cancel
+                    </button>
+                    <button id="saveEntry" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md">
+                        Save Entry
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set default dates
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('startDate').value = today;
+            document.getElementById('endDate').value = today;
+            document.getElementById('entryDate').value = today;
+            
+            // Modal controls
+            const modal = document.getElementById('entryModal');
+            const newEntryBtn = document.getElementById('newEntryBtn');
+            const closeModal = document.getElementById('closeModal');
+            const cancelEntry = document.getElementById('cancelEntry');
+            
+            newEntryBtn.addEventListener('click', () => {
+                modal.classList.remove('hidden');
+            });
+            
+            closeModal.addEventListener('click', () => {
+                modal.classList.add('hidden');
+            });
+            
+            cancelEntry.addEventListener('click', () => {
+                modal.classList.add('hidden');
+            });
+            
+            // Add entry line
+            const addLineBtn = document.getElementById('addLineBtn');
+            const entryLines = document.getElementById('entryLines');
+            
+            addLineBtn.addEventListener('click', () => {
+                const lineId = Date.now();
+                const lineHtml = `
+                    <div class="entry-line grid grid-cols-1 md:grid-cols-12 gap-4" data-id="${lineId}">
+                        <div class="md:col-span-4">
+                            <select class="w-full p-2 border rounded-md account-select">
+                                <option value="">Select Account</option>
+                                <option value="cash">Cash</option>
+                                <option value="accounts-receivable">Accounts Receivable</option>
+                                <option value="inventory">Inventory</option>
+                                <option value="equipment">Equipment</option>
+                                <option value="accounts-payable">Accounts Payable</option>
+                                <option value="revenue">Revenue</option>
+                                <option value="expenses">Expenses</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-3">
+                            <input type="number" class="w-full p-2 border rounded-md" placeholder="Amount">
+                        </div>
+                        <div class="md:col-span-3">
+                            <select class="w-full p-2 border rounded-md">
+                                <option value="debit">Debit</option>
+                                <option value="credit">Credit</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-2 flex items-center">
+                            <button class="remove-line p-2 text-red-500 hover:text-red-700">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                entryLines.insertAdjacentHTML('beforeend', lineHtml);
+                
+                // Add event listener to the new remove button
+                const newLine = entryLines.querySelector(`[data-id="${lineId}"]`);
+                newLine.querySelector('.remove-line').addEventListener('click', () => {
+                    newLine.remove();
+                });
+            });
+            
+            // Save entry
+            const saveEntry = document.getElementById('saveEntry');
+            const journalEntries = document.getElementById('journalEntries');
+            
+            saveEntry.addEventListener('click', () => {
+                const date = document.getElementById('entryDate').value;
+                const ref = document.getElementById('entryRef').value;
+                const description = document.getElementById('entryDescription').value;
+                
+                const lines = document.querySelectorAll('.entry-line');
+                if (lines.length < 2) {
+                    alert('A journal entry must have at least two lines (debit and credit)');
+                    return;
+                }
+                
+                // Check if debits equal credits
+                let totalDebit = 0;
+                let totalCredit = 0;
+                
+                lines.forEach(line => {
+                    const amount = parseFloat(line.querySelector('input[type="number"]').value) || 0;
+                    const type = line.querySelector('select:last-child').value;
+                    
+                    if (type === 'debit') {
+                        totalDebit += amount;
+                    } else {
+                        totalCredit += amount;
+                    }
+                });
+                
+                if (totalDebit !== totalCredit) {
+                    alert('Total debits must equal total credits');
+                    return;
+                }
+                
+                // Add entries to the journal
+                lines.forEach(line => {
+                    const account = line.querySelector('select:first-child').value;
+                    const amount = parseFloat(line.querySelector('input[type="number"]').value) || 0;
+                    const type = line.querySelector('select:last-child').value;
+                    const accountName = line.querySelector('select:first-child').options[line.querySelector('select:first-child').selectedIndex].text;
+                    
+                    const entryHtml = `
+                        <div class="journal-entry grid grid-cols-12 p-4 border-b hover:bg-gray-50 ${type}">
+                            <div class="col-span-1">${date}</div>
+                            <div class="col-span-2">${accountName}</div>
+                            <div class="col-span-1">${ref}</div>
+                            <div class="col-span-4">${description}</div>
+                            <div class="col-span-2 text-right ${type === 'debit' ? 'text-green-600 font-medium' : ''}">
+                                ${type === 'debit' ? '$' + amount.toFixed(2) : '-'}
+                            </div>
+                            <div class="col-span-2 text-right ${type === 'credit' ? 'text-red-600 font-medium' : ''}">
+                                ${type === 'credit' ? '$' + amount.toFixed(2) : '-'}
+                            </div>
+                        </div>
+                    `;
+                    
+                    journalEntries.insertAdjacentHTML('beforeend', entryHtml);
+                });
+                
+                // Reset form and close modal
+                document.getElementById('entryRef').value = '';
+                document.getElementById('entryDescription').value = '';
+                entryLines.innerHTML = '';
+                modal.classList.add('hidden');
+                
+                // Update totals
+                updateTotals();
+            });
+            
+            // Print functionality
+            const printBtn = document.getElementById('printBtn');
+            printBtn.addEventListener('click', () => {
+                // Update print header info
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+                const dateRange = startDate && endDate ? `${startDate} to ${endDate}` : 'All Dates';
+                document.getElementById('printDateRange').textContent = dateRange;
+                
+                window.print();
+            });
+            
+            // Export functionality (simplified)
+            const exportBtn = document.getElementById('exportBtn');
+            exportBtn.addEventListener('click', () => {
+                alert('Export functionality would save data to CSV/Excel in a real application');
+            });
+            
+            // Filter functionality (simplified)
+            const filterBtn = document.getElementById('filterBtn');
+            filterBtn.addEventListener('click', () => {
+                alert('Filter functionality would filter entries by date/account in a real application');
+            });
+            
+            // Helper function to update totals
+            function updateTotals() {
+                let totalDebit = 0;
+                let totalCredit = 0;
+                
+                document.querySelectorAll('.journal-entry').forEach(entry => {
+                    const debitAmount = entry.querySelector('.col-span-2.text-green-600');
+                    const creditAmount = entry.querySelector('.col-span-2.text-red-600');
+                    
+                    if (debitAmount && debitAmount.textContent !== '-') {
+                        totalDebit += parseFloat(debitAmount.textContent.replace('$', '').replace(',', ''));
+                    }
+                    
+                    if (creditAmount && creditAmount.textContent !== '-') {
+                        totalCredit += parseFloat(creditAmount.textContent.replace('$', '').replace(',', ''));
+                    }
+                });
+                
+                // In a real app, we would update the totals display
+                console.log('Total Debit:', totalDebit);
+                console.log('Total Credit:', totalCredit);
+            }
+        });
+    </script>
+</body>
+</html>

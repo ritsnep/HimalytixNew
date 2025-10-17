@@ -1,0 +1,70 @@
+<tr id="line-{{ index }}"
+    hx-get="{% url 'accounting:journal_row_detail' index %}"
+    hx-include="#journal-form" hx-target="#side-panel-content" hx-swap="innerHTML" hx-trigger="click" style="cursor: pointer;">
+  <!-- Row number & drag-handle -->
+  <td class="position-sticky start-0 bg-body-tertiary text-dark">
+    <div class="d-flex align-items-center justify-content-between">
+      <span>{{ index }}</span>
+      <div class="drag-handle text-body-secondary" style="cursor: move;">
+        <i class="fas fa-grip-vertical"></i>
+      </div>
+    </div>
+  </td>
+  <!-- Account field -->
+  <td class="position-relative">
+    <input name="lines-{{ index }}-account" value="{{ line.account|default:'' }}"
+           class="form-control form-control-sm border-0 bg-transparent shadow-none text-dark grid-cell"
+           type="text"
+           hx-get="{% url 'accounting:journal_search_accounts' %}"
+           hx-vars='{"index": "{{ index }}", "q": "js:this.value"}'
+           hx-trigger="keyup changed delay:300ms, focus"
+           hx-target="#account-results-{{ index }}"
+           hx-swap="innerHTML"
+           autocomplete="off"
+           >
+    <div id="account-results-{{ index }}" class="position-absolute top-100 start-0 list-group" style="z-index: 100; width: 300px;">
+        <!-- Search results will be loaded here -->
+    </div>
+  </td>
+  <!-- Description field -->
+  <td>
+    <input name="lines-{{ index }}-description" value="{{ line.description|default:"" }}" data-col="description"
+           class="form-control form-control-sm border-0 bg-transparent shadow-none text-dark grid-cell" />
+  </td>
+  <!-- Debit field -->
+  <td>
+    <input name="lines-{{ index }}-debit" value="{% if line and line.debit %}{{ line.debit }}{% endif %}"
+           data-col="debit"
+           class="form-control form-control-sm border-0 bg-transparent shadow-none text-dark text-end grid-cell"
+           hx-post="{% url 'accounting:journal_validate_line' %}" hx-include="#journal-form"
+           hx-trigger="keyup changed delay:500ms" hx-target="#line-{{ index }}" hx-swap="outerHTML" />
+  </td>
+  <!-- Credit field -->
+  <td>
+    <input name="lines-{{ index }}-credit" value="{% if line and line.credit %}{{ line.credit }}{% endif %}"
+           data-col="credit"
+           class="form-control form-control-sm border-0 bg-transparent shadow-none text-dark text-end grid-cell"
+           hx-post="{% url 'accounting:journal_validate_line' %}" hx-include="#journal-form"
+           hx-trigger="keyup changed delay:500ms" hx-target="#line-{{ index }}" hx-swap="outerHTML" />
+  </td>
+  <!-- Department field -->
+  <td>
+    <input name="lines-{{ index }}-department" value="{{ line.department|default:"" }}"
+           class="form-control form-control-sm border-0 bg-transparent shadow-none text-dark grid-cell" />
+  </td>
+  <!-- Project field -->
+  <td>
+    <input name="lines-{{ index }}-project" value="{{ line.project|default:"" }}"
+           class="form-control form-control-sm border-0 bg-transparent shadow-none text-dark grid-cell" />
+  </td>
+  <!-- Status cell -->
+  <td class="small">
+    {% if line and line.status %}
+      <span class="badge {% if 'Error' in line.status %}bg-danger-subtle text-danger-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %}">
+        {{ line.status }}
+      </span>
+    {% else %}
+      <span class="badge bg-secondary-subtle text-secondary-emphasis">—</span>
+    {% endif %}
+  </td>
+</tr>

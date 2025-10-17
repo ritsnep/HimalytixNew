@@ -1,0 +1,527 @@
+{% extends "partials/base.html" %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'accounting/css/journal_entry.css' %}">
+<link rel="stylesheet" href="{% static 'accounting/css/journal_entry_validation.css' %}">
+<link rel="stylesheet" href="{% static 'accounting/css/shortcut_overlay.css' %}">
+<link rel="stylesheet" href="{% static 'accounting/css/command_palette.css' %}">
+<link rel="stylesheet" href="{% static 'accounting/css/split_pane.css' %}">
+{% endblock extra_css %}
+
+{% block extra_js %}
+{{ block.super }}
+<script src="{% static 'accounting/js/journal_entry.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script src="{% static 'accounting/js/journal_entry_form.js' %}" defer></script>
+<script src="{% static 'accounting/js/command_palette.js' %}"></script>
+<script src="{% static 'accounting/js/keyboard_shortcuts.js' %}"></script>
+<script src="{% static 'accounting/js/grid_navigation.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const saveAsRecurringBtn = document.getElementById('save-as-recurring-btn');
+    if (saveAsRecurringBtn) {
+        saveAsRecurringBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            const journalId = document.getElementById('journal-id').value;
+            if (!journalId) {
+                alert('Please save the journal entry before saving it as a recurring template.');
+                return;
+            }
+
+            const name = prompt("Enter a name for the recurring template:");
+            if (!name) return;
+
+            const schedule = prompt("Enter schedule (monthly, quarterly, annually):");
+            if (!['monthly', 'quarterly', 'annually'].includes(schedule)) {
+                alert('Invalid schedule. Please enter monthly, quarterly, or annually.');
+                return;
+            }
+
+            const url = `{% url 'accounting:save_as_recurring' journal_id=999 %}`.replace('999', journalId);
+            
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ name: name, schedule: schedule })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(data.message);
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An unexpected error occurred.');
+            });
+        });
+    }
+});
+</script>
+{% endblock extra_js %}
+
+{% block content %}
+
+<div class="main-content">
+    <div class="page-content">
+<div class="page-content-wrapper">
+    <form id="journal-form" hx-post="{% if journal.pk %}{% url 'accounting:journal_update' pk=journal.pk %}{% else %}{% url 'accounting:journal_create' %}{% endif %}" hx-target="#page-content-wrapper" hx-swap="innerHTML" class="d-flex flex-column vh-100">
+        {% csrf_token %}
+        {{ formset.management_form }}
+        {% if journal.pk %}
+            <input type="hidden" id="journal-id" value="{{ journal.pk }}">
+        {% endif %}
+ 
+        <!-- Header -->
+        <header class="bg-white border-bottom shadow-sm py-3 px-4 d-flex align-items-center justify-content-between sticky-top">
+            <div class="d-flex align-items-center gap-3">
+                <button id="toggleSidebar" class="btn btn-sm btn-light border d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1 class="h5 mb-0 text-primary">{{ i18n.journal_entry_title|default:"Journal Entry" }}</h1>
+                <div class="d-flex align-items-center gap-2">
+                    <span id="journal-status-badge">
+                        {% include "accounting/partials/journal_status_badge.html" %}
+                    </span>
+                    <span class="badge bg-secondary-subtle text-secondary-emphasis rounded-pill">
+                        {{ journal.journal_number|default:"New" }}
+                    </span>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                {% if journal.status == 'draft' and perms.accounting.modify_journal %}
+                    <button type="submit" class="btn btn-sm btn-primary d-flex align-items-center gap-1">
+                        <i class="fas fa-save"></i> {{ i18n["button.save"]|default:"Save" }}
+                    </button>
+                {% endif %}
+                {% if journal.status == 'draft' and perms.accounting.submit_journal %}
+                    <a href="{% url 'accounting:journal_post' pk=journal.pk %}" class="btn btn-sm btn-success d-flex align-items-center gap-1">
+                        <i class="fas fa-check"></i> Post
+                    </a>
+                {% endif %}
+                <div id="workflow-actions-container">
+                    {% include "accounting/partials/_workflow_actions.html" %}
+                </div>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-light" type="button" id="density-toggle" title="Toggle density">
+                        <i class="fas fa-compress"></i>
+                    </button>
+                    <button class="btn btn-sm btn-light dropdown-toggle" type="button" id="more-actions-dropdown" data-bs-toggle="dropdown" aria-expanded="false" aria-label="More actions">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="more-actions-dropdown">
+                        <li>
+                            <!-- <a class="dropdown-item" href="#" hx-post="{% url 'accounting:journal_entry_htmx_handler' handler='preview_ledger' %}" hx-include="#journal-form" hx-target="#modal-container" hx-swap="innerHTML">
+                                <i class="fas fa-eye fa-fw me-2"></i>Preview Ledger
+                            </a> -->
+                        </li>
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-print fa-fw me-2"></i>{{ i18n["actions.print"]|default:"Print" }}</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-file-export fa-fw me-2"></i>{{ i18n["actions.export"]|default:"Export" }}</a></li>
+                        <li><a class="dropdown-item" href="{% url 'accounting:download_excel_template' %}"><i class="fas fa-file-excel fa-fw me-2"></i>{{ i18n["actions.download_sample"]|default:"Download Sample" }}</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        {% if journal.pk %}
+                        <li><a class="dropdown-item" href="{% url 'accounting:journal_duplicate' pk=journal.pk %}"><i class="fas fa-copy fa-fw me-2"></i>{{ i18n["actions.duplicate"]|default:"Duplicate" }}</a></li>
+                        {% endif %}
+                        <li><a class="dropdown-item" href="#" id="save-as-recurring-btn"><i class="fas fa-sync-alt fa-fw me-2"></i>{{ i18n["actions.save_as_recurring"]|default:"Save as Recurring" }}</a></li>
+                    </ul>
+                </div>
+                <button id="side-panel-toggle" class="btn btn-sm btn-outline-secondary" type="button" aria-label="Toggle side panel">
+                    <i class="fas fa-bars"></i>
+                    <span class="d-none d-md-inline ms-1">{{ i18n["label.details"]|default:"Details" }}</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div id="journal-entry-layout" class="flex-grow-1 d-flex flex-column flex-lg-row overflow-hidden">
+            <!-- Journal Grid -->
+            <main class="flex-grow-1 d-flex flex-column overflow-hidden p-3 col-lg-9">
+                <div class="card flex-grow-1">
+                    <div class="card-header bg-white p-2">
+                         <div class="input-group input-group-sm">
+                            <span class="input-group-text border-0 bg-transparent"><i class="fas fa-magic text-primary"></i></span>
+                            <input type="text" id="ai-assist-input" class="form-control border-0 shadow-none" placeholder="{{ i18n["placeholder.ai_assist"]|default:"Describe your journal entry (e.g., 'Accrue March AWS bill')..." }}" aria-label="AI Assist Input">
+                        </div>
+                    </div>
+                    <div class="card-body p-0 overflow-auto">
+                        <table id="journal-grid" class="table table-sm table-hover">
+                            <thead class="table-light small text-uppercase">
+                                <tr>
+                                    <th scope="col" style="width: 40px;">#</th>
+                                    <th scope="col" style="width: 40px;" aria-label="Drag handle"><i class="fas fa-grip-vertical"></i></th>
+                                    <th scope="col" class="position-relative">Account <div class="resize-handle"></div></th>
+                                    <th scope="col" class="position-relative">Description <div class="resize-handle"></div></th>
+                                    <th scope="col" class="text-end position-relative">Debit <div class="resize-handle"></div></th>
+                                    <th scope="col" class="text-end position-relative">Credit <div class="resize-handle"></div></th>
+                                    <th scope="col" class="position-relative">Department <div class="resize-handle"></div></th>
+                                    <th scope="col" class="position-relative">Project <div class="resize-handle"></div></th>
+                                    <th scope="col" class="position-relative">Cost Center <div class="resize-handle"></div></th>
+                                    <th scope="col" class="currency-col position-relative">Currency <div class="resize-handle"></div></th>
+                                    <th scope="col" class="currency-col text-end position-relative">Ex. Rate <div class="resize-handle"></div></th>
+                                    <th scope="col" class="text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="journal-grid-body">
+                                {% for form in formset.forms %}
+                                    {% with forloop.counter0 as index %}
+                                    <tr id="form-{{index}}-row" class="journal-line-row">
+                                        <td data-label="#">{{forloop.counter}}</td>
+                                        <td data-label="Drag"><i class="fas fa-grip-vertical"></i></td>
+                                        <td data-label="Account">{% render_field form.account class="form-select grid-cell" aria-label="Account" %}</td>
+                                        <td data-label="Description">{% render_field form.description class="form-control grid-cell" aria-label="Description" %}</td>
+                                        <td colspan="2">
+                                            <fieldset>
+                                                <legend class="visually-hidden">Debit and Credit Amounts</legend>
+                                                <div class="row g-2">
+                                                    <div class="col">
+                                                        <label for="{{ form.debit_amount.id_for_label }}" class="visually-hidden">Debit Amount</label>
+                                                        {% render_field form.debit_amount class="form-control grid-cell text-end" placeholder="Debit" aria-label="Debit Amount" data-label="Debit" %}
+                                                    </div>
+                                                    <div class="col">
+                                                        <label for="{{ form.credit_amount.id_for_label }}" class="visually-hidden">Credit Amount</label>
+                                                        {% render_field form.credit_amount class="form-control grid-cell text-end" placeholder="Credit" aria-label="Credit Amount" data-label="Credit" %}
+                                                    </div>
+                                                </div>
+                                            </fieldset>
+                                        </td>
+                                        <td data-label="Department">{% render_field form.department class="form-select grid-cell" aria-label="Department" %}</td>
+                                        <td data-label="Project">{% render_field form.project class="form-select grid-cell" aria-label="Project" %}</td>
+                                        <td data-label="Cost Center">{% render_field form.cost_center class="form-select grid-cell" aria-label="Cost Center" %}</td>
+                                        <td class="currency-col d-none">{% render_field form.currency class="form-select grid-cell" aria-label="Currency" %}</td>
+                                        <td class="currency-col d-none">{% render_field form.exchange_rate class="form-control grid-cell text-end" aria-label="Exchange Rate" %}</td>
+                                        <td class="text-center">
+                                            <input type="hidden" name="lines-{{index}}-DELETE" id="id_lines-{{index}}-DELETE" value="">
+                                            <button type="button" class="btn btn-sm btn-danger remove-row"><i class="fas fa-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                    {% endwith %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+
+                    </div>
+                    <div class="card-footer p-2 d-flex justify-content-between align-items-center">
+                        <div class="d-flex gap-2">
+                            <button type="button" id="add-row" class="btn btn-sm btn-light d-flex align-items-center gap-1"
+                                hx-post="{% url 'accounting:journal_add_line' %}"
+                                hx-vals='js:{"index": document.querySelector("#id_lines-TOTAL_FORMS").value}'
+                                hx-target="#journal-grid-body"
+                                hx-swap="beforeend">
+                                <i class="fas fa-plus"></i> Add Row
+                            </button>
+                        </div>
+                        <div id="totals-section">
+                           {% include "accounting/partials/totals_section.html" %}
+                        </div>
+                        <div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- Side Panel -->
+            <aside id="side-panel" class="bg-light border-start p-3 col-lg-3 panel-collapsed">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">Entry Details</h5>
+                    <button type="button" class="btn-close" aria-label="Close" onclick="document.getElementById('side-panel').classList.add('panel-collapsed')"></button>
+                </div>
+                <div class="vstack gap-3">
+                    <div id="side-panel-content">
+                        <!-- Default empty state -->
+                        <div id="empty-state" class="text-center py-5 text-muted">
+                            <i class="fas fa-mouse-pointer fs-3 mb-3"></i>
+                            <p>Select a row to view details.</p>
+                        </div>
+                        <!-- Content loaded via HTMX -->
+                    </div>
+
+                    <!-- Header Fields with Inline Validation -->
+                    <div class="mb-3">
+                        <label for="id_date" class="form-label">Date</label>
+                        {% render_field form.date class="form-control" aria-label="Date" %}
+                        <div id="date-feedback" class="invalid-feedback"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_journal_type" class="form-label">Journal Type</label>
+                        {% render_field form.journal_type class="form-select" aria-label="Journal Type" %}
+                        <div id="journal_type-feedback" class="invalid-feedback"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_reference" class="form-label">Reference</label>
+                        {% render_field form.reference class="form-control" aria-label="Reference" %}
+                        <div id="reference-feedback" class="invalid-feedback"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_description" class="form-label">Header Description</label>
+                        {% render_field form.description class="form-control" aria-label="Header Description" %}
+                        <div id="description-feedback" class="invalid-feedback"></div>
+                    </div>
+
+                    <div id="custom-fields-container">
+                        {% include "accounting/partials/_custom_fields.html" %}
+                    </div>
+
+                    <!-- Attachments moved closer to the table -->
+                    <div class="card">
+                        <div class="card-header bg-white">
+                            <h6 class="card-title mb-0">Attachments</h6>
+                        </div>
+                        <div id="attachment-drop-zone" class="card-body text-center text-muted border-2 border-dashed" role="group" aria-labelledby="attachment-heading">
+                            <h6 id="attachment-heading" class="card-title mb-0">Attachments</h6>
+                            <div id="attachment-previews" class="d-flex flex-wrap gap-2 mb-3"></div>
+                            <ul id="attachment-list" class="list-group list-group-flush mb-3" aria-live="polite"></ul>
+                            <p class="small mt-2">Drag & drop files here or click to upload</p>
+                            <input type="file" id="file-upload" name="attachments" class="d-none" multiple>
+                            <label for="file-upload" class="btn btn-sm btn-outline-primary"><i class="fas fa-plus"></i> Add Attachment</label>
+                        </div>
+                    </div>
+
+                    <!-- AI Insights (conditionally shown) -->
+                    <div class="card" id="ai-insights-card" style="display: none;">
+                        <div class="card-header bg-white">
+                            <h6 class="card-title mb-0">AI Insights</h6>
+                        </div>
+                        <div id="ai-insights" class="card-body text-center text-muted">
+                            <i class="fas fa-robot fs-4 my-2"></i>
+                            <p class="small">No specific insights for this entry.</p>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Global Validation Panel (for non-field errors and overall status) -->
+            <div id="validation-panel"
+                 hx-post="{% url 'accounting:journal_validate' %}"
+                 hx-trigger="load, change from:#journal-form"
+                 hx-include="#journal-form"
+                 hx-target="this"
+                 hx-swap="innerHTML"
+                 class="d-none">
+                {% include "accounting/partials/_journal_validation_panel.html" %}
+            </div>
+
+            <!-- Mobile FAB toggle for side panel -->
+            <button id="side-panel-fab" class="btn btn-primary d-lg-none side-panel-fab" type="button" aria-label="Toggle details panel">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </form>
+</div>
+
+{% include "accounting/partials/_error_panel.html" %}
+    </div>
+</div>
+
+<!-- Modern Command Palette -->
+<div id="command-palette" class="command-palette">
+    <div class="command-palette-overlay"></div>
+    <div class="command-palette-modal">
+        <div class="command-palette-header">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="command-input" placeholder="Type a command or search..." autofocus>
+            </div>
+        </div>
+        <div class="command-palette-content">
+            <div class="command-groups">
+                <!-- Groups will be populated dynamically -->
+            </div>
+        </div>
+        <div class="command-palette-footer">
+            <div class="key-hints">
+                <span><kbd>↑↓</kbd> to navigate</span>
+                <span><kbd>↵</kbd> to select</span>
+                <span><kbd>esc</kbd> to close</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Enhanced Shortcut Overlay -->
+<div id="shortcut-overlay" class="shortcut-overlay">
+    <div class="shortcut-grid">
+        <div class="shortcut-group">
+            <h3>Navigation</h3>
+            <div class="shortcut-item"><kbd>↑</kbd><kbd>↓</kbd><span>Navigate Rows</span></div>
+            <div class="shortcut-item"><kbd>←</kbd><kbd>→</kbd><span>Navigate Cells</span></div>
+            <div class="shortcut-item"><kbd>Tab</kbd><span>Next Field</span></div>
+            <div class="shortcut-item"><kbd>Shift</kbd>+<kbd>Tab</kbd><span>Previous Field</span></div>
+        </div>
+        <div class="shortcut-group">
+            <h3>Actions</h3>
+            <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>S</kbd><span>Save Entry</span></div>
+            <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>Enter</kbd><span>Post Journal</span></div>
+            <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>Space</kbd><span>Quick Actions</span></div>
+            <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>K</kbd><span>Command Palette</span></div>
+        </div>
+        <div class="shortcut-group">
+            <h3>Editing</h3>
+            <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>N</kbd><span>New Line</span></div>
+            <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>D</kbd><span>Duplicate Line</span></div>
+            <div class="shortcut-item"><kbd>Alt</kbd>+<kbd>B</kbd><span>Auto Balance</span></div>
+            <div class="shortcut-item"><kbd>Delete</kbd><span>Delete Line</span></div>
+        </div>
+        <div class="shortcut-group">
+            <h3>Views</h3>
+            <div class="shortcut-item"><kbd>Alt</kbd>+<kbd>1</kbd><span>Focus Grid</span></div>
+            <div class="shortcut-item"><kbd>Alt</kbd>+<kbd>2</kbd><span>Focus Details</span></div>
+            <div class="shortcut-item"><kbd>Alt</kbd>+<kbd>3</kbd><span>Focus Attachments</span></div>
+            <div class="shortcut-item"><kbd>F11</kbd><span>Full Screen</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- Smart Actions Panel -->
+<div id="smart-actions-panel" class="smart-actions-panel">
+    <div class="smart-actions-content">
+        <div class="smart-action-group">
+            <h4>Suggestions</h4>
+            <div id="ai-suggestions"></div>
+        </div>
+        <div class="smart-action-group">
+            <h4>Quick Actions</h4>
+            <div id="quick-actions"></div>
+        </div>
+        <div class="smart-action-group">
+            <h4>Recent Entries</h4>
+            <div id="recent-entries"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Context Menu -->
+<div id="context-menu" class="context-menu">
+    <div class="menu-group">
+        <div class="menu-item" data-action="edit"><i class="fas fa-edit"></i>Edit</div>
+        <div class="menu-item" data-action="duplicate"><i class="fas fa-copy"></i>Duplicate</div>
+        <div class="menu-item" data-action="delete"><i class="fas fa-trash"></i>Delete</div>
+    </div>
+    <div class="menu-group">
+        <div class="menu-item" data-action="insert-above"><i class="fas fa-arrow-up"></i>Insert Above</div>
+        <div class="menu-item" data-action="insert-below"><i class="fas fa-arrow-down"></i>Insert Below</div>
+    </div>
+    <div class="menu-group">
+        <div class="menu-item" data-action="copy-values"><i class="fas fa-clipboard"></i>Copy Values</div>
+        <div class="menu-item" data-action="paste-values"><i class="fas fa-clipboard-check"></i>Paste Values</div>
+    </div>
+</div>
+
+<!-- Split Pane Resizer -->
+<div id="split-pane-resizer" class="split-pane-resizer"></div>
+
+<div id="modal-container"></div>
+
+<!-- Error Boundary -->
+<div id="error-boundary" class="error-boundary" style="display: none;">
+    <div class="error-content">
+        <h3><i class="fas fa-exclamation-triangle"></i> Something went wrong</h3>
+        <p id="error-message"></p>
+        <button onclick="window.location.reload()" class="btn btn-primary">Reload Page</button>
+    </div>
+</div>
+
+<!-- Shortcut Overlay -->
+<div id="shortcut-overlay" class="shortcut-overlay">
+    <div class="shortcut-grid">
+        <div class="shortcut-item"><kbd>Ctrl</kbd> + <kbd>S</kbd><span>Save Entry</span></div>
+        <div class="shortcut-item"><kbd>Ctrl</kbd> + <kbd>N</kbd><span>New Line</span></div>
+        <div class="shortcut-item"><kbd>Ctrl</kbd> + <kbd>K</kbd><span>Command Palette</span></div>
+        <div class="shortcut-item"><kbd>Alt</kbd> + <kbd>A</kbd><span>Add Row</span></div>
+        <div class="shortcut-item"><kbd>Alt</kbd> + <kbd>B</kbd><span>Auto-Balance</span></div>
+        <div class="shortcut-item"><kbd>↑</kbd> / <kbd>↓</kbd><span>Navigate Rows</span></div>
+        <div class="shortcut-item"><kbd>Enter</kbd><span>Edit Row</span></div>
+        <div class="shortcut-item"><kbd>Escape</kbd><span>Exit Edit Mode</span></div>
+    </div>
+</div>
+
+<!-- Command Palette Modal -->
+<div class="modal fade" id="command-palette-modal" tabindex="-1" aria-labelledby="commandPaletteLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="commandPaletteLabel">Keyboard Shortcuts</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Navigate Rows
+                        <span class="badge bg-primary rounded-pill">↑ / ↓</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Edit Row
+                        <span class="badge bg-primary rounded-pill">Enter</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Exit Edit Mode
+                        <span class="badge bg-primary rounded-pill">Escape</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Save Entry
+                        <span class="badge bg-primary rounded-pill">Ctrl + S</span>
+                    </li>
+                     <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Add New Line
+                        <span class="badge bg-primary rounded-pill">Ctrl + N</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const saveAsRecurringBtn = document.getElementById('save-as-recurring-btn');
+    if (saveAsRecurringBtn) {
+        saveAsRecurringBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            const journalId = document.getElementById('journal-id').value;
+            if (!journalId) {
+                alert('Please save the journal entry before saving it as a recurring template.');
+                return;
+            }
+
+            const name = prompt("Enter a name for the recurring template:");
+            if (!name) return;
+
+            const schedule = prompt("Enter schedule (monthly, quarterly, annually):");
+            if (!['monthly', 'quarterly', 'annually'].includes(schedule)) {
+                alert('Invalid schedule. Please enter monthly, quarterly, or annually.');
+                return;
+            }
+
+            const url = `{% url 'accounting:save_as_recurring' journal_id=999 %}`.replace('999', journalId);
+            
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ name: name, schedule: schedule })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(data.message);
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An unexpected error occurred.');
+            });
+        });
+    }
+});
+</script>
+{% endblock content %}

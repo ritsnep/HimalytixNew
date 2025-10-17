@@ -1,0 +1,97 @@
+{% extends 'accounting/_form_base.html' %}
+{% load static %}
+
+{% block title %}Voucher Configuration{% endblock %}
+
+{% block form_content %}
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-body">
+          <h2 class="mb-4">{{ form_title|default:'Create Voucher Configuration' }}</h2>
+          <form method="post" novalidate autocomplete="off">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}{{ error }}<br>{% endfor %}
+              </div>
+            {% endif %}
+            <div class="mb-3">
+              <label for="id_name" class="form-label">Name <span class="text-danger">*</span></label>
+              {{ form.name }}
+              <div class="form-text">A descriptive name for this voucher configuration.</div>
+              {% if form.name.errors %}<div class="invalid-feedback d-block">{{ form.name.errors }}</div>{% endif %}
+            </div>
+            <div class="mb-3">
+              <label for="id_description" class="form-label">Description</label>
+              {{ form.description }}
+              <div class="form-text">Optional description for this configuration.</div>
+              {% if form.description.errors %}<div class="invalid-feedback d-block">{{ form.description.errors }}</div>{% endif %}
+            </div>
+            <div class="mb-3">
+              <label for="id_journal_type" class="form-label">Journal Type <span class="text-danger">*</span></label>
+              {{ form.journal_type }}
+              {% if form.journal_type.errors %}<div class="invalid-feedback d-block">{{ form.journal_type.errors }}</div>{% endif %}
+            </div>
+            <div class="mb-3">
+              <label for="id_layout_style" class="form-label">Layout Style</label>
+              {{ form.layout_style }}
+              {% if form.layout_style.errors %}<div class="invalid-feedback d-block">{{ form.layout_style.errors }}</div>{% endif %}
+            </div>
+            <div class="mb-3">
+              <label for="id_default_currency" class="form-label">Default Currency</label>
+              {{ form.default_currency }}
+              {% if form.default_currency.errors %}<div class="invalid-feedback d-block">{{ form.default_currency.errors }}</div>{% endif %}
+            </div>
+            <div class="form-check mb-2">
+              {{ form.is_default }}
+              <label class="form-check-label" for="id_is_default">Is Default</label>
+              {% if form.is_default.errors %}<div class="invalid-feedback d-block">{{ form.is_default.errors }}</div>{% endif %}
+            </div>
+            <div class="form-check mb-2">
+              {{ form.show_account_balances }}
+              <label class="form-check-label" for="id_show_account_balances">Show Account Balances</label>
+              {% if form.show_account_balances.errors %}<div class="invalid-feedback d-block">{{ form.show_account_balances.errors }}</div>{% endif %}
+            </div>
+            <div class="form-check mb-2">
+              {{ form.show_tax_details }}
+              <label class="form-check-label" for="id_show_tax_details">Show Tax Details</label>
+              {% if form.show_tax_details.errors %}<div class="invalid-feedback d-block">{{ form.show_tax_details.errors }}</div>{% endif %}
+            </div>
+            <div class="form-check mb-2">
+              {{ form.show_dimensions }}
+              <label class="form-check-label" for="id_show_dimensions">Show Dimensions</label>
+              {% if form.show_dimensions.errors %}<div class="invalid-feedback d-block">{{ form.show_dimensions.errors }}</div>{% endif %}
+            </div>
+            <div class="form-check mb-2">
+              {{ form.allow_multiple_currencies }}
+              <label class="form-check-label" for="id_allow_multiple_currencies">Allow Multiple Currencies</label>
+              {% if form.allow_multiple_currencies.errors %}<div class="invalid-feedback d-block">{{ form.allow_multiple_currencies.errors }}</div>{% endif %}
+            </div>
+            <div class="form-check mb-2">
+              {{ form.require_line_description }}
+              <label class="form-check-label" for="id_require_line_description">Require Line Description</label>
+              {% if form.require_line_description.errors %}<div class="invalid-feedback d-block">{{ form.require_line_description.errors }}</div>{% endif %}
+            </div>
+            <div class="mb-3">
+              <label for="id_ui_schema" class="form-label">Form Schema (JSON)</label>
+              {{ form.ui_schema }}
+              <div class="form-text">JSON configuration for the voucher form layout.</div>
+              {% if form.ui_schema.errors %}<div class="invalid-feedback d-block">{{ form.ui_schema.errors }}</div>{% endif %}
+            </div>
+
+            <div class="d-flex justify-content-between mt-4">
+              <a href="{% url 'accounting:voucher_config_list' %}" class="btn btn-secondary">Cancel</a>
+              <div>
+                <button type="submit" name="reset_to_default" class="btn btn-warning" onclick="return confirm('Are you sure you want to reset the schema to default? This cannot be undone.');">Reset to Default</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

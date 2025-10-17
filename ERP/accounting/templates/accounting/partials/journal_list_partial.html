@@ -1,0 +1,42 @@
+{% for journal in journals %}
+<tr>
+  <td><input type="checkbox" class="form-check-input" name="journal_ids" value="{{ journal.pk }}"></td>
+  <td>{{ journal.journal_number }}</td>
+  <td>{{ journal.journal_date|date:"Y-m-d" }}</td>
+  <td>{{ journal.description|truncatechars:50 }}</td>
+  <td class="text-end">{{ journal.total_debit|default:"0.00" }}</td>
+  <td class="text-end">{{ journal.total_credit|default:"0.00" }}</td>
+  <td class="text-end">{{ journal.balance|default:"0.00" }}</td>
+  <td>
+    {% if journal.status == 'posted' %}
+      <span class="badge bg-success">Posted</span>
+    {% else %}
+      <span class="badge bg-warning text-dark">Draft</span>
+    {% endif %}
+  </td>
+  <td>
+      <div class="dropdown">
+          <button class="btn btn-sm btn-secondary dropdown-toggle" type="button" id="action-menu-{{ journal.pk }}" data-bs-toggle="dropdown" aria-expanded="false">
+              Actions
+          </button>
+          <ul class="dropdown-menu" aria-labelledby="action-menu-{{ journal.pk }}">
+              <li><a class="dropdown-item" href="{% url 'accounting:journal_detail' journal.pk %}">View</a></li>
+              <li><a class="dropdown-item" href="{% url 'accounting:journal_update' journal.pk %}">Edit</a></li>
+              {% if journal.status == 'draft' %}
+              <li>
+                  <form action="{% url 'accounting:journal_post' journal.pk %}" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to post this journal?');">
+                      {% csrf_token %}
+                      <button type="submit" class="dropdown-item">Post</button>
+                  </form>
+              </li>
+              {% endif %}
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="#" onclick="duplicateJournal('{% url 'accounting:journal_duplicate' journal.pk %}')">Duplicate</a></li>
+              <li><a class="dropdown-item" href="#" onclick="reverseJournal('{% url 'accounting:journal_reverse' journal.pk %}')">Reverse</a></li>
+          </ul>
+      </div>
+  </td>
+</tr>
+{% empty %}
+<tr><td colspan="8">No journals found.</td></tr>
+{% endfor %}

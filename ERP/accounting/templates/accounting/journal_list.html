@@ -1,0 +1,278 @@
+{% extends 'accounting/_list_base.html' %}
+{% load static %}
+
+{% block title %}Journals{% endblock %}
+{% block breadcrumb %}Journals{% endblock %}
+{% block add_url %}{% url 'accounting:voucher_wizard' %}{% endblock %}
+
+{% block list_header %}
+<h4 class="card-title">Journals</h4>
+{% endblock %}
+
+{% block custom_filters %}
+<div class="card">
+    <div class="card-body">
+        <form hx-get="{% url 'accounting:journal_list' %}"
+              hx-target="#journal-table-body"
+              hx-swap="innerHTML"
+              hx-indicator=".loading-overlay"
+              id="journal-filter-form"
+              aria-label="Filter journals form">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="account-filter" class="form-label">Account</label>
+                    <select id="account-filter" name="account" class="form-control"></select>
+                </div>
+                <div class="col-md-2">
+                    <label for="start_date" class="form-label">Start Date</label>
+                    <input type="date" class="form-control form-control-sm" id="start_date" name="start_date" value="{{ request.GET.start_date|default:default_start_date }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="end_date" class="form-label">End Date</label>
+                    <input type="date" class="form-control form-control-sm" id="end_date" name="end_date" value="{{ request.GET.end_date|default:default_end_date }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="status" class="form-label">Status</label>
+                    <select class="form-select form-select-sm" id="status" name="status">
+                        <option value="">All</option>
+                        <option value="draft" {% if request.GET.status == 'draft' %}selected{% endif %}>Draft</option>
+                        <option value="posted" {% if request.GET.status == 'posted' %}selected{% endif %}>Posted</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">Filter</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock custom_filters %}
+
+{% block table_head %}
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <div>
+        <a href="{% url 'accounting:journal_create' %}" class="btn btn-success" aria-label="Create new journal">
+            <i class="mdi mdi-plus me-1"></i> New Journal
+        </a>
+        <a href="{% url 'accounting:journal_import' %}" class="btn btn-info" aria-label="Import journals from a file">
+            <i class="mdi mdi-upload me-1"></i> Import Journals
+        </a>
+    </div>
+    <div class="dropdown">
+        <button class="btn btn-secondary dropdown-toggle" type="button" id="bulk-actions-menu" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Bulk actions menu">
+            Bulk Actions
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="bulk-actions-menu">
+            <li><a class="dropdown-item" href="#" id="bulk-post" role="button">Post Selected</a></li>
+            <li><a class="dropdown-item" href="#" id="bulk-delete" role="button">Delete Selected</a></li>
+        </ul>
+    </div>
+</div>
+<thead>
+  <tr>
+    <th><input type="checkbox" class="form-check-input" id="select-all-journals"></th>
+    <th><a href="?sort_by=journal_number{% if request.GET.sort_by == 'journal_number' and request.GET.order == 'asc' %}&order=desc{% else %}&order=asc{% endif %}">Journal Number</a></th>
+    <th><a href="?sort_by=journal_date{% if request.GET.sort_by == 'journal_date' and request.GET.order == 'asc' %}&order=desc{% else %}&order=asc{% endif %}">Date</a></th>
+    <th>Description</th>
+    <th class="text-end"><a href="?sort_by=total_debit{% if request.GET.sort_by == 'total_debit' and request.GET.order == 'asc' %}&order=desc{% else %}&order=asc{% endif %}">Debit</a></th>
+    <th class="text-end"><a href="?sort_by=total_credit{% if request.GET.sort_by == 'total_credit' and request.GET.order == 'asc' %}&order=desc{% else %}&order=asc{% endif %}">Credit</a></th>
+    <th class="text-end">Balance</th>
+    <th><a href="?sort_by=status{% if request.GET.sort_by == 'status' and request.GET.order == 'asc' %}&order=desc{% else %}&order=asc{% endif %}">Status</a></th>
+    <th>Actions</th>
+  </tr>
+</thead>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'libs/choices.js/public/assets/scripts/choices.min.js' %}"></script>
+<script src="{% static 'libs/sweetalert2/dist/sweetalert2.min.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const accountElement = document.getElementById('account-filter');
+    if (accountElement) {
+        const accountChoices = new Choices(accountElement, {
+            removeItemButton: true,
+            searchPlaceholderValue: 'Type to search...',
+            itemSelectText: '',
+            allowHTML: true,
+        });
+
+        accountElement.addEventListener('search', function(event) {
+            const query = event.detail.value;
+            if (query.length < 2) {
+                accountChoices.clearChoices();
+                return;
+            }
+            accountChoices.setChoices(function() {
+                return fetch("{% url 'accounting:htmx_lookup' 'accounts' %}?query=" + encodeURIComponent(query))
+                    .then(response => response.json())
+                    .then(data => {
+                        return data.results.map(function(account) {
+                            return { value: account.id, label: account.text };
+                        });
+                    });
+            });
+        });
+
+        const initialAccountId = "{{ request.GET.account }}";
+        const initialAccountText = "{{ selected_account_text|escapejs }}";
+        if (initialAccountId && initialAccountText) {
+            accountChoices.setChoices(
+                [{ value: initialAccountId, label: initialAccountText, selected: true }],
+                'value',
+                'label',
+                false
+            );
+        }
+    }
+
+    const selectAllCheckbox = document.getElementById('select-all-journals');
+    const journalCheckboxes = document.querySelectorAll('input[name="journal_ids"]');
+    const bulkPostButton = document.getElementById('bulk-post');
+    const bulkDeleteButton = document.getElementById('bulk-delete');
+
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            journalCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+        });
+    }
+
+    function getSelectedJournalIds() {
+        const selectedIds = [];
+        journalCheckboxes.forEach(checkbox => {
+            if (checkbox.checked) {
+                selectedIds.push(checkbox.value);
+            }
+        });
+        return selectedIds;
+    }
+
+    function handleBulkAction(action) {
+        const selectedIds = getSelectedJournalIds();
+        if (selectedIds.length === 0) {
+            Swal.fire('No journals selected', `Please select journals to ${action}.`, 'info');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Are you sure?',
+            text: `Do you want to ${action} the selected journals?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: `Yes, ${action} them!`
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch("{% url 'accounting:journal_bulk_action' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        action: action,
+                        journal_ids: selectedIds
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire(`${action.charAt(0).toUpperCase() + action.slice(1)}ed!`, data.message, 'success')
+                        .then(() => {
+                            htmx.trigger(document.getElementById('journal-filter-form'), 'submit');
+                        });
+                    } else {
+                        Swal.fire('Error!', data.message || `An error occurred.`, 'error');
+                    }
+                })
+                .catch(error => {
+                    Swal.fire('Error!', `An error occurred while trying to ${action} the journals.`, 'error');
+                });
+            }
+        });
+    }
+
+    if (bulkPostButton) {
+        bulkPostButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleBulkAction('post');
+        });
+    }
+
+    if (bulkDeleteButton) {
+        bulkDeleteButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleBulkAction('delete');
+        });
+    }
+});
+
+function duplicateJournal(url) {
+    Swal.fire({
+        title: 'Are you sure?',
+        text: "Do you want to duplicate this journal?",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, duplicate it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const form = document.createElement('form');
+            form.method = 'post';
+            form.action = url;
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+}
+
+function reverseJournal(url) {
+    Swal.fire({
+        title: 'Are you absolutely sure?',
+        text: "This action cannot be undone. This will create a new journal reversing the entries of the selected journal.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, reverse it!',
+        input: 'text',
+        inputPlaceholder: 'Type "reverse" to confirm',
+        inputValidator: (value) => {
+            if (value !== 'reverse') {
+                return 'You must type "reverse" to confirm.'
+            }
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const form = document.createElement('form');
+            form.method = 'post';
+            form.action = url;
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+}
+</script>
+{% endblock %}
+
+{% block table_body %}
+<tbody id="journal-table-body" hx-get="{% url 'accounting:journal_list' %}" hx-trigger="load" hx-swap="innerHTML">
+    {% include 'accounting/partials/journal_list_partial.html' %}
+</tbody>
+{% endblock %}

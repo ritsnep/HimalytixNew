@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Import/Export" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h1 class="mb-4">
+                <i class="fas fa-exchange-alt me-2"></i>
+                {% trans "Batch Import & Export" %}
+            </h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Import Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-upload me-2"></i>
+                        {% trans "Import Journals" %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">
+                        {% trans "Upload Excel or CSV files to import journal entries in bulk." %}
+                    </p>
+                    
+                    <form id="importForm" method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="fileInput" class="form-label">{% trans "Select File" %}</label>
+                            <input type="file" class="form-control" id="fileInput" name="file" 
+                                   accept=".xlsx,.csv" required>
+                            <small class="text-muted">
+                                {% trans "Supported: Excel (.xlsx), CSV (.csv)" %}
+                            </small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="importType" class="form-label">{% trans "File Type" %}</label>
+                            <select class="form-select" id="importType" name="import_type">
+                                <option value="excel">{% trans "Excel" %}</option>
+                                <option value="csv">{% trans "CSV" %}</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="skipDuplicates" 
+                                   name="skip_duplicates" checked>
+                            <label class="form-check-label" for="skipDuplicates">
+                                {% trans "Skip duplicate entries" %}
+                            </label>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-upload me-2"></i>
+                            {% trans "Import" %}
+                        </button>
+                    </form>
+                    
+                    <hr class="my-3">
+                    
+                    <a href="{% url 'accounting:download_import_template' %}" class="btn btn-outline-secondary w-100">
+                        <i class="fas fa-download me-2"></i>
+                        {% trans "Download Template" %}
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-download me-2"></i>
+                        {% trans "Export Journals" %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">
+                        {% trans "Export your posted journals to Excel or CSV format." %}
+                    </p>
+                    
+                    <form id="exportForm" method="post" action="{% url 'accounting:export_journals' %}">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="exportFormat" class="form-label">{% trans "Export Format" %}</label>
+                            <select class="form-select" id="exportFormat" name="format">
+                                <option value="excel">{% trans "Excel (.xlsx)" %}</option>
+                                <option value="csv">{% trans "CSV (.csv)" %}</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="dateRange" class="form-label">{% trans "Date Range" %}</label>
+                            <div class="row g-2">
+                                <div class="col">
+                                    <input type="date" class="form-control" id="startDate" name="start_date">
+                                </div>
+                                <div class="col">
+                                    <input type="date" class="form-control" id="endDate" name="end_date">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="fas fa-download me-2"></i>
+                            {% trans "Export" %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import History -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>
+                        {% trans "Import History" %}
+                    </h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>{% trans "Date" %}</th>
+                                <th>{% trans "File" %}</th>
+                                <th>{% trans "Type" %}</th>
+                                <th class="text-end">{% trans "Imported" %}</th>
+                                <th class="text-end">{% trans "Skipped" %}</th>
+                                <th class="text-end">{% trans "Duplicates" %}</th>
+                                <th>{% trans "Status" %}</th>
+                                <th>{% trans "Actions" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for import in imports %}
+                            <tr>
+                                <td>{{ import.created_at|date:"Y-m-d H:i" }}</td>
+                                <td>{{ import.file_name }}</td>
+                                <td><span class="badge bg-secondary">{{ import.import_type }}</span></td>
+                                <td class="text-end">{{ import.imported_count }}</td>
+                                <td class="text-end">{{ import.skipped_count }}</td>
+                                <td class="text-end">{{ import.duplicate_count }}</td>
+                                <td>
+                                    {% if import.status == 'success' %}
+                                    <span class="badge bg-success">{% trans "Success" %}</span>
+                                    {% else %}
+                                    <span class="badge bg-warning">{% trans "Warning" %}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'accounting:import_detail' import.id %}" class="btn btn-sm btn-outline-primary">
+                                        {% trans "Details" %}
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-4">
+                                    {% trans "No import history" %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('importForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const response = await fetch(window.location.href, {
+        method: 'POST',
+        body: formData
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+        alert(`{% trans "Import successful!" %}\n{% trans "Imported:" %} ${result.imported_count}\n{% trans "Skipped:" %} ${result.skipped_count}`);
+        location.reload();
+    } else {
+        alert(`{% trans "Import failed!" %}\n${result.errors.join('\n')}`);
+    }
+});
+</script>
+{% endblock %}

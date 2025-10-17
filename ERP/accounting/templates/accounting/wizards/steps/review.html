@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block content %}
+<form method="post" hx-post="{% url 'accounting:voucher_wizard' %}" hx-target="#voucher-wizard-container">
+    {% csrf_token %}
+    {{ wizard.management_form }}
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title">{% trans "Step 4: Review and Confirm" %}</h5>
+        </div>
+        <div class="card-body">
+            <h4>{% trans "Voucher Summary" %}</h4>
+            
+            <h5>{% trans "Header" %}</h5>
+            <ul>
+                {% for key, value in wizard.get_cleaned_data_for_step.header.items %}
+                    <li><strong>{{ key|capfirst }}:</strong> {{ value }}</li>
+                {% endfor %}
+            </ul>
+
+            <h5>{% trans "Lines" %}</h5>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        {% for field in wizard.get_form_set.lines.forms.0.visible_fields %}
+                            <th>{{ field.label|capfirst }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for form in wizard.get_form_set.lines.forms %}
+                        <tr>
+                            {% for field in form.visible_fields %}
+                                <td>{{ field.value }}</td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer">
+            <button type="submit" name="wizard_goto_step" value="{{ wizard.steps.prev }}" class="btn btn-secondary">{% trans "Back" %}</button>
+            <button type="submit" class="btn btn-success">{% trans "Finish" %}</button>
+        </div>
+    </div>
+</form>
+{% endblock %}

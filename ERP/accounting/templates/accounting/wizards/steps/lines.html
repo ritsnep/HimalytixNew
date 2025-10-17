@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css">
+{% endblock %}
+
+{% block content %}
+<form method="post" hx-post="{% url 'accounting:voucher_wizard' %}" hx-target="#voucher-wizard-container">
+    {% csrf_token %}
+    {{ wizard.management_form }}
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title">{% trans "Step 3: Voucher Lines" %}</h5>
+        </div>
+        <div class="card-body">
+            <div id="voucher-lines-grid"></div>
+            <div style="display: none;">
+                {{ wizard.formset.management_form }}
+                {% for form in wizard.formset.forms %}
+                    {{ form.as_p }}
+                {% endfor %}
+            </div>
+            <div class="row mt-3">
+                <div class="col text-right">
+                    <strong>{% trans "Total Debit:" %}</strong> <span id="debit-total">0.00</span>
+                </div>
+                <div class="col text-right">
+                    <strong>{% trans "Total Credit:" %}</strong> <span id="credit-total">0.00</span>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer">
+            <button type="submit" name="wizard_goto_step" value="{{ wizard.steps.prev }}" class="btn btn-secondary">{% trans "Back" %}</button>
+            <button type="submit" class="btn btn-primary">{% trans "Next" %}</button>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
+<script src="{% static 'accounting/js/voucher_lines_grid.js' %}"></script>
+{% endblock %}

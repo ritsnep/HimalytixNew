@@ -1,0 +1,48 @@
+{% load widget_tweaks %}
+<div class="card mb-3">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Journal Header</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="mb-3">
+                    <label for="voucher-config-select" class="form-label">Voucher Config</label>
+                    <select id="voucher-config-select" name="voucher_config" class="form-select">
+                        {% for config in voucher_configs %}
+                            <option value="{{ config.pk }}" {% if config.pk == selected_config.pk %}selected{% endif %}>{{ config.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label d-block">{{ form.journal_type.label }}</label>
+                    <div class="journal-type-selection d-flex flex-wrap gap-2">
+                        {% for choice in form.journal_type %}
+                            <input type="radio" class="btn-check" name="{{ choice.name }}" id="{{ choice.id_for_label }}" value="{{ choice.value }}" autocomplete="off" {% if choice.data.selected %}checked{% endif %}>
+                            <label class="btn btn-outline-primary journal-type-card" for="{{ choice.id_for_label }}">
+                                {{ choice.choice_label }}
+                            </label>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="mb-3">
+                    <label for="id_date" class="form-label">{{ form.date.label }}</label>
+                    {% render_field form.date class="form-control" %}
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="mb-3">
+                    <label for="id_reference" class="form-label">{{ form.reference.label }}</label>
+                    {% render_field form.reference class="form-control" hx-post=url 'accounting:journal_validate' hx-include="#journal-form" hx-target="#validation-panel" hx-swap="innerHTML" %}
+                </div>
+            </div>
+        </div>
+        <div id="custom-fields-container">
+            {% include "accounting/partials/_custom_fields.html" %}
+        </div>
+    </div>
+</div>

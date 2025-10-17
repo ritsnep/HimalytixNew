@@ -1,0 +1,154 @@
+{% extends 'accounting/_list_base.html' %}
+{% load static %}
+
+{% block title %}Balance Sheet{% endblock %}
+{% block breadcrumb %}Balance Sheet{% endblock %}
+
+{% block list_header %}
+<div class="d-flex justify-content-between align-items-center">
+    <h4 class="card-title">Balance Sheet</h4>
+    <div>
+        <a href="{% url 'accounting:reports_list' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Reports
+        </a>
+        <button onclick="window.print()" class="btn btn-primary">
+            <i class="fas fa-print me-1"></i>Print
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+{% if error %}
+<div class="alert alert-warning" role="alert">
+    {{ error }}
+</div>
+{% else %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h5>Organization: {{ organization.name }}</h5>
+                        <p class="text-muted">Period: {{ period.name }}</p>
+                        <p class="text-muted">Date: {{ period.start_date|date:"M d, Y" }} - {{ period.end_date|date:"M d, Y" }}</p>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <p class="text-muted">Generated: {% now "M d, Y H:i" %}</p>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-8 mx-auto">
+                        <div class="text-center mb-4">
+                            <h3>BALANCE SHEET</h3>
+                            <p class="text-muted">As of {{ period.end_date|date:"M d, Y" }}</p>
+                        </div>
+
+                        <!-- Assets Section -->
+                        <div class="card border-success mb-3">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0">ASSETS</h5>
+                            </div>
+                            <div class="card-body">
+                                {% for asset in balance_sheet.asset_details %}
+                                {% if asset.balance > 0 %}
+                                <div class="row">
+                                    <div class="col-8">{{ asset.account_name }}</div>
+                                    <div class="col-4 text-end">${{ asset.balance|floatformat:2 }}</div>
+                                </div>
+                                {% endif %}
+                                {% empty %}
+                                <div class="text-muted">No assets recorded</div>
+                                {% endfor %}
+                                <hr>
+                                <div class="row fw-bold">
+                                    <div class="col-8">Total Assets</div>
+                                    <div class="col-4 text-end">${{ balance_sheet.total_assets|floatformat:2 }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Liabilities Section -->
+                        <div class="card border-danger mb-3">
+                            <div class="card-header bg-danger text-white">
+                                <h5 class="mb-0">LIABILITIES</h5>
+                            </div>
+                            <div class="card-body">
+                                {% for liability in balance_sheet.liability_details %}
+                                {% if liability.balance > 0 %}
+                                <div class="row">
+                                    <div class="col-8">{{ liability.account_name }}</div>
+                                    <div class="col-4 text-end">${{ liability.balance|floatformat:2 }}</div>
+                                </div>
+                                {% endif %}
+                                {% empty %}
+                                <div class="text-muted">No liabilities recorded</div>
+                                {% endfor %}
+                                <hr>
+                                <div class="row fw-bold">
+                                    <div class="col-8">Total Liabilities</div>
+                                    <div class="col-4 text-end">${{ balance_sheet.total_liabilities|floatformat:2 }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Equity Section -->
+                        <div class="card border-info mb-3">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="mb-0">EQUITY</h5>
+                            </div>
+                            <div class="card-body">
+                                {% for equity in balance_sheet.equity_details %}
+                                {% if equity.balance > 0 %}
+                                <div class="row">
+                                    <div class="col-8">{{ equity.account_name }}</div>
+                                    <div class="col-4 text-end">${{ equity.balance|floatformat:2 }}</div>
+                                </div>
+                                {% endif %}
+                                {% empty %}
+                                <div class="text-muted">No equity recorded</div>
+                                {% endfor %}
+                                <hr>
+                                <div class="row fw-bold">
+                                    <div class="col-8">Total Equity</div>
+                                    <div class="col-4 text-end">${{ balance_sheet.total_equity|floatformat:2 }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Total Liabilities and Equity -->
+                        <div class="card border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">TOTAL LIABILITIES AND EQUITY</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row fw-bold fs-5">
+                                    <div class="col-8">Total Liabilities and Equity</div>
+                                    <div class="col-4 text-end">${{ balance_sheet.total_liabilities_equity|floatformat:2 }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Summary -->
+                        <div class="mt-4">
+                            {% if balance_sheet.total_assets == balance_sheet.total_liabilities_equity %}
+                            <div class="alert alert-success" role="alert">
+                                <strong>Balanced:</strong> Assets equal Liabilities plus Equity. The balance sheet is in balance.
+                            </div>
+                            {% else %}
+                            <div class="alert alert-danger" role="alert">
+                                <strong>Out of Balance:</strong> Assets (${{ balance_sheet.total_assets|floatformat:2 }}) do not equal Liabilities plus Equity (${{ balance_sheet.total_liabilities_equity|floatformat:2 }}). 
+                                Difference: ${{ balance_sheet.total_assets|add:balance_sheet.total_liabilities_equity|floatformat:2 }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %} 

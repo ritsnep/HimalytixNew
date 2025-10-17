@@ -1,0 +1,7 @@
+{% if journal.status == 'draft' %}
+<span class="badge bg-warning text-dark rounded-pill">Draft</span>
+{% elif journal.status == 'posted' %}
+<span class="badge bg-success rounded-pill">Posted</span>
+{% else %}
+<span class="badge bg-light text-dark rounded-pill">New</span>
+{% endif %}

@@ -1,0 +1,31 @@
+header:
+  journal_type:
+    type: journal_type
+    label: "Journal Type"
+    required: true
+  period:
+    type: period
+    label: "Period"
+    required: true
+  journal_date:
+    type: date
+    label: "Date"
+    required: true
+  description:
+    type: char
+    label: "Description"
+    required: false
+
+lines:
+  account:
+    type: account
+    label: "Account"
+    required: true
+  debit_amount:
+    type: decimal
+    label: "Debit"
+    required: false
+  credit_amount:
+    type: decimal
+    label: "Credit"
+    required: false 

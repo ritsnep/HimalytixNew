@@ -1,0 +1,45 @@
+{% extends 'accounting/_list_base.html' %}
+{% block title %}Project List{% endblock %}
+
+{% block list_header %}
+<h4 class="card-title">Project</h4>
+<a href="{% url 'accounting:project_create' %}" class="btn btn-success mb-2">
+    <i class="mdi mdi-plus me-1"></i> New Project
+</a>
+{% endblock %}
+
+{% block table_head %}
+<thead>
+  <tr>
+    <th>Code</th>
+    <th>Name</th>
+    <th>Description</th>
+    <th>Status</th>
+    <th>Action</th>
+  </tr>
+</thead>
+{% endblock %}
+
+{% block table_body %}
+<tbody>
+  {% for p in projects %}
+  <tr>
+    <td>{{ p.code }}</td>
+    <td>{{ p.name }}</td>
+    <td>{{ p.description }}</td>
+    <td>
+      {% if p.is_active %}
+        <span class="badge bg-success">Active</span>
+      {% else %}
+        <span class="badge bg-danger">Inactive</span>
+      {% endif %}
+    </td>
+    <td>
+      <a href="{% url 'accounting:project_update' p.project_id %}" class="btn btn-sm btn-primary">Edit</a>
+    </td>
+  </tr>
+  {% empty %}
+  <tr><td colspan="5">No projects found.</td></tr>
+  {% endfor %}
+</tbody>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% if journal.status == 'draft' %}
+    <span class="badge bg-secondary">Draft</span>
+{% elif journal.status == 'awaiting-approval' %}
+    <span class="badge bg-warning">Awaiting Approval</span>
+{% elif journal.status == 'approved' %}
+    <span class="badge bg-success">Approved</span>
+{% elif journal.status == 'posted' %}
+    <span class="badge bg-primary">Posted</span>
+{% elif journal.status == 'rejected' %}
+    <span class="badge bg-danger">Rejected</span>
+{% endif %}

@@ -1,0 +1,120 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block title %}User Management{% endblock title %}
+
+{% block extra_css %}
+<!-- DataTables -->
+<link href="{% static 'libs/datatables.net-bs4/css/dataTables.bootstrap4.min.css' %}" rel="stylesheet" type="text/css" />
+<link href="{% static 'libs/datatables.net-buttons-bs4/css/buttons.bootstrap4.min.css' %}" rel="stylesheet" type="text/css" />
+{% endblock extra_css %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <!-- start page title -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                        <h4 class="mb-sm-0 font-size-18">User Management</h4>
+                        <div class="page-title-right">
+                            <ol class="breadcrumb m-0">
+                                <li class="breadcrumb-item"><a href="javascript: void(0);">Admin</a></li>
+                                <li class="breadcrumb-item active">User Management</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- end page title -->
+
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="card-title mb-0">Users</h5>
+                                <a href="{% url 'admin:auth_user_add' %}" class="btn btn-primary">
+                                    <i class="fas fa-plus me-1"></i> Add User
+                                </a>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <!-- HTMX Table Component -->
+                            <div id="user-table-wrapper" hx-get="{% url 'user_table' %}" hx-trigger="load"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% block footer %}
+    {% include 'partials/footer.html' %}
+    {% endblock footer %}
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+<!-- HTMX -->
+<script src="{% static 'libs/htmx.org/dist/htmx.min.js' %}"></script>
+
+<!-- Custom JS for table features -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle filter panel toggle
+        document.addEventListener('click', function(e) {
+            if (e.target.matches('[data-toggle="filter-panel"]')) {
+                const panel = document.querySelector(e.target.dataset.target);
+                if (panel) {
+                    panel.classList.toggle('show');
+                }
+            }
+        });
+
+        // Handle select all checkbox
+        document.addEventListener('change', function(e) {
+            if (e.target.matches('.select-all')) {
+                const form = e.target.closest('form');
+                if (form) {
+                    const checkboxes = form.querySelectorAll('.row-checkbox');
+                    checkboxes.forEach(cb => cb.checked = e.target.checked);
+                }
+            }
+        });
+
+        // Show success/error messages from HTMX responses
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            const response = evt.detail.xhr.response;
+            if (response && response.message) {
+                // Assuming you have a toast notification system
+                showToast(response.message, response.status || 'success');
+            }
+        });
+
+        // Handle errors in HTMX requests
+        document.body.addEventListener('htmx:responseError', function(evt) {
+            const response = evt.detail.xhr.response;
+            showToast(response.message || 'An error occurred', 'error');
+        });
+    });
+
+    // Simple toast notification function (you can replace with your preferred library)
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type} position-fixed top-0 end-0 m-3`;
+        toast.innerHTML = `
+            <div class="toast-header">
+                <strong class="me-auto">${type.charAt(0).toUpperCase() + type.slice(1)}</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">${message}</div>
+        `;
+        document.body.appendChild(toast);
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+        toast.addEventListener('hidden.bs.toast', () => toast.remove());
+    }
+</script>
+{% endblock extra_js %}

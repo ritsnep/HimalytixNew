@@ -1,0 +1,251 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block title %}Voucher Entry{% endblock title %}
+
+{% block extra_css %}
+<link href="{% static 'libs/choices.js/public/assets/styles/choices.min.css'%}" rel="stylesheet" type="text/css" />
+{% endblock extra_css %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <!-- start page title -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                        <h4 class="mb-sm-0 font-size-18">{{ config.name }}</h4>
+                        <div class="page-title-right">
+                            <ol class="breadcrumb m-0">
+                                <li class="breadcrumb-item"><a href="javascript: void(0);">Accounting</a></li>
+                                <li class="breadcrumb-item active">Voucher Entry</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- end page title -->
+
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <form method="post" id="voucherForm" action="{% url 'accounting:voucher_wizard' %}">
+                                {% csrf_token %}
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">Journal Type</label>
+                                            {{ journal_form.journal_type }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">Period</label>
+                                            {{ journal_form.period }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">Date</label>
+                                            {{ journal_form.journal_date }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Reference</label>
+                                            {{ journal_form.reference }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Description</label>
+                                            {{ journal_form.description }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row mt-4">
+                                    <div class="col-12">
+                                        <div class="table-responsive">
+                                            <table class="table table-bordered" id="journalLines">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Account</th>
+                                                        <th>Description</th>
+                                                        <th>Debit</th>
+                                                        <th>Credit</th>
+                                                        {% if config.show_dimensions %}
+                                                        <th>Department</th>
+                                                        <th>Project</th>
+                                                        <th>Cost Center</th>
+                                                        {% endif %}
+                                                        {% if config.show_tax_details %}
+                                                        <th>Tax Code</th>
+                                                        {% endif %}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for default in defaults %}
+                                                    <tr class="journal-line">
+                                                        <td>
+                                                            <select class="form-control account-select" name="account_{{ forloop.counter }}" 
+                                                                    {% if default.is_required %}required{% endif %}>
+                                                                <option value="">Select Account</option>
+                                                                {% if default.account %}
+                                                                <option value="{{ default.account.id }}" selected>
+                                                                    {{ default.account.account_code }} - {{ default.account.account_name }}
+                                                                </option>
+                                                                {% endif %}
+                                                            </select>
+                                                        </td>
+                                                        <td>
+                                                            <input type="text" class="form-control" name="description_{{ forloop.counter }}"
+                                                                   value="{{ default.default_description|default:'' }}"
+                                                                   {% if config.require_line_description %}required{% endif %}>
+                                                        </td>
+                                                        <td>
+                                                            <input type="number" class="form-control debit-amount" 
+                                                                   name="debit_{{ forloop.counter }}"
+                                                                   value="{% if default.default_debit %}{{ default.default_amount|default:'0.00' }}{% else %}0.00{% endif %}"
+                                                                   step="0.01">
+                                                        </td>
+                                                        <td>
+                                                            <input type="number" class="form-control credit-amount"
+                                                                   name="credit_{{ forloop.counter }}"
+                                                                   value="{% if default.default_credit %}{{ default.default_amount|default:'0.00' }}{% else %}0.00{% endif %}"
+                                                                   step="0.01">
+                                                        </td>
+                                                        {% if config.show_dimensions %}
+                                                        <td>
+                                                            <select class="form-control" name="department_{{ forloop.counter }}">
+                                                                <option value="">Select Department</option>
+                                                                {% if default.default_department %}
+                                                                <option value="{{ default.default_department }}" selected>
+                                                                    {{ default.default_department }}
+                                                                </option>
+                                                                {% endif %}
+                                                            </select>
+                                                        </td>
+                                                        <td>
+                                                            <select class="form-control" name="project_{{ forloop.counter }}">
+                                                                <option value="">Select Project</option>
+                                                                {% if default.default_project %}
+                                                                <option value="{{ default.default_project }}" selected>
+                                                                    {{ default.default_project }}
+                                                                </option>
+                                                                {% endif %}
+                                                            </select>
+                                                        </td>
+                                                        <td>
+                                                            <select class="form-control" name="cost_center_{{ forloop.counter }}">
+                                                                <option value="">Select Cost Center</option>
+                                                                {% if default.default_cost_center %}
+                                                                <option value="{{ default.default_cost_center }}" selected>
+                                                                    {{ default.default_cost_center }}
+                                                                </option>
+                                                                {% endif %}
+                                                            </select>
+                                                        </td>
+                                                        {% endif %}
+                                                        {% if config.show_tax_details %}
+                                                        <td>
+                                                            <select class="form-control" name="tax_code_{{ forloop.counter }}">
+                                                                <option value="">Select Tax Code</option>
+                                                                {% if default.default_tax_code %}
+                                                                <option value="{{ default.default_tax_code.id }}" selected>
+                                                                    {{ default.default_tax_code.code }}
+                                                                </option>
+                                                                {% endif %}
+                                                            </select>
+                                                        </td>
+                                                        {% endif %}
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                                <tfoot>
+                                                    <tr>
+                                                        <th colspan="2" class="text-end">Totals:</th>
+                                                        <th class="debit-total">0.00</th>
+                                                        <th class="credit-total">0.00</th>
+                                                        <th colspan="5"></th>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row mt-4">
+                                    <div class="col-12">
+                                        <button type="submit" class="btn btn-primary">Save Voucher</button>
+                                        <button type="button" class="btn btn-secondary">Cancel</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+<!-- choices js -->
+<script src="{% static 'libs/choices.js/public/assets/scripts/choices.min.js'%}"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Choices.js for selects
+    document.querySelectorAll('select').forEach(select => {
+        new Choices(select, {
+            searchEnabled: true,
+            removeItemButton: true,
+            placeholder: true,
+        });
+    });
+
+    // Calculate totals
+    function updateTotals() {
+        let debitTotal = 0;
+        let creditTotal = 0;
+
+        document.querySelectorAll('.debit-amount').forEach(input => {
+            debitTotal += parseFloat(input.value) || 0;
+        });
+
+        document.querySelectorAll('.credit-amount').forEach(input => {
+            creditTotal += parseFloat(input.value) || 0;
+        });
+
+        document.querySelector('.debit-total').textContent = debitTotal.toFixed(2);
+        document.querySelector('.credit-total').textContent = creditTotal.toFixed(2);
+    }
+
+    // Add event listeners for amount inputs
+    document.querySelectorAll('.debit-amount, .credit-amount').forEach(input => {
+        input.addEventListener('change', updateTotals);
+    });
+
+    // Initialize totals
+    updateTotals();
+
+    // Form validation
+    document.getElementById('voucherForm').addEventListener('submit', function(e) {
+        const debitTotal = parseFloat(document.querySelector('.debit-total').textContent);
+        const creditTotal = parseFloat(document.querySelector('.credit-total').textContent);
+
+        if (debitTotal !== creditTotal) {
+            e.preventDefault();
+            alert('Debit and Credit totals must be equal');
+        }
+    });
+});
+</script>
+{% endblock extra_js %}

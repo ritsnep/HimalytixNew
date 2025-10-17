@@ -1,0 +1,70 @@
+{% extends 'accounting/_list_base.html' %}
+{% load static %}
+
+{% block title %}Exchange Rates{% endblock %}
+{% block breadcrumb %}Exchange Rates{% endblock %}
+{% block add_url %}{% url 'accounting:exchange_rate_create' %}{% endblock %}
+
+{% block list_header %}
+<h4 class="card-title">Exchange Rates</h4>
+{% endblock %}
+
+{% block create_button %}
+<a href="{% url 'accounting:exchange_rate_create' %}" class="btn btn-success mb-2">
+    <i class="mdi mdi-plus me-1"></i> New Exchange Rate
+</a>
+{% endblock %}
+
+{% block table_head %}
+<thead>
+    <tr>
+        <th>Date</th>
+        <th>Currency</th>
+        <th>Rate</th>
+        <th>Status</th>
+        <th>Actions</th>
+    </tr>
+</thead>
+{% endblock %}
+
+{% block table_body %}
+<tbody>
+    {% for rate in exchange_rates %}
+    <tr>
+        <td>{{ rate.rate_date }}</td>
+        <td>{{ rate.currency.code }}</td>
+        <td>{{ rate.rate }}</td>
+        <td>
+            {% if rate.is_active %}
+                <span class="badge bg-success">Active</span>
+            {% else %}
+                <span class="badge bg-danger">Inactive</span>
+            {% endif %}
+        </td>
+        <td>
+            <a href="{% url 'accounting:exchange_rate_update' rate.pk %}" class="btn btn-sm btn-primary">
+                <i class="fas fa-edit"></i> Edit
+            </a>
+        </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="5" class="text-center">No exchange rates found.</td></tr>
+    {% endfor %}
+</tbody>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Initialize DataTable
+        $('#dataTable').DataTable({
+            order: [[3, 'desc']], // Sort by effective date by default
+            pageLength: 25,
+            language: {
+                search: "_INPUT_",
+                searchPlaceholder: "Search...",
+            }
+        });
+    });
+</script>
+{% endblock %} 

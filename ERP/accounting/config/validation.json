@@ -1,0 +1,20 @@
+[
+  {
+    "field": "debit",
+    "expression": "> 0",
+    "severity": "error",
+    "autoFix_script": ""
+  },
+  {
+    "field": "credit",
+    "expression": "> 0",
+    "severity": "error",
+    "autoFix_script": ""
+  },
+  {
+    "field": "journal_date",
+    "expression": "is_not_in_future",
+    "severity": "warning",
+    "autoFix_script": ""
+  }
+]

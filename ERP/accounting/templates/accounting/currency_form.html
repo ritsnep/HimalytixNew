@@ -1,0 +1,85 @@
+{% extends 'accounting/_form_base.html' %}
+{% load static %}
+
+{% block title %}Currency{% endblock %}
+
+{% block form_content %}
+    <div class="card">
+        <div class="card-header">
+            <h4 class="card-title">{{ form_title|default:"Currency" }}</h4>
+            <p class="card-title-desc">Manage your currencies.</p>
+        </div>
+        <div class="card-body">
+            <form id="currency-form" method="post" novalidate>
+                {% csrf_token %}
+                
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {% for error in form.non_field_errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="row row-cols-1 row-cols-sm-2 g-3 mb-3">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="{{ form.currency_code.id_for_label }}" class="form-label">Currency Code</label>
+                            {{ form.currency_code }}
+                            {% if form.currency_code.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.currency_code.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="{{ form.currency_name.id_for_label }}" class="form-label">Currency Name</label>
+                            {{ form.currency_name }}
+                            {% if form.currency_name.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.currency_name.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row row-cols-1 row-cols-sm-2 g-3 mb-3">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="{{ form.symbol.id_for_label }}" class="form-label">Symbol</label>
+                            {{ form.symbol }}
+                            {% if form.symbol.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.symbol.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <div class="form-check">
+                                {{ form.is_active }}
+                                <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                    Is Active
+                                </label>
+                            </div>
+                            {% if form.is_active.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.is_active.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <a href="{% url 'accounting:currency_list' %}" class="btn btn-secondary">Back</a>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock form_content %} 

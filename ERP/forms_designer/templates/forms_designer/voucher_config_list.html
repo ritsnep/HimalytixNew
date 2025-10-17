@@ -1,0 +1,63 @@
+{% extends 'accounting/_list_base.html' %}
+{% load static %}
+{% block content %}
+    <div class="main-content">
+        <div class="page-content">
+<h1>Voucher Configurations</h1>
+    <div class='container-fluid'>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for config in configs %}
+                <tr>
+                    <td>{{ config }}</td>
+                    <td>
+                        <a href="{% url 'accounting:voucher_config_detail' config.pk %}" class="btn btn-info btn-sm">
+                            <i class="fas fa-eye"></i> View Details
+                        </a>
+                        <a href="{% url 'accounting:voucher_config_detail' config.pk %}" class="btn btn-info btn-sm">
+                            <i class="fas fa-eye"></i> View Details
+                        </a>
+                        <a href="{% url 'accounting:voucher_config_update' config.pk %}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        <a href="{% url 'forms_designer:schema_history' config.config_id %}" class="btn btn-outline-info btn-sm">History</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<!-- Modal -->
+<div class="modal fade" id="configModal" tabindex="-1" aria-labelledby="configModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content" id="config-modal-content">
+      <!-- Modal content loaded here via HTMX -->
+    </div>
+  </div>
+</div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/htmx.org@1.9.2"></script>
+<script>
+function openConfigModal(configId) {
+    fetch(`?edit=${configId}`, {headers: {'HX-Request': 'true'}})
+        .then(r => r.text())
+        .then(html => {
+            document.getElementById('config-modal-content').innerHTML = html;
+            var modal = new bootstrap.Modal(document.getElementById('configModal'));
+            modal.show();
+        });
+}
+// Optionally, handle modal close and refresh list if needed
+</script>
+{% endblock %} 

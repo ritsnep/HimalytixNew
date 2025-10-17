@@ -1,0 +1,50 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+{% block title %}404 Error{% endblock title %}
+
+{% block extra_css %}
+<!-- swiper css -->
+<link rel="stylesheet" href="{% static 'libs/swiper/swiper-bundle.min.css'%}">
+{% endblock extra_css %}
+    
+{% block header %}
+{% endblock header %}
+{% block left_sidebar %}
+{% endblock left_sidebar %}
+{% block content %}
+        <div class="my-5 pt-5">
+            <div class="container">
+                <div class="row">
+                    <div class="col-lg-12">
+                        <div class="text-center mb-5 pt-5">
+                            <h1 class="error-title mt-5"><span>404!</span></h1>
+                            <h4 class="text-uppercase mt-5">Sorry, page not found</h4>
+                            <p class="font-size-15 mx-auto text-muted w-50 mt-4">It will be as simple as Occidental in fact, it will Occidental to an English person</p>
+                            <div class="mt-5 text-center">
+                                <a class="btn btn-primary waves-effect waves-light" href="{% url 'dashboard' %}">Back to Dashboard</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- end container -->
+        </div>
+        <!-- end content -->
+{% endblock content %}
+{% block footer %}
+{% endblock footer %}
+{% block right_sidebar %}
+{% endblock right_sidebar %}
+
+{% block javascript %}
+    <!-- JAVASCRIPT -->
+    <script src="{% static 'libs/jquery/dist/jquery.min.js'%}"></script>
+    <script src="{% static 'libs/bootstrap/dist/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'libs/metismenu/dist/metisMenu.min.js'%}"></script>
+    <script src="{% static 'libs/simplebar/dist/simplebar.min.js'%}"></script>
+    <script src="{% static 'libs/node-waves/dist/waves.min.js'%}"></script>
+    <script src="{% static 'libs/feather-icons/dist/feather.min.js'%}"></script>
+    <!-- pace js -->
+    <script src="{% static 'libs/pace-js/pace.min.js'%}"></script>
+{% endblock javascript %}
+    

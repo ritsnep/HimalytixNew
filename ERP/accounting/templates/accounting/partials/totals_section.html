@@ -1,0 +1,21 @@
+<div class="d-flex align-items-center gap-3 small" role="status" aria-live="polite">
+    <div>
+        <span class="text-muted">{{ i18n["totals.total_debit"]|default:"Total Debit:" }}</span>
+        <strong id="total-debit">{{ totals.debit|default:"0.00" }}</strong>
+    </div>
+    <div>
+        <span class="text-muted">{{ i18n["totals.total_credit"]|default:"Total Credit:" }}</span>
+        <strong id="total-credit">{{ totals.credit|default:"0.00" }}</strong>
+    </div>
+    <div id="imbalance-container">
+        {% if totals.imbalance != 0 %}
+            <span class="text-danger fw-bold">{{ i18n["totals.imbalance"]|default:"Imbalance" }}: {{ totals.imbalance|default:"0.00" }}</span>
+        {% else %}
+            <span class="text-success fw-bold">{{ i18n["totals.balanced"]|default:"Balanced" }}</span>
+        {% endif %}
+    </div>
+    <div id="realized-gain-loss-container" style="display: none;">
+        <span class="text-muted">{{ i18n["totals.realized_gain_loss"]|default:"Realized Gain/Loss:" }}</span>
+        <strong id="realized-gain-loss">0.00</strong>
+    </div>
+</div>

@@ -1,0 +1,21 @@
+initial_state: 'Draft'
+states:
+  - 'Draft'
+  - 'Parked'
+  - 'Submitted'
+  - 'Approved'
+  - 'Rejected'
+  - 'Posted'
+
+transitions:
+  - { trigger: 'park', source: 'Draft', dest: 'Parked' }
+  - { trigger: 'submit', source: ['Draft', 'Parked'], dest: 'Submitted' }
+  - { trigger: 'approve', source: 'Submitted', dest: 'Approved' }
+  - { trigger: 'reject', source: 'Submitted', dest: 'Rejected' }
+  - { trigger: 'post', source: 'Approved', dest: 'Posted' }
+  - { trigger: 're-draft', source: ['Rejected', 'Parked'], dest: 'Draft' }
+
+role_matrix:
+  'Accountant': ['park', 'submit', 're-draft']
+  'Accounting Manager': ['approve', 'reject', 'post']
+  'Auditor': []

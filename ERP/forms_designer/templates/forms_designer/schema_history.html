@@ -1,0 +1,29 @@
+{% extends 'partials/base.html' %}
+{% block content %}
+    <div class="main-content">
+        <div class="page-content">
+<h1>Schema History for: {{ config }}</h1>
+<a href="{% url 'forms_designer:voucher_config_list' %}">&larr; Back to Config List</a>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Version</th>
+            <th>Created By</th>
+            <th>Created At</th>
+            <th>Schema (JSON)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for schema in schemas %}
+        <tr>
+            <td>{{ schema.version }}</td>
+            <td>{{ schema.created_by }}</td>
+            <td>{{ schema.created_at }}</td>
+            <td><pre>{{ schema.schema|safe|json_script:"schema-"|slice:1000 }}</pre></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+</div>
+{% endblock %} 

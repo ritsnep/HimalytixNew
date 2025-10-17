@@ -1,0 +1,26 @@
+{% load static %}
+
+{% block dialog_content %}
+<div class="modal fade" id="dialogModal" tabindex="-1" role="dialog" aria-labelledby="dialogTitle" aria-hidden="true">
+    <div class="modal-dialog modal-{{ size|default:'lg' }}" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="dialogTitle">{{ title|default:"" }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="dialogContent">
+                {% block dialog_body %}
+                {% endblock %}
+            </div>
+            {% if show_footer %}
+            <div class="modal-footer">
+                {% block dialog_footer %}
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="dialogSubmit">Save changes</button>
+                {% endblock %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,12 @@
+<tr class="je-grid-row" data-index="{{ form.prefix|cut:'lines-' }}">
+  <td>{{ form.account }}</td>
+  <td>{{ form.description }}</td>
+  <td><input type="text" name="{{ form.prefix }}-debit_amount" value="{{ form.debit_amount.value|default_if_none:'' }}" class="form-control je-cell" /></td>
+  <td><input type="text" name="{{ form.prefix }}-credit_amount" value="{{ form.credit_amount.value|default_if_none:'' }}" class="form-control je-cell" /></td>
+  <td>{{ form.department }}</td>
+  <td>{{ form.project }}</td>
+  <td>{{ form.cost_center }}</td>
+  <td>{{ form.currency_code }}</td>
+  <td>{{ form.exchange_rate }}</td>
+  <td>{{ form.memo }}</td>
+</tr>

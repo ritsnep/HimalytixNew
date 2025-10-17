@@ -1,0 +1,45 @@
+{% extends 'accounting/_list_base.html' %}
+{% load static %}
+
+{% block title %}Fiscal Years{% endblock %}
+{% block breadcrumb %}Fiscal Years{% endblock %}
+
+
+{% block table_head %}
+<thead>
+  <tr>
+    <th>Code</th>
+    <th>Name</th>
+    <th>Start Date</th>
+    <th>End Date</th>
+    <th>Status</th>
+    <th>Actions</th>
+  </tr>
+</thead>
+{% endblock %}
+
+{% block table_body %}
+<tbody>
+  {% for fy in fiscal_years %}
+  <tr>
+    <td>{{ fy.code }}</td>
+    <td>{{ fy.name }}</td>
+    <td>{{ fy.start_date }}</td>
+    <td>{{ fy.end_date }}</td>
+    <td>{{ fy.status }}</td>
+    <td>
+      <a href="{% url 'accounting:fiscal_year_detail' fy.pk %}">View</a> |
+      <a href="{% url 'accounting:fiscal_year_update' fy.pk %}">Edit</a>
+      {% if fy.status == 'open' %}|
+      <form method="post" action="{% url 'accounting:fiscal_year_close' fy.pk %}" class="d-inline">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-link p-0">Close</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% empty %}
+  <tr><td colspan="6">No fiscal years found.</td></tr>
+  {% endfor %}
+</tbody>
+{% endblock %}

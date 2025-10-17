@@ -1,0 +1,90 @@
+{% extends "partials/base.html" %}
+{% load widget_tweaks %}
+{% load i18n %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0">{% translate "Import Journal Entries" %}</h3>
+                </div>
+                <div class="card-body">
+                    <form id="journal-import-form" hx-encoding="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="id_file" class="form-label">{% translate "Select File" %}</label>
+                            {% render_field form.file class="form-control" %}
+                            <div class="form-text">{% translate "Supported formats: Excel (.xlsx, .xls) and CSV (.csv)" %}</div>
+                            {% if form.file.errors %}
+                                {% for error in form.file.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <button type="button" id="validate-button" class="btn btn-primary" hx-post="{% url 'accounting:journal_import_validate' %}" hx-target="#validation-results" hx-swap="innerHTML" hx-trigger="click" hx-include="#journal-import-form">
+                            {% translate "Validate File" %}
+                        </button>
+                    </form>
+
+                    <div id="validation-results" class="mt-4">
+                        <!-- Validation results will be loaded here via HTMX -->
+                    </div>
+
+                    <div id="import-actions" class="mt-4" style="display: none;">
+                        <button type="button" id="import-button" class="btn btn-success" hx-post="{% url 'accounting:journal_import_process' %}" hx-target="#import-status" hx-swap="innerHTML" hx-trigger="click" hx-vals="js:{file_key: document.getElementById('file-key').value}">
+                            {% translate "Import Journals" %}
+                        </button>
+                    </div>
+
+                    <div id="import-status" class="mt-4">
+                        <!-- Import status will be loaded here via HTMX -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('htmx:afterSwap', function(event) {
+        if (event.detail.target.id === 'validation-results') {
+            const response = JSON.parse(event.detail.xhr.responseText);
+            if (response.success) {
+                document.getElementById('import-actions').style.display = 'block';
+                const fileKeyInput = document.createElement('input');
+                fileKeyInput.type = 'hidden';
+                fileKeyInput.id = 'file-key';
+                fileKeyInput.value = response.file_key;
+                document.getElementById('journal-import-form').appendChild(fileKeyInput);
+
+                // Display success message and errors (if any, e.g., warnings)
+                event.detail.target.innerHTML = `
+                    <div class="alert alert-success">${response.message}</div>
+                    ${response.errors.length > 0 ? `<div class="alert alert-warning"><strong>Warnings:</strong><ul>${response.errors.map(e => `<li>Row ${e.row}: ${e.message}</li>`).join('')}</ul></div>` : ''}
+                `;
+            } else {
+                document.getElementById('import-actions').style.display = 'none';
+                event.detail.target.innerHTML = `
+                    <div class="alert alert-danger">${response.message}</div>
+                    <div class="alert alert-danger"><strong>Errors:</strong><ul>${response.errors.map(e => `<li>Row ${e.row}: ${e.message}</li>`).join('')}</ul></div>
+                `;
+            }
+        } else if (event.detail.target.id === 'import-status') {
+            const response = JSON.parse(event.detail.xhr.responseText);
+            if (response.success) {
+                event.detail.target.innerHTML = `
+                    <div class="alert alert-success">${response.message}</div>
+                    <p>Imported Journal IDs: ${response.journal_ids.join(', ')}</p>
+                `;
+            } else {
+                event.detail.target.innerHTML = `
+                    <div class="alert alert-danger">${response.message}</div>
+                    ${response.errors.length > 0 ? `<div class="alert alert-danger"><strong>Errors:</strong><ul>${response.errors.map(e => `<li>${e.message}</li>`).join('')}</ul></div>` : ''}
+                `;
+            }
+        }
+    });
+</script>
+{% endblock %}

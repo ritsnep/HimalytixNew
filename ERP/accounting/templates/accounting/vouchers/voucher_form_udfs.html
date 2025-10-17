@@ -1,0 +1,8 @@
+{% comment %} UDF Fields (Header or Line) {% endcomment %}
+{% for udf in udfs %}
+<div class="udf-field">
+    <label for="udf_{{ scope }}_{{ udf.field_name }}">{{ udf.display_name }}{% if udf.is_required %}<span class="text-danger">*</span>{% endif %}</label>
+    <input type="text" class="form-control" name="udf_{{ scope }}_{{ udf.field_name }}" id="udf_{{ scope }}_{{ udf.field_name }}" value="{{ udf.value|default:'' }}" {% if udf.is_required %}required{% endif %}>
+    {% if udf.help_text %}<small class="form-text text-muted">{{ udf.help_text }}</small>{% endif %}
+</div>
+{% endfor %} 

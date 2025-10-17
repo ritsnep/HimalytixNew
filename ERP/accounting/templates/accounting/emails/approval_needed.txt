@@ -1,0 +1,17 @@
+Dear {{ user.first_name }},
+
+A new journal entry requires your approval:
+
+Journal Reference: {{ journal.reference_no }}
+Journal Type: {{ journal.journal_type.name }}
+Date: {{ journal.journal_date|date:"Y-m-d" }}
+Amount: {{ journal.total_debit|floatformat:2 }}
+Submitted By: {{ approval_log.submitted_by.get_full_name }}
+
+Please review and approve the journal at:
+{{ approval_url }}
+
+This action requires your attention.
+
+Best regards,
+ERP System

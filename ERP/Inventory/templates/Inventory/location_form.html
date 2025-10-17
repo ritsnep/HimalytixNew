@@ -1,0 +1,18 @@
+{% extends "Inventory/base.html" %}
+{% load static crispy_forms_tags %}
+
+{% block inventory_title %}{% if form.instance.pk %}Edit{% else %}Create{% endif %} Location{% endblock %}
+
+{% block inventory_content %}
+{% include "Inventory/_form_card.html" with title=form_title subtitle=form_subtitle form=form cancel_url=cancel_url %}
+{% endblock %}
+
+{% block extra_context %}
+    {% if form.instance.pk %}
+        {% with form_title="Edit Location" form_subtitle="Update details for this storage location." %}{% endwith %}
+        {% with cancel_url=object.warehouse|yesno:"/inventory/warehouses/"|add:object.warehouse.pk|add:"/locations/,""" %}{% endwith %}
+    {% else %}
+        {% with form_title="Create New Location" form_subtitle="Add a new storage location to {{ warehouse.name }}." %}{% endwith %}
+        {% with cancel_url=warehouse|yesno:"/inventory/warehouses/"|add:warehouse.pk|add:"/locations/,""" %}{% endwith %}
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,573 @@
+{% extends 'accounting/_form_base.html' %}
+{% load static %}
+
+{% block title %}{{ form_title|default:"Chart of Account" }}{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    /* Namespaced styles for COA form only */
+    #coa-form .htmx-indicator { display: none; }
+    #coa-form .htmx-request .htmx-indicator { display: inline; }
+    #coa-form .alert { margin-bottom: 0; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
+    #coa-form .error-message { color: #dc3545; font-size: .875rem; margin-top: .25rem; }
+    #coa-form .is-invalid { border-color: #dc3545; }
+    #coa-form .is-valid { border-color: #198754; }
+    #coa-form .permission-disabled { opacity: .7; pointer-events: none; }
+    #coa-form .required-field::after { content: " *"; color: #dc3545; }
+    #coa-form .htmx-request button[type="submit"] { pointer-events: none; opacity: .7; }
+</style>
+{% endblock %}
+
+{% block form_content %}
+<div id="coa-form" class="card">
+
+    <div class="card-body">
+        <form id="chart-of-account-form" class="session-preserve" method="post" novalidate
+            hx-post="{{ form_post_url }}"
+            hx-trigger="submit" hx-target="#chart-of-account-form" hx-swap="outerHTML"
+            hx-indicator=".spinner-border">
+            {% csrf_token %}
+            {{ form.organization }}
+            <div id="form-response"></div>
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger" role="alert">
+                <strong>There were errors with your submission:</strong>
+                <ul>
+                    {% for error in form.non_field_errors %}
+                    <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            <!-- Basic Info -->
+            <fieldset class="mb-4">
+                <legend>
+                    <button class="btn btn-link p-0" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#basic-info"
+                            aria-expanded="true" aria-controls="basic-info">
+                        Basic Info
+                    </button>
+                </legend>
+                <div id="basic-info" class="collapse show">
+                    <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group mb-3">
+                        <label for="{{ form.account_code.id_for_label }}" class="form-label">Account Code</label>
+                        {{ form.account_code }}
+                        {% if form.account_code.errors %}
+                        <div class="error-message">{{ form.account_code.errors }}</div>
+                        {% endif %}
+                        <small class="text-muted d-block">Auto-generated from Parent/Type. Updates when you change them.</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group mb-3">
+                        <label for="{{ form.account_name.id_for_label }}" class="form-label required-field">Account Name</label>
+                        {{ form.account_name }}
+                        {% if form.account_name.errors %}
+                        <div class="error-message">{{ form.account_name.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group mb-3">
+                        <label for="{{ form.account_type.id_for_label }}" class="form-label required-field">Account Type</label>
+                        <select name="{{ form.account_type.name }}" id="{{ form.account_type.id_for_label }}"
+                            class="form-select{% if form.account_type.errors %} is-invalid{% endif %}">
+                            {% for option in form.account_type.field.choices %}
+                                <option value="{{ option.0 }}"{% if option.0 == form.account_type.value %} selected{% endif %}>{{ option.1 }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if form.account_type.errors %}
+                        <div class="error-message">{{ form.account_type.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-check mb-3">
+                        {{ form.use_custom_code }}
+                        <label class="form-check-label" for="{{ form.use_custom_code.id_for_label }}">Use Custom Code</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group mb-3" id="custom-code-group">
+                        <label for="{{ form.custom_code.id_for_label }}" class="form-label">Custom Code</label>
+                        {{ form.custom_code }}
+                        {% if form.custom_code.errors %}
+                        <div class="error-message">{{ form.custom_code.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group mb-3">
+                        <label for="{{ form.parent_account.id_for_label }}" class="form-label">Parent Account</label>
+                        <select name="{{ form.parent_account.name }}" id="{{ form.parent_account.id_for_label }}" class="form-select">
+                            <option value="">---------</option>
+                            {% for account in form.parent_account.field.queryset %}
+                                <option value="{{ account.pk }}" data-account-type="{{ account.account_type_id }}"{% if account.pk == form.parent_account.value %} selected{% endif %}>
+                                    {{ account.account_code }} - {{ account.account_name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        {% if form.parent_account.errors %}
+                        <div class="error-message">{{ form.parent_account.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group mb-3">
+                        <label for="{{ form.currency.id_for_label }}" class="form-label">Currency</label>
+                        {{ form.currency }}
+                        {% if form.currency.errors %}
+                        <div class="error-message">{{ form.currency.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group mb-3">
+                        <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+                        {{ form.description }}
+                        {% if form.description.errors %}
+                        <div class="error-message">{{ form.description.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+            <!-- Account Settings -->
+            <fieldset class="mb-4">
+                <legend>
+                    <button class="btn btn-link p-0" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#account-settings"
+                            aria-expanded="true" aria-controls="account-settings">
+                        Account Settings
+                    </button>
+                </legend>
+                <div id="account-settings" class="collapse show">
+                    <div class="row">
+                <div class="col-md-3">
+                    <div class="form-check mb-3">
+                        {{ form.is_active }}
+                        <label class="form-check-label" for="{{ form.is_active.id_for_label }}">Active</label>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-check mb-3">
+                        {{ form.is_bank_account }}
+                        <label class="form-check-label" for="{{ form.is_bank_account.id_for_label }}">Bank Account</label>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-check mb-3">
+                        {{ form.is_control_account }}
+                        <label class="form-check-label" for="{{ form.is_control_account.id_for_label }}">Control Account</label>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-check mb-3">
+                        {{ form.allow_manual_journal }}
+                        <label class="form-check-label" for="{{ form.allow_manual_journal.id_for_label }}">Allow Manual Journal</label>
+                    </div>
+                </div>
+            </div>
+            <!-- Advanced settings toggle -->
+            <div class="mt-2">
+                <button type="button" id="toggle-advanced" class="btn btn-link p-0">Show/Hide Advanced Settings</button>
+            </div>
+            <div id="advanced-section" class="mt-3 d-none">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-check mb-3">
+                            {{ form.require_cost_center }}
+                            <label class="form-check-label" for="{{ form.require_cost_center.id_for_label }}">Require Cost Center</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check mb-3">
+                            {{ form.require_project }}
+                            <label class="form-check-label" for="{{ form.require_project.id_for_label }}">Require Project</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check mb-3">
+                            {{ form.require_department }}
+                            <label class="form-check-label" for="{{ form.require_department.id_for_label }}">Require Department</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.default_tax_code.id_for_label }}" class="form-label">Default Tax Code</label>
+                            {{ form.default_tax_code }}
+                            {% if form.default_tax_code.errors %}
+                            <div class="error-message">{{ form.default_tax_code.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.display_order.id_for_label }}" class="form-label">Display Order</label>
+                            {{ form.display_order }}
+                            {% if form.display_order.errors %}
+                            <div class="error-message">{{ form.display_order.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </fieldset>
+
+    <!-- Account Balances -->
+    <fieldset class="mb-4">
+        <legend>
+            <button class="btn btn-link p-0" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#account-balances"
+                    aria-expanded="true" aria-controls="account-balances">
+                Account Balances
+            </button>
+        </legend>
+        <div id="account-balances" class="collapse show">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="form-group mb-3">
+                        <label class="form-label">Opening Balance</label>
+                        <div class="form-control-plaintext">{{ form.opening_balance.value|default:"0.00" }}</div>
+                        {{ form.opening_balance.as_hidden }}
+                        {% if form.opening_balance.errors %}
+                        <div class="error-message">{{ form.opening_balance.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group mb-3">
+                        <label class="form-label">Current Balance</label>
+                        <div class="form-control-plaintext">{{ form.current_balance.value|default:"0.00" }}</div>
+                        {{ form.current_balance.as_hidden }}
+                        {% if form.current_balance.errors %}
+                        <div class="error-message">{{ form.current_balance.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group mb-3">
+                        <label class="form-label">Reconciled Balance</label>
+                        <div class="form-control-plaintext">{{ form.reconciled_balance.value|default:"0.00" }}</div>
+                        {{ form.reconciled_balance.as_hidden }}
+                        {% if form.reconciled_balance.errors %}
+                        <div class="error-message">{{ form.reconciled_balance.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group mb-3">
+                        <label class="form-label">Last Reconciled Date</label>
+                        <div class="form-control-plaintext">{{ form.last_reconciled_date.value|default:"—" }}</div>
+                    </div>
+                </div>
+            </div>
+            </fieldset>
+                         <!-- Dynamic Fields -->
+                         <fieldset class="mb-4">
+                            <legend>
+                                <button class="btn btn-link p-0" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#udf-section"
+                                        aria-expanded="true" aria-controls="udf-section">
+                                    UDFs
+                                </button>
+                            </legend>
+                            <div id="udf-section" class="collapse show">
+                                <div id="dynamic-fields"
+                                     hx-get="{% url 'accounting:chart_of_accounts_form_fields' %}"
+                                     hx-trigger="change from:#id_is_bank_account, change from:#id_is_control_account"
+                                     hx-target="#dynamic-fields"
+                                     hx-swap="innerHTML">
+                                    {% include 'accounting/chart_of_accounts_form_fields.html' %}
+                                </div>
+                            </div>
+                        </fieldset>
+            <div class="d-flex justify-content-between align-items-center mt-4">
+                <a href="{{ back_url|default:form_post_url }}" class="btn btn-outline-secondary">Cancel</a>
+                <div class="d-flex gap-2">
+                    <button type="submit" name="action" value="save_new" class="btn btn-outline-primary">Save & New</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </div>
+
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+// Inline, form-scoped JS (no external libs)
+window.initCoaForm = function(initSource){
+  const root = document.getElementById('coa-form');
+  const form = document.getElementById('chart-of-account-form');
+  if (!root || !form) return;
+  const qs = (s) => root.querySelector(s);
+  const on = (el, ev, fn) => el && el.addEventListener(ev, fn);
+
+  // Simple validation: account_type must match parent account type
+  function clearErr(field){
+    const grp = field?.closest('.form-group');
+    const em = grp?.querySelector('.error-message[data-field="'+field.name+'"]');
+    if (em) em.remove();
+    field?.classList.remove('is-invalid');
+  }
+  function showErr(field,msg){
+    const grp = field?.closest('.form-group');
+    if (!grp) return;
+    const d = document.createElement('div');
+    d.className = 'error-message';
+    d.setAttribute('data-field', field.name);
+    d.textContent = msg;
+    grp.appendChild(d);
+    field.classList.add('is-invalid');
+  }
+  function validate(){
+    const parent = qs('#id_parent_account');
+    const acctType = qs('#id_account_type');
+    if (!acctType) return true;
+    clearErr(acctType);
+    if (parent && parent.value){
+      const opt = parent.options[parent.selectedIndex];
+      const ptype = opt && opt.getAttribute('data-account-type');
+      if (ptype && acctType.value !== ptype){
+        showErr(acctType, "Account type must match the parent account's type.");
+        return false;
+      }
+    }
+    return true;
+  }
+  on(form,'submit',e=>{ if(!validate()) e.preventDefault(); });
+
+  // Dynamic field refresh
+  on(qs('#id_is_bank_account'),'change',()=>htmx.trigger('#dynamic-fields','refresh'));
+  on(qs('#id_is_control_account'),'change',()=>htmx.trigger('#dynamic-fields','refresh'));
+
+  // Parent selection auto-sets account type
+  on(qs('#id_parent_account'),'change',function(){
+    const acctType = qs('#id_account_type');
+    const opt = this.options[this.selectedIndex];
+    const ptype = opt && opt.getAttribute('data-account-type');
+    if (ptype && acctType){ acctType.value = ptype; acctType.dispatchEvent(new Event('change')); }
+  });
+
+  // Auto-fill account code
+  const getNextUrl = "{% url 'accounting:get_next_account_code' %}";
+  async function updateCode(){
+    const org = qs('#id_organization')?.value || '';
+    const parent = qs('#id_parent_account')?.value || '';
+    const type = qs('#id_account_type')?.value || '';
+    if (!org) return;
+    try{
+      const url = new URL(getNextUrl, window.location.origin);
+      if(org) url.searchParams.set('organization', org);
+      if(parent) url.searchParams.set('parent_account', parent);
+      if(type) url.searchParams.set('account_type', type);
+      const r = await fetch(url);
+      const data = await r.json();
+      const code = qs('#id_account_code');
+      if (code && data && typeof data.next_code !== 'undefined') code.value = data.next_code || '';
+    }catch(_e){ /* ignore */ }
+  }
+  ['#id_organization','#id_parent_account','#id_account_type'].forEach(s=>{ const el = qs(s); on(el,'change',updateCode); });
+  updateCode();
+
+  // Advanced toggle
+  const btn = qs('#toggle-advanced');
+  const adv = qs('#advanced-section');
+  on(btn,'click',()=>{ if(adv) adv.classList.toggle('d-none'); });
+};
+
+document.addEventListener('DOMContentLoaded', ()=>window.initCoaForm());
+document.body.addEventListener('htmx:afterSwap', function(evt){
+  if (evt.target && evt.target.id === 'chart-of-account-form') window.initCoaForm('afterSwap');
+});
+
+// Keep CSRF header local to this page
+document.body.addEventListener('htmx:configRequest', function(event) {
+  function getCookie(name){
+    const cookies = document.cookie.split(';');
+    for (let c of cookies){ c=c.trim(); if(c.startsWith(name+'=')) return decodeURIComponent(c.slice(name.length+1)); }
+    return '';
+  }
+  event.detail.headers['X-CSRFToken'] = getCookie('csrftoken');
+});
+</script>
+<script src="{% static 'libs/pristinejs/dist/pristine.min.js' %}"></script>
+<script>
+// Lightweight, dependency-free behavior scoped to this form
+(function(){
+  const root = document.getElementById('coa-form');
+  const form = document.getElementById('chart-of-account-form');
+  if (!root || !form) return;
+  function qs(sel){ return root.querySelector(sel); }
+  // Validation: Account Type must match Parent's type
+  function clearErr(field){ const g=field.closest('.form-group'); const e=g&&g.querySelector('.error-message[data-field="'+field.name+'"]'); if(e) e.remove(); field.classList.remove('is-invalid'); }
+  function showErr(field,msg){ const g=field.closest('.form-group'); if(!g) return; const d=document.createElement('div'); d.className='error-message'; d.dataset.field=field.name; d.textContent=msg; g.appendChild(d); field.classList.add('is-invalid'); }
+  function validate(){
+    const parent = qs('#id_parent_account');
+    const acctType = qs('#id_account_type');
+    if (!acctType) return true;
+    clearErr(acctType);
+    if (parent && parent.value){
+      const opt = parent.options[parent.selectedIndex];
+      const ptype = opt && opt.getAttribute('data-account-type');
+      if (ptype && acctType.value !== ptype){ showErr(acctType, "Account type must match the parent account's type."); return false; }
+    }
+    return true;
+  }
+  form.addEventListener('submit', function(e){ if(!validate()) e.preventDefault(); });
+  // Dynamic fields refresh
+  ['#id_is_bank_account','#id_is_control_account'].forEach(sel=>{ const el=qs(sel); el&&el.addEventListener('change',()=>htmx.trigger('#dynamic-fields','refresh')); });
+  // Parent auto-sets Account Type
+  const parentSel = qs('#id_parent_account');
+  const acctType = qs('#id_account_type');
+  parentSel && parentSel.addEventListener('change', function(){ const opt=this.options[this.selectedIndex]; const ptype=opt&&opt.getAttribute('data-account-type'); if(ptype && acctType){ acctType.value=ptype; acctType.dispatchEvent(new Event('change')); } });
+})();
+</script>
+<script>
+// Inline auto-fill (no external module)
+(function(){
+  const root = document.getElementById('coa-form');
+  if (!root) return;
+  const getNextUrl = "{% url 'accounting:get_next_account_code' %}";
+  function qs(sel){ return root.querySelector(sel); }
+  async function updateAccountCode(){
+    const org = qs('#id_organization')?.value || '';
+    const parent = qs('#id_parent_account')?.value || '';
+    const type = qs('#id_account_type')?.value || '';
+    const useCustom = qs('#id_use_custom_code');
+    if (useCustom && useCustom.checked) return;
+    if (!org) return;
+    try{
+      const url = new URL(getNextUrl, window.location.origin);
+      if (org) url.searchParams.set('organization', org);
+      if (parent) url.searchParams.set('parent_account', parent);
+      if (type) url.searchParams.set('account_type', type);
+      const r = await fetch(url);
+      const data = await r.json();
+      const code = qs('#id_account_code');
+      if (code && data && typeof data.next_code !== 'undefined') code.value = data.next_code || '';
+    }catch(_e){ /* ignore */ }
+  }
+  ['#id_organization','#id_parent_account','#id_account_type'].forEach(sel=>{
+    const el = qs(sel); if (el) el.addEventListener('change', updateAccountCode);
+  });
+  updateAccountCode();
+})();
+</script>
+<script>
+// Custom code toggle behavior
+(function(){
+  const root = document.getElementById('coa-form');
+  if (!root) return;
+  function qs(sel){ return root.querySelector(sel); }
+  const useCustom = qs('#id_use_custom_code');
+  const customGroup = qs('#custom-code-group');
+  const customCode = qs('#id_custom_code');
+  function sync(){
+    if (!useCustom || !customGroup) return;
+    const enabled = !!useCustom.checked;
+    customGroup.style.display = enabled ? '' : 'none';
+    if (customCode) customCode.disabled = !enabled;
+    if (!enabled) {
+      // trigger auto-code refresh when turning off custom
+      const ev = new Event('change');
+      const type = qs('#id_account_type'); type && type.dispatchEvent(ev);
+      const parent = qs('#id_parent_account'); parent && parent.dispatchEvent(ev);
+    }
+  }
+  if (useCustom) {
+    useCustom.addEventListener('change', sync);
+    sync();
+  }
+  if (customCode) {
+    customCode.addEventListener('input', function(){
+      const code = qs('#id_account_code');
+      if (code && useCustom && useCustom.checked) code.value = this.value;
+    });
+  }
+})();
+</script>
+<script>
+const FORM_KEY = 'pending_chart_of_accounts_form_v1';
+
+function serializeForm(form) {
+    const data = {};
+    new FormData(form).forEach((v, k) => {
+        if (data[k]) {
+            if (!Array.isArray(data[k])) data[k] = [data[k]];
+            data[k].push(v);
+        } else {
+            data[k] = v;
+        }
+    });
+    return data;
+}
+
+function saveFormToStorage(form) {
+    const data = serializeForm(form);
+    data['__path__'] = window.location.pathname;
+    localStorage.setItem(FORM_KEY, JSON.stringify(data));
+}
+
+window.addEventListener('beforeunload', function() {
+    const form = document.getElementById('chart-of-account-form');
+    if (form) saveFormToStorage(form);
+});
+
+window.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('chart-of-account-form');
+    // Focus on first error field
+    var errorField = document.querySelector('.is-invalid, .error-message');
+    if (errorField) {
+        var input = errorField.closest('.form-group')?.querySelector('input, select, textarea');
+        if (input) input.focus();
+    }
+    // Collapsible advanced section
+    var advBtn = document.getElementById('toggle-advanced');
+    if (advBtn) {
+        advBtn.addEventListener('click', function() {
+            var adv = document.getElementById('advanced-section');
+            if (adv) adv.classList.toggle('d-none');
+        });
+    }
+});
+</script>
+<script>
+document.body.addEventListener('htmx:configRequest', function(event) {
+    event.detail.headers['X-CSRFToken'] = getCookie('csrftoken');
+});
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+<script>
+// Call this after logout to clear form data
+if (window.location.pathname === '/account/logout/' || window.location.pathname === '/accounts/logout/') {
+    document.body.dispatchEvent(new Event('clearFormStorage'));
+}
+</script>
+{% endblock %}

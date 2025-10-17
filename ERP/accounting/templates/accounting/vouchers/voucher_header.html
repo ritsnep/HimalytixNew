@@ -1,0 +1,35 @@
+{% comment %} Voucher Header and Config Selector {% endcomment %}
+<div class="voucher-header">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h3 class="mb-1">{{ voucher_config.name }}</h3>
+            <p class="mb-0">{{ voucher_config.description|default:"Voucher Entry Form" }}</p>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <div class="d-flex flex-column">
+                <span class="text-white-50">Current Period</span>
+                <strong>{{ current_period.name }}</strong>
+                <small class="text-white-50">{{ current_period.start_date|date:"M d, Y" }} - {{ current_period.end_date|date:"M d, Y" }}</small>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row mb-3">
+    <div class="col-md-6">
+        <label for="voucher-type-select" class="form-label"><strong>Voucher/Journal Type</strong></label>
+        <select id="voucher-type-select" class="form-select">
+            {% for config in voucher_configs %}
+                <option value="{{ config.pk }}" {% if config.pk == voucher_config.pk %}selected{% endif %}>{{ config.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var selector = document.getElementById('voucher-type-select');
+    selector.addEventListener('change', function() {
+        var configId = this.value;
+        window.location.href = '/accounting/voucher-entry/' + configId + '/';
+    });
+});
+</script> 

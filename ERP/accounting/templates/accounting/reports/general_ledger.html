@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "General Ledger" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-1">
+                        <i class="fas fa-book me-2"></i>
+                        {% trans "General Ledger" %}
+                    </h1>
+                    <p class="text-muted">{% trans "View all transactions by account with running balances" %}</p>
+                </div>
+                <a href="{% url 'accounting:report_list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>
+                    {% trans "Back to Reports" %}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Form -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="account_id" class="form-label">{% trans "Account" %}</label>
+                            <select name="account_id" id="account_id" class="form-select">
+                                <option value="">{% trans "All Accounts" %}</option>
+                                {% for account in accounts %}
+                                <option value="{{ account.id }}" {% if account.id|stringformat:"s" == selected_account %}selected{% endif %}>
+                                    {{ account.code }} - {{ account.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="start_date" class="form-label">{% trans "Start Date" %}</label>
+                            <input type="date" name="start_date" id="start_date" class="form-control" value="{{ start_date }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="end_date" class="form-label">{% trans "End Date" %}</label>
+                            <input type="date" name="end_date" id="end_date" class="form-control" value="{{ end_date }}">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-filter me-2"></i>
+                                {% trans "Generate" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Data -->
+    {% if report_data %}
+        {% if report_data.error %}
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>{% trans "Error:" %}</strong> {{ report_data.error }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% else %}
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-light">
+                            <div class="row">
+                                <div class="col">
+                                    <h5 class="mb-0">{{ report_data.report_type }}</h5>
+                                    <small class="text-muted">
+                                        {% trans "Organization" %}: {{ report_data.organization }}
+                                        | {% trans "Period" %}: {{ report_data.start_date }} to {{ report_data.end_date }}
+                                    </small>
+                                </div>
+                                <div class="col text-end">
+                                    <form method="post" action="{% url 'accounting:report_export' %}" style="display: inline;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="report_type" value="general_ledger">
+                                        <input type="hidden" name="account_id" value="{{ selected_account }}">
+                                        <input type="hidden" name="start_date" value="{{ start_date }}">
+                                        <input type="hidden" name="end_date" value="{{ end_date }}">
+                                        
+                                        <div class="btn-group" role="group">
+                                            <button type="submit" name="export_format" value="csv" class="btn btn-sm btn-outline-secondary">
+                                                <i class="fas fa-file-csv me-1"></i>CSV
+                                            </button>
+                                            <button type="submit" name="export_format" value="excel" class="btn btn-sm btn-outline-secondary">
+                                                <i class="fas fa-file-excel me-1"></i>Excel
+                                            </button>
+                                            <button type="submit" name="export_format" value="pdf" class="btn btn-sm btn-outline-secondary">
+                                                <i class="fas fa-file-pdf me-1"></i>PDF
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>{% trans "Date" %}</th>
+                                        <th>{% trans "Account" %}</th>
+                                        <th>{% trans "Journal" %}</th>
+                                        <th>{% trans "Description" %}</th>
+                                        <th class="text-end">{% trans "Debit" %}</th>
+                                        <th class="text-end">{% trans "Credit" %}</th>
+                                        <th class="text-end">{% trans "Running Balance" %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for line in report_data.lines %}
+                                    <tr>
+                                        <td>{{ line.date|date:"Y-m-d" }}</td>
+                                        <td>
+                                            <strong>{{ line.account_code }}</strong><br>
+                                            <small class="text-muted">{{ line.account_name }}</small>
+                                        </td>
+                                        <td>{{ line.journal_no }}</td>
+                                        <td>{{ line.description }}</td>
+                                        <td class="text-end">
+                                            {% if line.debit %}
+                                            <span class="badge bg-success">{{ line.debit|floatformat:2 }}</span>
+                                            {% else %}
+                                            —
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            {% if line.credit %}
+                                            <span class="badge bg-danger">{{ line.credit|floatformat:2 }}</span>
+                                            {% else %}
+                                            —
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end fw-bold">{{ line.running_balance|floatformat:2 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot class="table-light fw-bold">
+                                    <tr>
+                                        <td colspan="4" class="text-end">{% trans "Totals" %}:</td>
+                                        <td class="text-end">{{ report_data.totals.total_debit|floatformat:2 }}</td>
+                                        <td class="text-end">{{ report_data.totals.total_credit|floatformat:2 }}</td>
+                                        <td class="text-end">{{ report_data.totals.ending_balance|floatformat:2 }}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            <i class="fas fa-info-circle me-2"></i>
+            {% trans "Select filters and click Generate to view the general ledger." %}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
