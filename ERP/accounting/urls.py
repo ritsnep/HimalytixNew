@@ -1,7 +1,8 @@
 from django.urls import path, include
 
 from accounting.views import views_import
-from .views import journal_entry_view
+from .views import journal_entry_view, voucher_views
+from .views import voucher_crud_views
 from .views import views_journal_grid as journal_grid_view
 from .views.report_views import (
     ReportListView,
@@ -146,7 +147,24 @@ urlpatterns = [
     
     path('voucher-entry/', VoucherEntryView.as_view(), name='voucher_entry'),
     # path('voucher-entry/<int:config_id>/', VoucherEntryView.as_view(), name='voucher_entry_config'),
-    path('vouchers/new/', wizard.VoucherWizardView.as_view(), name='voucher_wizard'),
+    
+    # Voucher Wizard CRUD URLs
+    path('vouchers/', voucher_crud_views.VoucherListView.as_view(), name='voucher_list'),
+    path('vouchers/new/', voucher_crud_views.VoucherCreateView.as_view(), name='voucher_create'),
+    path('vouchers/new/<int:config_id>/', voucher_crud_views.VoucherCreateView.as_view(), name='voucher_create_with_config'),
+    path('vouchers/<int:pk>/', voucher_crud_views.VoucherDetailView.as_view(), name='voucher_detail'),
+    path('vouchers/<int:pk>/edit/', voucher_crud_views.VoucherUpdateView.as_view(), name='voucher_edit'),
+    path('vouchers/<int:pk>/delete/', voucher_crud_views.VoucherDeleteView.as_view(), name='voucher_delete'),
+    path('vouchers/<int:pk>/duplicate/', voucher_crud_views.VoucherDuplicateView.as_view(), name='voucher_duplicate'),
+    path('vouchers/<int:pk>/post/', voucher_crud_views.VoucherPostView.as_view(), name='voucher_post'),
+    
+    # Legacy Voucher Wizard (kept for compatibility)
+    path('vouchers/wizard/', wizard.VoucherWizardView.as_view(), name='voucher_wizard'),
+    path('vouchers/wizard/<int:pk>/', wizard.VoucherWizardView.as_view(), name='voucher_wizard_edit'),
+    
+    # Legacy Voucher Views (kept for backward compatibility)
+    path('vouchers/legacy/print/<int:pk>/', voucher_views.VoucherPrintView.as_view(), name='voucher_print'),
+    path('vouchers/export/', voucher_views.VoucherExportView.as_view(), name='voucher_export'),
     path('vouchers/import-file/', views_import.JournalImportView.as_view(), name='voucher_import'),
     
     # Fiscal Year URLs

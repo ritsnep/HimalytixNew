@@ -1,0 +1,109 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "Delete Voucher" %}{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                        <h4 class="mb-sm-0 font-size-18">{% trans "Delete Voucher" %}</h4>
+                        <div class="page-title-right">
+                            <ol class="breadcrumb m-0">
+                                <li class="breadcrumb-item"><a href="{% url 'accounting:voucher_list' %}">{% trans "Vouchers" %}</a></li>
+                                <li class="breadcrumb-item"><a href="{% url 'accounting:voucher_detail' pk=object.pk %}">{{ object.journal_number }}</a></li>
+                                <li class="breadcrumb-item active">{% trans "Delete" %}</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row justify-content-center">
+                <div class="col-md-8 col-lg-6">
+                    <div class="card shadow">
+                        <div class="card-header bg-danger text-white">
+                            <h5 class="mb-0">
+                                <i class="mdi mdi-alert-circle-outline me-2"></i>
+                                {% trans "Confirm Deletion" %}
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-warning" role="alert">
+                                <i class="mdi mdi-alert me-2"></i>
+                                <strong>{% trans "Warning:" %}</strong> {% trans "This action cannot be undone!" %}
+                            </div>
+
+                            <p class="mb-3">
+                                {% trans "Are you sure you want to delete the following voucher?" %}
+                            </p>
+
+                            <div class="bg-light p-3 rounded mb-4">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <p class="mb-2">
+                                            <strong>{% trans "Voucher Number:" %}</strong><br>
+                                            {{ object.journal_number }}
+                                        </p>
+                                        <p class="mb-2">
+                                            <strong>{% trans "Date:" %}</strong><br>
+                                            {{ object.journal_date|date:"F d, Y" }}
+                                        </p>
+                                    </div>
+                                    <div class="col-6">
+                                        <p class="mb-2">
+                                            <strong>{% trans "Type:" %}</strong><br>
+                                            {{ object.journal_type.name }}
+                                        </p>
+                                        <p class="mb-2">
+                                            <strong>{% trans "Status:" %}</strong><br>
+                                            {% if object.status == 'posted' %}
+                                                <span class="badge bg-success">{% trans "Posted" %}</span>
+                                            {% else %}
+                                                <span class="badge bg-warning text-dark">{% trans "Draft" %}</span>
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                {% if object.description %}
+                                <p class="mb-0 mt-2">
+                                    <strong>{% trans "Description:" %}</strong><br>
+                                    {{ object.description }}
+                                </p>
+                                {% endif %}
+                            </div>
+
+                            {% if object.status == 'posted' %}
+                            <div class="alert alert-danger" role="alert">
+                                <i class="mdi mdi-close-circle me-2"></i>
+                                <strong>{% trans "Cannot Delete:" %}</strong> 
+                                {% trans "This voucher has been posted and cannot be deleted. You may reverse it instead." %}
+                            </div>
+                            {% else %}
+                            <form method="post">
+                                {% csrf_token %}
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-danger btn-lg">
+                                        <i class="mdi mdi-delete me-2"></i>
+                                        {% trans "Yes, Delete This Voucher" %}
+                                    </button>
+                                    <a href="{% url 'accounting:voucher_detail' pk=object.pk %}" class="btn btn-secondary btn-lg">
+                                        <i class="mdi mdi-arrow-left me-2"></i>
+                                        {% trans "No, Keep It" %}
+                                    </a>
+                                </div>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voucher {{ voucher.journal_number }} - Print</title>
+    <style>
+        @media print {
+            .no-print { display: none; }
+            @page { margin: 1cm; }
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #333;
+            max-width: 21cm;
+            margin: 0 auto;
+            padding: 1cm;
+        }
+        
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #333;
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .company-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        
+        .voucher-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 1rem;
+        }
+        
+        .info-section {
+            display: table;
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+        
+        .info-row {
+            display: table-row;
+        }
+        
+        .info-label {
+            display: table-cell;
+            width: 25%;
+            font-weight: bold;
+            padding: 0.25rem 0;
+        }
+        
+        .info-value {
+            display: table-cell;
+            padding: 0.25rem 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 0.5rem;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+        
+        .text-right {
+            text-align: right;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .totals-row {
+            font-weight: bold;
+            background-color: #f9f9f9;
+        }
+        
+        .footer {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #ddd;
+        }
+        
+        .signature-section {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 3rem;
+        }
+        
+        .signature-box {
+            width: 45%;
+        }
+        
+        .signature-line {
+            border-top: 1px solid #333;
+            margin-top: 2rem;
+            padding-top: 0.5rem;
+            text-align: center;
+        }
+        
+        .print-button {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.75rem 1.5rem;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .print-button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <button onclick="window.print()" class="print-button no-print">
+        🖨️ Print
+    </button>
+
+    <div class="header">
+        <div class="company-name">
+            {{ voucher.organization.name|default:"Company Name" }}
+        </div>
+        <div>
+            {{ voucher.organization.address|default:"Company Address" }}
+        </div>
+        <div class="voucher-title">
+            JOURNAL VOUCHER
+        </div>
+    </div>
+
+    <div class="info-section">
+        <div class="info-row">
+            <div class="info-label">Voucher Number:</div>
+            <div class="info-value">{{ voucher.journal_number }}</div>
+            <div class="info-label">Date:</div>
+            <div class="info-value">{{ voucher.journal_date|date:"F d, Y" }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Journal Type:</div>
+            <div class="info-value">{{ voucher.journal_type.name }}</div>
+            <div class="info-label">Period:</div>
+            <div class="info-value">{{ voucher.period }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Reference:</div>
+            <div class="info-value">{{ voucher.reference|default:"—" }}</div>
+            <div class="info-label">Status:</div>
+            <div class="info-value">
+                {% if voucher.status == 'posted' %}Posted{% else %}Draft{% endif %}
+            </div>
+        </div>
+        {% if voucher.description %}
+        <div class="info-row">
+            <div class="info-label">Description:</div>
+            <div class="info-value" colspan="3">{{ voucher.description }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th class="text-center" style="width: 40px;">#</th>
+                <th style="width: 15%;">Account Code</th>
+                <th>Account Name</th>
+                <th>Description</th>
+                <th class="text-right" style="width: 12%;">Debit</th>
+                <th class="text-right" style="width: 12%;">Credit</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for line in voucher.lines.all %}
+            <tr>
+                <td class="text-center">{{ forloop.counter }}</td>
+                <td>{{ line.account.code }}</td>
+                <td>{{ line.account.name }}</td>
+                <td>{{ line.description|default:"—" }}</td>
+                <td class="text-right">
+                    {% if line.debit_amount %}
+                        {{ line.debit_amount|floatformat:2 }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+                <td class="text-right">
+                    {% if line.credit_amount %}
+                        {{ line.credit_amount|floatformat:2 }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr class="totals-row">
+                <td colspan="4" class="text-right">TOTALS:</td>
+                <td class="text-right">{{ voucher.total_debit|floatformat:2 }}</td>
+                <td class="text-right">{{ voucher.total_credit|floatformat:2 }}</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <div class="footer">
+        <p><strong>Prepared By:</strong> {{ voucher.created_by.get_full_name|default:voucher.created_by.username }}</p>
+        <p><strong>Date Created:</strong> {{ voucher.created_at|date:"F d, Y H:i" }}</p>
+        {% if voucher.posted_by %}
+        <p><strong>Posted By:</strong> {{ voucher.posted_by.get_full_name|default:voucher.posted_by.username }}</p>
+        {% endif %}
+    </div>
+
+    <div class="signature-section no-print">
+        <div class="signature-box">
+            <div class="signature-line">
+                Prepared By
+            </div>
+        </div>
+        <div class="signature-box">
+            <div class="signature-line">
+                Approved By
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto print on page load (optional)
+        // window.onload = function() { window.print(); }
+    </script>
+</body>
+</html>

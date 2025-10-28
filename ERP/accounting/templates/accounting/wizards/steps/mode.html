@@ -1,22 +1,40 @@
-{% extends "partials/base.html" %}
+{% extends "accounting/wizards/voucher_wizard.html" %}
 {% load i18n %}
 {% load crispy_forms_tags %}
 
-{% block content %}
-<form method="post" hx-post="{% url 'accounting:voucher_wizard' %}" hx-target="#voucher-wizard-container">
-    {% csrf_token %}
-    {{ wizard.management_form }}
-    
-    <div class="card">
-        <div class="card-header">
-            <h5 class="card-title">{% trans "Step 1: Select Voucher Mode" %}</h5>
-        </div>
-        <div class="card-body">
-            {{ wizard.form|crispy }}
-        </div>
-        <div class="card-footer">
-            <button type="submit" class="btn btn-primary">{% trans "Next" %}</button>
-        </div>
+{% block wizard_content %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">{% trans "Step 1: Select Voucher Mode" %}</h5>
+        <p class="text-muted mb-0">{% trans "Choose the type of voucher you want to create" %}</p>
     </div>
-</form>
+    <div class="card-body">
+        <form method="post" action="">
+            {% csrf_token %}
+            {{ wizard.management_form }}
+            
+            {% if wizard.form.errors %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <strong>{% trans "Error!" %}</strong> {% trans "Please correct the errors below." %}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endif %}
+            
+            <div class="row">
+                <div class="col-md-8 offset-md-2">
+                    {{ wizard.form|crispy }}
+                </div>
+            </div>
+            
+            <div class="form-actions mt-4 text-center">
+                <button type="submit" name="wizard_goto_step" value="{{ wizard.steps.next }}" class="btn btn-primary btn-lg">
+                    <i class="mdi mdi-arrow-right me-1"></i>{% trans "Next Step" %}
+                </button>
+                <a href="{% url 'accounting:journal_list' %}" class="btn btn-secondary btn-lg ms-2">
+                    <i class="mdi mdi-close me-1"></i>{% trans "Cancel" %}
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}

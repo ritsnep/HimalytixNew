@@ -76,10 +76,17 @@
                 <span>Journals</span>
             </a>
         </li>
-        <!-- Voucher Entry -->
+        <!-- Voucher Management -->
+        <li>
+            <a href="{% url 'accounting:voucher_list' %}" class="has-arrow">
+                <i class="fas fa-file-invoice"></i>
+                <span>Vouchers</span>
+            </a>
+        </li>
+        <!-- Voucher Entry (Wizard) -->
         <li>
             <a href="{% url 'accounting:voucher_wizard' %}" >
-                <span>Voucher Entry</span>
+                <span>Voucher Entry (Wizard)</span>
             </a>
         </li>
         <!-- Voucher Configurations -->

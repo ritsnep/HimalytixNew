@@ -624,7 +624,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='accounttype',
-            constraint=models.CheckConstraint(condition=models.Q(('root_code_step__gt', 0)), name='accounttype_root_code_step_positive'),
+            constraint=models.CheckConstraint(check=models.Q(root_code_step__gt=0), name='accounttype_root_code_step_positive'),
         ),
         migrations.AddIndex(
             model_name='auditlog',
@@ -636,7 +636,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='costcenter',
-            constraint=models.CheckConstraint(condition=models.Q(('start_date__lt', models.F('end_date'))), name='costcenter_start_before_end'),
+            constraint=models.CheckConstraint(check=models.Q(start_date__lt=models.F('end_date')), name='costcenter_start_before_end'),
         ),
         migrations.AddIndex(
             model_name='chartofaccount',
@@ -664,7 +664,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='department',
-            constraint=models.CheckConstraint(condition=models.Q(('start_date__lt', models.F('end_date'))), name='department_start_before_end'),
+            constraint=models.CheckConstraint(check=models.Q(start_date__lt=models.F('end_date')), name='department_start_before_end'),
         ),
         migrations.AddIndex(
             model_name='fiscalyear',
@@ -676,7 +676,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='fiscalyear',
-            constraint=models.CheckConstraint(condition=models.Q(('start_date__lt', models.F('end_date'))), name='fiscalyear_start_before_end'),
+            constraint=models.CheckConstraint(check=models.Q(start_date__lt=models.F('end_date')), name='fiscalyear_start_before_end'),
         ),
         migrations.AlterUniqueTogether(
             name='fiscalyear',
@@ -684,7 +684,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='accountingperiod',
-            constraint=models.CheckConstraint(condition=models.Q(('start_date__lt', models.F('end_date'))), name='period_start_before_end'),
+            constraint=models.CheckConstraint(check=models.Q(start_date__lt=models.F('end_date')), name='period_start_before_end'),
         ),
         migrations.AlterUniqueTogether(
             name='accountingperiod',
@@ -704,7 +704,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='project',
-            constraint=models.CheckConstraint(condition=models.Q(('start_date__lt', models.F('end_date'))), name='project_start_before_end'),
+            constraint=models.CheckConstraint(check=models.Q(start_date__lt=models.F('end_date')), name='project_start_before_end'),
         ),
         migrations.AddIndex(
             model_name='generalledger',

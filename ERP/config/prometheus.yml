@@ -1,0 +1,54 @@
+# Prometheus configuration for Himalytix ERP
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'himalytix-erp'
+    environment: 'production'
+
+# Scrape configurations
+scrape_configs:
+  # =========================================================================
+  # DJANGO APPLICATION METRICS
+  # =========================================================================
+  - job_name: 'django'
+    static_configs:
+      - targets: ['web:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # =========================================================================
+  # POSTGRESQL EXPORTER (requires postgres_exporter sidecar)
+  # =========================================================================
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # =========================================================================
+  # REDIS EXPORTER (requires redis_exporter sidecar)
+  # =========================================================================
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # =========================================================================
+  # PROMETHEUS SELF-MONITORING
+  # =========================================================================
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+# Alerting configuration (optional - requires Alertmanager)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ['alertmanager:9093']
+
+# Alert rules
+rule_files:
+  - 'prometheus_alerts.yml'

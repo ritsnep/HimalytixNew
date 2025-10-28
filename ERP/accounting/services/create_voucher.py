@@ -1,6 +1,7 @@
 from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.utils import timezone
 from ..models import VoucherModeConfig, Journal, ChartOfAccount, JournalLine, AccountingPeriod
 from accounting.config.settings import journal_entry_settings
 import logging
@@ -31,27 +32,50 @@ def create_voucher(user, config_id: int, header_data: dict, lines_data: list, ud
         except ValueError as e:
             logger.error(
                 "Invalid journal date format: %s for user %s, organization %s",
-                journal_date, getattr(user, 'pk', 'N/A'), getattr(user.organization, 'pk', 'N/A'),
+                journal_date, getattr(user, 'pk', 'N/A'), getattr(getattr(user, 'organization', None), 'pk', 'N/A'),
                 extra={'journal_date': journal_date, 'user_id': getattr(user, 'pk', 'N/A'),
-                       'organization_id': getattr(user.organization, 'pk', 'N/A'), 'error': str(e)}
+                       'organization_id': getattr(getattr(user, 'organization', None), 'pk', 'N/A'), 'error': str(e)}
             )
             raise ValidationError(f"Invalid journal date format: {journal_date}. Expected YYYY-MM-DD.")
 
+    # Default journal date to today if missing
+    if journal_date is None:
+        journal_date = timezone.now().date()
+    # Ensure header_data carries the resolved journal_date for Journal()
+    header_data = dict(header_data or {})
+    header_data.setdefault('journal_date', journal_date)
+
+    # Prefer the user's organization; fall back to the voucher config's organization
+    organization = getattr(user, 'organization', None)
+    if organization is None:
+        try:
+            config_org = VoucherModeConfig.objects.only('organization').get(pk=config_id).organization
+            organization = config_org
+        except VoucherModeConfig.DoesNotExist:
+            organization = None
+    if organization is None:
+        logger.error(
+            "Missing organization for user %s and voucher config %s. Cannot determine accounting period.",
+            getattr(user, 'pk', 'N/A'), config_id,
+            extra={'user_id': getattr(user, 'pk', 'N/A'), 'config_id': config_id}
+        )
+        raise ValidationError("Missing organization. Cannot determine accounting period.")
+
     period = AccountingPeriod.objects.filter(
-        fiscal_year__organization=user.organization,
+        fiscal_year__organization=organization,
         start_date__lte=journal_date,
         end_date__gte=journal_date,
         status='open'
     ).first()
 
     if not period:
-        period = AccountingPeriod.get_current_period(user.organization)
+        period = AccountingPeriod.get_current_period(organization)
         if not period:
             logger.error(
                 "No open accounting period found for date %s for user %s, organization %s",
-                journal_date, getattr(user, 'pk', 'N/A'), getattr(user.organization, 'pk', 'N/A'),
+                journal_date, getattr(user, 'pk', 'N/A'), getattr(organization, 'pk', 'N/A'),
                 extra={'journal_date': journal_date, 'user_id': getattr(user, 'pk', 'N/A'),
-                       'organization_id': getattr(user.organization, 'pk', 'N/A')}
+                       'organization_id': getattr(organization, 'pk', 'N/A')}
             )
             raise ValidationError("No open accounting period found for the given date.")
 
@@ -59,13 +83,12 @@ def create_voucher(user, config_id: int, header_data: dict, lines_data: list, ud
     exchange_rate = header_data.pop('exchange_rate', Decimal('1.0'))
 
     journal = Journal(
-        organization=user.organization,
+        organization=organization,
         created_by=user,
         journal_type=config.journal_type,
         period=period,
         currency_code=currency_code,
         exchange_rate=exchange_rate,
-        udf_data=udf_header or {},
         **header_data
     )
     total_debit = Decimal("0")
@@ -111,8 +134,6 @@ def create_voucher(user, config_id: int, header_data: dict, lines_data: list, ud
             cost_center_id=line.get('cost_center'),
             tax_code_id=line.get('tax_code'),
             memo=line.get('memo', ''),
-            currency_code=line.get('currency_code', journal.currency_code),
-            exchange_rate=line.get('exchange_rate', journal.exchange_rate),
             udf_data=line_udf,
         ))
 

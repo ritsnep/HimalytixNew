@@ -11,14 +11,16 @@ Displays paginated list of journal entries with:
 """
 
 import logging
-from typing import Optional, Dict, Any, QuerySet
+from typing import Optional, Dict, Any
 from urllib.parse import urlencode
 
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Q, Sum, F
+from django.db.models import Q, Sum, F, Count, Case, When, DecimalField
+from django.db.models.query import QuerySet
 from django.http import HttpResponse
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.views.generic import ListView
+from django.db import models
 
 from accounting.models import Journal, JournalType, AccountingPeriod
 from accounting.views.base_voucher_view import BaseVoucherView, VoucherListMixin
@@ -137,11 +139,12 @@ class VoucherListView(VoucherListMixin, BaseVoucherView, ListView):
         else:
             queryset = queryset.order_by('-journal_date')
 
-        logger.debug(
-            f"VoucherListView queryset - Organization: {organization.id}, "
-            f"Filters: status={status}, period={period}, type={journal_type}, "
-            f"search={search}, sort={sort}, Total: {queryset.count()}"
-        )
+            # REMOVED: Don't call .count() here - it triggers an extra database query
+            # logger.debug(
+            #     f"VoucherListView queryset - Organization: {organization.id}, "
+            #     f"Filters: status={status}, period={period}, type={journal_type}, "
+            #     f"search={search}, sort={sort}"
+            # )
 
         return queryset
 
@@ -170,22 +173,26 @@ class VoucherListView(VoucherListMixin, BaseVoucherView, ListView):
             organization=organization
         ).order_by('name')
 
-        # Get statistics
+        # OPTIMIZED: Get statistics with a SINGLE aggregation query instead of 6 separate queries
         all_journals = Journal.objects.filter(organization=organization)
-        statistics = {
-            'total': all_journals.count(),
-            'draft': all_journals.filter(status='draft').count(),
-            'pending': all_journals.filter(status='pending').count(),
-            'posted': all_journals.filter(status='posted').count(),
-            'approved': all_journals.filter(status='approved').count(),
-            'total_amount': sum(j.total_debit for j in all_journals),
-        }
+        statistics = all_journals.aggregate(
+            total=Count('id'),
+            draft=Count('id', filter=Q(status='draft')),
+            pending=Count('id', filter=Q(status='pending')),
+            posted=Count('id', filter=Q(status='posted')),
+            approved=Count('id', filter=Q(status='approved')),
+            total_amount=Sum('total_debit', output_field=DecimalField(max_digits=15, decimal_places=2))
+        )
 
-        # Get current queryset totals
-        queryset_totals = self.get_queryset().aggregate(
+        # Handle None values
+        statistics['total_amount'] = statistics['total_amount'] or 0
+
+        # OPTIMIZED: Get current queryset totals (reuse the evaluated list view queryset)
+        # In ListView, self.object_list is set to the queryset before pagination
+        queryset_totals = self.object_list.aggregate(
             total_debit=Sum('total_debit'),
             total_credit=Sum('total_credit'),
-            count=models.Count('id')
+            count=Count('id')
         )
 
         # Build query string for pagination
@@ -432,5 +439,4 @@ class VoucherBulkActionView(BaseVoucherView):
         return response
 
 
-# Import Django models after all views defined
-from django.db import models
+# (removed redundant import of models at EOF)

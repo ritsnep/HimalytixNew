@@ -1,0 +1,221 @@
+{% load cache_tags %}
+
+{# =============================================================================
+   TEMPLATE FRAGMENT CACHING EXAMPLES
+   ============================================================================= #}
+
+{# Example 1: Cache sidebar for 5 minutes (300 seconds) #}
+{% cache_fragment 300 sidebar %}
+    <div class="sidebar">
+        <h3>Quick Stats</h3>
+        <ul>
+            <li>Total Entries: {{ total_entries }}</li>
+            <li>This Month: {{ monthly_entries }}</li>
+            <li>Revenue: ${{ total_revenue }}</li>
+        </ul>
+    </div>
+{% endcache_fragment %}
+
+
+{# Example 2: Cache per user (each user has own cached version) #}
+{% cache_fragment 600 user_profile request.user.id %}
+    <div class="user-profile">
+        <h2>Welcome, {{ request.user.get_full_name }}</h2>
+        <p>Email: {{ request.user.email }}</p>
+        <p>Last Login: {{ request.user.last_login }}</p>
+        
+        {# Expensive user stats calculation #}
+        {% for stat in user_stats %}
+            <div class="stat">{{ stat.label }}: {{ stat.value }}</div>
+        {% endfor %}
+    </div>
+{% endcache_fragment %}
+
+
+{# Example 3: Cache per tenant and language #}
+{% cache_fragment 900 tenant_menu request.tenant.id request.LANGUAGE_CODE %}
+    <nav class="tenant-menu">
+        <h3>{{ request.tenant.name }}</h3>
+        <ul>
+            {% for item in menu_items %}
+                <li><a href="{{ item.url }}">{{ item.title }}</a></li>
+            {% endfor %}
+        </ul>
+    </nav>
+{% endcache_fragment %}
+
+
+{# Example 4: Cache complex data table #}
+{% cache_fragment 300 journal_table request.user.id page_number %}
+    <table class="journal-entries">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in journal_entries %}
+                <tr>
+                    <td>{{ entry.date }}</td>
+                    <td>{{ entry.description }}</td>
+                    <td>${{ entry.amount }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    {# Pagination #}
+    <div class="pagination">
+        {% if has_previous %}
+            <a href="?page={{ previous_page }}">Previous</a>
+        {% endif %}
+        
+        <span>Page {{ page_number }} of {{ total_pages }}</span>
+        
+        {% if has_next %}
+            <a href="?page={{ next_page }}">Next</a>
+        {% endif %}
+    </div>
+{% endcache_fragment %}
+
+
+{# Example 5: Cache chart/graph data #}
+{% cache_fragment 1800 revenue_chart request.tenant.id year month %}
+    <div class="chart-container">
+        <canvas id="revenueChart"></canvas>
+        <script>
+            const chartData = {
+                labels: {{ chart_labels|safe }},
+                datasets: [{
+                    label: 'Revenue',
+                    data: {{ chart_data|safe }},
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                }]
+            };
+            
+            new Chart(document.getElementById('revenueChart'), {
+                type: 'line',
+                data: chartData
+            });
+        </script>
+    </div>
+{% endcache_fragment %}
+
+
+{# Example 6: Cache expensive template includes #}
+{% cache_fragment 600 footer %}
+    {% include "partials/footer.html" %}
+{% endcache_fragment %}
+
+
+{# Example 7: Nested caching - outer and inner fragments #}
+<div class="dashboard">
+    {# Cache entire dashboard for 5 minutes #}
+    {% cache_fragment 300 dashboard request.user.id %}
+        
+        <h1>Dashboard</h1>
+        
+        {# Cache widgets separately with different timeouts #}
+        {% cache_fragment 60 recent_activity request.user.id %}
+            <div class="widget recent-activity">
+                <h3>Recent Activity</h3>
+                <ul>
+                    {% for activity in recent_activities %}
+                        <li>{{ activity.description }} - {{ activity.timestamp }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endcache_fragment %}
+        
+        {% cache_fragment 1800 monthly_stats request.user.id current_month %}
+            <div class="widget monthly-stats">
+                <h3>This Month's Stats</h3>
+                <div class="stat-grid">
+                    <div>Entries: {{ monthly_entries_count }}</div>
+                    <div>Revenue: ${{ monthly_revenue }}</div>
+                    <div>Expenses: ${{ monthly_expenses }}</div>
+                </div>
+            </div>
+        {% endcache_fragment %}
+        
+    {% endcache_fragment %}
+</div>
+
+
+{# Example 8: Conditional caching (cache only for non-staff) #}
+{% if not request.user.is_staff %}
+    {% cache_fragment 300 public_content %}
+        <div class="public-content">
+            {# Expensive content that doesn't change often #}
+            {{ expensive_content|safe }}
+        </div>
+    {% endcache_fragment %}
+{% else %}
+    {# Staff always see fresh content #}
+    <div class="public-content">
+        {{ expensive_content|safe }}
+    </div>
+{% endif %}
+
+
+{# Example 9: Cache invalidation trigger #}
+{# In a form submission template #}
+<form method="post" action="{% url 'create_entry' %}">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Create Entry</button>
+    
+    {# This will invalidate the cached journal table #}
+    {% comment %}
+    In the view handling this form:
+        from templatetags.cache_tags import invalidate_fragment
+        invalidate_fragment('journal_table', request.user.id, page_number)
+    {% endcomment %}
+</form>
+
+
+{# Example 10: Debug - show cache key #}
+{% if debug %}
+    {% cache_key_for 'sidebar' as sidebar_cache_key %}
+    <!-- Sidebar cache key: {{ sidebar_cache_key }} -->
+    
+    {% cache_key_for 'user_profile' request.user.id as profile_cache_key %}
+    <!-- Profile cache key: {{ profile_cache_key }} -->
+{% endif %}
+
+
+{# =============================================================================
+   BEST PRACTICES
+   ============================================================================= #}
+
+{# 
+1. Cache expensive operations:
+   - Database queries that don't change often
+   - Complex calculations
+   - External API calls
+   - Chart/graph generation
+
+2. Use appropriate timeouts:
+   - Frequently changing data: 60-300 seconds
+   - Semi-static data: 300-1800 seconds (5-30 min)
+   - Static data: 3600+ seconds (1+ hour)
+
+3. Vary on appropriate keys:
+   - User-specific: request.user.id
+   - Tenant-specific: request.tenant.id
+   - Language-specific: request.LANGUAGE_CODE
+   - Time-based: year, month, day
+
+4. Invalidate when data changes:
+   - After creating/updating/deleting records
+   - Use signals or post-save hooks
+   - Clear related fragments
+
+5. Monitor cache performance:
+   - Track hit/miss ratios
+   - Identify slow fragments
+   - Adjust timeouts based on data
+#}

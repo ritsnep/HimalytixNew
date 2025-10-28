@@ -1339,7 +1339,7 @@ class JournalDetailView(PermissionRequiredMixin, UserOrganizationMixin, DetailVi
         return Journal.objects.filter(
             organization_id=self.request.user.get_active_organization().id
         ).select_related(
-            'journal_type', 'period', 'created_by', 'posted_by', 'approved_by'
+            'journal_type', 'period', 'created_by', 'posted_by'
         ).prefetch_related('lines__account', 'lines__department', 'lines__project', 'lines__cost_center')
     
     def get_context_data(self, **kwargs):
@@ -1358,18 +1358,23 @@ class JournalDetailView(PermissionRequiredMixin, UserOrganizationMixin, DetailVi
 
 
 class JournalEntryView(LoginRequiredMixin, UserOrganizationMixin, View):
+    """Journal entry create/edit view with support for both new entries and editing existing ones."""
     template_name = 'accounting/journal_entry.html'
     
     def get(self, request, pk=None):
+        organization = self.get_organization()
+        
         if pk:
-            journal = get_object_or_404(Journal, pk=pk, organization=self.get_organization())
-            form = JournalForm(instance=journal, organization=self.get_organization())
+            journal = get_object_or_404(Journal, pk=pk, organization=organization)
+            form = JournalForm(instance=journal, organization=organization)
             formset = JournalLineFormSet(instance=journal, prefix='lines')
+            page_title = f'Edit Journal Entry #{journal.journal_number}'
         else:
-            form = JournalForm(organization=self.get_organization())
+            form = JournalForm(organization=organization)
             formset = JournalLineFormSet(prefix='lines')
+            page_title = 'New Journal Entry'
 
-        voucher_configs = VoucherModeConfig.objects.filter(organization=self.get_organization(), is_active=True)
+        voucher_configs = VoucherModeConfig.objects.filter(organization=organization, is_active=True)
         selected_config_pk = request.GET.get('voucher_config', voucher_configs.first().pk if voucher_configs else None)
         selected_config = get_object_or_404(VoucherModeConfig, pk=selected_config_pk) if selected_config_pk else None
             
@@ -1378,40 +1383,45 @@ class JournalEntryView(LoginRequiredMixin, UserOrganizationMixin, View):
             'formset': formset,
             'voucher_configs': voucher_configs,
             'selected_config': selected_config,
-            'page_title': 'New Journal Entry' if not pk else f'Edit Journal Entry #{journal.journal_number}',
+            'page_title': page_title,
         }
         return render(request, self.template_name, context)
 
     def post(self, request, pk=None):
+        organization = self.get_organization()
+        
         if pk:
-            journal = get_object_or_404(Journal, pk=pk, organization=self.get_organization())
-            form = JournalForm(request.POST, instance=journal, organization=self.get_organization())
+            journal = get_object_or_404(Journal, pk=pk, organization=organization)
+            form = JournalForm(request.POST, instance=journal, organization=organization)
             formset = JournalLineFormSet(request.POST, instance=journal, prefix='lines')
         else:
-            form = JournalForm(request.POST, organization=self.get_organization())
+            form = JournalForm(request.POST, organization=organization)
             formset = JournalLineFormSet(request.POST, prefix='lines')
 
         if form.is_valid() and formset.is_valid():
             with transaction.atomic():
                 journal = form.save(commit=False)
                 if not pk:
-                    journal.organization = self.get_organization()
+                    journal.organization = organization
                     journal.created_by = request.user
+                journal.updated_by = request.user
                 journal.save()
                 
                 formset.instance = journal
                 formset.save()
                 
+                # Update totals
                 journal.update_totals()
                 journal.save()
 
             messages.success(request, "Journal entry saved successfully.")
             return redirect('accounting:journal_detail', pk=journal.pk)
         
+        page_title = 'New Journal Entry' if not pk else f'Edit Journal Entry #{journal.journal_number}'
         context = {
             'form': form,
             'formset': formset,
-            'page_title': 'New Journal Entry' if not pk else f'Edit Journal Entry #{journal.journal_number}',
+            'page_title': page_title,
         }
         return render(request, self.template_name, context)
 

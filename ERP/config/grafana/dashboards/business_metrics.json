@@ -1,0 +1,266 @@
+{
+  "dashboard": {
+    "title": "Himalytix ERP - Business Metrics",
+    "tags": ["business", "erp", "himalytix"],
+    "timezone": "browser",
+    "schemaVersion": 27,
+    "version": 1,
+    "refresh": "30s",
+    
+    "panels": [
+      {
+        "id": 1,
+        "title": "Active Users (Last 24 Hours)",
+        "type": "stat",
+        "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "count(count_over_time(django_http_requests_total_by_view_transport_method_total{view=~\".*\"}[24h]))",
+            "legendFormat": "Active Users"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 10, "color": "yellow"},
+                {"value": 50, "color": "green"}
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      
+      {
+        "id": 2,
+        "title": "Journal Entries Created (Today)",
+        "type": "stat",
+        "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "increase(django_http_requests_total_by_view_transport_method_total{view=\"journal_entry_create\", status=\"201\"}[1d])",
+            "legendFormat": "Entries"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "blue"}
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      
+      {
+        "id": 3,
+        "title": "API Requests (Last Hour)",
+        "type": "stat",
+        "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "sum(increase(django_http_requests_total_by_view_transport_method_total{view=~\"api.*\"}[1h]))",
+            "legendFormat": "Requests"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          }
+        }
+      },
+      
+      {
+        "id": 4,
+        "title": "Error Rate (%)",
+        "type": "stat",
+        "gridPos": {"x": 18, "y": 0, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "(sum(rate(django_http_requests_total_by_view_transport_method_total{status=~\"5..\"}[5m])) / sum(rate(django_http_requests_total_by_view_transport_method_total[5m]))) * 100",
+            "legendFormat": "Error Rate"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1, "color": "yellow"},
+                {"value": 5, "color": "red"}
+              ]
+            },
+            "unit": "percent"
+          }
+        }
+      },
+      
+      {
+        "id": 5,
+        "title": "Request Rate (req/sec)",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(django_http_requests_total_by_view_transport_method_total[5m])",
+            "legendFormat": "{{view}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "reqps", "label": "Requests/sec"},
+          {"format": "short"}
+        ]
+      },
+      
+      {
+        "id": 6,
+        "title": "Response Time (p50, p95, p99)",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 4, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(django_http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "p50"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(django_http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "p95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(django_http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "p99"
+          }
+        ],
+        "yaxes": [
+          {"format": "s", "label": "Duration"},
+          {"format": "short"}
+        ]
+      },
+      
+      {
+        "id": 7,
+        "title": "Database Connections",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 12, "w": 8, "h": 6},
+        "targets": [
+          {
+            "expr": "pg_stat_database_numbackends{datname=\"himalytix\"}",
+            "legendFormat": "Active Connections"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Connections"},
+          {"format": "short"}
+        ]
+      },
+      
+      {
+        "id": 8,
+        "title": "Redis Memory Usage",
+        "type": "graph",
+        "gridPos": {"x": 8, "y": 12, "w": 8, "h": 6},
+        "targets": [
+          {
+            "expr": "redis_memory_used_bytes",
+            "legendFormat": "Memory Used"
+          },
+          {
+            "expr": "redis_memory_max_bytes",
+            "legendFormat": "Memory Limit"
+          }
+        ],
+        "yaxes": [
+          {"format": "bytes", "label": "Memory"},
+          {"format": "short"}
+        ]
+      },
+      
+      {
+        "id": 9,
+        "title": "Celery Task Queue Length",
+        "type": "graph",
+        "gridPos": {"x": 16, "y": 12, "w": 8, "h": 6},
+        "targets": [
+          {
+            "expr": "redis_list_length{key=\"celery\"}",
+            "legendFormat": "Pending Tasks"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Tasks"},
+          {"format": "short"}
+        ]
+      },
+      
+      {
+        "id": 10,
+        "title": "Top 10 Slowest Endpoints",
+        "type": "table",
+        "gridPos": {"x": 0, "y": 18, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "topk(10, histogram_quantile(0.95, rate(django_http_request_duration_seconds_bucket[5m])))",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {},
+              "renameByName": {
+                "view": "Endpoint",
+                "Value": "p95 Duration (s)"
+              }
+            }
+          }
+        ]
+      },
+      
+      {
+        "id": 11,
+        "title": "HTTP Status Codes Distribution",
+        "type": "piechart",
+        "gridPos": {"x": 12, "y": 18, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum by (status) (rate(django_http_requests_total_by_view_transport_method_total[5m]))",
+            "legendFormat": "{{status}}"
+          }
+        ]
+      }
+    ],
+    
+    "templating": {
+      "list": [
+        {
+          "name": "datasource",
+          "type": "datasource",
+          "query": "prometheus",
+          "current": {
+            "text": "Prometheus",
+            "value": "Prometheus"
+          }
+        }
+      ]
+    },
+    
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    
+    "timepicker": {
+      "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+    }
+  }
+}

@@ -17,13 +17,38 @@ from django.contrib import admin
 from django.urls import path, include, re_path
 from usermanagement.forms import DasonLoginForm
 from dashboard import views
+from dashboard import health
 from django.contrib.auth.decorators import login_required
 from .views import CustomLoginView
 from django.conf import settings
 from django.conf.urls.static import static
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    
+    # ==========================================================================
+    # HEALTH CHECK ENDPOINTS (No authentication required)
+    # ==========================================================================
+    path('health/', health.health_check, name='health'),
+    path('health/ready/', health.health_ready, name='health-ready'),
+    path('health/live/', health.health_live, name='health-live'),
+    
+    # ==========================================================================
+    # SILK QUERY PROFILER (Development only - protect in production!)
+    # ==========================================================================
+    path('silk/', include('silk.urls', namespace='silk')),
+    
+    # ==========================================================================
+    # API DOCUMENTATION (OpenAPI/Swagger)
+    # ==========================================================================
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    
+    # Metrics endpoint
+    path('', include('django_prometheus.urls')),  # Adds /metrics endpoint
+    
     # Dashboard
     path('manage/', include('usermanagement.urls')),
     path('account/', include('account.urls')),
@@ -58,7 +83,13 @@ urlpatterns = [
     # # Include the allauth and 2FA urls from their respective packages.
     # path("/", include("allauth_2fa.urls")),
     # path("account/", include("allauth.urls")),
-    path("api/v1/", include("api.urls")),
+    
+    # API v1 (versioned endpoints)
+    path("api/v1/", include("api.v1.urls")),
+
+    # Streamlit V2 login bootstrap
+    path("V2/login", views.v2_login_redirect, name="v2_login"),
+    
     # i18n / region
     path('i18n/set-language/', views.set_language, name='set_language'),
     path('i18n/set-region/', views.set_region, name='set_region'),

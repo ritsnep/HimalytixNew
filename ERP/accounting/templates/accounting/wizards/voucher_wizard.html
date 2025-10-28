@@ -1,17 +1,85 @@
-{% extends "base.html" %}
+{% extends 'partials/base.html' %}
+{% load static %}
 {% load i18n %}
 {% load crispy_forms_tags %}
 
+{% block title %}{% trans "Voucher Entry Wizard" %}{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    .wizard-steps {
+        margin-bottom: 2rem;
+    }
+    .wizard-steps .step {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        margin: 0 0.25rem;
+        background: #e9ecef;
+        border-radius: 0.25rem;
+    }
+    .wizard-steps .step.active {
+        background: #007bff;
+        color: white;
+        font-weight: 600;
+    }
+    .wizard-steps .step.completed {
+        background: #28a745;
+        color: white;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <h2>{% trans "Voucher Entry Wizard" %}</h2>
-    {% include 'accounting/partials/_error_panel.html' %}
-    <div id="voucher-wizard-container" hx-get="{% url 'accounting:voucher_wizard' %}" hx-trigger="load" hx-target="#voucher-wizard-container">
-        {% include 'accounting/wizards/steps/'|add:wizard.steps.current|add:'.html' %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <!-- Breadcrumb -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                        <h4 class="mb-sm-0 font-size-18">{% trans "Voucher Entry Wizard" %}</h4>
+                        <div class="page-title-right">
+                            <ol class="breadcrumb m-0">
+                                <li class="breadcrumb-item"><a href="{% url 'accounting:journal_list' %}">{% trans "Journals" %}</a></li>
+                                <li class="breadcrumb-item active">{% trans "New Voucher" %}</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wizard Progress -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="wizard-steps text-center">
+                                {% for step_name in wizard.form_list %}
+                                    <span class="step {% if step_name == wizard.steps.current %}active{% elif step_name in wizard.steps.completed %}completed{% endif %}">
+                                        {{ forloop.counter }}. {{ step_name|title }}
+                                    </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wizard Content -->
+            <div class="row">
+                <div class="col-lg-12">
+                    {% block wizard_content %}
+                        <!-- Step content will be rendered here -->
+                    {% endblock %}
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
+{{ block.super }}
 <script src="{% static 'accounting/js/validation.js' %}"></script>
 {% endblock %}

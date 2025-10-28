@@ -1,0 +1,675 @@
+"""
+Comprehensive CRUD Views for Voucher Entry System
+Provides full Create, Read, Update, Delete functionality for journal vouchers
+"""
+
+import logging
+from typing import Optional, Dict, Any
+from decimal import Decimal
+
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.db.models import Q, Sum, Prefetch
+from django.http import HttpResponse, Http404, JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse, reverse_lazy
+from django.utils import timezone
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, View
+
+from accounting.models import (
+    Journal, JournalLine, VoucherModeConfig, AccountingPeriod, 
+    JournalType, ChartOfAccount
+)
+from accounting.forms_factory import build_form, build_formset
+from accounting.schema_loader import load_voucher_schema
+from accounting.services.create_voucher import create_voucher
+from accounting.services.post_journal import post_journal, JournalError, JournalValidationError
+from accounting.validation import JournalValidationService
+from accounting.views.views_mixins import UserOrganizationMixin, PermissionRequiredMixin, VoucherConfigMixin
+
+logger = logging.getLogger(__name__)
+
+
+def _inject_udfs_into_schema(schema, udf_configs):
+    """Injects UDF configurations into the header and lines schema."""
+    header_schema = schema.get("header", {})
+    lines_schema = schema.get("lines", {})
+
+    for udf in udf_configs:
+        udf_schema = {
+            "name": f"udf_{udf.field_name}",
+            "label": udf.field_label,
+            "type": udf.field_type,
+            "required": udf.is_required,
+            "choices": udf.choices or [],
+        }
+        if udf.scope == 'header':
+            header_schema.setdefault('fields', []).append(udf_schema)
+        elif udf.scope == 'line':
+            lines_schema.setdefault('fields', []).append(udf_schema)
+    return schema
+
+
+class VoucherListView(PermissionRequiredMixin, UserOrganizationMixin, ListView):
+    """
+    List all journal vouchers with filtering, search, and pagination.
+    """
+    model = Journal
+    template_name = 'accounting/voucher_list.html'
+    context_object_name = 'vouchers'
+    permission_required = ('accounting', 'journal', 'view')
+    paginate_by = 25
+
+    def get_queryset(self):
+        """Get filtered and sorted queryset."""
+        queryset = super().get_queryset().select_related(
+            'journal_type', 'period', 'created_by', 'posted_by', 'updated_by'
+        ).prefetch_related('lines').order_by('-journal_date', '-created_at')
+
+        # Search filter
+        search = self.request.GET.get('search', '').strip()
+        if search:
+            queryset = queryset.filter(
+                Q(journal_number__icontains=search) |
+                Q(description__icontains=search) |
+                Q(reference__icontains=search)
+            )
+
+        # Status filter
+        status = self.request.GET.get('status')
+        if status:
+            queryset = queryset.filter(status=status)
+
+        # Date range filter
+        start_date = self.request.GET.get('start_date')
+        end_date = self.request.GET.get('end_date')
+        if start_date:
+            queryset = queryset.filter(journal_date__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(journal_date__lte=end_date)
+
+        # Journal type filter
+        journal_type = self.request.GET.get('journal_type')
+        if journal_type:
+            queryset = queryset.filter(journal_type_id=journal_type)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        """Add context for filtering and actions."""
+        context = super().get_context_data(**kwargs)
+        organization = self.get_organization()
+        
+        context.update({
+            'page_title': 'Voucher Entries',
+            'journal_types': JournalType.objects.filter(organization=organization),
+            'statuses': Journal.STATUS_CHOICES,
+            'can_create': self.request.user.has_perm('accounting.add_journal'),
+            'can_edit': self.request.user.has_perm('accounting.change_journal'),
+            'can_delete': self.request.user.has_perm('accounting.delete_journal'),
+            'create_url': reverse('accounting:voucher_create'),
+        })
+        return context
+
+
+class VoucherDetailView(PermissionRequiredMixin, UserOrganizationMixin, DetailView):
+    """
+    Display detailed view of a voucher in read-only mode.
+    Shows all lines, UDFs, audit trail, and available actions.
+    """
+    model = Journal
+    template_name = 'accounting/voucher_detail.html'
+    context_object_name = 'voucher'
+    permission_required = ('accounting', 'journal', 'view')
+
+    def get_queryset(self):
+        """Get journal with related data."""
+        return super().get_queryset().select_related(
+            'journal_type', 'period', 'created_by', 'posted_by', 'updated_by'
+        ).prefetch_related(
+            Prefetch('lines', queryset=JournalLine.objects.select_related(
+                'account', 'department', 'project', 'cost_center'
+            ).order_by('line_number'))
+        )
+
+    def get_context_data(self, **kwargs):
+        """Build context with voucher data and actions."""
+        context = super().get_context_data(**kwargs)
+        voucher = self.object
+        
+        # Calculate totals
+        lines = voucher.lines.all()
+        total_debit = sum(line.debit_amount or 0 for line in lines)
+        total_credit = sum(line.credit_amount or 0 for line in lines)
+        
+        context.update({
+            'page_title': f'Voucher {voucher.journal_number}',
+            'total_debit': total_debit,
+            'total_credit': total_credit,
+            'is_balanced': abs(total_debit - total_credit) < 0.01,
+            'can_edit': (
+                voucher.status == 'draft' and 
+                self.request.user.has_perm('accounting.change_journal')
+            ),
+            'can_delete': (
+                voucher.status == 'draft' and 
+                self.request.user.has_perm('accounting.delete_journal')
+            ),
+            'can_post': (
+                voucher.status == 'draft' and 
+                self.request.user.has_perm('accounting.add_journal')
+            ),
+            'edit_url': reverse('accounting:voucher_edit', kwargs={'pk': voucher.pk}),
+            'delete_url': reverse('accounting:voucher_delete', kwargs={'pk': voucher.pk}),
+            'post_url': reverse('accounting:voucher_post', kwargs={'pk': voucher.pk}),
+            'list_url': reverse('accounting:voucher_list'),
+        })
+        return context
+
+
+class VoucherCreateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequiredMixin, View):
+    """
+    Create a new journal voucher entry using dynamic form configuration.
+    Supports both traditional and wizard-style entry.
+    """
+    template_name = 'accounting/voucher_form.html'
+    permission_required = ('accounting', 'journal', 'add')
+
+    def get_user_perms(self, request):
+        """Return user permissions for voucher actions."""
+        return {
+            "can_edit": request.user.has_perm("accounting.change_journal"),
+            "can_add": request.user.has_perm("accounting.add_journal"),
+            "can_delete": request.user.has_perm("accounting.delete_journal"),
+        }
+
+    def _get_voucher_schema(self, config):
+        """Load and inject UDFs into voucher schema."""
+        schema, warning, _ = load_voucher_schema(config)
+        if schema:
+            schema = _inject_udfs_into_schema(schema, list(config.udf_configs.all()))
+        return schema, warning
+
+    def _create_voucher_forms(self, schema, organization, user_perms, request=None):
+        """Create header form and line formset from schema."""
+        header_schema = schema.get("header", {})
+        lines_schema = schema.get("lines", {})
+
+        HeaderForm = build_form(header_schema, organization=organization, 
+                               user_perms=user_perms, prefix="header", model=Journal)
+        LineFormSet = build_formset(lines_schema, organization=organization, 
+                                   user_perms=user_perms, model=JournalLine, prefix="lines")
+
+        if request:
+            header_form = HeaderForm(request.POST)
+            line_formset = LineFormSet(request.POST)
+        else:
+            header_form = HeaderForm(initial={'journal_date': timezone.now().strftime('%Y-%m-%d')})
+            line_formset = LineFormSet()
+        
+        return header_form, line_formset
+
+    def get(self, request, *args, **kwargs):
+        """Display empty voucher entry form."""
+        config_id = kwargs.get("config_id") or request.GET.get("config_id")
+        warning = None
+        config = None
+        
+        all_configs = VoucherModeConfig.objects.filter(is_active=True, archived_at__isnull=True)
+        
+        if not config_id:
+            config = all_configs.first()
+            if not config:
+                return render(request, self.template_name, {
+                    "page_title": "Voucher Entry",
+                    "user_perms": self.get_user_perms(request),
+                    "error": "No voucher configuration available.",
+                    "voucher_configs": all_configs,
+                })
+            config_id = config.pk
+        
+        try:
+            config = get_object_or_404(VoucherModeConfig, pk=config_id, is_active=True)
+        except Exception as e:
+            warning = f"Voucher configuration not found: {e}"
+            return render(request, self.template_name, {
+                "error": warning,
+                "user_perms": self.get_user_perms(request),
+                "voucher_configs": all_configs,
+            })
+
+        schema, schema_warning = self._get_voucher_schema(config)
+        if schema_warning:
+            warning = schema_warning
+
+        if not schema:
+            return render(request, self.template_name, {
+                "error": warning or "Schema not found for this voucher type.",
+                "user_perms": self.get_user_perms(request),
+                "config": config,
+                "voucher_configs": all_configs,
+            })
+
+        organization = request.user.get_active_organization()
+        user_perms = self.get_user_perms(request)
+        
+        header_form, line_formset = self._create_voucher_forms(schema, organization, user_perms)
+
+        defaults = list(getattr(config, 'defaults', []).all())
+        
+        context = {
+            "config": config,
+            "header_form": header_form,
+            "line_formset": line_formset,
+            "user_perms": user_perms,
+            "page_title": "Create New Voucher",
+            "voucher_configs": all_configs,
+            "defaults": defaults,
+            "is_create": True,
+            "form_action": reverse('accounting:voucher_create', kwargs={'config_id': config.pk}),
+            "cancel_url": reverse('accounting:voucher_list'),
+        }
+        if warning:
+            context["warning"] = warning
+        return render(request, self.template_name, context)
+
+    def post(self, request, *args, **kwargs):
+        """Handle voucher creation form submission."""
+        logger.debug(f"VoucherCreateView.post called by user={request.user}")
+        
+        config_id = kwargs.get("config_id") or request.POST.get("config_id")
+        if not config_id:
+            messages.error(request, "Voucher configuration is required.")
+            return redirect('accounting:voucher_list')
+        
+        try:
+            config = get_object_or_404(VoucherModeConfig, pk=config_id, is_active=True)
+        except Exception as e:
+            messages.error(request, f"Voucher configuration not found: {e}")
+            return redirect('accounting:voucher_list')
+
+        schema, warning = self._get_voucher_schema(config)
+        if not schema:
+            messages.error(request, warning or "Schema not found for this voucher type.")
+            return redirect('accounting:voucher_list')
+
+        organization = request.user.get_active_organization()
+        user_perms = self.get_user_perms(request)
+        
+        header_form, line_formset = self._create_voucher_forms(schema, organization, user_perms, request=request)
+
+        if header_form.is_valid() and line_formset.is_valid():
+            header_data = header_form.cleaned_data
+            lines_data = [f.cleaned_data for f in line_formset.forms 
+                         if f.cleaned_data and not f.cleaned_data.get('DELETE', False)]
+
+            validation_service = JournalValidationService(organization)
+            errors = validation_service.validate_journal_entry(header_data, lines_data)
+
+            if not errors:
+                with transaction.atomic():
+                    try:
+                        journal = create_voucher(
+                            user=request.user,
+                            config_id=config.pk,
+                            header_data=header_data,
+                            lines_data=lines_data,
+                        )
+                        messages.success(request, f"Voucher {journal.journal_number} created successfully.")
+                        return redirect('accounting:voucher_detail', pk=journal.pk)
+                    except (JournalError, ValidationError) as e:
+                        logger.error(f"Error creating voucher: {e}", exc_info=True)
+                        messages.error(request, f"Error creating voucher: {e}")
+                    except Exception as e:
+                        logger.exception(f"Unexpected error creating voucher: {e}")
+                        messages.error(request, "An unexpected error occurred while creating the voucher.")
+            else:
+                # Add validation errors to forms
+                if 'general' in errors:
+                    for error in errors['general']:
+                        header_form.add_error(None, error)
+                if 'header' in errors:
+                    for field, error in errors['header'].items():
+                        header_form.add_error(field, error)
+                if 'lines' in errors:
+                    for error_info in errors['lines']:
+                        index = error_info['index']
+                        for field, error in error_info['errors'].items():
+                            line_formset.forms[index].add_error(field, error)
+        
+        # Re-render form with errors
+        context = {
+            "config": config,
+            "header_form": header_form,
+            "line_formset": line_formset,
+            "user_perms": user_perms,
+            "page_title": "Create New Voucher",
+            "is_create": True,
+            "form_action": reverse('accounting:voucher_create', kwargs={'config_id': config.pk}),
+            "cancel_url": reverse('accounting:voucher_list'),
+        }
+        if warning:
+            context["warning"] = warning
+        return render(request, self.template_name, context)
+
+
+class VoucherUpdateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequiredMixin, View):
+    """
+    Update an existing journal voucher.
+    Only draft vouchers can be edited.
+    """
+    template_name = 'accounting/voucher_form.html'
+    permission_required = ('accounting', 'journal', 'change')
+
+    def get_user_perms(self, request):
+        """Return user permissions for voucher actions."""
+        return {
+            "can_edit": request.user.has_perm("accounting.change_journal"),
+            "can_add": request.user.has_perm("accounting.add_journal"),
+            "can_delete": request.user.has_perm("accounting.delete_journal"),
+        }
+
+    def _get_voucher_schema(self, config):
+        """Load and inject UDFs into voucher schema."""
+        schema, warning, _ = load_voucher_schema(config)
+        if schema:
+            schema = _inject_udfs_into_schema(schema, list(config.udf_configs.all()))
+        return schema, warning
+
+    def _create_voucher_forms(self, schema, organization, user_perms, journal=None, request=None):
+        """Create header form and line formset from schema with existing data."""
+        header_schema = schema.get("header", {})
+        lines_schema = schema.get("lines", {})
+
+        HeaderForm = build_form(header_schema, organization=organization, 
+                               user_perms=user_perms, prefix="header", model=Journal)
+        LineFormSet = build_formset(lines_schema, organization=organization, 
+                                   user_perms=user_perms, model=JournalLine, prefix="lines")
+
+        if request:
+            header_form = HeaderForm(request.POST, instance=journal)
+            line_formset = LineFormSet(request.POST, queryset=journal.lines.all() if journal else JournalLine.objects.none())
+        else:
+            # Populate initial data from existing journal
+            initial_data = {}
+            if journal:
+                initial_data = {
+                    'journal_date': journal.journal_date,
+                    'reference': journal.reference,
+                    'description': journal.description,
+                    'journal_type': journal.journal_type,
+                    'period': journal.period,
+                }
+            header_form = HeaderForm(initial=initial_data, instance=journal)
+            line_formset = LineFormSet(queryset=journal.lines.all() if journal else JournalLine.objects.none())
+        
+        return header_form, line_formset
+
+    def get(self, request, *args, **kwargs):
+        """Display voucher edit form with existing data."""
+        pk = kwargs.get('pk')
+        organization = request.user.get_active_organization()
+        
+        try:
+            journal = get_object_or_404(Journal, pk=pk, organization=organization)
+        except Exception as e:
+            messages.error(request, f"Voucher not found: {e}")
+            return redirect('accounting:voucher_list')
+
+        # Check if voucher can be edited
+        if journal.status not in ['draft']:
+            messages.warning(request, f"Cannot edit a {journal.status} voucher. You can only view it.")
+            return redirect('accounting:voucher_detail', pk=journal.pk)
+
+        # Get the config from the journal's type or use default
+        config = VoucherModeConfig.objects.filter(is_active=True, archived_at__isnull=True).first()
+        
+        schema, warning = self._get_voucher_schema(config)
+        if not schema:
+            messages.error(request, warning or "Schema not found for this voucher type.")
+            return redirect('accounting:voucher_detail', pk=journal.pk)
+
+        user_perms = self.get_user_perms(request)
+        header_form, line_formset = self._create_voucher_forms(schema, organization, user_perms, journal=journal)
+
+        context = {
+            "config": config,
+            "header_form": header_form,
+            "line_formset": line_formset,
+            "user_perms": user_perms,
+            "page_title": f"Edit Voucher {journal.journal_number}",
+            "voucher": journal,
+            "is_edit": True,
+            "form_action": reverse('accounting:voucher_edit', kwargs={'pk': journal.pk}),
+            "cancel_url": reverse('accounting:voucher_detail', kwargs={'pk': journal.pk}),
+        }
+        if warning:
+            context["warning"] = warning
+        return render(request, self.template_name, context)
+
+    def post(self, request, *args, **kwargs):
+        """Handle voucher update form submission."""
+        pk = kwargs.get('pk')
+        organization = request.user.get_active_organization()
+        
+        try:
+            journal = get_object_or_404(Journal, pk=pk, organization=organization)
+        except Exception as e:
+            messages.error(request, f"Voucher not found: {e}")
+            return redirect('accounting:voucher_list')
+
+        # Check if voucher can be edited
+        if journal.status not in ['draft']:
+            messages.error(request, f"Cannot edit a {journal.status} voucher.")
+            return redirect('accounting:voucher_detail', pk=journal.pk)
+
+        config = VoucherModeConfig.objects.filter(is_active=True, archived_at__isnull=True).first()
+        schema, warning = self._get_voucher_schema(config)
+        
+        user_perms = self.get_user_perms(request)
+        header_form, line_formset = self._create_voucher_forms(schema, organization, user_perms, journal=journal, request=request)
+
+        if header_form.is_valid() and line_formset.is_valid():
+            header_data = header_form.cleaned_data
+            lines_data = [f.cleaned_data for f in line_formset.forms 
+                         if f.cleaned_data and not f.cleaned_data.get('DELETE', False)]
+
+            validation_service = JournalValidationService(organization)
+            errors = validation_service.validate_journal_entry(header_data, lines_data)
+
+            if not errors:
+                with transaction.atomic():
+                    try:
+                        # Update journal header
+                        journal.journal_date = header_data.get('journal_date', journal.journal_date)
+                        journal.reference = header_data.get('reference', journal.reference)
+                        journal.description = header_data.get('description', journal.description)
+                        journal.updated_by = request.user
+                        journal.updated_at = timezone.now()
+                        
+                        # Delete existing lines
+                        journal.lines.all().delete()
+                        
+                        # Create new lines
+                        line_number = 1
+                        for line_data in lines_data:
+                            JournalLine.objects.create(
+                                journal=journal,
+                                line_number=line_number,
+                                account=line_data.get('account'),
+                                description=line_data.get('description', ''),
+                                debit_amount=line_data.get('debit_amount', 0),
+                                credit_amount=line_data.get('credit_amount', 0),
+                                department=line_data.get('department'),
+                                project=line_data.get('project'),
+                                cost_center=line_data.get('cost_center'),
+                                created_by=request.user,
+                                updated_by=request.user,
+                            )
+                            line_number += 1
+                        
+                        # Update totals
+                        journal.update_totals()
+                        journal.save()
+                        
+                        messages.success(request, f"Voucher {journal.journal_number} updated successfully.")
+                        return redirect('accounting:voucher_detail', pk=journal.pk)
+                    except Exception as e:
+                        logger.exception(f"Error updating voucher: {e}")
+                        messages.error(request, f"Error updating voucher: {e}")
+            else:
+                # Add validation errors to forms
+                if 'general' in errors:
+                    for error in errors['general']:
+                        header_form.add_error(None, error)
+                if 'header' in errors:
+                    for field, error in errors['header'].items():
+                        header_form.add_error(field, error)
+                if 'lines' in errors:
+                    for error_info in errors['lines']:
+                        index = error_info['index']
+                        for field, error in error_info['errors'].items():
+                            line_formset.forms[index].add_error(field, error)
+        
+        # Re-render form with errors
+        context = {
+            "config": config,
+            "header_form": header_form,
+            "line_formset": line_formset,
+            "user_perms": user_perms,
+            "page_title": f"Edit Voucher {journal.journal_number}",
+            "voucher": journal,
+            "is_edit": True,
+            "form_action": reverse('accounting:voucher_edit', kwargs={'pk': journal.pk}),
+            "cancel_url": reverse('accounting:voucher_detail', kwargs={'pk': journal.pk}),
+        }
+        return render(request, self.template_name, context)
+
+
+class VoucherDeleteView(PermissionRequiredMixin, UserOrganizationMixin, DeleteView):
+    """
+    Delete a voucher (only if in draft status).
+    """
+    model = Journal
+    template_name = 'accounting/voucher_confirm_delete.html'
+    success_url = reverse_lazy('accounting:voucher_list')
+    permission_required = ('accounting', 'journal', 'delete')
+    context_object_name = 'voucher'
+
+    def get_queryset(self):
+        """Only draft vouchers can be deleted."""
+        return super().get_queryset().filter(status='draft')
+
+    def delete(self, request, *args, **kwargs):
+        """Delete with additional validation."""
+        voucher = self.get_object()
+        
+        if voucher.status != 'draft':
+            messages.error(request, "Only draft vouchers can be deleted.")
+            return redirect('accounting:voucher_detail', pk=voucher.pk)
+        
+        voucher_number = voucher.journal_number
+        messages.success(request, f"Voucher {voucher_number} has been deleted.")
+        return super().delete(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        """Add context for delete confirmation."""
+        context = super().get_context_data(**kwargs)
+        context.update({
+            'page_title': f'Delete Voucher {self.object.journal_number}',
+            'cancel_url': reverse('accounting:voucher_detail', kwargs={'pk': self.object.pk}),
+        })
+        return context
+
+
+class VoucherPostView(PermissionRequiredMixin, UserOrganizationMixin, View):
+    """
+    Post a draft voucher to the general ledger.
+    """
+    permission_required = ('accounting', 'journal', 'add')
+
+    def post(self, request, *args, **kwargs):
+        """Post the voucher."""
+        pk = kwargs.get('pk')
+        organization = request.user.get_active_organization()
+        
+        try:
+            voucher = get_object_or_404(Journal, pk=pk, organization=organization)
+        except Exception as e:
+            messages.error(request, f"Voucher not found: {e}")
+            return redirect('accounting:voucher_list')
+        
+        if voucher.status != 'draft':
+            messages.error(request, "Only draft vouchers can be posted.")
+            return redirect('accounting:voucher_detail', pk=voucher.pk)
+        
+        try:
+            post_journal(voucher, request.user)
+            messages.success(request, f"Voucher {voucher.journal_number} has been posted successfully.")
+        except (JournalError, JournalValidationError) as e:
+            logger.error(f"Error posting voucher: {e}", exc_info=True)
+            messages.error(request, f"Error posting voucher: {str(e)}")
+        except Exception as e:
+            logger.exception(f"Unexpected error posting voucher: {e}")
+            messages.error(request, "An unexpected error occurred while posting the voucher.")
+        
+        return redirect('accounting:voucher_detail', pk=voucher.pk)
+
+
+class VoucherDuplicateView(PermissionRequiredMixin, UserOrganizationMixin, View):
+    """
+    Duplicate an existing voucher as a new draft entry.
+    """
+    permission_required = ('accounting', 'journal', 'add')
+
+    def post(self, request, *args, **kwargs):
+        """Create a duplicate of the voucher."""
+        pk = kwargs.get('pk')
+        organization = request.user.get_active_organization()
+        
+        try:
+            source_voucher = get_object_or_404(Journal, pk=pk, organization=organization)
+        except Exception as e:
+            messages.error(request, f"Voucher not found: {e}")
+            return redirect('accounting:voucher_list')
+        
+        with transaction.atomic():
+            # Create new voucher as copy
+            new_voucher = Journal.objects.create(
+                organization=organization,
+                journal_type=source_voucher.journal_type,
+                period=source_voucher.period,
+                journal_date=timezone.now().date(),
+                description=f"Copy of {source_voucher.description}",
+                reference=source_voucher.reference,
+                status='draft',
+                created_by=request.user,
+                updated_by=request.user,
+            )
+            
+            # Copy all lines
+            line_number = 1
+            for line in source_voucher.lines.all():
+                JournalLine.objects.create(
+                    journal=new_voucher,
+                    line_number=line_number,
+                    account=line.account,
+                    description=line.description,
+                    debit_amount=line.debit_amount,
+                    credit_amount=line.credit_amount,
+                    department=line.department,
+                    project=line.project,
+                    cost_center=line.cost_center,
+                    created_by=request.user,
+                    updated_by=request.user,
+                )
+                line_number += 1
+            
+            # Update totals
+            new_voucher.update_totals()
+            new_voucher.save()
+        
+        messages.success(request, f"Voucher duplicated as {new_voucher.journal_number}")
+        return redirect('accounting:voucher_edit', pk=new_voucher.pk)

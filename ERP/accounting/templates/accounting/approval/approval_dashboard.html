@@ -1,47 +1,47 @@
 {% extends "accounting/base_voucher.html" %}
 {% load i18n %}
 
-{% block title %}{{ i18n["approval.dashboard.title"]|default:"Approval Dashboard" }}{% endblock %}
+{% block title %}{% trans "Approval Dashboard" %}{% endblock %}
 
 {% block content %}
 <div class="container-fluid mt-4">
-    <h2 class="mb-4">{{ i18n["approval.dashboard.title"]|default:"Approval Dashboard" }}</h2>
+    <h2 class="mb-4">{% trans "Approval Dashboard" %}</h2>
     
     <!-- Key Metrics -->
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card bg-warning text-dark">
                 <div class="card-body">
-                    <h6 class="card-title">{{ i18n["approval.status.pending"]|default:"Pending" }}</h6>
+                    <h6 class="card-title">{% trans "Pending" %}</h6>
                     <h3>{{ stats.total_pending }}</h3>
-                    <small class="text-muted">{{ i18n["approval.awaiting_approval"]|default:"awaiting approval" }}</small>
+                    <small class="text-muted">{% trans "awaiting approval" %}</small>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card bg-success text-white">
                 <div class="card-body">
-                    <h6 class="card-title">{{ i18n["approval.status.approved"]|default:"Approved" }}</h6>
+                    <h6 class="card-title">{% trans "Approved" %}</h6>
                     <h3>{{ stats.total_approved }}</h3>
-                    <small>{{ i18n["approval.this_month"]|default:"this month" }}</small>
+                    <small>{% trans "this month" %}</small>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card bg-danger text-white">
                 <div class="card-body">
-                    <h6 class="card-title">{{ i18n["approval.status.rejected"]|default:"Rejected" }}</h6>
+                    <h6 class="card-title">{% trans "Rejected" %}</h6>
                     <h3>{{ stats.total_rejected }}</h3>
-                    <small>{{ i18n["approval.requiring_resubmission"]|default:"requiring resubmission" }}</small>
+                    <small>{% trans "requiring resubmission" %}</small>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card bg-info text-white">
                 <div class="card-body">
-                    <h6 class="card-title">{{ i18n["approval.approval_rate"]|default:"Approval Rate" }}</h6>
+                    <h6 class="card-title">{% trans "Approval Rate" %}</h6>
                     <h3>{{ stats.approval_rate }}%</h3>
-                    <small>{{ i18n["approval.of_total_submissions"]|default:"of total submissions" }}</small>
+                    <small>{% trans "of total submissions" %}</small>
                 </div>
             </div>
         </div>
@@ -52,20 +52,20 @@
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header bg-light">
-                    <h5>{{ i18n["approval.average_approval_time"]|default:"Average Approval Time" }}</h5>
+                    <h5>{% trans "Average Approval Time" %}</h5>
                 </div>
                 <div class="card-body">
                     <div class="display-4">
-                        {{ stats.avg_approval_time }} <small>{{ i18n["approval.hours"]|default:"hours" }}</small>
+                        {{ stats.avg_approval_time }} <small>{% trans "hours" %}</small>
                     </div>
-                    <p class="text-muted mb-0">{{ i18n["approval.from_submission_to_completion"]|default:"from submission to completion" }}</p>
+                    <p class="text-muted mb-0">{% trans "from submission to completion" %}</p>
                 </div>
             </div>
         </div>
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header bg-light">
-                    <h5>{{ i18n["approval.approval_efficiency"]|default:"Approval Efficiency" }}</h5>
+                    <h5>{% trans "Approval Efficiency" %}</h5>
                 </div>
                 <div class="card-body">
                     <div class="progress" style="height: 30px;">
@@ -80,7 +80,7 @@
                             {{ stats.approval_rate }}%
                         </div>
                     </div>
-                    <p class="text-muted mt-2 mb-0">{{ i18n["approval.success_rate"]|default:"success rate" }}</p>
+                    <p class="text-muted mt-2 mb-0">{% trans "success rate" %}</p>
                 </div>
             </div>
         </div>
@@ -89,7 +89,7 @@
     <!-- Workflows Performance -->
     <div class="card mb-4">
         <div class="card-header bg-light">
-            <h5>{{ i18n["approval.workflow_performance"]|default:"Workflow Performance" }}</h5>
+            <h5>{% trans "Workflow Performance" %}</h5>
         </div>
         <div class="card-body">
             {% if workflow_stats %}
@@ -97,12 +97,12 @@
                     <table class="table table-sm">
                         <thead class="table-light">
                             <tr>
-                                <th>{{ i18n["approval.workflow"]|default:"Workflow" }}</th>
-                                <th class="text-end">{{ i18n["approval.total"]|default:"Total" }}</th>
-                                <th class="text-end">{{ i18n["approval.status.approved"]|default:"Approved" }}</th>
-                                <th class="text-end">{{ i18n["approval.status.rejected"]|default:"Rejected" }}</th>
-                                <th class="text-end">{{ i18n["approval.status.pending"]|default:"Pending" }}</th>
-                                <th>{{ i18n["approval.status"]|default:"Status" }}</th>
+                                <th>{% trans "Workflow" %}</th>
+                                <th class="text-end">{% trans "Total" %}</th>
+                                <th class="text-end">{% trans "Approved" %}</th>
+                                <th class="text-end">{% trans "Rejected" %}</th>
+                                <th class="text-end">{% trans "Pending" %}</th>
+                                <th>{% trans "Status" %}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -134,7 +134,7 @@
                     </table>
                 </div>
             {% else %}
-                <p class="text-muted">{{ i18n["approval.no_workflow_data"]|default:"No workflow data available." }}</p>
+                <p class="text-muted">{% trans "No workflow data available." %}</p>
             {% endif %}
         </div>
     </div>
@@ -142,7 +142,7 @@
     <!-- Per-User Performance -->
     <div class="card mb-4">
         <div class="card-header bg-light">
-            <h5>{{ i18n["approval.approver_performance"]|default:"Approver Performance" }}</h5>
+            <h5>{% trans "Approver Performance" %}</h5>
         </div>
         <div class="card-body">
             {% if per_user_stats %}
@@ -150,11 +150,11 @@
                     <table class="table table-sm">
                         <thead class="table-light">
                             <tr>
-                                <th>{{ i18n["approval.approver"]|default:"Approver" }}</th>
-                                <th class="text-end">{{ i18n["approval.status.approved"]|default:"Approved" }}</th>
-                                <th class="text-end">{{ i18n["approval.status.rejected"]|default:"Rejected" }}</th>
-                                <th class="text-end">{{ i18n["approval.total_decisions"]|default:"Total Decisions" }}</th>
-                                <th>{{ i18n["approval.approval_rate"]|default:"Approval Rate" }}</th>
+                                <th>{% trans "Approver" %}</th>
+                                <th class="text-end">{% trans "Approved" %}</th>
+                                <th class="text-end">{% trans "Rejected" %}</th>
+                                <th class="text-end">{% trans "Total Decisions" %}</th>
+                                <th>{% trans "Approval Rate" %}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -196,7 +196,7 @@
     <div class="row">
         <div class="col-md-12">
             <a href="{% url 'accounting:approval_queue' %}" class="btn btn-primary">
-                <i class="bi bi-inbox"></i> {{ i18n["approval.go_to_queue"]|default:"Go to Approval Queue" }}
+                <i class="bi bi-inbox"></i> {% trans "Go to Approval Queue" %}
             </a>
         </div>
     </div>

@@ -1,0 +1,83 @@
+# =============================================================================
+# DOCKER IGNORE FILE
+# Exclude unnecessary files from Docker build context
+# =============================================================================
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Django
+*.log
+db.sqlite3
+*.sqlite3
+/static/
+/media/
+local_settings.py
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.circleci/
+
+# Testing
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+
+# Secrets
+*.pem
+*.key
+*.crt
+secrets/
+
+# MacOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Backups
+*.bak
+*.backup
+backups/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

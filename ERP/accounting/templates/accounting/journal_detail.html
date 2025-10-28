@@ -1,64 +1,127 @@
-{% extends 'accounting/_list_base.html' %}
-{% block title %}Journal Detail{% endblock %}
+{% extends 'partials/base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "Journal Detail" %}{% endblock %}
+
 {% block content %}
-<div class="card">
-  <div class="card-header">
-    <h4>Journal Detail</h4>
-  </div>
-  <div class="card-body">
-    <p><strong>Journal Number:</strong> {{ journal.journal_number }}</p>
-    <p><strong>Date:</strong> {{ journal.journal_date|date:"Y-m-d" }}</p>
-    <p><strong>Description:</strong> {{ journal.description }}</p>
-    <p><strong>Status:</strong> {% if journal.status == 'posted' %}Posted{% else %}Draft{% endif %}</p>
-    <hr>
-    <h5>Lines</h5>
-    <table class="table table-bordered">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Account</th>
-          <th>Description</th>
-          <th>Debit</th>
-          <th>Credit</th>
-          <th>UDFs</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for line in journal.lines.all %}
-        <tr>
-          <td>{{ forloop.counter }}</td>
-          <td>{{ line.account }}</td>
-          <td>{{ line.description }}</td>
-          <td>{{ line.debit_amount }}</td>
-          <td>{{ line.credit_amount }}</td>
-          <td>
-            {% if line.udf_data %}
-              <ul class="list-unstyled mb-0">
-                {% for key, value in line.udf_data.items %}
-                  <li><strong>{{ key }}:</strong> {{ value }}</li>
-                {% endfor %}
-              </ul>
-            {% else %}-{% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <hr>
-    <h5>Header UDFs</h5>
-    {% if journal.udf_data %}
-      <ul class="list-unstyled">
-        {% for key, value in journal.udf_data.items %}
-          <li><strong>{{ key }}:</strong> {{ value }}</li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p class="text-muted">No header UDFs</p>
-    {% endif %}
-    <a href="{% url 'accounting:journal_list' %}" class="btn btn-secondary mt-3">Back to List</a>
-    <button type="button" class="btn btn-info mt-3" data-bs-toggle="modal" data-bs-target="#auditTrailModal">
-      View Audit Trail
-    </button>
+<div class="main-content">
+  <div class="page-content">
+    <div class="container-fluid">
+      <!-- Breadcrumb -->
+      <div class="row">
+        <div class="col-12">
+          <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+            <h4 class="mb-sm-0 font-size-18">{% trans "Journal Entry Detail" %}</h4>
+            <div class="page-title-right">
+              <ol class="breadcrumb m-0">
+                <li class="breadcrumb-item"><a href="{% url 'accounting:journal_list' %}">{% trans "Journals" %}</a></li>
+                <li class="breadcrumb-item active">{{ journal.journal_number }}</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Journal Detail Card -->
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header bg-primary text-white">
+              <h4 class="mb-0">{% trans "Journal Entry" %} - {{ journal.journal_number }}</h4>
+            </div>
+            <div class="card-body">
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <p><strong>{% trans "Journal Number:" %}</strong> {{ journal.journal_number }}</p>
+                  <p><strong>{% trans "Date:" %}</strong> {{ journal.journal_date|date:"Y-m-d" }}</p>
+                  <p><strong>{% trans "Description:" %}</strong> {{ journal.description }}</p>
+                </div>
+                <div class="col-md-6">
+                  <p><strong>{% trans "Status:" %}</strong> 
+                    {% if journal.status == 'posted' %}
+                      <span class="badge bg-success">{% trans "Posted" %}</span>
+                    {% else %}
+                      <span class="badge bg-warning">{% trans "Draft" %}</span>
+                    {% endif %}
+                  </p>
+                  <p><strong>{% trans "Journal Type:" %}</strong> {{ journal.journal_type.name }}</p>
+                  <p><strong>{% trans "Period:" %}</strong> {{ journal.period }}</p>
+                </div>
+              </div>
+              
+              <hr>
+              
+              <h5>{% trans "Journal Lines" %}</h5>
+              <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                  <thead class="table-light">
+                    <tr>
+                      <th>#</th>
+                      <th>{% trans "Account" %}</th>
+                      <th>{% trans "Description" %}</th>
+                      <th class="text-end">{% trans "Debit" %}</th>
+                      <th class="text-end">{% trans "Credit" %}</th>
+                      <th>{% trans "UDFs" %}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for line in journal.lines.all %}
+                    <tr>
+                      <td>{{ forloop.counter }}</td>
+                      <td>{{ line.account.code }} - {{ line.account.name }}</td>
+                      <td>{{ line.description }}</td>
+                      <td class="text-end">{{ line.debit_amount|floatformat:2 }}</td>
+                      <td class="text-end">{{ line.credit_amount|floatformat:2 }}</td>
+                      <td>
+                        {% if line.udf_data %}
+                          <ul class="list-unstyled mb-0 small">
+                            {% for key, value in line.udf_data.items %}
+                              <li><strong>{{ key }}:</strong> {{ value }}</li>
+                            {% endfor %}
+                          </ul>
+                        {% else %}-{% endif %}
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                  <tfoot class="table-light">
+                    <tr>
+                      <td colspan="3" class="text-end"><strong>{% trans "Totals:" %}</strong></td>
+                      <td class="text-end"><strong id="total-debit">0.00</strong></td>
+                      <td class="text-end"><strong id="total-credit">0.00</strong></td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+              
+              <hr>
+              
+              <h5>{% trans "Header UDFs" %}</h5>
+              {% if journal.udf_data %}
+                <ul class="list-unstyled">
+                  {% for key, value in journal.udf_data.items %}
+                    <li><strong>{{ key }}:</strong> {{ value }}</li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                <p class="text-muted">{% trans "No header UDFs" %}</p>
+              {% endif %}
+              
+              <div class="mt-4">
+                <a href="{% url 'accounting:journal_list' %}" class="btn btn-secondary">
+                  <i class="mdi mdi-arrow-left me-1"></i>{% trans "Back to List" %}
+                </a>
+                <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#auditTrailModal">
+                  <i class="mdi mdi-history me-1"></i>{% trans "View Audit Trail" %}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -75,24 +138,40 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ block.super }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Calculate totals
+    let totalDebit = 0;
+    let totalCredit = 0;
+    
+    {% for line in journal.lines.all %}
+        totalDebit += parseFloat('{{ line.debit_amount|default:0 }}');
+        totalCredit += parseFloat('{{ line.credit_amount|default:0 }}');
+    {% endfor %}
+    
+    document.getElementById('total-debit').textContent = totalDebit.toFixed(2);
+    document.getElementById('total-credit').textContent = totalCredit.toFixed(2);
+    
+    // Audit trail modal loading
     var auditTrailModal = document.getElementById('auditTrailModal');
-    auditTrailModal.addEventListener('show.bs.modal', function (event) {
-        var button = event.relatedTarget;
-        var url = "{% url 'accounting:journal_audit_trail' journal.pk %}";
-        var modalContent = document.getElementById('audit-trail-content');
+    if (auditTrailModal) {
+        auditTrailModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var url = "{% url 'accounting:journal_audit_trail' journal.pk %}";
+            var modalContent = document.getElementById('audit-trail-content');
 
-        fetch(url)
-            .then(response => response.text())
-            .then(html => {
-                modalContent.innerHTML = html;
-            })
-            .catch(err => {
-                console.warn('Something went wrong.', err);
-                modalContent.innerHTML = '<div class="modal-body"><p>Error loading audit trail.</p></div>';
-            });
-    });
+            fetch(url)
+                .then(response => response.text())
+                .then(html => {
+                    modalContent.innerHTML = html;
+                })
+                .catch(err => {
+                    console.warn('Something went wrong.', err);
+                    modalContent.innerHTML = '<div class="modal-body"><p>Error loading audit trail.</p></div>';
+                });
+        });
+    }
 });
 </script>
 {% endblock %}

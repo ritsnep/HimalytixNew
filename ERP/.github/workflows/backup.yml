@@ -1,0 +1,101 @@
+name: Database Backup
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to backup'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  RETENTION_DAYS: 30
+
+jobs:
+  backup-database:
+    name: Backup PostgreSQL Database
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Install AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Run backup script
+        env:
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+          S3_BUCKET: ${{ secrets.S3_BACKUP_BUCKET }}
+          RETENTION_DAYS: ${{ env.RETENTION_DAYS }}
+        run: |
+          chmod +x scripts/backup_database.sh
+          bash scripts/backup_database.sh ${{ github.event.inputs.environment || 'production' }}
+
+      - name: Verify backup in S3
+        env:
+          S3_BUCKET: ${{ secrets.S3_BACKUP_BUCKET }}
+        run: |
+          ENVIRONMENT="${{ github.event.inputs.environment || 'production' }}"
+          LATEST_BACKUP=$(aws s3 ls s3://${S3_BUCKET}/backups/${ENVIRONMENT}/ \
+            | sort | tail -n 1 | awk '{print $4}')
+          
+          if [ -z "$LATEST_BACKUP" ]; then
+            echo "❌ No backup found in S3!"
+            exit 1
+          fi
+          
+          echo "✅ Latest backup: $LATEST_BACKUP"
+          
+          # Get file size
+          aws s3 ls s3://${S3_BUCKET}/backups/${ENVIRONMENT}/${LATEST_BACKUP} \
+            --human-readable --summarize
+
+      - name: Send notification
+        if: always()
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          payload: |
+            {
+              "text": "Database Backup ${{ job.status == 'success' && '✅ SUCCESS' || '❌ FAILED' }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Himalytix ERP Database Backup*\n*Status:* ${{ job.status == 'success' && '✅ Success' || '❌ Failed' }}\n*Environment:* ${{ github.event.inputs.environment || 'production' }}\n*Retention:* ${{ env.RETENTION_DAYS }} days"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+      - name: Fail if backup unsuccessful
+        if: failure()
+        run: |
+          echo "::error::Database backup failed!"
+          exit 1

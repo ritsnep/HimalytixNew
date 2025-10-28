@@ -1,0 +1,236 @@
+# =============================================================================
+# DOCKER COMPOSE FOR HIMALYTIX ERP (Development + Production)
+# =============================================================================
+# Usage:
+#   Development: docker-compose up
+#   Production:  docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
+# =============================================================================
+
+version: '3.9'
+
+services:
+  # ===========================================================================
+  # POSTGRESQL DATABASE
+  # ===========================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: himalytix-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-himalytix}
+      POSTGRES_USER: ${POSTGRES_USER:-erp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.utf8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-erp}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - erp-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # REDIS (Cache + Celery Broker)
+  # ===========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: himalytix-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - erp-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # DJANGO WEB APPLICATION
+  # ===========================================================================
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: himalytix-web
+    command: >
+      sh -c "
+      python manage.py migrate --noinput &&
+      python manage.py collectstatic --noinput &&
+      gunicorn dashboard.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 60 --access-logfile - --error-logfile -
+      "
+    environment:
+      - DEBUG=${DEBUG:-False}
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-erp}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-himalytix}
+      - REDIS_URL=redis://default:${REDIS_PASSWORD:-changeme}@redis:6379/0
+      - CELERY_BROKER_URL=redis://default:${REDIS_PASSWORD:-changeme}@redis:6379/1
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      - OTEL_ENABLED=${OTEL_ENABLED:-true}
+      - JAEGER_HOST=${JAEGER_HOST:-jaeger}
+      - JAEGER_PORT=${JAEGER_PORT:-6831}
+    volumes:
+      - ./static:/app/static
+      - ./media:/app/media
+      - ./logs:/app/logs
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/ready/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - erp-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # CELERY WORKER
+  # ===========================================================================
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: himalytix-celery
+    command: celery -A dashboard worker --loglevel=info --concurrency=4
+    environment:
+      - DEBUG=${DEBUG:-False}
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-erp}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-himalytix}
+      - REDIS_URL=redis://default:${REDIS_PASSWORD:-changeme}@redis:6379/0
+      - CELERY_BROKER_URL=redis://default:${REDIS_PASSWORD:-changeme}@redis:6379/1
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - erp-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # CELERY BEAT (Scheduled Tasks)
+  # ===========================================================================
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: himalytix-celery-beat
+    command: celery -A dashboard beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    environment:
+      - DEBUG=${DEBUG:-False}
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-erp}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-himalytix}
+      - REDIS_URL=redis://default:${REDIS_PASSWORD:-changeme}@redis:6379/0
+      - CELERY_BROKER_URL=redis://default:${REDIS_PASSWORD:-changeme}@redis:6379/1
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - erp-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # JAEGER (Distributed Tracing)
+  # ===========================================================================
+  jaeger:
+    image: jaegertracing/all-in-one:1.51
+    container_name: himalytix-jaeger
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "5775:5775/udp"  # Zipkin compact thrift
+      - "6831:6831/udp"  # Jaeger compact thrift
+      - "6832:6832/udp"  # Jaeger binary thrift
+      - "5778:5778"      # Serve configs
+      - "16686:16686"    # Web UI
+      - "14268:14268"    # Jaeger collector
+      - "14250:14250"    # gRPC
+      - "9411:9411"      # Zipkin compatible endpoint
+      - "4317:4317"      # OTLP gRPC
+      - "4318:4318"      # OTLP HTTP
+    networks:
+      - erp-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # PROMETHEUS (Metrics Collection)
+  # ===========================================================================
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: himalytix-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - erp-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # GRAFANA (Metrics Visualization)
+  # ===========================================================================
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: himalytix-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-changeme}
+      - GF_INSTALL_PLUGINS=redis-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - erp-network
+    restart: unless-stopped
+
+# =============================================================================
+# VOLUMES
+# =============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+# =============================================================================
+# NETWORKS
+# =============================================================================
+networks:
+  erp-network:
+    driver: bridge

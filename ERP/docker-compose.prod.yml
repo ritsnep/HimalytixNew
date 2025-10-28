@@ -1,0 +1,62 @@
+# =============================================================================
+# DOCKER COMPOSE PRODUCTION OVERRIDES
+# =============================================================================
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# =============================================================================
+
+version: '3.9'
+
+services:
+  web:
+    command: >
+      sh -c "
+      python manage.py migrate --noinput &&
+      python manage.py collectstatic --noinput &&
+      gunicorn dashboard.wsgi:application --bind 0.0.0.0:8000 --workers 8 --timeout 120 --max-requests 1000 --max-requests-jitter 50 --access-logfile - --error-logfile -
+      "
+    environment:
+      - DEBUG=False
+      - GUNICORN_WORKERS=8
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+
+  celery:
+    command: celery -A dashboard worker --loglevel=warning --concurrency=8 --max-tasks-per-child=100
+    environment:
+      - DEBUG=False
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+
+  postgres:
+    command: postgres -c shared_buffers=256MB -c max_connections=200 -c effective_cache_size=1GB
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  redis:
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme} --maxmemory 512mb --maxmemory-policy allkeys-lru
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M

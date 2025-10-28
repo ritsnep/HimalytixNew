@@ -1,6 +1,7 @@
 {% extends "partials/base.html" %}
 {% load static %}
 {% load widget_tweaks %}
+{% load i18n %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'accounting/css/journal_entry.css' %}">
@@ -98,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="d-flex align-items-center gap-2">
                 {% if journal.status == 'draft' and perms.accounting.modify_journal %}
                     <button type="submit" class="btn btn-sm btn-primary d-flex align-items-center gap-1">
-                        <i class="fas fa-save"></i> {{ i18n["button.save"]|default:"Save" }}
+                        <i class="fas fa-save"></i> {% trans "Save" %}
                     </button>
                 {% endif %}
                 {% if journal.status == 'draft' and perms.accounting.submit_journal %}
@@ -122,19 +123,19 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <i class="fas fa-eye fa-fw me-2"></i>Preview Ledger
                             </a> -->
                         </li>
-                        <li><a class="dropdown-item" href="#"><i class="fas fa-print fa-fw me-2"></i>{{ i18n["actions.print"]|default:"Print" }}</a></li>
-                        <li><a class="dropdown-item" href="#"><i class="fas fa-file-export fa-fw me-2"></i>{{ i18n["actions.export"]|default:"Export" }}</a></li>
-                        <li><a class="dropdown-item" href="{% url 'accounting:download_excel_template' %}"><i class="fas fa-file-excel fa-fw me-2"></i>{{ i18n["actions.download_sample"]|default:"Download Sample" }}</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-print fa-fw me-2"></i>{% trans "Print" %}</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-file-export fa-fw me-2"></i>{% trans "Export" %}</a></li>
+                        <li><a class="dropdown-item" href="{% url 'accounting:download_excel_template' %}"><i class="fas fa-file-excel fa-fw me-2"></i>{% trans "Download Sample" %}</a></li>
                         <li><hr class="dropdown-divider"></li>
                         {% if journal.pk %}
-                        <li><a class="dropdown-item" href="{% url 'accounting:journal_duplicate' pk=journal.pk %}"><i class="fas fa-copy fa-fw me-2"></i>{{ i18n["actions.duplicate"]|default:"Duplicate" }}</a></li>
+                        <li><a class="dropdown-item" href="{% url 'accounting:journal_duplicate' pk=journal.pk %}"><i class="fas fa-copy fa-fw me-2"></i>{% trans "Duplicate" %}</a></li>
                         {% endif %}
-                        <li><a class="dropdown-item" href="#" id="save-as-recurring-btn"><i class="fas fa-sync-alt fa-fw me-2"></i>{{ i18n["actions.save_as_recurring"]|default:"Save as Recurring" }}</a></li>
+                        <li><a class="dropdown-item" href="#" id="save-as-recurring-btn"><i class="fas fa-sync-alt fa-fw me-2"></i>{% trans "Save as Recurring" %}</a></li>
                     </ul>
                 </div>
                 <button id="side-panel-toggle" class="btn btn-sm btn-outline-secondary" type="button" aria-label="Toggle side panel">
                     <i class="fas fa-bars"></i>
-                    <span class="d-none d-md-inline ms-1">{{ i18n["label.details"]|default:"Details" }}</span>
+                    <span class="d-none d-md-inline ms-1">{% trans "Details" %}</span>
                 </button>
             </div>
         </header>
@@ -147,7 +148,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div class="card-header bg-white p-2">
                          <div class="input-group input-group-sm">
                             <span class="input-group-text border-0 bg-transparent"><i class="fas fa-magic text-primary"></i></span>
-                            <input type="text" id="ai-assist-input" class="form-control border-0 shadow-none" placeholder="{{ i18n["placeholder.ai_assist"]|default:"Describe your journal entry (e.g., 'Accrue March AWS bill')..." }}" aria-label="AI Assist Input">
+                            <input type="text" id="ai-assist-input" class="form-control border-0 shadow-none" placeholder="{% trans "Describe your journal entry (e.g., 'Accrue March AWS bill')..." %}" aria-label="AI Assist Input">
                         </div>
                     </div>
                     <div class="card-body p-0 overflow-auto">

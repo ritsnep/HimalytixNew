@@ -123,8 +123,10 @@ class JournalListView(BaseListView):
 
     def get_queryset(self):
         queryset = super().get_queryset().select_related(
-            'journal_type', 'period', 'created_by'
-        ).prefetch_related('lines')
+            'journal_type', 'period', 'created_by', 'posted_by'
+        )
+        # Don't prefetch lines on list view - only fetch when needed for detail view
+        # This significantly improves performance on large datasets
 
         # Apply filters
         start_date = self.request.GET.get('start_date')

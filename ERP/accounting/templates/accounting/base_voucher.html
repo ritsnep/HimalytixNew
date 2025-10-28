@@ -17,9 +17,10 @@ Usage:
 {% endcomment %}
 
 {% extends 'base.html' %}
+{% load i18n %}
 
 {% block title %}
-  {% if object %}{{ i18n["voucher.title.edit"]|default:"Edit Journal Entry" }}{% else %}{{ i18n["voucher.title.new"]|default:"New Journal Entry" }}{% endif %}
+  {% if object %}{% trans "Edit Journal Entry" %}{% else %}{% trans "New Journal Entry" %}{% endif %}
   {% if journal_type %} - {{ journal_type }}{% endif %}
 {% endblock %}
 
@@ -29,7 +30,7 @@ Usage:
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
       <h1 class="mb-0">
-        {% if object %}{{ i18n["voucher.title.edit"]|default:"Edit Journal Entry" }}{% else %}{{ i18n["voucher.title.new"]|default:"New Journal Entry" }}{% endif %}
+        {% if object %}{% trans "Edit Journal Entry" %}{% else %}{% trans "New Journal Entry" %}{% endif %}
       </h1>
       {% if page_title %}
         <small class="text-muted">{{ page_title }}</small>
@@ -37,7 +38,7 @@ Usage:
     </div>
     <div class="btn-group" role="group">
       <a href="{% url 'accounting:journal_list' %}" class="btn btn-outline-secondary">
-        <i class="bi bi-list"></i> {{ i18n["actions.back_to_list"]|default:"Back to List" }}
+        <i class="bi bi-list"></i> {% trans "Back to List" %}
       </a>
     </div>
   </div>
@@ -65,7 +66,7 @@ Usage:
     <div class="card mb-4">
       <div class="card-header bg-light">
         <h5 class="mb-0">
-          <i class="bi bi-info-circle"></i> {{ i18n["voucher.section.header"]|default:"Journal Information" }}
+          <i class="bi bi-info-circle"></i> {% trans "Journal Information" %}
         </h5>
       </div>
       <div class="card-body">
@@ -77,7 +78,7 @@ Usage:
     <div class="card mb-4">
       <div class="card-header bg-light d-flex justify-content-between align-items-center">
         <h5 class="mb-0">
-          <i class="bi bi-table"></i> {{ i18n["voucher.section.lines"]|default:"Journal Lines" }}
+          <i class="bi bi-table"></i> {% trans "Journal Lines" %}
         </h5>
         <button type="button" class="btn btn-sm btn-outline-primary"
                 hx-get="{% url 'accounting:journal_htmx' action='add_line' %}"
@@ -85,7 +86,7 @@ Usage:
                 hx-target="#journal-lines"
                 hx-swap="beforeend"
                 onclick="return validateFormsBefore(this)">
-          <i class="bi bi-plus-circle"></i> {{ i18n["voucher.button.add_line"]|default:"Add Line" }}
+          <i class="bi bi-plus-circle"></i> {% trans "Add Line" %}
         </button>
       </div>
       <div class="card-body p-0">
@@ -100,7 +101,7 @@ Usage:
     <div class="card mb-4">
       <div class="card-header bg-light">
         <h5 class="mb-0">
-          <i class="bi bi-paperclip"></i> {{ i18n["attachments.section_title"]|default:"Attachments" }}
+          <i class="bi bi-paperclip"></i> {% trans "Attachments" %}
         </h5>
       </div>
       <div class="card-body">
@@ -111,15 +112,15 @@ Usage:
     <!-- Action Buttons -->
     <div class="d-flex justify-content-between align-items-center pt-3 border-top">
       <button type="button" class="btn btn-secondary"
-              onclick="if(confirm('{{ i18n["confirm.discard_changes"]|default:"Discard changes?" }}')) window.history.back()">
-        <i class="bi bi-x-circle"></i> {{ i18n["voucher.button.cancel"]|default:"Cancel" }}
+              onclick="if(confirm('{% trans "Discard changes?" %}')) window.history.back()">
+        <i class="bi bi-x-circle"></i> {% trans "Cancel" %}
       </button>
       <div class="btn-group" role="group">
         <button type="submit" name="action" value="save" class="btn btn-primary">
-          <i class="bi bi-cloud-arrow-down"></i> {{ i18n["voucher.button.save_draft"]|default:"Save as Draft" }}
+          <i class="bi bi-cloud-arrow-down"></i> {% trans "Save as Draft" %}
         </button>
         <button type="submit" name="action" value="post" class="btn btn-success">
-          <i class="bi bi-check-circle"></i> {{ i18n["voucher.button.save_and_post"]|default:"Save and Post" }}
+          <i class="bi bi-check-circle"></i> {% trans "Save and Post" %}
         </button>
       </div>
     </div>

@@ -1,16 +1,16 @@
 {% extends "accounting/base_voucher.html" %}
 {% load i18n %}
 
-{% block title %}{{ i18n["approval.queue.title"]|default:"Approval Queue" }}{% endblock %}
+{% block title %}{% trans "Approval Queue" %}{% endblock %}
 
 {% block content %}
 <div class="container-fluid mt-4">
     <div class="row mb-4">
         <div class="col-md-12">
             <div class="d-flex justify-content-between align-items-center">
-                <h2>{{ i18n["approval.queue.title"]|default:"Approval Queue" }}</h2>
+                <h2>{% trans "Approval Queue" %}</h2>
                 <a href="{% url 'accounting:approval_dashboard' %}" class="btn btn-info">
-                    <i class="bi bi-graph-up"></i> {{ i18n["approval.queue.dashboard"]|default:"Dashboard" }}
+                    <i class="bi bi-graph-up"></i> {% trans "Dashboard" %}
                 </a>
             </div>
         </div>
@@ -21,7 +21,7 @@
         <div class="col-md-3">
             <div class="card bg-warning text-dark">
                 <div class="card-body">
-                    <h6 class="card-title">{{ i18n["approval.queue.assigned_to_me"]|default:"Assigned to Me" }}</h6>
+                    <h6 class="card-title">{% trans "Assigned to Me" %}</h6>
                     <h3>{{ queue_stats.assigned_to_me }}</h3>
                 </div>
             </div>
@@ -29,7 +29,7 @@
         <div class="col-md-3">
             <div class="card bg-danger text-white">
                 <div class="card-body">
-                    <h6 class="card-title">{{ i18n["approval.queue.overdue"]|default:"Overdue" }}</h6>
+                    <h6 class="card-title">{% trans "Overdue" %}</h6>
                     <h3>{{ queue_stats.overdue }}</h3>
                 </div>
             </div>
@@ -37,7 +37,7 @@
         <div class="col-md-3">
             <div class="card bg-info text-white">
                 <div class="card-body">
-                    <h6 class="card-title">{{ i18n["approval.queue.high_priority"]|default:"High Priority" }}</h6>
+                    <h6 class="card-title">{% trans "High Priority" %}</h6>
                     <h3>{{ queue_stats.high_priority }}</h3>
                 </div>
             </div>
@@ -45,7 +45,7 @@
         <div class="col-md-3">
             <div class="card bg-secondary text-white">
                 <div class="card-body">
-                    <h6 class="card-title">{{ i18n["approval.queue.total_pending"]|default:"Total Pending" }}</h6>
+                    <h6 class="card-title">{% trans "Total Pending" %}</h6>
                     <h3>{{ queue_stats.total_pending }}</h3>
                 </div>
             </div>
@@ -61,13 +61,13 @@
                         type="text" 
                         name="q" 
                         class="form-control" 
-                        placeholder="{{ i18n["approval.queue.search_ref_placeholder"]|default:"Search by reference..." }}"
+                        placeholder="{% trans "Search by reference..." %}"
                         value="{{ request.GET.q }}"
                     >
                 </div>
                 <div class="col-md-3">
                     <select name="journal_type" class="form-select">
-                        <option value="">{{ i18n["approval.queue.all_types"]|default:"All Types" }}</option>
+                        <option value="">{% trans "All Types" %}</option>
                         {% for jtype in journal_types %}
                             <option value="{{ jtype.id }}" {% if request.GET.journal_type == jtype.id|stringformat:"s" %}selected{% endif %}>
                                 {{ jtype.name }}
@@ -78,22 +78,22 @@
                 <div class="col-md-3">
                     <select name="sort" class="form-select">
                         <option value="-submitted_for_approval_at" {% if request.GET.sort == "-submitted_for_approval_at" %}selected{% endif %}>
-                            {{ i18n["approval.queue.newest_first"]|default:"Newest First" }}
+                            {% trans "Newest First" %}
                         </option>
                         <option value="submitted_for_approval_at" {% if request.GET.sort == "submitted_for_approval_at" %}selected{% endif %}>
-                            {{ i18n["approval.queue.oldest_first"]|default:"Oldest First" }}
+                            {% trans "Oldest First" %}
                         </option>
                         <option value="-total_debit" {% if request.GET.sort == "-total_debit" %}selected{% endif %}>
-                            {{ i18n["approval.queue.highest_amount"]|default:"Highest Amount" }}
+                            {% trans "Highest Amount" %}
                         </option>
                         <option value="total_debit" {% if request.GET.sort == "total_debit" %}selected{% endif %}>
-                            {{ i18n["approval.queue.lowest_amount"]|default:"Lowest Amount" }}
+                            {% trans "Lowest Amount" %}
                         </option>
                     </select>
                 </div>
                 <div class="col-md-2">
                     <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i> {{ i18n["approval.queue.filter"]|default:"Filter" }}
+                        <i class="bi bi-search"></i> {% trans "Filter" %}
                     </button>
                 </div>
             </form>
@@ -106,14 +106,14 @@
             <table class="table table-hover">
                 <thead class="table-light">
                     <tr>
-                        <th>{{ i18n["approval.queue.reference"]|default:"Reference" }}</th>
-                        <th>{{ i18n["approval.queue.type"]|default:"Type" }}</th>
-                        <th>{{ i18n["approval.queue.date"]|default:"Date" }}</th>
-                        <th>{{ i18n["approval.queue.amount"]|default:"Amount" }}</th>
-                        <th>{{ i18n["approval.queue.submitted_by"]|default:"Submitted By" }}</th>
-                        <th>{{ i18n["approval.queue.current_step"]|default:"Current Step" }}</th>
-                        <th>{{ i18n["approval.queue.days_pending"]|default:"Days Pending" }}</th>
-                        <th>{{ i18n["approval.queue.actions"]|default:"Actions" }}</th>
+                        <th>{% trans "Reference" %}</th>
+                        <th>{% trans "Type" %}</th>
+                        <th>{% trans "Date" %}</th>
+                        <th>{% trans "Amount" %}</th>
+                        <th>{% trans "Submitted By" %}</th>
+                        <th>{% trans "Current Step" %}</th>
+                        <th>{% trans "Days Pending" %}</th>
+                        <th>{% trans "Actions" %}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -215,7 +215,7 @@
                             <div class="modal-dialog">
                                 <div class="modal-content">
                                     <div class="modal-header bg-danger text-white">
-                                        <h5 class="modal-title">{{ i18n["approval.queue.reject_journal"]|default:"Reject Journal" }}</h5>
+                                        <h5 class="modal-title">{% trans "Reject Journal" %}</h5>
                                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                     </div>
                                     <form method="post" action="{% url 'approval:reject_journal' journal.id %}">
@@ -226,7 +226,7 @@
                                             </p>
                                             <div class="form-group">
                                                 <label for="reason{{ journal.id }}" class="form-label">
-                                                    {{ i18n["approval.queue.reject_reason"]|default:"Rejection Reason" }} <span class="text-danger">*</span>
+                                                    {% trans "Rejection Reason" %} <span class="text-danger">*</span>
                                                 </label>
                                                 <textarea 
                                                     id="reason{{ journal.id }}" 
@@ -234,16 +234,16 @@
                                                     class="form-control" 
                                                     rows="3"
                                                     required
-                                                    placeholder="{{ i18n["approval.queue.reject_reason_placeholder"]|default:"Please provide reason for rejection..." }}"
+                                                    placeholder="{% trans "Please provide reason for rejection..." %}"
                                                 ></textarea>
                                             </div>
                                         </div>
                                         <div class="modal-footer">
                                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                                {{ i18n["approval.queue.cancel"]|default:"Cancel" }}
+                                                {% trans "Cancel" %}
                                             </button>
                                             <button type="submit" class="btn btn-danger">
-                                                <i class="bi bi-x-lg"></i> {{ i18n["approval.queue.reject"]|default:"Reject" }}
+                                                <i class="bi bi-x-lg"></i> {% trans "Reject" %}
                                             </button>
                                         </div>
                                     </form>
@@ -261,10 +261,10 @@
                 <ul class="pagination justify-content-center">
                     {% if page_obj.has_previous %}
                         <li class="page-item">
-                            <a class="page-link" href="?page=1">{{ i18n["approval.queue.first"]|default:"First" }}</a>
+                            <a class="page-link" href="?page=1">{% trans "First" %}</a>
                         </li>
                         <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">{{ i18n["approval.queue.previous"]|default:"Previous" }}</a>
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">{% trans "Previous" %}</a>
                         </li>
                     {% endif %}
                     
@@ -276,10 +276,10 @@
                     
                     {% if page_obj.has_next %}
                         <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">{{ i18n["approval.queue.next"]|default:"Next" }}</a>
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">{% trans "Next" %}</a>
                         </li>
                         <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">{{ i18n["approval.queue.last"]|default:"Last" }}</a>
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">{% trans "Last" %}</a>
                         </li>
                     {% endif %}
                 </ul>
@@ -287,7 +287,7 @@
         {% endif %}
     {% else %}
             <div class="alert alert-info" role="alert">
-            <i class="bi bi-info-circle"></i> {{ i18n["approval.queue.none"]|default:"No pending approvals at this time." }}
+            <i class="bi bi-info-circle"></i> {% trans "No pending approvals at this time." %}
         </div>
     {% endif %}
 </div>

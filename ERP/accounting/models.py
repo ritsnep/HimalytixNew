@@ -1736,7 +1736,7 @@ class RecurringJournalLine(models.Model):
             raise ValidationError("A journal line must have either a debit or a credit amount.")
 
 
-class RecurringEntry(models.Model):
+class RecurringEntry(RecurringJournal):
     """
     Alias for RecurringJournal for backward compatibility.
     Used by scheduled_task_views.py

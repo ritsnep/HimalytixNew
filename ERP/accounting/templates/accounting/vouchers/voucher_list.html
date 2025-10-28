@@ -1,0 +1,269 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "Vouchers" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .voucher-card {
+        transition: all 0.3s ease;
+        border-left: 4px solid transparent;
+    }
+    .voucher-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        border-left-color: #667eea;
+    }
+    .filter-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <!-- Page Header -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                        <h4 class="mb-sm-0 font-size-18">{% trans "Voucher Entries" %}</h4>
+                        <div class="page-title-right">
+                            <a href="{% url 'accounting:voucher_wizard' %}" class="btn btn-primary">
+                                <i class="mdi mdi-plus me-1"></i>{% trans "New Voucher" %}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="row mb-3">
+                <div class="col-12">
+                    <div class="card filter-card">
+                        <div class="card-body">
+                            <form method="get" class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label opacity-75">{% trans "Search" %}</label>
+                                    <input type="text" name="search" class="form-control" 
+                                           placeholder="{% trans 'Number, reference, description...' %}" 
+                                           value="{{ request.GET.search }}">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label opacity-75">{% trans "Status" %}</label>
+                                    <select name="status" class="form-select">
+                                        <option value="">{% trans "All" %}</option>
+                                        {% for value, label in statuses %}
+                                        <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label opacity-75">{% trans "Start Date" %}</label>
+                                    <input type="date" name="start_date" class="form-control" 
+                                           value="{{ request.GET.start_date }}">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label opacity-75">{% trans "End Date" %}</label>
+                                    <input type="date" name="end_date" class="form-control" 
+                                           value="{{ request.GET.end_date }}">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label opacity-75">{% trans "Journal Type" %}</label>
+                                    <select name="journal_type" class="form-select">
+                                        <option value="">{% trans "All Types" %}</option>
+                                        {% for jtype in journal_types %}
+                                        <option value="{{ jtype.id }}" {% if request.GET.journal_type|stringformat:"s" == jtype.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ jtype.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-1 d-flex align-items-end">
+                                    <button type="submit" class="btn btn-light w-100">
+                                        <i class="mdi mdi-filter"></i>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Voucher List -->
+            <div class="row">
+                {% for voucher in vouchers %}
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="card voucher-card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h5 class="card-title mb-1">
+                                        <a href="{% url 'accounting:voucher_detail' pk=voucher.pk %}" 
+                                           class="text-decoration-none text-dark">
+                                            {{ voucher.journal_number }}
+                                        </a>
+                                    </h5>
+                                    <small class="text-muted">
+                                        <i class="mdi mdi-calendar me-1"></i>
+                                        {{ voucher.journal_date|date:"M d, Y" }}
+                                    </small>
+                                </div>
+                                <div>
+                                    {% if voucher.status == 'posted' %}
+                                        <span class="badge bg-success">
+                                            <span class="status-dot bg-white"></span>{% trans "Posted" %}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">
+                                            <span class="status-dot bg-dark"></span>{% trans "Draft" %}
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <p class="card-text text-muted small mb-2">
+                                <strong>{% trans "Type:" %}</strong> {{ voucher.journal_type.name }}
+                            </p>
+                            
+                            {% if voucher.description %}
+                            <p class="card-text small mb-3">
+                                {{ voucher.description|truncatewords:15 }}
+                            </p>
+                            {% endif %}
+
+                            <div class="row text-center border-top pt-2">
+                                <div class="col-6">
+                                    <small class="text-muted d-block">{% trans "Debit" %}</small>
+                                    <strong class="text-success">{{ voucher.total_debit|floatformat:2 }}</strong>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted d-block">{% trans "Credit" %}</small>
+                                    <strong class="text-danger">{{ voucher.total_credit|floatformat:2 }}</strong>
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-2 mt-3">
+                                <a href="{% url 'accounting:voucher_detail' pk=voucher.pk %}" 
+                                   class="btn btn-sm btn-outline-primary flex-fill">
+                                    <i class="mdi mdi-eye"></i> {% trans "View" %}
+                                </a>
+                                {% if voucher.status == 'draft' and can_edit %}
+                                <a href="{% url 'accounting:voucher_wizard_edit' pk=voucher.pk %}" 
+                                   class="btn btn-sm btn-outline-secondary flex-fill">
+                                    <i class="mdi mdi-pencil"></i> {% trans "Edit" %}
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body text-center py-5">
+                            <i class="mdi mdi-file-document-outline display-3 text-muted mb-3"></i>
+                            <h5 class="text-muted">{% trans "No vouchers found" %}</h5>
+                            <p class="text-muted">{% trans "Create your first voucher to get started" %}</p>
+                            <a href="{% url 'accounting:voucher_wizard' %}" class="btn btn-primary mt-2">
+                                <i class="mdi mdi-plus me-1"></i>{% trans "Create Voucher" %}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Pagination -->
+            {% if is_paginated %}
+            <div class="row">
+                <div class="col-12">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">
+                                    {% trans "First" %}
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">
+                                    {% trans "Previous" %}
+                                </a>
+                            </li>
+                            {% endif %}
+
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    {% trans "Page" %} {{ page_obj.number }} {% trans "of" %} {{ page_obj.paginator.num_pages }}
+                                </span>
+                            </li>
+
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">
+                                    {% trans "Next" %}
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">
+                                    {% trans "Last" %}
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Quick Actions -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted">
+                                    <i class="mdi mdi-information-outline me-1"></i>
+                                    {% trans "Showing" %} {{ vouchers|length }} {% trans "voucher(s)" %}
+                                </span>
+                                <div>
+                                    <a href="{% url 'accounting:voucher_export' %}" class="btn btn-sm btn-outline-secondary">
+                                        <i class="mdi mdi-download"></i> {% trans "Export" %}
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-submit filter form on select change
+    document.querySelectorAll('select[name="status"], select[name="journal_type"]').forEach(function(select) {
+        select.addEventListener('change', function() {
+            this.form.submit();
+        });
+    });
+});
+</script>
+{% endblock %}

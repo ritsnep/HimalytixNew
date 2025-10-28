@@ -1,0 +1,110 @@
+name: SBOM Generation
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  generate-sbom:
+    name: Generate Software Bill of Materials
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      packages: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pip-audit cyclonedx-bom
+
+      # =========================================================================
+      # METHOD 1: pip-audit (Vulnerability-focused)
+      # =========================================================================
+      - name: Generate SBOM with pip-audit
+        run: |
+          pip-audit --requirement requirements.txt \
+            --format cyclonedx-json \
+            --output sbom-pip-audit.json || true
+
+      # =========================================================================
+      # METHOD 2: CycloneDX Python
+      # =========================================================================
+      - name: Generate SBOM with CycloneDX
+        run: |
+          cyclonedx-py -r -i requirements.txt -o sbom-cyclonedx.json
+
+      # =========================================================================
+      # METHOD 3: Syft (Comprehensive)
+      # =========================================================================
+      - name: Install Syft
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Generate SBOM with Syft
+        run: |
+          syft packages dir:. -o cyclonedx-json=sbom-syft.json
+          syft packages dir:. -o spdx-json=sbom-spdx.json
+
+      # =========================================================================
+      # VULNERABILITY SCANNING
+      # =========================================================================
+      - name: Scan SBOM with Grype
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+          grype sbom:sbom-syft.json -o json > vulnerability-report.json || true
+
+      # =========================================================================
+      # UPLOAD ARTIFACTS
+      # =========================================================================
+      - name: Upload SBOMs
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-reports
+          path: |
+            sbom-*.json
+            vulnerability-report.json
+
+      - name: Attach SBOM to Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            sbom-cyclonedx.json
+            sbom-spdx.json
+            vulnerability-report.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # =========================================================================
+      # CREATE SUMMARY
+      # =========================================================================
+      - name: Generate Summary
+        run: |
+          echo "## 📦 SBOM Generation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Generated Artifacts:" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ CycloneDX SBOM (JSON)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ SPDX SBOM (JSON)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Vulnerability Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f vulnerability-report.json ]; then
+            critical=$(jq '[.matches[] | select(.vulnerability.severity == "Critical")] | length' vulnerability-report.json)
+            high=$(jq '[.matches[] | select(.vulnerability.severity == "High")] | length' vulnerability-report.json)
+            echo "### 🔍 Vulnerability Summary:" >> $GITHUB_STEP_SUMMARY
+            echo "- **Critical**: $critical" >> $GITHUB_STEP_SUMMARY
+            echo "- **High**: $high" >> $GITHUB_STEP_SUMMARY
+          fi

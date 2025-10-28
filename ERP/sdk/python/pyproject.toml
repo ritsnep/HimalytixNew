@@ -1,0 +1,90 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "himalytix-erp-client"
+version = "1.0.0"
+description = "Official Python SDK for the Himalytix ERP API"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Himalytix Development Team", email = "dev@himalytix.com"}
+]
+keywords = ["himalytix", "erp", "api", "sdk", "client", "accounting", "journal"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Office/Business :: Financial :: Accounting",
+]
+
+dependencies = [
+    "requests>=2.28.0",
+    "pydantic>=2.0.0",
+    "python-dateutil>=2.8.0",
+    "typing-extensions>=4.5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.5.0",
+    "isort>=5.12.0",
+    "responses>=0.23.0",
+]
+async = [
+    "httpx>=0.24.0",
+    "aiofiles>=23.2.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/himalytix/python-sdk"
+Documentation = "https://docs.himalytix.com"
+Repository = "https://github.com/himalytix/python-sdk"
+"Bug Tracker" = "https://github.com/himalytix/python-sdk/issues"
+"API Reference" = "https://api.himalytix.com/docs/"
+
+[tool.black]
+line-length = 100
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-v --cov=himalytix --cov-report=term-missing"

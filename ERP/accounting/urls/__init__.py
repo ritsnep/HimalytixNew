@@ -1,7 +1,7 @@
 from django.urls import path, include
 
 from accounting.views import views_import
-from ..views import journal_entry_view
+from ..views import journal_entry_view, voucher_views
 from ..views import views_journal_grid as journal_grid_view
 from ..views.report_views import (
     ReportListView,
@@ -145,7 +145,17 @@ urlpatterns = [
     
     path('voucher-entry/', VoucherEntryView.as_view(), name='voucher_entry'),
     # path('voucher-entry/<int:config_id>/', VoucherEntryView.as_view(), name='voucher_entry_config'),
+    
+    # Voucher Wizard CRUD URLs
+    path('vouchers/', voucher_views.VoucherListView.as_view(), name='voucher_list'),
     path('vouchers/new/', wizard.VoucherWizardView.as_view(), name='voucher_wizard'),
+    path('vouchers/<int:pk>/', voucher_views.VoucherDetailView.as_view(), name='voucher_detail'),
+    path('vouchers/<int:pk>/edit/', wizard.VoucherWizardView.as_view(), name='voucher_wizard_edit'),
+    path('vouchers/<int:pk>/delete/', voucher_views.VoucherDeleteView.as_view(), name='voucher_delete'),
+    path('vouchers/<int:pk>/duplicate/', voucher_views.VoucherDuplicateView.as_view(), name='voucher_duplicate'),
+    path('vouchers/<int:pk>/post/', voucher_views.VoucherPostView.as_view(), name='voucher_post'),
+    path('vouchers/<int:pk>/print/', voucher_views.VoucherPrintView.as_view(), name='voucher_print'),
+    path('vouchers/export/', voucher_views.VoucherExportView.as_view(), name='voucher_export'),
     path('vouchers/import-file/', views_import.JournalImportView.as_view(), name='voucher_import'),
     
     # Fiscal Year URLs

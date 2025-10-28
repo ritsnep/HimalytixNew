@@ -1,0 +1,117 @@
+# =============================================================================
+# PRE-COMMIT HOOKS CONFIGURATION
+# =============================================================================
+# Installation: pip install pre-commit && pre-commit install
+# Manual run: pre-commit run --all-files
+# =============================================================================
+
+repos:
+  # -----------------------------------------------------------------------------
+  # SECURITY: Secret Detection
+  # -----------------------------------------------------------------------------
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: |
+          (?x)(
+            ^\.env\.example$|
+            ^package-lock\.json$|
+            ^poetry\.lock$|
+            .*\.min\.js$
+          )
+
+  # -----------------------------------------------------------------------------
+  # PYTHON CODE QUALITY
+  # -----------------------------------------------------------------------------
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        language_version: python3
+        args: ['--line-length=100']
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        args: ['--max-line-length=100', '--extend-ignore=E203,W503']
+        additional_dependencies: [flake8-docstrings]
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ['--profile=black', '--line-length=100']
+
+  # -----------------------------------------------------------------------------
+  # SECURITY: Dependency Scanning
+  # -----------------------------------------------------------------------------
+  - repo: https://github.com/Lucas-C/pre-commit-hooks-safety
+    rev: v1.3.3
+    hooks:
+      - id: python-safety-dependencies-check
+        files: requirements.*\.txt$
+
+  # -----------------------------------------------------------------------------
+  # CONVENTIONAL COMMITS
+  # -----------------------------------------------------------------------------
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.0.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: [--strict]
+
+  # -----------------------------------------------------------------------------
+  # GENERAL FILE CHECKS
+  # -----------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: ['--unsafe']  # Allow custom tags in YAML
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+      - id: detect-private-key
+
+  # -----------------------------------------------------------------------------
+  # DJANGO SPECIFIC
+  # -----------------------------------------------------------------------------
+  - repo: https://github.com/adamchainz/django-upgrade
+    rev: 1.15.0
+    hooks:
+      - id: django-upgrade
+        args: ['--target-version=4.2']
+
+  # -----------------------------------------------------------------------------
+  # DOCUMENTATION
+  # -----------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        types_or: [markdown, yaml, json]
+        exclude: |
+          (?x)(
+            ^\.vscode/|
+            ^node_modules/|
+            package-lock\.json
+          )
+
+# =============================================================================
+# CI SPECIFIC SETTINGS
+# =============================================================================
+ci:
+  autofix_commit_msg: 'ci: auto fixes from pre-commit hooks'
+  autofix_prs: true
+  autoupdate_commit_msg: 'ci: pre-commit autoupdate'
+  autoupdate_schedule: weekly

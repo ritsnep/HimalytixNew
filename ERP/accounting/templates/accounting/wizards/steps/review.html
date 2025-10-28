@@ -1,49 +1,109 @@
-{% extends "base.html" %}
+{% extends "accounting/wizards/voucher_wizard.html" %}
 {% load i18n %}
 
-{% block content %}
-<form method="post" hx-post="{% url 'accounting:voucher_wizard' %}" hx-target="#voucher-wizard-container">
-    {% csrf_token %}
-    {{ wizard.management_form }}
-    
-    <div class="card">
-        <div class="card-header">
-            <h5 class="card-title">{% trans "Step 4: Review and Confirm" %}</h5>
-        </div>
-        <div class="card-body">
-            <h4>{% trans "Voucher Summary" %}</h4>
-            
-            <h5>{% trans "Header" %}</h5>
-            <ul>
-                {% for key, value in wizard.get_cleaned_data_for_step.header.items %}
-                    <li><strong>{{ key|capfirst }}:</strong> {{ value }}</li>
-                {% endfor %}
-            </ul>
-
-            <h5>{% trans "Lines" %}</h5>
-            <table class="table table-bordered">
-                <thead>
-                    <tr>
-                        {% for field in wizard.get_form_set.lines.forms.0.visible_fields %}
-                            <th>{{ field.label|capfirst }}</th>
-                        {% endfor %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for form in wizard.get_form_set.lines.forms %}
-                        <tr>
-                            {% for field in form.visible_fields %}
-                                <td>{{ field.value }}</td>
-                            {% endfor %}
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        <div class="card-footer">
-            <button type="submit" name="wizard_goto_step" value="{{ wizard.steps.prev }}" class="btn btn-secondary">{% trans "Back" %}</button>
-            <button type="submit" class="btn btn-success">{% trans "Finish" %}</button>
-        </div>
+{% block wizard_content %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">{% trans "Step 4: Review and Confirm" %}</h5>
+        <p class="text-muted mb-0">{% trans "Review your voucher details before submitting" %}</p>
     </div>
-</form>
+    <div class="card-body">
+        <form method="post" action="">
+            {% csrf_token %}
+            {{ wizard.management_form }}
+            
+            <!-- Voucher Mode -->
+            <div class="card mb-3 border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0"><i class="mdi mdi-cog me-1"></i>{% trans "Voucher Mode" %}</h6>
+                </div>
+                <div class="card-body">
+                    {% with mode_data=wizard.get_cleaned_data_for_step.mode %}
+                        {% if mode_data %}
+                            <p class="mb-0"><strong>{{ mode_data.mode.name }}</strong></p>
+                            {% if mode_data.mode.description %}
+                                <p class="text-muted mb-0"><small>{{ mode_data.mode.description }}</small></p>
+                            {% endif %}
+                        {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+            
+            <!-- Header Information -->
+            <div class="card mb-3">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0"><i class="mdi mdi-file-document me-1"></i>{% trans "Header Information" %}</h6>
+                </div>
+                <div class="card-body">
+                    {% with header_data=wizard.get_cleaned_data_for_step.header %}
+                        {% if header_data %}
+                            <div class="row">
+                                {% for key, value in header_data.items %}
+                                    <div class="col-md-6 mb-2">
+                                        <strong>{{ key|title }}:</strong>
+                                        <span class="ms-2">{{ value|default:"—" }}</span>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p class="text-muted mb-0">{% trans "No header data" %}</p>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+
+            <!-- Lines Information -->
+            <div class="card mb-3">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0"><i class="mdi mdi-format-list-bulleted me-1"></i>{% trans "Line Items" %}</h6>
+                </div>
+                <div class="card-body">
+                    {% with lines_data=wizard.get_cleaned_data_for_step.lines %}
+                        {% if lines_data %}
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>#</th>
+                                            {% for key in lines_data.keys %}
+                                                <th>{{ key|title }}</th>
+                                            {% endfor %}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>1</td>
+                                            {% for value in lines_data.values %}
+                                                <td>{{ value|default:"—" }}</td>
+                                            {% endfor %}
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p class="text-muted mb-0">{% trans "No line items" %}</p>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+            
+            <div class="alert alert-info" role="alert">
+                <i class="mdi mdi-information me-1"></i>
+                {% trans "Please review all information carefully before submitting. Once submitted, the voucher will be created." %}
+            </div>
+            
+            <div class="form-actions mt-4 text-center">
+                <button type="submit" name="wizard_goto_step" value="{{ wizard.steps.prev }}" class="btn btn-secondary btn-lg">
+                    <i class="mdi mdi-arrow-left me-1"></i>{% trans "Previous" %}
+                </button>
+                <button type="submit" class="btn btn-success btn-lg ms-2">
+                    <i class="mdi mdi-check-circle me-1"></i>{% trans "Create Voucher" %}
+                </button>
+                <a href="{% url 'accounting:journal_list' %}" class="btn btn-outline-secondary btn-lg ms-2">
+                    <i class="mdi mdi-close me-1"></i>{% trans "Cancel" %}
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}

@@ -1,0 +1,320 @@
+{% extends "partials/base.html" %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .info-card {
+        background: #f8f9fc;
+        border: 1px solid #e3e6f0;
+        border-radius: 0.35rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    .info-label {
+        font-weight: 600;
+        color: #5a5c69;
+        margin-bottom: 0.25rem;
+    }
+    .info-value {
+        color: #3a3b45;
+    }
+    .line-table th {
+        background-color: #f8f9fc;
+        font-weight: 600;
+    }
+    .total-row {
+        background-color: #e3e6f0;
+        font-weight: 600;
+    }
+    .balanced {
+        color: #1cc88a;
+    }
+    .unbalanced {
+        color: #e74a3b;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ page_title }}</h1>
+        <div class="btn-toolbar" role="toolbar">
+            <div class="btn-group mr-2" role="group">
+                <a href="{{ list_url }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to List
+                </a>
+            </div>
+            <div class="btn-group mr-2" role="group">
+                {% if can_edit %}
+                <a href="{{ edit_url }}" class="btn btn-warning">
+                    <i class="fas fa-edit"></i> Edit Voucher
+                </a>
+                {% endif %}
+                {% if can_post %}
+                <form method="post" action="{{ post_url }}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success" 
+                            onclick="return confirm('Are you sure you want to post this voucher? This action cannot be undone.')">
+                        <i class="fas fa-check"></i> Post Voucher
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-info dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <i class="fas fa-cog"></i> More Actions
+                </button>
+                <div class="dropdown-menu dropdown-menu-right">
+                    <form method="post" action="{% url 'accounting:voucher_duplicate' pk=voucher.pk %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="dropdown-item">
+                            <i class="fas fa-copy"></i> Duplicate Voucher
+                        </button>
+                    </form>
+                    <a href="#" class="dropdown-item">
+                        <i class="fas fa-print"></i> Print Voucher
+                    </a>
+                    <a href="#" class="dropdown-item">
+                        <i class="fas fa-file-export"></i> Export to PDF
+                    </a>
+                    {% if can_delete %}
+                    <div class="dropdown-divider"></div>
+                    <a href="{{ delete_url }}" class="dropdown-item text-danger">
+                        <i class="fas fa-trash"></i> Delete Voucher
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Voucher Information -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Voucher Details</h6>
+                    <span>
+                        {% if voucher.status == 'draft' %}
+                            <span class="badge badge-secondary">Draft</span>
+                        {% elif voucher.status == 'posted' %}
+                            <span class="badge badge-success">Posted</span>
+                        {% elif voucher.status == 'approved' %}
+                            <span class="badge badge-info">Approved</span>
+                        {% elif voucher.status == 'reversed' %}
+                            <span class="badge badge-danger">Reversed</span>
+                        {% else %}
+                            <span class="badge badge-warning">{{ voucher.get_status_display }}</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="info-card">
+                                <div class="info-label">Journal Number</div>
+                                <div class="info-value">{{ voucher.journal_number }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-card">
+                                <div class="info-label">Journal Date</div>
+                                <div class="info-value">{{ voucher.journal_date|date:"F d, Y" }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-card">
+                                <div class="info-label">Journal Type</div>
+                                <div class="info-value">{{ voucher.journal_type.name }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-card">
+                                <div class="info-label">Period</div>
+                                <div class="info-value">{{ voucher.period.name }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="info-card">
+                                <div class="info-label">Reference</div>
+                                <div class="info-value">{{ voucher.reference|default:"-" }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="info-card">
+                                <div class="info-label">Description</div>
+                                <div class="info-value">{{ voucher.description|default:"-" }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Journal Lines -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Journal Lines</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered line-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Account</th>
+                                    <th>Description</th>
+                                    <th class="text-right">Debit</th>
+                                    <th class="text-right">Credit</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for line in voucher.lines.all %}
+                                <tr>
+                                    <td>{{ line.line_number }}</td>
+                                    <td>{{ line.account.account_code }} - {{ line.account.account_name }}</td>
+                                    <td>{{ line.description|default:"-" }}</td>
+                                    <td class="text-right">
+                                        {% if line.debit_amount %}
+                                            {{ line.debit_amount|floatformat:2 }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-right">
+                                        {% if line.credit_amount %}
+                                            {{ line.credit_amount|floatformat:2 }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr class="total-row">
+                                    <td colspan="3" class="text-right"><strong>Total:</strong></td>
+                                    <td class="text-right"><strong>{{ total_debit|floatformat:2 }}</strong></td>
+                                    <td class="text-right"><strong>{{ total_credit|floatformat:2 }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3" class="text-right"><strong>Balance:</strong></td>
+                                    <td colspan="2" class="text-center">
+                                        {% if is_balanced %}
+                                            <span class="balanced">
+                                                <i class="fas fa-check-circle"></i> Balanced
+                                            </span>
+                                        {% else %}
+                                            <span class="unbalanced">
+                                                <i class="fas fa-exclamation-triangle"></i> 
+                                                Unbalanced (Diff: {{ total_debit|add:total_credit|floatformat:2 }})
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Information -->
+        <div class="col-lg-4">
+            <!-- Audit Information -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Audit Trail</h6>
+                </div>
+                <div class="card-body">
+                    <div class="info-card">
+                        <div class="info-label">Created By</div>
+                        <div class="info-value">
+                            {{ voucher.created_by.get_full_name|default:voucher.created_by.username }}
+                            <br>
+                            <small class="text-muted">{{ voucher.created_at|date:"Y-m-d H:i" }}</small>
+                        </div>
+                    </div>
+                    {% if voucher.updated_by %}
+                    <div class="info-card">
+                        <div class="info-label">Last Updated By</div>
+                        <div class="info-value">
+                            {{ voucher.updated_by.get_full_name|default:voucher.updated_by.username }}
+                            <br>
+                            <small class="text-muted">{{ voucher.updated_at|date:"Y-m-d H:i" }}</small>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if voucher.posted_by %}
+                    <div class="info-card">
+                        <div class="info-label">Posted By</div>
+                        <div class="info-value">
+                            {{ voucher.posted_by.get_full_name|default:voucher.posted_by.username }}
+                            <br>
+                            <small class="text-muted">{{ voucher.posted_at|date:"Y-m-d H:i" }}</small>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Status and Actions Info -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Voucher Status</h6>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <h5>Current Status:</h5>
+                        {% if voucher.status == 'draft' %}
+                            <span class="badge badge-secondary badge-lg" style="font-size: 1.2em; padding: 0.5em 1em;">Draft</span>
+                        {% elif voucher.status == 'posted' %}
+                            <span class="badge badge-success badge-lg" style="font-size: 1.2em; padding: 0.5em 1em;">Posted</span>
+                        {% elif voucher.status == 'approved' %}
+                            <span class="badge badge-info badge-lg" style="font-size: 1.2em; padding: 0.5em 1em;">Approved</span>
+                        {% elif voucher.status == 'reversed' %}
+                            <span class="badge badge-danger badge-lg" style="font-size: 1.2em; padding: 0.5em 1em;">Reversed</span>
+                        {% else %}
+                            <span class="badge badge-warning badge-lg" style="font-size: 1.2em; padding: 0.5em 1em;">{{ voucher.get_status_display }}</span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h6 class="mb-3">Available Actions:</h6>
+                        {% if can_edit %}
+                        <a href="{{ edit_url }}" class="btn btn-warning btn-block mb-2">
+                            <i class="fas fa-edit"></i> Edit Voucher
+                        </a>
+                        {% endif %}
+                        {% if can_post %}
+                        <form method="post" action="{{ post_url }}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success btn-block mb-2"
+                                    onclick="return confirm('Post this voucher to the general ledger?')">
+                                <i class="fas fa-check"></i> Post to GL
+                            </button>
+                        </form>
+                        {% endif %}
+                        {% if can_delete %}
+                        <a href="{{ delete_url }}" class="btn btn-danger btn-block mb-2"
+                           onclick="return confirm('Are you sure you want to delete this voucher?')">
+                            <i class="fas fa-trash"></i> Delete Voucher
+                        </a>
+                        {% endif %}
+                        <form method="post" action="{% url 'accounting:voucher_duplicate' pk=voucher.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-info btn-block mb-2">
+                                <i class="fas fa-copy"></i> Duplicate Voucher
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

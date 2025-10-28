@@ -11,6 +11,10 @@ from usermanagement.forms import DasonLoginForm
 from django.utils import translation
 from django.http import HttpResponseRedirect
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseRedirect
+from django.urls import reverse
+from api.authentication import issue_streamlit_token
 
 from accounting.models import (
     ChartOfAccount, Journal, JournalLine, GeneralLedger,
@@ -186,3 +190,13 @@ def set_region(request):
     return HttpResponseRedirect(request.META.get('HTTP_REFERER', '/'))
 
 
+@login_required
+def v2_login_redirect(request):
+    """Issue a short-lived token and redirect to /V2 with token as query param.
+
+    This assumes the reverse proxy maps /V2 to the Streamlit app. Token is removed
+    by the Streamlit app immediately after bootstrap.
+    """
+    tenant_id = getattr(getattr(request, 'tenant', None), 'id', None) or request.session.get('active_tenant')
+    token = issue_streamlit_token(request.user, tenant_id=tenant_id)
+    return redirect(f"/V2?st={token}")

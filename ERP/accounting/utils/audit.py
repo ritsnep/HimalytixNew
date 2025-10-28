@@ -2,15 +2,32 @@ from django.contrib.contenttypes.models import ContentType
 from accounting.models import AuditLog
 from django.forms.models import model_to_dict
 import datetime
+from decimal import Decimal
 
 def convert_dates_to_strings(obj):
+    """Backward-compatible name: convert common types to JSON-safe values.
+
+    - datetime/date -> ISO string
+    - Decimal -> float (or str if float not desired)
+    - dict/list/tuple/set -> recursively converted
+    - Other non-serializable -> str(obj)
+    """
     if isinstance(obj, dict):
         return {k: convert_dates_to_strings(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
+    if isinstance(obj, (list, tuple, set)):
         return [convert_dates_to_strings(i) for i in obj]
-    elif isinstance(obj, (datetime.date, datetime.datetime)):
+    if isinstance(obj, (datetime.date, datetime.datetime)):
         return obj.isoformat()
-    return obj
+    if isinstance(obj, Decimal):
+        return float(obj)
+    # Primitive JSON-safe types pass through
+    if isinstance(obj, (str, int, float, bool)) or obj is None:
+        return obj
+    # Fallback to string to avoid JSON errors
+    try:
+        return str(obj)
+    except Exception:
+        return "<unserializable>"
 
 def get_changed_data(old_instance, new_data):
     """

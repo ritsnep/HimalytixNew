@@ -1,0 +1,310 @@
+# =============================================================================
+# PROMETHEUS ALERT RULES
+# =============================================================================
+# Define alert conditions for critical metrics
+# =============================================================================
+
+groups:
+  # ===========================================================================
+  # APPLICATION ALERTS
+  # ===========================================================================
+  - name: application_alerts
+    interval: 30s
+    rules:
+      # -----------------------------------------------------------------------
+      # High Error Rate
+      # -----------------------------------------------------------------------
+      - alert: HighErrorRate
+        expr: |
+          rate(django_http_requests_total_by_view_transport_method_total{status=~"5.."}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: web
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+          runbook: "https://docs.himalytix.com/runbooks/incident-response.md"
+
+      # -----------------------------------------------------------------------
+      # Slow Response Time (p95)
+      # -----------------------------------------------------------------------
+      - alert: SlowResponseTime
+        expr: |
+          histogram_quantile(0.95, 
+            rate(django_http_request_duration_seconds_bucket[5m])
+          ) > 1.0
+        for: 10m
+        labels:
+          severity: warning
+          component: web
+        annotations:
+          summary: "Slow response time (p95 > 1s)"
+          description: "95th percentile response time is {{ $value }}s"
+          runbook: "https://docs.himalytix.com/runbooks/scaling.md"
+
+      # -----------------------------------------------------------------------
+      # High Request Rate (potential DDoS)
+      # -----------------------------------------------------------------------
+      - alert: HighRequestRate
+        expr: |
+          rate(django_http_requests_total_by_view_transport_method_total[1m]) > 1000
+        for: 2m
+        labels:
+          severity: warning
+          component: web
+        annotations:
+          summary: "High request rate detected"
+          description: "Request rate is {{ $value }} req/sec (threshold: 1000)"
+          action: "Check rate limiting middleware and potential DDoS attack"
+
+  # ===========================================================================
+  # DATABASE ALERTS
+  # ===========================================================================
+  - name: database_alerts
+    interval: 30s
+    rules:
+      # -----------------------------------------------------------------------
+      # High Database Connection Usage
+      # -----------------------------------------------------------------------
+      - alert: HighDatabaseConnections
+        expr: |
+          pg_stat_database_numbackends{datname="himalytix"} > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "High number of database connections"
+          description: "{{ $value }} connections active (threshold: 80)"
+          action: "Check connection pooling settings or scale database"
+
+      # -----------------------------------------------------------------------
+      # Long Running Queries
+      # -----------------------------------------------------------------------
+      - alert: LongRunningQueries
+        expr: |
+          pg_stat_activity_max_tx_duration > 300
+        for: 2m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Long running database queries detected"
+          description: "Query running for {{ $value }}s (threshold: 5 minutes)"
+          action: "Investigate slow queries with django-silk or EXPLAIN ANALYZE"
+
+      # -----------------------------------------------------------------------
+      # Database Down
+      # -----------------------------------------------------------------------
+      - alert: DatabaseDown
+        expr: |
+          up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "PostgreSQL database is down"
+          description: "Database has been unreachable for 1 minute"
+          runbook: "https://docs.himalytix.com/runbooks/incident-response.md"
+
+  # ===========================================================================
+  # REDIS ALERTS
+  # ===========================================================================
+  - name: redis_alerts
+    interval: 30s
+    rules:
+      # -----------------------------------------------------------------------
+      # Redis High Memory Usage
+      # -----------------------------------------------------------------------
+      - alert: RedisHighMemory
+        expr: |
+          redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          component: redis
+        annotations:
+          summary: "Redis memory usage high"
+          description: "Redis using {{ $value | humanizePercentage }} of max memory"
+          action: "Consider clearing cache or scaling Redis"
+
+      # -----------------------------------------------------------------------
+      # Redis Down
+      # -----------------------------------------------------------------------
+      - alert: RedisDown
+        expr: |
+          up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: redis
+        annotations:
+          summary: "Redis cache is down"
+          description: "Redis has been unreachable for 1 minute"
+          action: "Application may degrade, check Redis service"
+
+  # ===========================================================================
+  # INFRASTRUCTURE ALERTS
+  # ===========================================================================
+  - name: infrastructure_alerts
+    interval: 30s
+    rules:
+      # -----------------------------------------------------------------------
+      # High CPU Usage
+      # -----------------------------------------------------------------------
+      - alert: HighCPUUsage
+        expr: |
+          100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value | humanize }}%"
+          action: "Consider scaling horizontally or vertically"
+
+      # -----------------------------------------------------------------------
+      # High Memory Usage
+      # -----------------------------------------------------------------------
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value | humanize }}%"
+          action: "Investigate memory leaks or scale instance"
+
+      # -----------------------------------------------------------------------
+      # Low Disk Space
+      # -----------------------------------------------------------------------
+      - alert: LowDiskSpace
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 15
+        for: 5m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "Only {{ $value | humanize }}% disk space remaining"
+          action: "Clean up logs, old backups, or expand disk"
+
+      # -----------------------------------------------------------------------
+      # Instance Down
+      # -----------------------------------------------------------------------
+      - alert: InstanceDown
+        expr: |
+          up == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "Instance {{ $labels.instance }} is down"
+          description: "{{ $labels.job }} on {{ $labels.instance }} has been down for 2 minutes"
+          runbook: "https://docs.himalytix.com/runbooks/incident-response.md"
+
+  # ===========================================================================
+  # CELERY ALERTS
+  # ===========================================================================
+  - name: celery_alerts
+    interval: 30s
+    rules:
+      # -----------------------------------------------------------------------
+      # High Task Queue Length
+      # -----------------------------------------------------------------------
+      - alert: HighCeleryQueueLength
+        expr: |
+          redis_list_length{key="celery"} > 1000
+        for: 10m
+        labels:
+          severity: warning
+          component: celery
+        annotations:
+          summary: "High Celery task queue backlog"
+          description: "{{ $value }} tasks pending in queue (threshold: 1000)"
+          action: "Scale Celery workers or investigate stuck tasks"
+
+      # -----------------------------------------------------------------------
+      # No Active Celery Workers
+      # -----------------------------------------------------------------------
+      - alert: NoCeleryWorkers
+        expr: |
+          celery_workers_active == 0
+        for: 5m
+        labels:
+          severity: critical
+          component: celery
+        annotations:
+          summary: "No active Celery workers"
+          description: "Background tasks are not being processed"
+          action: "Restart Celery workers immediately"
+
+  # ===========================================================================
+  # BACKUP ALERTS
+  # ===========================================================================
+  - name: backup_alerts
+    interval: 1h
+    rules:
+      # -----------------------------------------------------------------------
+      # Backup Failed
+      # -----------------------------------------------------------------------
+      - alert: BackupFailed
+        expr: |
+          time() - backup_last_success_timestamp > 86400
+        for: 1h
+        labels:
+          severity: critical
+          component: backup
+        annotations:
+          summary: "Database backup failed or overdue"
+          description: "Last successful backup was {{ $value | humanizeDuration }} ago"
+          runbook: "https://docs.himalytix.com/runbooks/backup-restore.md"
+          action: "Check backup script logs and S3/GCS permissions"
+
+  # ===========================================================================
+  # SECURITY ALERTS
+  # ===========================================================================
+  - name: security_alerts
+    interval: 1m
+    rules:
+      # -----------------------------------------------------------------------
+      # Repeated Failed Login Attempts
+      # -----------------------------------------------------------------------
+      - alert: BruteForceAttack
+        expr: |
+          rate(django_http_requests_total_by_view_transport_method_total{
+            view="login",
+            status="401"
+          }[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary: "Potential brute force attack detected"
+          description: "{{ $value }} failed login attempts per second"
+          action: "Review rate limiting rules and block suspicious IPs"
+
+      # -----------------------------------------------------------------------
+      # Unusual Traffic Pattern
+      # -----------------------------------------------------------------------
+      - alert: UnusualTrafficPattern
+        expr: |
+          rate(django_http_requests_total_by_view_transport_method_total[5m]) > 
+          avg_over_time(rate(django_http_requests_total_by_view_transport_method_total[5m])[1h:5m]) * 3
+        for: 5m
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary: "Unusual traffic pattern detected"
+          description: "Traffic is 3x normal average"
+          action: "Investigate for potential DDoS or bot activity"
