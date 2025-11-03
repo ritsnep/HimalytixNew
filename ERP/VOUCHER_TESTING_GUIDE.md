@@ -264,3 +264,21 @@ If you find any issues during testing:
 **Status: ✅ READY FOR TESTING**
 
 Last Updated: October 28, 2025
+
+---
+
+## Automated Tests
+
+Run a smoke suite covering voucher list/detail, edit redirect for posted, duplicate, and delete flows.
+
+- Run all tests:
+  - `pytest`
+
+- Run only voucher tests:
+  - `pytest ERP/tests/test_voucher_crud.py -v`
+  - or `pytest -k voucher_crud -v`
+
+Notes
+- Tests use `dashboard.settings` (see `ERP/pytest.ini`).
+- `ERP/tests/conftest.py` points to PostgreSQL for CI; switch to SQLite locally if preferred.
+- Posting via the service is not covered here due to signature/field incompatibilities in this branch; validate posting manually using the steps above.

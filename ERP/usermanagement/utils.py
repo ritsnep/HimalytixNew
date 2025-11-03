@@ -1,11 +1,10 @@
 from django.core.cache import cache
-from django.db import connection
 from functools import wraps
-from django.http import HttpResponseForbidden
-from django.contrib import messages
-from django.urls import reverse
+from django.http import HttpResponseForbidden, HttpResponseRedirect
 from django.urls import reverse_lazy
-from django.http import HttpResponseRedirect
+from django.contrib import messages
+
+from usermanagement.models import Permission, UserPermission
 
 
 def permission_required(permission_codename):
@@ -19,49 +18,75 @@ def permission_required(permission_codename):
     return decorator
 
 class PermissionUtils:
+    CACHE_TIMEOUT = 300  # seconds
+
+    @staticmethod
+    def _cache_key(user_id, organization_id):
+        return f'user_permissions:{user_id}:{organization_id}'
+
     @staticmethod
     def get_user_permissions(user, organization):
         # Super admin has all permissions
-        if user.role == 'superadmin':
+        if not user or not getattr(user, 'is_authenticated', False):
+            return set()
+
+        if getattr(user, 'role', None) == 'superadmin' or getattr(user, 'is_superuser', False):
             return ['*']  # Special marker for all permissions
-            
+
         if not organization:
-            return []
-            
-        cache_key = f'user_permissions_{user.id}_{organization.id}'
+            return set()
+
+        cache_key = PermissionUtils._cache_key(user.id, organization.id)
         permissions = cache.get(cache_key)
-        
-        if permissions is None:
-            with connection.cursor() as cursor:
-                cursor.execute("""
-                    SELECT DISTINCT p.codename, p.module_id, p.entity_id, p.action
-                    FROM usermanagement_permission p
-                    JOIN usermanagement_role_permissions rp ON p.id = rp.permission_id
-                    JOIN usermanagement_role r ON rp.role_id = r.id
-                    JOIN usermanagement_userrole ur ON r.id = ur.role_id
-                    WHERE ur.user_id = %s 
-                    AND ur.organization_id = %s 
-                    AND ur.is_active = %s
-                """, [user.id, organization.id, True])
-                permissions = cursor.fetchall()
-                cache.set(cache_key, permissions, 300)  # Cache for 5 minutes
-                
-        return permissions
+        if permissions is not None:
+            return permissions
+
+        role_permissions = set(
+            Permission.objects.filter(
+                roles__user_roles__user=user,
+                roles__user_roles__organization=organization,
+                roles__user_roles__is_active=True,
+                roles__is_active=True,
+                is_active=True,
+            ).values_list('codename', flat=True)
+        )
+
+        # Apply user-specific overrides
+        overrides = UserPermission.objects.filter(
+            user=user,
+            organization=organization,
+        ).select_related('permission')
+
+        for override in overrides:
+            codename = override.permission.codename
+            if override.is_granted:
+                role_permissions.add(codename)
+            else:
+                role_permissions.discard(codename)
+
+        cache.set(cache_key, role_permissions, PermissionUtils.CACHE_TIMEOUT)
+        return role_permissions
+
     @staticmethod
     def has_permission(user, organization, module, entity, action):
         if not user or not user.is_authenticated:
             return False
-        if hasattr(user, 'role') and user.role == 'superadmin':
+        if getattr(user, 'role', None) == 'superadmin' or getattr(user, 'is_superuser', False):
             return True
-            
+
         if not organization:
             return False
-            
+
         permissions = PermissionUtils.get_user_permissions(user, organization)
         if permissions == ['*']:  # Handle super admin case
             return True
-            
-        return any(p[0] == f"{module}_{entity}_{action}" for p in permissions)
+
+        codename = f"{module}_{entity}_{action}"
+        return codename in permissions
+
+    @staticmethod
+    def invalidate_cache(user_id, organization_id):
+        cache.delete(PermissionUtils._cache_key(user_id, organization_id))
 
 def require_permission(module, entity, action):
     def decorator(view_func):

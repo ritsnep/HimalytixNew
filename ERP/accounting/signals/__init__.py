@@ -1,19 +1,66 @@
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import post_save, post_delete, pre_save
 from django.dispatch import receiver
 from django.contrib.contenttypes.models import ContentType
 from django.forms.models import model_to_dict
 from datetime import date, datetime
 from decimal import Decimal
-from ..models import Journal, JournalLine, JournalType, VoucherModeConfig, AuditLog
+from threading import local
+
+from ..models import (
+    Journal,
+    JournalLine,
+    JournalType,
+    VoucherModeConfig,
+    AuditLog,
+    FiscalYear,
+    AccountingPeriod,
+    ChartOfAccount,
+)
 from ..utils.request import get_current_user, get_client_ip, get_current_request
 
 __all__ = [
-    'log_journal_change',
-    'log_journal_delete',
-    'log_journal_line_change',
-    'log_journal_line_delete',
     'create_default_voucher_config'
 ]
+
+_audit_state = local()
+
+
+def _get_state_bucket():
+    if not hasattr(_audit_state, 'data'):
+        _audit_state.data = {}
+    return _audit_state.data
+
+
+def _state_key(sender, instance):
+    return (sender, instance.pk)
+
+
+def _capture_old_state(sender, instance):
+    if not instance.pk:
+        return
+    try:
+        old_instance = sender.objects.get(pk=instance.pk)
+    except sender.DoesNotExist:
+        return
+    _get_state_bucket()[_state_key(sender, instance)] = model_to_dict(old_instance)
+
+
+def _pop_old_state(sender, instance):
+    return _get_state_bucket().pop(_state_key(sender, instance), None)
+
+
+def _calculate_changes(previous_state, current_state):
+    if previous_state is None:
+        return {field: {'old': None, 'new': _to_json_safe(value)} for field, value in current_state.items()}
+
+    changes = {}
+    for field, new_value in current_state.items():
+        old_value = previous_state.get(field)
+        old_serialized = _to_json_safe(old_value)
+        new_serialized = _to_json_safe(new_value)
+        if old_serialized != new_serialized:
+            changes[field] = {'old': old_serialized, 'new': new_serialized}
+    return changes
 
 def _to_json_safe(value):
     """Recursively convert common Python/Django types to JSON-serializable forms."""
@@ -37,7 +84,7 @@ def _to_json_safe(value):
         return "<unserializable>"
 
 
-def log_change(instance, action):
+def log_change(instance, action, changes=None):
     """
     Generic function to log model changes to AuditLog
     """
@@ -47,54 +94,68 @@ def log_change(instance, action):
 
     if user and user.is_authenticated:
         # Build a safe changes payload
-        changes = {}
+        payload = {}
         try:
-            if hasattr(instance, 'get_changes') and callable(getattr(instance, 'get_changes')):
-                changes = instance.get_changes() or {}
+            if changes is not None:
+                payload = changes
+            elif hasattr(instance, 'get_changes') and callable(getattr(instance, 'get_changes')):
+                payload = instance.get_changes() or {}
             else:
-                # Fallbacks when no change-tracking method exists
                 if action == 'create':
-                    changes = model_to_dict(instance)
+                    payload = {'created': model_to_dict(instance)}
                 elif action == 'delete':
-                    changes = {"deleted": True}
+                    payload = {'deleted': True}
                 else:
-                    # For 'update' without diff support, snapshot current state
-                    changes = model_to_dict(instance)
+                    payload = model_to_dict(instance)
         except Exception:
-            # Never fail request on audit issue
-            changes = {"audit": "unavailable"}
+            payload = {'audit': 'unavailable'}
 
-        # Ensure JSON serializable payload
-        changes = _to_json_safe(changes)
+        payload = _to_json_safe(payload)
 
         AuditLog.objects.create(
             user=user,
             action=action,
             content_type=ContentType.objects.get_for_model(instance),
             object_id=instance.pk,
-            changes=changes,
+            changes=payload,
             ip_address=ip
         )
 
-@receiver(post_save, sender=Journal)
-def log_journal_change(sender, instance, created, **kwargs):
-    """Log journal creation and updates"""
-    log_change(instance, 'create' if created else 'update')
 
-@receiver(post_delete, sender=Journal)
-def log_journal_delete(sender, instance, **kwargs):
-    """Log journal deletion"""
-    log_change(instance, 'delete')
+def _audit_pre_save(sender, instance, **kwargs):
+    _capture_old_state(sender, instance)
 
-@receiver(post_save, sender=JournalLine)
-def log_journal_line_change(sender, instance, created, **kwargs):
-    """Log journal line creation and updates"""
-    log_change(instance, 'create' if created else 'update')
 
-@receiver(post_delete, sender=JournalLine)
-def log_journal_line_delete(sender, instance, **kwargs):
-    """Log journal line deletion"""
-    log_change(instance, 'delete')
+def _audit_post_save(sender, instance, created, **kwargs):
+    current_state = model_to_dict(instance)
+    if created:
+        log_change(instance, 'create', {'created': _to_json_safe(current_state)})
+        return
+
+    previous_state = _pop_old_state(sender, instance)
+    changes = _calculate_changes(previous_state, current_state)
+    if changes:
+        log_change(instance, 'update', changes)
+
+
+def _audit_post_delete(sender, instance, **kwargs):
+    log_change(instance, 'delete', {'deleted': _to_json_safe(model_to_dict(instance))})
+
+
+# Register audit signal handlers for audited models
+AUDITED_MODELS = (
+    Journal,
+    JournalLine,
+    FiscalYear,
+    AccountingPeriod,
+    ChartOfAccount,
+)
+
+for audited_model in AUDITED_MODELS:
+    pre_save.connect(_audit_pre_save, sender=audited_model, weak=False)
+    post_save.connect(_audit_post_save, sender=audited_model, weak=False)
+    post_delete.connect(_audit_post_delete, sender=audited_model, weak=False)
+
 
 @receiver(post_save, sender=JournalType)
 def create_default_voucher_config(sender, instance, created, **kwargs):

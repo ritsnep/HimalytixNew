@@ -211,23 +211,37 @@ class LoginLog(models.Model):
             models.Index(fields=['user', 'login_datetime']),
             models.Index(fields=['session_id']),
         ]
+PERMISSION_ACTION_CHOICES = [
+    ('view', 'View'),
+    ('add', 'Add'),
+    ('change', 'Change'),
+    ('delete', 'Delete'),
+    ('submit', 'Submit'),
+    ('approve', 'Approve'),
+    ('reject', 'Reject'),
+    ('post', 'Post'),
+    ('reverse', 'Reverse'),
+    ('modify', 'Modify'),
+    ('special', 'Special'),
+    ('submit_journal', 'Submit Journal'),
+    ('approve_journal', 'Approve Journal'),
+    ('reject_journal', 'Reject Journal'),
+    ('post_journal', 'Post Journal'),
+    ('reverse_journal', 'Reverse Journal'),
+    ('close_period', 'Close Period'),
+    ('reopen_period', 'Reopen Period'),
+    ('close_fiscalyear', 'Close Fiscal Year'),
+    ('reopen_fiscalyear', 'Reopen Fiscal Year'),
+]
+
+
 class Permission(models.Model):
     name = models.CharField(max_length=100)
     codename = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     module = models.ForeignKey(Module, on_delete=models.CASCADE, related_name='permissions')
     entity = models.ForeignKey(Entity, on_delete=models.CASCADE, related_name='permissions')
-    action = models.CharField(max_length=20, choices=[
-        ('view', 'View'),
-        ('add', 'Add'),
-        ('change', 'Change'),
-        ('delete', 'Delete'),
-        ('approve', 'Approve'),
-        ('reject', 'Reject'),
-        ('submit', 'Submit'),
-        ('modify', 'Modify'),
-        ('special', 'Special')
-    ])
+    action = models.CharField(max_length=50, choices=PERMISSION_ACTION_CHOICES)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

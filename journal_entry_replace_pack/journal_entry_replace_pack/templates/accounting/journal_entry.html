@@ -1,0 +1,34 @@
+{# 
+  Journal Entry (Excel-like UI) — Django Template
+  ------------------------------------------------
+  Replace your existing Journal Entry template with this file.
+  IMPORTANT: If your project uses a different base template or block names,
+  change `{% extends "base.html" %}` and the block names accordingly.
+#}
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Journal Entry{% endblock %}
+
+{# Optional: include Tailwind via CDN if your base doesn't already include it. #}
+{% block head_extra %}
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="{% static 'accounting/css/voucher_entry.css' %}">
+{% endblock %}
+
+{% block content %}
+<div 
+  id="app"
+  class="p-4 md:p-6 lg:p-8 max-w-[1400px] mx-auto"
+  data-endpoint-save="{% url 'accounting:journal_save_draft' %}"
+  data-endpoint-submit="{% url 'accounting:journal_submit' %}"
+  data-endpoint-approve="{% url 'accounting:journal_approve' %}"
+></div>
+{% endblock %}
+
+{% block body_extra %}
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  {# Optional: HTMX if you plan to add hx-* attributes later #}
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="{% static 'accounting/js/voucher_entry.js' %}" defer></script>
+{% endblock %}

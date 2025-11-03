@@ -62,7 +62,7 @@ class JournalEntryService:
             journal_type = journal_data.get('journal_type', journal.journal_type)
             config = self._get_voucher_mode_config(journal_type)
 
-            if not self._has_permission('modify_journal'):
+            if not self._has_permission('change'):
                 raise PermissionError("You do not have permission to update journal entries.")
 
             if journal.status != 'draft':
@@ -182,14 +182,20 @@ class JournalEntryService:
 
     def _has_permission(self, action: str) -> bool:
         """Checks if the user has the required permission."""
-        if action in ['submit_journal', 'modify_journal']:
-            return PermissionUtils.has_permission(
-                self.user,
-                self.organization,
-                'accounting',
-                'journal',
-                action
-            )
+        # Map custom actions to Django permission codenames
+        perm_map = {
+            'add': 'add_journal',
+            'change': 'change_journal',
+            'delete': 'delete_journal',
+            'view': 'view_journal',
+            'submit_journal': 'can_submit_for_approval',
+            'approve_journal': 'can_approve_journal',
+            'reject_journal': 'can_reject_journal',
+            'post_journal': 'can_post_journal',
+        }
+        codename = perm_map.get(action)
+        if codename and self.user.has_perm(f'accounting.{codename}'):
+            return True
         return PermissionUtils.has_permission(
             self.user,
             self.organization,
@@ -204,33 +210,36 @@ class JournalEntryService:
             raise PermissionError("You do not have permission to submit journal entries.")
         if journal.status != 'draft':
             raise ValueError("Only draft journals can be submitted.")
-        journal.status = 'awaiting-approval'
-        journal.save()
+        journal.status = 'awaiting_approval'
+        journal.updated_by = self.user
+        journal.save(update_fields=['status', 'updated_by', 'updated_at'])
         log_audit_event(self.user, journal, 'submit')
 
     def approve(self, journal: Journal):
         """Approves a journal entry."""
-        if not self._has_permission('approve'):
+        if not self._has_permission('approve_journal'):
             raise PermissionError("You do not have permission to approve journal entries.")
-        if journal.status != 'awaiting-approval':
+        if journal.status != 'awaiting_approval':
             raise ValueError("Only journals awaiting approval can be approved.")
         journal.status = 'approved'
-        journal.save()
+        journal.updated_by = self.user
+        journal.save(update_fields=['status', 'updated_by', 'updated_at'])
         log_audit_event(self.user, journal, 'approve')
 
     def reject(self, journal: Journal):
         """Rejects a journal entry."""
-        if not self._has_permission('reject'):
+        if not self._has_permission('reject_journal'):
             raise PermissionError("You do not have permission to reject journal entries.")
-        if journal.status != 'awaiting-approval':
+        if journal.status != 'awaiting_approval':
             raise ValueError("Only journals awaiting approval can be rejected.")
         journal.status = 'rejected'
-        journal.save()
+        journal.updated_by = self.user
+        journal.save(update_fields=['status', 'updated_by', 'updated_at'])
         log_audit_event(self.user, journal, 'reject')
 
     def post(self, journal: Journal):
         """Posts a journal to the general ledger."""
-        if not self._has_permission('post'):
+        if not self._has_permission('post_journal'):
             raise PermissionError("You do not have permission to post journal entries.")
         if journal.status != 'approved':
             raise ValueError("Only approved journals can be posted.")
@@ -245,7 +254,8 @@ class JournalEntryService:
                 journal.journal_number = jt.get_next_journal_number(journal.period)
 
             journal.status = 'posted'
-            journal.save()
+            journal.updated_by = self.user
+            journal.save(update_fields=['status', 'updated_by', 'updated_at'])
 
             log_audit_event(self.user, journal, 'post')
 

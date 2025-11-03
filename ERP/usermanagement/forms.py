@@ -23,6 +23,27 @@ class DasonLoginForm(AuthenticationForm):
             'placeholder': 'Enter your password',
             'id': 'password-input'
         })
+        self.fields['otp_token'] = forms.CharField(
+            required=False,
+            widget=forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'MFA code (if enabled)',
+                'id': 'otp-input'
+            })
+        )
+
+    def clean(self):
+        try:
+            return super().clean()
+        except forms.ValidationError as exc:
+            failure_reason = getattr(getattr(self, 'request', None), '_auth_failure_reason', None)
+            if failure_reason == 'mfa_required':
+                raise forms.ValidationError('Enter the authentication code from your authenticator app.', code='mfa_required')
+            if failure_reason == 'mfa_invalid':
+                raise forms.ValidationError('Invalid authentication code.', code='mfa_invalid')
+            if failure_reason == 'account_locked':
+                raise forms.ValidationError('Your account is locked. Please try again later.', code='account_locked')
+            raise exc
 
 
 class LoginForm(forms.Form):

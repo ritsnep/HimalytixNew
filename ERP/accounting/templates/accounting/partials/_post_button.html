@@ -1,4 +1,5 @@
-{% if journal.status == 'approved' and perms.accounting.post_journal %}
+{% load permission_tags %}
+{% if journal.status == 'approved' and user|has_permission:'accounting_journal_post_journal' %}
     <button type="button" class="btn btn-sm btn-success d-flex align-items-center gap-1" hx-post="{% url 'accounting:journal_post' pk=journal.pk %}" hx-target="#post-button-container" hx-swap="outerHTML">
         <i class="fas fa-check-circle"></i> Post
     </button>

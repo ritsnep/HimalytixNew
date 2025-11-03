@@ -1,19 +1,43 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required, permission_required
-from accounting.models import VoucherModeConfig, VoucherUDFConfig
-from .models import VoucherSchema
-from .utils import get_active_schema, save_schema
-from django.views.decorators.http import require_http_methods, require_POST
-from django.contrib import messages
-from django.http import JsonResponse, HttpResponseBadRequest
-from django.template.loader import render_to_string
+from django.views.decorators.http import require_http_methods, require_POST, require_GET
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib import messages
+from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
+from django.template.loader import render_to_string
+from django.utils.decorators import method_decorator
+from django.utils import timezone
+from django.db import transaction
+from django.db.models import Q, Count, Max
+from django.core.exceptions import PermissionDenied, ValidationError
+
+from rest_framework import viewsets, status as drf_status, permissions
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+
+from accounting.models import VoucherModeConfig, VoucherUDFConfig
 from accounting.forms_factory import build_form
+from .models import VoucherSchema, SchemaTemplate, VoucherSchemaStatus
+from .serializers import (
+    VoucherUDFConfigSerializer, VoucherSchemaSerializer,
+    SchemaTemplateSerializer, VoucherModeConfigListSerializer
+)
+from .utils import get_active_schema, save_schema
+from accounting.models import default_ui_schema
+from .udf_extensions import (
+    get_default_layout_config, get_default_visibility_rules,
+    get_default_calculated_config, get_default_extended_validation
+)
+
 import json
 import logging
 import re
-from django.utils.decorators import method_decorator
+import difflib
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 # Create your views here.
 
@@ -116,6 +140,64 @@ def designer(request, config_id):
     schema_json = json.dumps(schema)
 
     return render(request, 'forms_designer/designer.html', {
+        'config': config,
+        'schema': schema,
+        'schema_json': schema_json,
+        'udf_header': udf_header,
+        'udf_line': udf_line,
+    })
+
+@login_required
+@permission_required('forms_designer.change_voucherschema', raise_exception=True)
+def designer_v2(request, config_id):
+    """Enhanced designer with modern UI and advanced features"""
+    config = get_object_or_404(VoucherModeConfig, config_id=config_id)
+    schema = get_active_schema(config)
+    
+    # Ensure schema has proper structure
+    if not isinstance(schema, dict):
+        schema = {'header': [], 'lines': []}
+    if 'header' not in schema:
+        schema['header'] = []
+    if 'lines' not in schema:
+        schema['lines'] = []
+    
+    # Convert dict schemas to list format
+    for section in ['header', 'lines']:
+        if isinstance(schema[section], dict):
+            schema[section] = [
+                {**field, 'name': name} for name, field in schema[section].items()
+            ]
+    
+    # If still empty after conversion, fall back to default_ui_schema for initial load
+    if (not schema['header'] and not schema['lines']):
+        try:
+            base = default_ui_schema()
+            if isinstance(base.get('header'), dict):
+                schema['header'] = [
+                    {**f, 'name': n} for n, f in base['header'].items()
+                ]
+            if isinstance(base.get('lines'), dict):
+                schema['lines'] = [
+                    {**f, 'name': n} for n, f in base['lines'].items()
+                ]
+        except Exception:
+            # Keep empty if any error; UI will still function
+            pass
+
+    # Fetch UDFs and split them by scope
+    udf_qs = VoucherUDFConfig.objects.filter(
+        voucher_mode=config, 
+        is_active=True, 
+        archived_at__isnull=True
+    )
+    udf_header = list(udf_qs.filter(scope='header').order_by('display_order', 'field_name'))
+    udf_line = list(udf_qs.filter(scope='line').order_by('display_order', 'field_name'))
+    
+    # Convert schema to JSON for JavaScript
+    schema_json = json.dumps(schema)
+    
+    return render(request, 'forms_designer/designer_v2.html', {
         'config': config,
         'schema': schema,
         'schema_json': schema_json,

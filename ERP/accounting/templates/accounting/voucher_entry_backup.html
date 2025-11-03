@@ -1,0 +1,996 @@
+{% extends "partials/base.html" %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    :root {
+        --primary-color: #4e73df;
+        --success-color: #1cc88a;
+        --danger-color: #e74a3b;
+        --warning-color: #f6c23e;
+        --info-color: #36b9cc;
+        --light-bg: #f8f9fc;
+        --border-color: #e3e6f0;
+    }
+
+    .voucher-entry-container {
+        max-width: 1600px;
+        margin: 0 auto;
+        padding: 0 15px;
+    }
+
+    /* Page Header */
+    .page-header {
+        background: linear-gradient(135deg, var(--primary-color) 0%, #224abe 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 0.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .page-header h1 {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 600;
+    }
+
+    .page-header .subtitle {
+        opacity: 0.9;
+        margin-top: 0.5rem;
+    }
+
+    /* Configuration Selector */
+    .config-selector {
+        background: white;
+        border: 2px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .config-selector label {
+        font-weight: 600;
+        color: #5a5c69;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Section Cards */
+    .section-card {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+    }
+
+    .section-header {
+        background: linear-gradient(90deg, var(--primary-color) 0%, #3a5dc7 100%);
+        color: white;
+        padding: 1rem 1.5rem;
+        font-weight: 600;
+        font-size: 1.1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .section-body {
+        padding: 1.5rem;
+    }
+
+    /* Form Groups */
+    .form-group label {
+        font-weight: 600;
+        color: #5a5c69;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .form-group label .required {
+        color: var(--danger-color);
+        margin-left: 2px;
+    }
+
+    .form-control {
+        border: 1px solid #d1d3e2;
+        border-radius: 0.35rem;
+        padding: 0.625rem 0.75rem;
+        font-size: 0.95rem;
+        transition: all 0.15s ease-in-out;
+    }
+
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.15);
+    }
+
+    /* Line Items */
+    .line-items-container {
+        max-height: 500px;
+        overflow-y: auto;
+        padding-right: 10px;
+    }
+
+    .line-item-row {
+        background: var(--light-bg);
+        border: 2px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        position: relative;
+        transition: all 0.2s ease;
+    }
+
+    .line-item-row:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+        border-color: var(--primary-color);
+        transform: translateY(-2px);
+    }
+
+    .line-number-badge {
+        position: absolute;
+        top: -12px;
+        left: 15px;
+        background: var(--primary-color);
+        color: white;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.9rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        z-index: 10;
+    }
+
+    .remove-line-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border-radius: 50%;
+        background: var(--danger-color);
+        border: none;
+        color: white;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        z-index: 10;
+    }
+
+    .remove-line-btn:hover {
+        background: #c9302c;
+        transform: rotate(90deg);
+    }
+
+    .line-item-row .row {
+        margin-top: 0.5rem;
+    }
+
+    /* Add Line Button */
+    .btn-add-line {
+        border: 3px dashed var(--primary-color);
+        background: white;
+        color: var(--primary-color);
+        padding: 1.25rem;
+        width: 100%;
+        font-weight: 600;
+        font-size: 1.05rem;
+        border-radius: 0.5rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .btn-add-line:hover {
+        background: var(--primary-color);
+        color: white;
+        border-style: solid;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(78, 115, 223, 0.3);
+    }
+
+    .btn-add-line i {
+        font-size: 1.2rem;
+        margin-right: 0.5rem;
+    }
+
+    /* Totals Display */
+    .totals-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }
+
+    .total-item {
+        text-align: center;
+        padding: 1rem;
+    }
+
+    .total-label {
+        font-size: 0.85rem;
+        opacity: 0.9;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+    }
+
+    .total-amount {
+        font-size: 2rem;
+        font-weight: 700;
+        font-family: 'Courier New', monospace;
+    }
+
+    .balance-indicator {
+        font-size: 1.1rem;
+        padding: 0.75rem 1.5rem;
+        border-radius: 2rem;
+        display: inline-block;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .balanced {
+        background: var(--success-color);
+        color: white;
+        animation: pulse-success 2s infinite;
+    }
+
+    .unbalanced {
+        background: var(--danger-color);
+        color: white;
+        animation: shake 0.5s;
+    }
+
+    @keyframes pulse-success {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(28, 200, 138, 0.7); }
+        50% { box-shadow: 0 0 0 10px rgba(28, 200, 138, 0); }
+    }
+
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+
+    /* Action Buttons */
+    .action-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .btn-save-voucher {
+        font-size: 1.1rem;
+        padding: 1rem 2rem;
+        font-weight: 600;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 8px rgba(28, 200, 138, 0.3);
+        transition: all 0.3s ease;
+    }
+
+    .btn-save-voucher:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(28, 200, 138, 0.4);
+    }
+
+    .btn-save-voucher:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    /* Helper Messages */
+    .help-text {
+        font-size: 0.85rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+
+    .error-text {
+        font-size: 0.85rem;
+        color: var(--danger-color);
+        margin-top: 0.25rem;
+        font-weight: 500;
+    }
+
+    /* Loading State */
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+
+    .loading-overlay.active {
+        display: flex;
+    }
+
+    .spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(255,255,255,0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .page-header h1 {
+            font-size: 1.5rem;
+        }
+        
+        .total-amount {
+            font-size: 1.5rem;
+        }
+        
+        .line-item-row {
+            padding: 1rem;
+        }
+        
+        .section-body {
+            padding: 1rem;
+        }
+    }
+
+    /* Scrollbar Styling */
+    .line-items-container::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .line-items-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+
+    .line-items-container::-webkit-scrollbar-thumb {
+        background: var(--primary-color);
+        border-radius: 10px;
+    }
+
+    .line-items-container::-webkit-scrollbar-thumb:hover {
+        background: #224abe;
+    }
+
+    /* Keyboard Shortcut Hints */
+    .keyboard-hint {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: rgba(0,0,0,0.8);
+        color: white;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.85rem;
+        z-index: 1000;
+        display: none;
+    }
+
+    .keyboard-hint.show {
+        display: block;
+    }
+
+    .kbd {
+        background: #333;
+        padding: 0.2rem 0.5rem;
+        border-radius: 0.25rem;
+        font-family: monospace;
+        margin: 0 0.2rem;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+$(document).ready(function() {
+    let lineCounter = {{ line_formset.total_form_count|default:1 }};
+    
+    // Initialize Select2 for all select dropdowns
+    function initializeSelect2() {
+        $('.account-select').select2({
+            placeholder: 'Select Account',
+            allowClear: true,
+            width: '100%',
+            theme: 'default'
+        });
+    }
+    
+    initializeSelect2();
+    
+    // Add new line
+    function addNewLine() {
+        const accounts = {{ accounts|safe }};
+        let accountOptions = '<option value="">Select Account</option>';
+        {% for account in accounts %}
+        accountOptions += `<option value="{{ account.id }}">{{ account.account_code }} - {{ account.account_name }}</option>`;
+        {% endfor %}
+        
+        const newLineHtml = `
+            <div class="line-item-row" data-line-index="${lineCounter}">
+                <span class="line-number-badge">${lineCounter + 1}</span>
+                <button type="button" class="remove-line-btn" title="Remove Line">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="small mb-1">Account <span class="required">*</span></label>
+                        <select name="lines-${lineCounter}-account" class="form-control form-control-sm account-select" required>
+                            ${accountOptions}
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="small mb-1">Description</label>
+                        <input type="text" name="lines-${lineCounter}-description" class="form-control form-control-sm" placeholder="Enter description">
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label class="small mb-1">Debit</label>
+                        <input type="number" step="0.01" name="lines-${lineCounter}-debit_amount" 
+                               class="form-control form-control-sm debit-input" value="0.00" placeholder="0.00">
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label class="small mb-1">Credit</label>
+                        <input type="number" step="0.01" name="lines-${lineCounter}-credit_amount" 
+                               class="form-control form-control-sm credit-input" value="0.00" placeholder="0.00">
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        $('#lines-container').append(newLineHtml);
+        lineCounter++;
+        updateFormManagement();
+        initializeSelect2();
+        updateTotals();
+        renumberLines();
+    }
+    
+    $('#add-line-btn, #add-line-btn-bottom').click(function(e) {
+        e.preventDefault();
+        addNewLine();
+    });
+
+    // Remove line
+    $(document).on('click', '.remove-line-btn', function() {
+        if ($('.line-item-row').length > 1) {
+            $(this).closest('.line-item-row').fadeOut(300, function() {
+                $(this).remove();
+                renumberLines();
+                updateFormManagement();
+                updateTotals();
+            });
+        } else {
+            showNotification('At least one line item is required', 'warning');
+        }
+    });
+
+    // Update totals on input
+    $(document).on('input', '.debit-input, .credit-input', function() {
+        updateTotals();
+    });
+
+    // Ensure only debit or credit has value
+    $(document).on('input', '.debit-input', function() {
+        const val = parseFloat($(this).val());
+        if (val > 0) {
+            $(this).closest('.row').find('.credit-input').val('0.00');
+        }
+        updateTotals();
+    });
+
+    $(document).on('input', '.credit-input', function() {
+        const val = parseFloat($(this).val());
+        if (val > 0) {
+            $(this).closest('.row').find('.debit-input').val('0.00');
+        }
+        updateTotals();
+    });
+
+    // Renumber lines
+    function renumberLines() {
+        $('.line-item-row').each(function(index) {
+            $(this).find('.line-number-badge').text(index + 1);
+            $(this).attr('data-line-index', index);
+        });
+    }
+
+    // Update form management
+    function updateFormManagement() {
+        const totalForms = $('.line-item-row').length;
+        $('#id_lines-TOTAL_FORMS').val(totalForms);
+    }
+
+    // Update totals
+    function updateTotals() {
+        let totalDebit = 0;
+        let totalCredit = 0;
+
+        $('.debit-input').each(function() {
+            const value = parseFloat($(this).val()) || 0;
+            totalDebit += value;
+        });
+
+        $('.credit-input').each(function() {
+            const value = parseFloat($(this).val()) || 0;
+            totalCredit += value;
+        });
+
+        $('#total-debit').text(totalDebit.toFixed(2));
+        $('#total-credit').text(totalCredit.toFixed(2));
+
+        const diff = Math.abs(totalDebit - totalCredit);
+        const $indicator = $('#balance-indicator');
+        const $submitBtn = $('#submit-btn');
+        
+        if (diff < 0.01) {
+            $indicator.removeClass('unbalanced').addClass('balanced');
+            $indicator.html('<i class="fas fa-check-circle"></i> Balanced');
+            $submitBtn.prop('disabled', false);
+        } else {
+            $indicator.removeClass('balanced').addClass('unbalanced');
+            $indicator.html(`<i class="fas fa-exclamation-triangle"></i> Unbalanced (Diff: ${diff.toFixed(2)})`);
+            $submitBtn.prop('disabled', true);
+        }
+    }
+
+    // Form submission validation
+    $('#voucher-entry-form').submit(function(e) {
+        const totalDebit = parseFloat($('#total-debit').text());
+        const totalCredit = parseFloat($('#total-credit').text());
+        const diff = Math.abs(totalDebit - totalCredit);
+        
+        if (diff >= 0.01) {
+            e.preventDefault();
+            showNotification('Debit and Credit must be balanced before submitting', 'error');
+            return false;
+        }
+        
+        // Show loading overlay
+        $('.loading-overlay').addClass('active');
+    });
+
+    // Show notification
+    function showNotification(message, type = 'info') {
+        const icons = {
+            success: 'check-circle',
+            error: 'exclamation-circle',
+            warning: 'exclamation-triangle',
+            info: 'info-circle'
+        };
+        
+        const colors = {
+            success: '#1cc88a',
+            error: '#e74a3b',
+            warning: '#f6c23e',
+            info: '#36b9cc'
+        };
+        
+        const notification = $(`
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert" style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+                <i class="fas fa-${icons[type]}"></i> <strong>${message}</strong>
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        `);
+        
+        $('body').append(notification);
+        setTimeout(() => notification.fadeOut(() => notification.remove()), 5000);
+    }
+
+    // Keyboard shortcuts
+    $(document).keydown(function(e) {
+        // Ctrl/Cmd + Enter to save
+        if ((e.ctrlKey || e.metaKey) && e.keyCode === 13) {
+            e.preventDefault();
+            if (!$('#submit-btn').prop('disabled')) {
+                $('#voucher-entry-form').submit();
+            }
+        }
+        
+        // Ctrl/Cmd + L to add line
+        if ((e.ctrlKey || e.metaKey) && e.keyCode === 76) {
+            e.preventDefault();
+            addNewLine();
+        }
+        
+        // Show keyboard hints on ? key
+        if (e.keyCode === 191 && e.shiftKey) {
+            e.preventDefault();
+            $('.keyboard-hint').toggleClass('show');
+        }
+    });
+
+    // Initial calculation
+    updateTotals();
+    renumberLines();
+    
+    // Auto-save draft (optional)
+    let autoSaveTimer;
+    $('#voucher-entry-form').on('input', function() {
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = setTimeout(function() {
+            console.log('Auto-save would trigger here');
+            // Implement auto-save to localStorage if needed
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}
+    $('#add-line-btn').click(function(e) {
+        e.preventDefault();
+        const newLineHtml = `
+            <div class="line-item-row" data-line-index="${lineCounter}">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="line-number">${lineCounter + 1}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="small mb-1">Account *</label>
+                        <select name="lines-${lineCounter}-account" class="form-control form-control-sm account-select" required>
+                            <option value="">Select Account</option>
+                            {% for account in accounts %}
+                            <option value="{{ account.id }}">{{ account.account_code }} - {{ account.account_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="small mb-1">Description</label>
+                        <input type="text" name="lines-${lineCounter}-description" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="small mb-1">Debit</label>
+                        <input type="number" step="0.01" name="lines-${lineCounter}-debit_amount" 
+                               class="form-control form-control-sm debit-input" value="0.00">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="small mb-1">Credit</label>
+                        <input type="number" step="0.01" name="lines-${lineCounter}-credit_amount" 
+                               class="form-control form-control-sm credit-input" value="0.00">
+                    </div>
+                    <div class="col-auto">
+                        <label class="small mb-1 d-block">&nbsp;</label>
+                        <button type="button" class="btn btn-sm btn-danger remove-line-btn">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        $('#lines-container').append(newLineHtml);
+        lineCounter++;
+        updateFormManagement();
+        updateTotals();
+    });
+
+    // Remove line
+    $(document).on('click', '.remove-line-btn', function() {
+        if ($('.line-item-row').length > 1) {
+            $(this).closest('.line-item-row').remove();
+            renumberLines();
+            updateFormManagement();
+            updateTotals();
+        } else {
+            alert('At least one line is required.');
+        }
+    });
+
+    // Update totals on input
+    $(document).on('input', '.debit-input, .credit-input', function() {
+        updateTotals();
+    });
+
+    // Ensure only debit or credit has value
+    $(document).on('input', '.debit-input', function() {
+        if (parseFloat($(this).val()) > 0) {
+            $(this).closest('.row').find('.credit-input').val('0.00');
+        }
+    });
+
+    $(document).on('input', '.credit-input', function() {
+        if (parseFloat($(this).val()) > 0) {
+            $(this).closest('.row').find('.debit-input').val('0.00');
+        }
+    });
+
+    function renumberLines() {
+        $('.line-item-row').each(function(index) {
+            $(this).find('.line-number').text(index + 1);
+            $(this).attr('data-line-index', index);
+        });
+    }
+
+    function updateFormManagement() {
+        const totalForms = $('.line-item-row').length;
+        $('#id_lines-TOTAL_FORMS').val(totalForms);
+    }
+
+    function updateTotals() {
+        let totalDebit = 0;
+        let totalCredit = 0;
+
+        $('.debit-input').each(function() {
+            const value = parseFloat($(this).val()) || 0;
+            totalDebit += value;
+        });
+
+        $('.credit-input').each(function() {
+            const value = parseFloat($(this).val()) || 0;
+            totalCredit += value;
+        });
+
+        $('#total-debit').text(totalDebit.toFixed(2));
+        $('#total-credit').text(totalCredit.toFixed(2));
+
+        const diff = Math.abs(totalDebit - totalCredit);
+        if (diff < 0.01) {
+            $('#balance-indicator').removeClass('unbalanced').addClass('balanced');
+            $('#balance-indicator').html('<i class="fas fa-check-circle"></i> Balanced');
+            $('#submit-btn').prop('disabled', false);
+        } else {
+            $('#balance-indicator').removeClass('balanced').addClass('unbalanced');
+            $('#balance-indicator').html('<i class="fas fa-exclamation-triangle"></i> Unbalanced (Diff: ' + diff.toFixed(2) + ')');
+            $('#submit-btn').prop('disabled', true);
+        }
+    }
+
+    // Form submission validation
+    $('#voucher-entry-form').submit(function(e) {
+        const totalDebit = parseFloat($('#total-debit').text());
+        const totalCredit = parseFloat($('#total-credit').text());
+        const diff = Math.abs(totalDebit - totalCredit);
+        
+        if (diff >= 0.01) {
+            e.preventDefault();
+            alert('Debit and Credit must be balanced before submitting.');
+            return false;
+        }
+    });
+
+    // Initial calculation
+    updateTotals();
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid voucher-entry-container">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-file-invoice"></i> {{ page_title|default:"Create New Voucher" }}
+        </h1>
+        <a href="{% url 'accounting:voucher_list' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to List
+        </a>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle"></i> <strong>Error!</strong> {{ error }}
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    {% endif %}
+
+    {% if warning %}
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-triangle"></i> <strong>Warning!</strong> {{ warning }}
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    {% endif %}
+
+    <!-- Voucher Configuration Selector -->
+    {% if voucher_configs %}
+    <div class="config-selector">
+        <form method="get" id="config-form">
+            <div class="row align-items-center">
+                <div class="col-md-4">
+                    <label class="font-weight-bold mb-2">
+                        <i class="fas fa-cog"></i> Select Voucher Configuration:
+                    </label>
+                </div>
+                <div class="col-md-6">
+                    <select name="config_id" class="form-control" onchange="document.getElementById('config-form').submit();">
+                        {% for vc in voucher_configs %}
+                        <option value="{{ vc.pk }}" {% if config and config.pk == vc.pk %}selected{% endif %}>
+                            {{ vc.name }} - {{ vc.journal_type.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <i class="fas fa-sync"></i> Change
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if config and header_form and line_formset %}
+    <form method="post" id="voucher-entry-form" action="{{ form_action|default:'' }}">
+        {% csrf_token %}
+        {{ line_formset.management_form }}
+
+        <!-- Header Information -->
+        <div class="card shadow mb-4">
+            <div class="section-header">
+                <i class="fas fa-info-circle"></i> Voucher Header Information
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for field in header_form %}
+                        {% if not field.is_hidden %}
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ field.id_for_label }}" class="font-weight-bold">
+                                {{ field.label }}
+                                {% if field.field.required %}
+                                    <span class="text-danger">*</span>
+                                {% endif %}
+                            </label>
+                            {% render_field field class="form-control" %}
+                            {% if field.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in field.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            {% if field.help_text %}
+                                <small class="form-text text-muted">{{ field.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                            {{ field }}
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Journal Lines -->
+        <div class="card shadow mb-4">
+            <div class="section-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-list"></i> Journal Line Items</span>
+                <button type="button" id="add-line-btn" class="btn btn-sm btn-light">
+                    <i class="fas fa-plus"></i> Add Line
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="lines-container">
+                    {% for form in line_formset %}
+                        <div class="line-item-row" data-line-index="{{ forloop.counter0 }}">
+                            <div class="row align-items-center">
+                                <div class="col-auto">
+                                    <span class="line-number">{{ forloop.counter }}</span>
+                                </div>
+                                {% for field in form %}
+                                    {% if not field.is_hidden %}
+                                    <div class="col-md-{% if field.name == 'account' %}3{% elif field.name == 'description' %}3{% elif field.name == 'debit_amount' or field.name == 'credit_amount' %}2{% else %}2{% endif %}">
+                                        <label class="small mb-1">
+                                            {{ field.label }}
+                                            {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+                                        </label>
+                                        {% if field.name == 'debit_amount' %}
+                                            {% render_field field class="form-control form-control-sm debit-input" %}
+                                        {% elif field.name == 'credit_amount' %}
+                                            {% render_field field class="form-control form-control-sm credit-input" %}
+                                        {% else %}
+                                            {% render_field field class="form-control form-control-sm" %}
+                                        {% endif %}
+                                        {% if field.errors %}
+                                            <div class="text-danger small">
+                                                {% for error in field.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    {% else %}
+                                        {{ field }}
+                                    {% endif %}
+                                {% endfor %}
+                                <div class="col-auto">
+                                    <label class="small mb-1 d-block">&nbsp;</label>
+                                    <button type="button" class="btn btn-sm btn-danger remove-line-btn">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Add Line Button -->
+                <button type="button" id="add-line-btn-bottom" class="btn-add-line mt-3">
+                    <i class="fas fa-plus-circle"></i> Add Another Line
+                </button>
+            </div>
+        </div>
+
+        <!-- Totals and Actions -->
+        <div class="row">
+            <div class="col-md-8">
+                <div class="totals-card">
+                    <div class="row">
+                        <div class="col-md-4 text-center">
+                            <div class="small">Total Debit</div>
+                            <div class="total-amount" id="total-debit">0.00</div>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="small">Total Credit</div>
+                            <div class="total-amount" id="total-credit">0.00</div>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="small mb-2">Balance Status</div>
+                            <div class="balance-indicator balanced" id="balance-indicator">
+                                <i class="fas fa-check-circle"></i> Balanced
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <button type="submit" id="submit-btn" class="btn btn-success btn-lg btn-block mb-2">
+                            <i class="fas fa-save"></i> Save Voucher
+                        </button>
+                        <a href="{% url 'accounting:voucher_list' %}" class="btn btn-secondary btn-block">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+    {% else %}
+        <div class="alert alert-info" role="alert">
+            <h4 class="alert-heading">
+                <i class="fas fa-info-circle"></i> Configuration Required
+            </h4>
+            <p>Please select or create a voucher configuration to proceed with voucher entry.</p>
+            <hr>
+            <p class="mb-0">
+                <a href="{% url 'accounting:voucher_config_list' %}" class="btn btn-primary">
+                    <i class="fas fa-cog"></i> Manage Voucher Configurations
+                </a>
+            </p>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+// Connect second add button to main add function
+$('#add-line-btn-bottom').click(function(e) {
+    e.preventDefault();
+    $('#add-line-btn').click();
+});
+</script>
+{% endblock %}

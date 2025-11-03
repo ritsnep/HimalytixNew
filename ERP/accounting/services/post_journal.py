@@ -24,8 +24,11 @@ class JournalPostingError(JournalError):
     pass
 
 
-def post_journal(journal: Journal) -> Journal:
-    """Post a draft journal and create GL entries."""
+def post_journal(journal: Journal, user=None) -> Journal:
+    """Post a draft journal and create GL entries.
+
+    Accepts an optional user to record as the poster.
+    """
     logger.info(
         "post_journal start journal_id=%s",
         journal.pk,
@@ -113,16 +116,14 @@ def post_journal(journal: Journal) -> Journal:
                 debit_amount=line.debit_amount,
                 credit_amount=line.credit_amount,
                 balance_after=account.current_balance,
-                currency_code=line.currency_code,
-                exchange_rate=line.exchange_rate,
+                currency_code=journal.currency_code,
+                exchange_rate=journal.exchange_rate,
                 functional_debit_amount=line.functional_debit_amount,
                 functional_credit_amount=line.functional_credit_amount,
                 department=line.department,
-                project=line.project_id,
+                project=line.project,
                 cost_center=line.cost_center,
                 description=line.description,
-                source_module=journal.source_module,
-                source_reference=journal.source_reference,
             )
             logger.info(
                 "GL entry created for journal line %s",
@@ -132,6 +133,8 @@ def post_journal(journal: Journal) -> Journal:
 
         journal.status = "posted"
         journal.posted_at = timezone.now()
+        if hasattr(journal, "posted_by") and user is not None:
+            journal.posted_by = user
         journal.save()
         logger.info(
             "Journal %s successfully posted",

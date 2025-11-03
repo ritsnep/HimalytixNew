@@ -1,7 +1,8 @@
+{% load permission_tags %}
 {% comment %} Form Actions (Submit, Save as Draft, Cancel) {% endcomment %}
 <div class="row mt-4">
     <div class="col-12">
-        {% if perms.accounting.journal_add %}
+        {% if user|has_permission:'accounting_journal_add' %}
             <button type="submit" class="btn btn-primary">Save Voucher</button>
             <button type="submit" name="save_draft" class="btn btn-secondary">Save as Draft</button>
         {% else %}

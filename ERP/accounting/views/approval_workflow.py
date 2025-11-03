@@ -38,6 +38,7 @@ except ImportError:
     ApprovalDecision = None
     ApprovalNotification = None
 from usermanagement.models import Organization
+from usermanagement.utils import PermissionUtils
 from accounting.mixins import UserOrganizationMixin
 from utils.audit_logging import log_action
 
@@ -62,6 +63,18 @@ class ApprovalQueueView(UserOrganizationMixin, ListView):
     template_name = 'accounting/approval/approval_queue.html'
     paginate_by = 25
     context_object_name = 'pending_approvals'
+
+    def dispatch(self, request, *args, **kwargs):
+        self.organization = self.get_organization()
+        if not self.organization:
+            messages.warning(request, _('Please select an active organization to continue.'))
+            return redirect('select_organization')
+
+        if not PermissionUtils.has_permission(request.user, self.organization, 'accounting', 'journal', 'approve_journal'):
+            messages.error(request, _('You do not have permission to review approvals.'))
+            return redirect('dashboard')
+
+        return super().dispatch(request, *args, **kwargs)
     
     def get_queryset(self):
         """Get journals pending approval by current user."""
@@ -169,11 +182,21 @@ class VoucherApproveView(UserOrganizationMixin, View):
     
     def post(self, request, journal_id):
         """Handle approval submission."""
+        organization = self.get_organization()
+        if not organization:
+            messages.warning(request, _('Please select an active organization to continue.'))
+            return redirect('select_organization')
+        self.organization = organization
+
         journal = get_object_or_404(
             Journal,
             id=journal_id,
-            organization=self.organization
+            organization=organization
         )
+
+        if not PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'approve_journal'):
+            messages.error(request, _('You do not have permission to approve journals.'))
+            return redirect('accounting:approval_queue')
         
         # Verify user is authorized
         approval_log = getattr(journal, 'approval_log', None)
@@ -370,12 +393,22 @@ class VoucherRejectView(UserOrganizationMixin, View):
     
     def post(self, request, journal_id):
         """Handle rejection submission."""
+        organization = self.get_organization()
+        if not organization:
+            messages.warning(request, _('Please select an active organization to continue.'))
+            return redirect('select_organization')
+        self.organization = organization
+
         journal = get_object_or_404(
             Journal,
             id=journal_id,
-            organization=self.organization
+            organization=organization
         )
-        
+
+        if not PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'reject_journal'):
+            messages.error(request, _('You do not have permission to reject journals.'))
+            return redirect('accounting:approval_queue')
+
         approval_log = getattr(journal, 'approval_log', None)
         if not approval_log or approval_log.status != ApprovalLog.STATUS_PENDING:
             messages.error(request, _('Journal is not pending approval'))
@@ -488,6 +521,18 @@ class ApprovalHistoryView(UserOrganizationMixin, DetailView):
     
     template_name = 'accounting/approval/approval_history.html'
     context_object_name = 'journal'
+
+    def dispatch(self, request, *args, **kwargs):
+        self.organization = self.get_organization()
+        if not self.organization:
+            messages.warning(request, _('Please select an active organization to continue.'))
+            return redirect('select_organization')
+
+        if not PermissionUtils.has_permission(request.user, self.organization, 'accounting', 'journal', 'view'):
+            messages.error(request, _('You do not have permission to view approval history.'))
+            return redirect('dashboard')
+
+        return super().dispatch(request, *args, **kwargs)
     
     def get_queryset(self):
         """Get journal with approval details."""
@@ -530,7 +575,16 @@ class ApprovalDashboardView(UserOrganizationMixin, View):
     
     def get(self, request):
         """Display approval dashboard."""
-        org = self.organization
+        org = self.get_organization()
+        if not org:
+            messages.warning(request, _('Please select an active organization to continue.'))
+            return redirect('select_organization')
+        self.organization = org
+
+        if not PermissionUtils.has_permission(request.user, org, 'accounting', 'journal', 'approve_journal'):
+            messages.error(request, _('You do not have permission to view the approval dashboard.'))
+            return redirect('dashboard')
+
         user = request.user
         
         # Get all approval logs for organization

@@ -1,7 +1,7 @@
 from django.urls import path, include
 
 from accounting.views import views_import
-from .views import journal_entry_view, voucher_views
+from .views import journal_entry, journal_entry_view, voucher_views
 from .views import voucher_crud_views
 from .views import views_journal_grid as journal_grid_view
 from .views.report_views import (
@@ -88,6 +88,16 @@ urlpatterns = [
     path('journal-entry-grid/save', journal_grid_view.journal_entry_grid_save, name='journal_entry_grid_save'),
     path('journal-entry-grid/account-lookup', journal_grid_view.account_lookup, name='journal_entry_grid_account_lookup'),
     # Journal Entry URLs
+    path('journal-entry/', journal_entry.journal_entry, name='journal_entry'),
+    path('journal-entry/save-draft/', journal_entry.journal_save_draft, name='journal_save_draft'),
+    path('journal-entry/submit/', journal_entry.journal_submit, name='journal_submit'),
+    path('journal-entry/approve/', journal_entry.journal_approve, name='journal_approve'),
+    path('journal-entry/reject/', journal_entry.journal_reject, name='journal_reject'),
+    path('journal-entry/post/', journal_entry.journal_post, name='journal_post'),
+    path('journal-entry/config/', journal_entry.journal_config, name='journal_config'),
+    path('journal-entry/api/<int:pk>/', journal_entry.journal_entry_data, name='journal_entry_data'),
+    path('journal-entry/lookup/accounts/', journal_entry.journal_account_lookup, name='journal_account_lookup'),
+    path('journal-entry/lookup/cost-centers/', journal_entry.journal_cost_center_lookup, name='journal_cost_center_lookup'),
     path('journal/new/', journal_entry_view.JournalEntryCreateView.as_view(), name='journal_entry_new'),
     path('journal/<int:pk>/', journal_entry_view.JournalEntryDetailView.as_view(), name='journal_entry_detail'),
     path('journal/<int:pk>/edit/', journal_entry_view.JournalEntryUpdateView.as_view(), name='journal_entry_edit'),
@@ -148,19 +158,17 @@ urlpatterns = [
     path('voucher-entry/', VoucherEntryView.as_view(), name='voucher_entry'),
     # path('voucher-entry/<int:config_id>/', VoucherEntryView.as_view(), name='voucher_entry_config'),
     
-    # Voucher Wizard CRUD URLs
+    # Voucher Wizard CRUD URLs (order matters - specific routes before generic!)
     path('vouchers/', voucher_crud_views.VoucherListView.as_view(), name='voucher_list'),
     path('vouchers/new/', voucher_crud_views.VoucherCreateView.as_view(), name='voucher_create'),
     path('vouchers/new/<int:config_id>/', voucher_crud_views.VoucherCreateView.as_view(), name='voucher_create_with_config'),
+    path('vouchers/wizard/', wizard.VoucherWizardView.as_view(), name='voucher_wizard'),
+    path('vouchers/wizard/<int:pk>/', wizard.VoucherWizardView.as_view(), name='voucher_wizard_edit'),
     path('vouchers/<int:pk>/', voucher_crud_views.VoucherDetailView.as_view(), name='voucher_detail'),
     path('vouchers/<int:pk>/edit/', voucher_crud_views.VoucherUpdateView.as_view(), name='voucher_edit'),
     path('vouchers/<int:pk>/delete/', voucher_crud_views.VoucherDeleteView.as_view(), name='voucher_delete'),
     path('vouchers/<int:pk>/duplicate/', voucher_crud_views.VoucherDuplicateView.as_view(), name='voucher_duplicate'),
     path('vouchers/<int:pk>/post/', voucher_crud_views.VoucherPostView.as_view(), name='voucher_post'),
-    
-    # Legacy Voucher Wizard (kept for compatibility)
-    path('vouchers/wizard/', wizard.VoucherWizardView.as_view(), name='voucher_wizard'),
-    path('vouchers/wizard/<int:pk>/', wizard.VoucherWizardView.as_view(), name='voucher_wizard_edit'),
     
     # Legacy Voucher Views (kept for backward compatibility)
     path('vouchers/legacy/print/<int:pk>/', voucher_views.VoucherPrintView.as_view(), name='voucher_print'),
@@ -280,7 +288,7 @@ urlpatterns = [
     path('chart-of-accounts/tree/api/', views_chart.ChartOfAccountTreeAPI.as_view(), name='chart_of_accounts_tree_api'),
     path('chart-of-accounts/tree/quick-create/', views_chart.ChartOfAccountQuickCreate.as_view(), name='chart_of_accounts_quick_create'),
     path('chart-of-accounts/tree/validate/', views_chart.ChartOfAccountValidateHierarchy.as_view(), name='chart_of_accounts_validate_hierarchy'),
-    path('journals/entry/', journal_entry_view.JournalEntryDetailView.as_view(), name='journal_entry'),
+    path('journals/entry/', journal_entry_view.JournalEntryDetailView.as_view(), name='journal_entry_legacy'),
 path('journal-entry/upload-receipt/', journal_entry_view.UploadReceiptView.as_view(), name='upload_receipt'),
     path('journals/config-change/', journal_entry_view.JournalConfigChangeView.as_view(), name='voucher_config_change'),
     path('journal/header-form/', journal_entry_view.JournalHeaderFormView.as_view(), name='journal_header_form'),

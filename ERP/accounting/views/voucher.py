@@ -13,6 +13,7 @@ from accounting.forms_factory import build_form
 from accounting.services.create_voucher import create_voucher
 from accounting.validation import JournalValidationService
 from accounting.services.post_journal import JournalError
+from usermanagement.utils import PermissionUtils
 from .views_mixins import VoucherConfigMixin, PermissionRequiredMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
 
@@ -47,10 +48,11 @@ class VoucherEntryView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequire
         """
         Return a dict of user permissions for voucher actions.
         """
+        organization = request.user.get_active_organization()
         return {
-            "can_edit": request.user.has_perm("accounting.change_journal"),
-            "can_add": request.user.has_perm("accounting.add_journal"),
-            "can_delete": request.user.has_perm("accounting.delete_journal"),
+            "can_edit": PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'change'),
+            "can_add": PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'add'),
+            "can_delete": PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'delete'),
         }
 
     def _get_voucher_schema(self, config):

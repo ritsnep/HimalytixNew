@@ -1,40 +1,40 @@
 from django.core.management.base import BaseCommand
-from usermanagement.models import Module, Entity, Permission
+
+from usermanagement.management.commands.setup_system_roles import (
+    SPECIAL_PERMISSION_DEFINITIONS,
+)
+from usermanagement.models import Entity, Module, Permission
+
 
 class Command(BaseCommand):
-    help = 'Sets up initial permissions for journal entries'
+    help = 'Ensures granular journal and period permissions exist.'
 
     def handle(self, *args, **kwargs):
-        accounting_module, _ = Module.objects.get_or_create(
-            name='Accounting',
-            code='accounting',
-            description='Accounting module'
-        )
-
-        journal_entity, _ = Entity.objects.get_or_create(
-            module=accounting_module,
-            name='Journal',
-            code='journal',
-            description='Journal Entry management'
-        )
-
-        permissions_to_create = [
-            ('submit_journal', 'Can submit journal entry'),
-            ('modify_journal', 'Can modify journal entry'),
-        ]
-
-        for codename, name in permissions_to_create:
-            permission, created = Permission.objects.get_or_create(
-                name=name,
-                codename=codename,
+        for definition in SPECIAL_PERMISSION_DEFINITIONS:
+            module = Module.objects.get_or_create(
+                code=definition['module'],
+                defaults={'name': definition['module'].title()},
+            )[0]
+            entity, _ = Entity.objects.get_or_create(
+                module=module,
+                code=definition['entity'],
                 defaults={
-                    'description': name,
-                    'module': accounting_module,
-                    'entity': journal_entity,
-                    'action': codename.split('_')[0]
-                }
+                    'name': definition['entity'].replace('_', ' ').title(),
+                    'description': f"{definition['entity'].replace('_', ' ').title()} management",
+                    'is_active': True,
+                },
+            )
+            permission, created = Permission.objects.get_or_create(
+                module=module,
+                entity=entity,
+                action=definition['action'],
+                defaults={
+                    'name': definition['name'],
+                    'description': definition['description'],
+                    'is_active': True,
+                },
             )
             if created:
-                self.stdout.write(self.style.SUCCESS(f'Successfully created permission: {codename}'))
+                self.stdout.write(self.style.SUCCESS(f"Created permission {permission.codename}"))
             else:
-                self.stdout.write(self.style.WARNING(f'Permission already exists: {codename}'))
+                self.stdout.write(self.style.WARNING(f"Permission {permission.codename} already exists"))

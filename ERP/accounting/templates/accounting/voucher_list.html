@@ -35,11 +35,8 @@
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">{{ page_title }}</h1>
         {% if can_create %}
-        <a href="{% url 'accounting:voucher_create' %}" class="btn btn-primary btn-icon-split">
-            <span class="icon text-white-50">
-                <i class="fas fa-plus"></i>
-            </span>
-            <span class="text">Create New Voucher</span>
+        <a href="{% url 'accounting:voucher_create' %}" class="btn btn-success btn-lg shadow-sm">
+            <i class="fas fa-plus-circle fa-sm text-white-50"></i> Create New Voucher
         </a>
         {% endif %}
     </div>
@@ -139,20 +136,20 @@
                                 <td class="text-right">{{ voucher.total_debit|floatformat:2 }}</td>
                                 <td class="text-right">{{ voucher.total_credit|floatformat:2 }}</td>
                                 <td>
-                                    <div class="btn-group btn-group-sm" role="group">
+                                    <div class="btn-group" role="group">
                                         <a href="{% url 'accounting:voucher_detail' pk=voucher.pk %}" 
-                                           class="btn btn-info btn-sm" title="View">
+                                           class="btn btn-info btn-sm" title="View Details">
                                             <i class="fas fa-eye"></i>
                                         </a>
                                         {% if voucher.status == 'draft' and can_edit %}
                                         <a href="{% url 'accounting:voucher_edit' pk=voucher.pk %}" 
-                                           class="btn btn-warning btn-sm" title="Edit">
+                                           class="btn btn-warning btn-sm" title="Edit Voucher">
                                             <i class="fas fa-edit"></i>
                                         </a>
                                         {% endif %}
                                         {% if voucher.status == 'draft' and can_delete %}
                                         <a href="{% url 'accounting:voucher_delete' pk=voucher.pk %}" 
-                                           class="btn btn-danger btn-sm" title="Delete">
+                                           class="btn btn-danger btn-sm" title="Delete Voucher">
                                             <i class="fas fa-trash"></i>
                                         </a>
                                         {% endif %}
@@ -192,10 +189,10 @@
                 <div class="text-center py-5">
                     <i class="fas fa-inbox fa-3x text-gray-300 mb-3"></i>
                     <h5 class="text-gray-600">No vouchers found</h5>
-                    <p class="text-gray-500">Create your first voucher entry to get started.</p>
+                    <p class="text-gray-500 mb-4">Create your first voucher entry to get started.</p>
                     {% if can_create %}
-                    <a href="{% url 'accounting:voucher_create' %}" class="btn btn-primary mt-3">
-                        <i class="fas fa-plus"></i> Create New Voucher
+                    <a href="{% url 'accounting:voucher_create' %}" class="btn btn-success btn-lg">
+                        <i class="fas fa-plus-circle"></i> Create New Voucher
                     </a>
                     {% endif %}
                 </div>

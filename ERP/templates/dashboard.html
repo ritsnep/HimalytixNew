@@ -217,27 +217,49 @@
     <div class="col-12">
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title">Quick Actions</h5>
+                <h5 class="card-title mb-4">
+                    <i class="fas fa-bolt"></i> Quick Actions
+                </h5>
                 <div class="row">
-                    <div class="col-md-2">
-                        <a href="{% url 'accounting:voucher_wizard' %}" class="btn btn-primary w-100 mb-2">
-                            <i class="fas fa-plus me-2"></i>New Journal Entry
+                    <div class="col-md-3">
+                        <a href="{% url 'accounting:voucher_list' %}" class="btn btn-primary w-100 mb-2 btn-lg">
+                            <i class="fas fa-file-invoice-dollar me-2"></i>
+                            <strong>New Voucher</strong>
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'accounting:voucher_list' %}" class="btn btn-success w-100 mb-2 btn-lg">
+                            <i class="fas fa-list me-2"></i>
+                            <strong>View Vouchers</strong>
                         </a>
                     </div>
                     <div class="col-md-2">
-                        <a href="{% url 'accounting:chart_of_accounts_list' %}" class="btn btn-success w-100 mb-2">
-                            <i class="fas fa-list me-2"></i>Chart of Accounts
+                        <a href="{% url 'accounting:chart_of_accounts_list' %}" class="btn btn-info w-100 mb-2">
+                            <i class="fas fa-chart-pie me-2"></i>Chart of Accounts
                         </a>
                     </div>
                     <div class="col-md-2">
-                        <a href="{% url 'accounting:journal_list' %}" class="btn btn-info w-100 mb-2">
-                            <i class="fas fa-book me-2"></i>View Journals
+                        <a href="{% url 'accounting:journal_list' %}" class="btn btn-warning w-100 mb-2">
+                            <i class="fas fa-book me-2"></i>Journals
                         </a>
                     </div>
                     <div class="col-md-2">
-                        <a href="{% url 'accounting:fiscal_year_list' %}" class="btn btn-warning w-100 mb-2">
+                        <a href="{% url 'accounting:fiscal_year_list' %}" class="btn btn-secondary w-100 mb-2">
                             <i class="fas fa-calendar me-2"></i>Fiscal Years
                         </a>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-3">
+                        <a href="{% url 'accounting:voucher_wizard' %}" class="btn btn-outline-primary w-100 mb-2">
+                            <i class="fas fa-magic me-2"></i>Voucher Wizard
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'accounting:voucher_config_list' %}" class="btn btn-outline-secondary w-100 mb-2">
+                            <i class="fas fa-cog me-2"></i>Voucher Configurations
+                        </a>
+                    </div>
                     </div>
                     <div class="col-md-2">
                         <a href="{% url 'accounting:reports_list' %}" class="btn btn-secondary w-100 mb-2">

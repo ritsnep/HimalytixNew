@@ -51,6 +51,13 @@
                         <div class="form-floating-icon"><i data-feather="lock"></i></div>
                     </div>
 
+                    <div class="form-floating form-floating-custom mb-4">
+                        {{ form.otp_token }}
+                        <label for="otp-input">Authentication Code</label>
+                        <div class="form-floating-icon"><i data-feather="shield"></i></div>
+                        <small class="text-muted">Required only if multi-factor authentication is enabled.</small>
+                    </div>
+
                     <div class="form-check mb-4">
                         {{ form.remember }}
                         <label for="remember-check" class="form-check-label">Remember Me</label>

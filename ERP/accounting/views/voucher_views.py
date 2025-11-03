@@ -19,6 +19,7 @@ from accounting.models import (
 from accounting.views.views_mixins import UserOrganizationMixin, PermissionRequiredMixin
 from accounting.forms_factory import FormBuilder
 from accounting.services.create_voucher import create_voucher
+from usermanagement.utils import PermissionUtils
 
 
 class VoucherListView(PermissionRequiredMixin, UserOrganizationMixin, ListView):
@@ -74,9 +75,9 @@ class VoucherListView(PermissionRequiredMixin, UserOrganizationMixin, ListView):
             'page_title': 'Voucher Entries',
             'journal_types': JournalType.objects.filter(organization=organization),
             'statuses': Journal.STATUS_CHOICES,
-            'can_create': self.request.user.has_perm('accounting.add_journal'),
-            'can_edit': self.request.user.has_perm('accounting.change_journal'),
-            'can_delete': self.request.user.has_perm('accounting.delete_journal'),
+            'can_create': PermissionUtils.has_permission(self.request.user, organization, 'accounting', 'journal', 'add'),
+            'can_edit': PermissionUtils.has_permission(self.request.user, organization, 'accounting', 'journal', 'change'),
+            'can_delete': PermissionUtils.has_permission(self.request.user, organization, 'accounting', 'journal', 'delete'),
         })
         return context
 
@@ -101,6 +102,7 @@ class VoucherDetailView(PermissionRequiredMixin, UserOrganizationMixin, DetailVi
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         voucher = self.object
+        organization = self.get_organization()
         
         # Calculate totals
         lines = voucher.lines.all()
@@ -114,15 +116,15 @@ class VoucherDetailView(PermissionRequiredMixin, UserOrganizationMixin, DetailVi
             'is_balanced': abs(total_debit - total_credit) < 0.01,
             'can_edit': (
                 voucher.status == 'draft' and 
-                self.request.user.has_perm('accounting.change_journal')
+                PermissionUtils.has_permission(self.request.user, organization, 'accounting', 'journal', 'change')
             ),
             'can_delete': (
                 voucher.status == 'draft' and 
-                self.request.user.has_perm('accounting.delete_journal')
+                PermissionUtils.has_permission(self.request.user, organization, 'accounting', 'journal', 'delete')
             ),
             'can_post': (
-                voucher.status == 'draft' and 
-                self.request.user.has_perm('accounting.post_journal')
+                voucher.status == 'draft' and
+                PermissionUtils.has_permission(self.request.user, organization, 'accounting', 'journal', 'post_journal')
             ),
         })
         return context
@@ -203,7 +205,7 @@ class VoucherPostView(PermissionRequiredMixin, UserOrganizationMixin, DetailView
     Post a draft voucher to the general ledger.
     """
     model = Journal
-    permission_required = ('accounting', 'journal', 'post')
+    permission_required = ('accounting', 'journal', 'post_journal')
 
     def post(self, request, *args, **kwargs):
         voucher = self.get_object()

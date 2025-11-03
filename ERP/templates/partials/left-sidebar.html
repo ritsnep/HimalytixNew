@@ -1,4 +1,5 @@
 {% load static %}
+{% load permission_tags %}
 {% block left_sidebar %}
 <!-- ========== Left Sidebar Start ========== -->
 <nav class="vertical-menu">
@@ -76,18 +77,34 @@
                 <span>Journals</span>
             </a>
         </li>
+        <!-- Journal Entry -->
+        <li>
+            <a href="{% url 'accounting:journal_entry' %}">
+                <span>Journal Entry</span>
+            </a>
+        </li>
         <!-- Voucher Management -->
         <li>
-            <a href="{% url 'accounting:voucher_list' %}" class="has-arrow">
+            <a href="javascript: void(0);" class="has-arrow">
                 <i class="fas fa-file-invoice"></i>
                 <span>Vouchers</span>
             </a>
-        </li>
-        <!-- Voucher Entry (Wizard) -->
-        <li>
-            <a href="{% url 'accounting:voucher_wizard' %}" >
-                <span>Voucher Entry (Wizard)</span>
-            </a>
+            <ul class="sub-menu" aria-expanded="false">
+                {% if user|has_permission:'accounting_journal_add' %}
+                <li>
+                    <a href="{% url 'accounting:voucher_create' %}">
+                        <i class="fas fa-plus-circle"></i>
+                        <span>Create New Voucher</span>
+                    </a>
+                </li>
+                {% endif %}
+                <li>
+                    <a href="{% url 'accounting:voucher_list' %}">
+                        <i class="fas fa-list"></i>
+                        <span>View All Vouchers</span>
+                    </a>
+                </li>
+            </ul>
         </li>
         <!-- Voucher Configurations -->
         <li>

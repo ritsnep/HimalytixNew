@@ -1,10 +1,11 @@
-{% if journal.status == 'draft' and perms.accounting.submit_journal %}
+{% load permission_tags %}
+{% if journal.status == 'draft' and user|has_permission:'accounting_journal_submit_journal' %}
     <button type="button" class="btn btn-sm btn-info" hx-post="{% url 'accounting:journal_submit' pk=journal.pk %}" hx-target="#workflow-actions-container" hx-swap="outerHTML">Submit</button>
 {% elif journal.status == 'awaiting-approval' %}
-    {% if perms.accounting.approve_journal %}
+    {% if user|has_permission:'accounting_journal_approve_journal' %}
         <button type="button" class="btn btn-sm btn-success" hx-post="{% url 'accounting:journal_approve' pk=journal.pk %}" hx-target="#workflow-actions-container" hx-swap="outerHTML">Approve</button>
     {% endif %}
-    {% if perms.accounting.reject_journal %}
+    {% if user|has_permission:'accounting_journal_reject_journal' %}
         <button type="button" class="btn btn-sm btn-danger" hx-post="{% url 'accounting:journal_reject' pk=journal.pk %}" hx-target="#workflow-actions-container" hx-swap="outerHTML">Reject</button>
     {% endif %}
 {% endif %}

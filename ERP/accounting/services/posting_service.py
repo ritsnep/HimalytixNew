@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError, PermissionDenied
 from accounting.models import Journal, JournalLine, AccountingPeriod, GeneralLedger, JournalType, ChartOfAccount
 from usermanagement.models import CustomUser, Organization
 from accounting.utils.audit import log_audit_event, get_changed_data
+from usermanagement.utils import PermissionUtils
 from decimal import Decimal, ROUND_HALF_UP
 import logging
 
@@ -42,23 +43,23 @@ class PostingService:
         'reversed': [], # Reversed journals are terminal
     }
 
-    # Permissions required for each transition
+    # Permissions required for each transition (module, entity, action)
     PERMISSION_MAP = {
-        'awaiting_approval': 'accounting.can_submit_for_approval',
-        'approved': 'accounting.can_approve_journal',
-        'posted': 'accounting.can_post_journal',
-        'reversed': 'accounting.can_reverse_journal',
-        'rejected': 'accounting.can_reject_journal',
-        'draft': 'accounting.can_edit_journal', # For moving back to draft
+        'awaiting_approval': ('accounting', 'journal', 'submit_journal'),
+        'approved': ('accounting', 'journal', 'approve_journal'),
+        'posted': ('accounting', 'journal', 'post_journal'),
+        'reversed': ('accounting', 'journal', 'reverse_journal'),
+        'rejected': ('accounting', 'journal', 'reject_journal'),
+        'draft': ('accounting', 'journal', 'change'),  # For moving back to draft
     }
 
     def __init__(self, user: CustomUser):
         self.user = user
-        self.organization = user.organization # Assuming user has an organization
+        self.organization = getattr(user, 'get_active_organization', lambda: getattr(user, 'organization', None))()
 
-    def _check_permission(self, permission_codename: str):
+    def _check_permission(self, permission: tuple[str, str, str]):
         """Checks if the current user has the specified permission."""
-        if not self.user.has_perm(permission_codename, obj=self.organization):
+        if not PermissionUtils.has_permission(self.user, self.organization, *permission):
             raise PermissionDenied(self.ERR_PERMISSION_DENIED)
 
     def _validate_status_transition(self, journal: Journal, new_status: str):
@@ -393,7 +394,7 @@ class PostingService:
         """
         Reopens a closed accounting period. Requires specific permissions.
         """
-        self._check_permission('accounting.can_reopen_period')
+        self._check_permission(('accounting', 'accountingperiod', 'reopen_period'))
 
         if period.status != 'closed':
             raise ValidationError(self.ERR_PERIOD_NOT_CLOSED)

@@ -28,6 +28,7 @@ from accounting.services.create_voucher import create_voucher
 from accounting.services.post_journal import post_journal, JournalError, JournalValidationError
 from accounting.validation import JournalValidationService
 from accounting.views.views_mixins import UserOrganizationMixin, PermissionRequiredMixin, VoucherConfigMixin
+from usermanagement.utils import PermissionUtils
 
 logger = logging.getLogger(__name__)
 
@@ -106,9 +107,9 @@ class VoucherListView(PermissionRequiredMixin, UserOrganizationMixin, ListView):
             'page_title': 'Voucher Entries',
             'journal_types': JournalType.objects.filter(organization=organization),
             'statuses': Journal.STATUS_CHOICES,
-            'can_create': self.request.user.has_perm('accounting.add_journal'),
-            'can_edit': self.request.user.has_perm('accounting.change_journal'),
-            'can_delete': self.request.user.has_perm('accounting.delete_journal'),
+            'can_create': PermissionUtils.has_permission(self.request.user, organization, 'accounting', 'journal', 'add'),
+            'can_edit': PermissionUtils.has_permission(self.request.user, organization, 'accounting', 'journal', 'change'),
+            'can_delete': PermissionUtils.has_permission(self.request.user, organization, 'accounting', 'journal', 'delete'),
             'create_url': reverse('accounting:voucher_create'),
         })
         return context
@@ -138,6 +139,7 @@ class VoucherDetailView(PermissionRequiredMixin, UserOrganizationMixin, DetailVi
         """Build context with voucher data and actions."""
         context = super().get_context_data(**kwargs)
         voucher = self.object
+        organization = self.get_organization()
         
         # Calculate totals
         lines = voucher.lines.all()
@@ -151,15 +153,15 @@ class VoucherDetailView(PermissionRequiredMixin, UserOrganizationMixin, DetailVi
             'is_balanced': abs(total_debit - total_credit) < 0.01,
             'can_edit': (
                 voucher.status == 'draft' and 
-                self.request.user.has_perm('accounting.change_journal')
+                PermissionUtils.has_permission(self.request.user, organization, 'accounting', 'journal', 'change')
             ),
             'can_delete': (
                 voucher.status == 'draft' and 
-                self.request.user.has_perm('accounting.delete_journal')
+                PermissionUtils.has_permission(self.request.user, organization, 'accounting', 'journal', 'delete')
             ),
             'can_post': (
-                voucher.status == 'draft' and 
-                self.request.user.has_perm('accounting.add_journal')
+                voucher.status == 'draft' and
+                PermissionUtils.has_permission(self.request.user, organization, 'accounting', 'journal', 'post_journal')
             ),
             'edit_url': reverse('accounting:voucher_edit', kwargs={'pk': voucher.pk}),
             'delete_url': reverse('accounting:voucher_delete', kwargs={'pk': voucher.pk}),
@@ -174,15 +176,16 @@ class VoucherCreateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
     Create a new journal voucher entry using dynamic form configuration.
     Supports both traditional and wizard-style entry.
     """
-    template_name = 'accounting/voucher_form.html'
+    template_name = 'accounting/voucher_entry_new.html'
     permission_required = ('accounting', 'journal', 'add')
 
     def get_user_perms(self, request):
         """Return user permissions for voucher actions."""
+        organization = request.user.get_active_organization()
         return {
-            "can_edit": request.user.has_perm("accounting.change_journal"),
-            "can_add": request.user.has_perm("accounting.add_journal"),
-            "can_delete": request.user.has_perm("accounting.delete_journal"),
+            "can_edit": PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'change'),
+            "can_add": PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'add'),
+            "can_delete": PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'delete'),
         }
 
     def _get_voucher_schema(self, config):
@@ -212,64 +215,72 @@ class VoucherCreateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
         return header_form, line_formset
 
     def get(self, request, *args, **kwargs):
-        """Display empty voucher entry form."""
+        """Display empty voucher entry form or config selection."""
         config_id = kwargs.get("config_id") or request.GET.get("config_id")
         warning = None
         config = None
         
-        all_configs = VoucherModeConfig.objects.filter(is_active=True, archived_at__isnull=True)
+        organization = request.user.get_active_organization()
+        all_configs = VoucherModeConfig.objects.filter(
+            is_active=True, 
+            archived_at__isnull=True,
+            organization=organization
+        )
         
+        # If no config_id provided, default to first and show modal if multiple
+        show_config_modal = False
         if not config_id:
+            if all_configs.count() == 0:
+                messages.error(request, "No voucher configuration available. Please create one first.")
+                return redirect('accounting:voucher_config_list')
+            # Default to first config; if more than one exists, we'll prompt with a modal on the form
             config = all_configs.first()
-            if not config:
-                return render(request, self.template_name, {
-                    "page_title": "Voucher Entry",
-                    "user_perms": self.get_user_perms(request),
-                    "error": "No voucher configuration available.",
-                    "voucher_configs": all_configs,
-                })
             config_id = config.pk
+            show_config_modal = all_configs.count() > 1
         
         try:
-            config = get_object_or_404(VoucherModeConfig, pk=config_id, is_active=True)
+            config = get_object_or_404(VoucherModeConfig, pk=config_id, is_active=True, organization=organization)
         except Exception as e:
             warning = f"Voucher configuration not found: {e}"
-            return render(request, self.template_name, {
-                "error": warning,
-                "user_perms": self.get_user_perms(request),
-                "voucher_configs": all_configs,
-            })
+            messages.error(request, warning)
+            return redirect('accounting:voucher_list')
 
         schema, schema_warning = self._get_voucher_schema(config)
         if schema_warning:
             warning = schema_warning
 
         if not schema:
-            return render(request, self.template_name, {
-                "error": warning or "Schema not found for this voucher type.",
-                "user_perms": self.get_user_perms(request),
-                "config": config,
-                "voucher_configs": all_configs,
-            })
+            messages.error(request, warning or "Schema not found for this voucher type.")
+            return redirect('accounting:voucher_list')
 
-        organization = request.user.get_active_organization()
         user_perms = self.get_user_perms(request)
         
         header_form, line_formset = self._create_voucher_forms(schema, organization, user_perms)
 
         defaults = list(getattr(config, 'defaults', []).all())
         
+        # Get all active accounts for the dropdown
+        accounts = ChartOfAccount.objects.filter(
+            organization=organization,
+            is_active=True
+        ).order_by('account_code')
+        
         context = {
             "config": config,
+            "selected_config": config,  # Template expects selected_config
+            "configs": all_configs,  # Template expects configs
             "header_form": header_form,
             "line_formset": line_formset,
             "user_perms": user_perms,
-            "page_title": "Create New Voucher",
+            "page_title": f"Create New Voucher - {config.name}",
             "voucher_configs": all_configs,
             "defaults": defaults,
+            "accounts": accounts,
             "is_create": True,
-            "form_action": reverse('accounting:voucher_create', kwargs={'config_id': config.pk}),
+            "form_action": reverse('accounting:voucher_create_with_config', kwargs={'config_id': config.pk}),
             "cancel_url": reverse('accounting:voucher_list'),
+            "show_config_modal": show_config_modal,
+            "voucher_entry_page": True,
         }
         if warning:
             context["warning"] = warning
@@ -340,15 +351,31 @@ class VoucherCreateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
                             line_formset.forms[index].add_error(field, error)
         
         # Re-render form with errors
+        all_configs = VoucherModeConfig.objects.filter(
+            is_active=True,
+            archived_at__isnull=True,
+            organization=organization
+        )
+        accounts = ChartOfAccount.objects.filter(
+            organization=organization,
+            is_active=True
+        ).order_by('account_code')
+
         context = {
             "config": config,
+            "selected_config": config,
+            "configs": all_configs,
+            "voucher_configs": all_configs,
             "header_form": header_form,
             "line_formset": line_formset,
             "user_perms": user_perms,
-            "page_title": "Create New Voucher",
+            "page_title": f"Create New Voucher - {config.name}",
             "is_create": True,
-            "form_action": reverse('accounting:voucher_create', kwargs={'config_id': config.pk}),
+            "accounts": accounts,
+            "form_action": reverse('accounting:voucher_create_with_config', kwargs={'config_id': config.pk}),
             "cancel_url": reverse('accounting:voucher_list'),
+            "show_config_modal": False,
+            "voucher_entry_page": True,
         }
         if warning:
             context["warning"] = warning
@@ -360,15 +387,16 @@ class VoucherUpdateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
     Update an existing journal voucher.
     Only draft vouchers can be edited.
     """
-    template_name = 'accounting/voucher_form.html'
+    template_name = 'accounting/voucher_entry_new.html'
     permission_required = ('accounting', 'journal', 'change')
 
     def get_user_perms(self, request):
         """Return user permissions for voucher actions."""
+        organization = request.user.get_active_organization()
         return {
-            "can_edit": request.user.has_perm("accounting.change_journal"),
-            "can_add": request.user.has_perm("accounting.add_journal"),
-            "can_delete": request.user.has_perm("accounting.delete_journal"),
+            "can_edit": PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'change'),
+            "can_add": PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'add'),
+            "can_delete": PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'delete'),
         }
 
     def _get_voucher_schema(self, config):
@@ -434,6 +462,12 @@ class VoucherUpdateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
         user_perms = self.get_user_perms(request)
         header_form, line_formset = self._create_voucher_forms(schema, organization, user_perms, journal=journal)
 
+        # Get all active accounts for the dropdown
+        accounts = ChartOfAccount.objects.filter(
+            organization=organization,
+            is_active=True
+        ).order_by('account_code')
+
         context = {
             "config": config,
             "header_form": header_form,
@@ -441,9 +475,11 @@ class VoucherUpdateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
             "user_perms": user_perms,
             "page_title": f"Edit Voucher {journal.journal_number}",
             "voucher": journal,
+            "accounts": accounts,
             "is_edit": True,
             "form_action": reverse('accounting:voucher_edit', kwargs={'pk': journal.pk}),
             "cancel_url": reverse('accounting:voucher_detail', kwargs={'pk': journal.pk}),
+            "voucher_entry_page": True,
         }
         if warning:
             context["warning"] = warning
@@ -544,6 +580,7 @@ class VoucherUpdateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
             "is_edit": True,
             "form_action": reverse('accounting:voucher_edit', kwargs={'pk': journal.pk}),
             "cancel_url": reverse('accounting:voucher_detail', kwargs={'pk': journal.pk}),
+            "voucher_entry_page": True,
         }
         return render(request, self.template_name, context)
 
@@ -588,7 +625,7 @@ class VoucherPostView(PermissionRequiredMixin, UserOrganizationMixin, View):
     """
     Post a draft voucher to the general ledger.
     """
-    permission_required = ('accounting', 'journal', 'add')
+    permission_required = ('accounting', 'journal', 'post_journal')
 
     def post(self, request, *args, **kwargs):
         """Post the voucher."""
@@ -604,7 +641,7 @@ class VoucherPostView(PermissionRequiredMixin, UserOrganizationMixin, View):
         if voucher.status != 'draft':
             messages.error(request, "Only draft vouchers can be posted.")
             return redirect('accounting:voucher_detail', pk=voucher.pk)
-        
+
         try:
             post_journal(voucher, request.user)
             messages.success(request, f"Voucher {voucher.journal_number} has been posted successfully.")

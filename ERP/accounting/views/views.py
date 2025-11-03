@@ -146,10 +146,11 @@ class VoucherEntryView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequire
         """
         Return a dict of user permissions for voucher actions.
         """
+        organization = request.user.get_active_organization()
         return {
-            "can_edit": request.user.has_perm("accounting.change_journal"),
-            "can_add": request.user.has_perm("accounting.add_journal"),
-            "can_delete": request.user.has_perm("accounting.delete_journal"),
+            "can_edit": PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'change'),
+            "can_add": PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'add'),
+            "can_delete": PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'delete'),
         }
 
 
@@ -1226,9 +1227,9 @@ def htmx_voucher_line(request):
     index = request.GET.get('index', '0')
     organization = request.user.get_active_organization()
     user_perms = {
-        "can_edit": request.user.has_perm("accounting.change_journal"),
-        "can_add": request.user.has_perm("accounting.add_journal"),
-        "can_delete": request.user.has_perm("accounting.delete_journal"),
+        "can_edit": PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'change'),
+        "can_add": PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'add'),
+        "can_delete": PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'delete'),
     }
     schema, _, _ = load_voucher_schema(VoucherModeConfig(code=voucher_type))
     if not schema or 'lines' not in schema:
@@ -1256,9 +1257,9 @@ def htmx_validate_voucher(request):
     voucher_type = request.POST.get('type')
     organization = request.user.get_active_organization()
     user_perms = {
-        "can_edit": request.user.has_perm("accounting.change_journal"),
-        "can_add": request.user.has_perm("accounting.add_journal"),
-        "can_delete": request.user.has_perm("accounting.delete_journal"),
+        "can_edit": PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'change'),
+        "can_add": PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'add'),
+        "can_delete": PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'delete'),
     }
     schema = load_schema(voucher_type)
     if not schema:
@@ -1344,10 +1345,11 @@ class JournalDetailView(PermissionRequiredMixin, UserOrganizationMixin, DetailVi
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        organization = self.get_organization()
         context.update({
-            'can_edit': self.request.user.has_perm('accounting.change_journal'),
-            'can_delete': self.request.user.has_perm('accounting.delete_journal'),
-            'can_post': self.request.user.has_perm('accounting.post_journal'),
+            'can_edit': PermissionUtils.has_permission(self.request.user, organization, 'accounting', 'journal', 'change'),
+            'can_delete': PermissionUtils.has_permission(self.request.user, organization, 'accounting', 'journal', 'delete'),
+            'can_post': PermissionUtils.has_permission(self.request.user, organization, 'accounting', 'journal', 'post_journal'),
             'page_title': f'Journal Entry: {self.object.journal_number}',
             'breadcrumbs': [
                 ('General Journal', reverse('accounting:journal_list')),
@@ -1441,9 +1443,10 @@ class GeneralLedgerDetailView(PermissionRequiredMixin, UserOrganizationMixin, De
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        organization = self.get_organization()
         context.update({
-            'can_edit': self.request.user.has_perm('accounting.change_generalledger'),
-            'can_delete': self.request.user.has_perm('accounting.delete_generalledger'),
+            'can_edit': PermissionUtils.has_permission(self.request.user, organization, 'accounting', 'generalledger', 'change'),
+            'can_delete': PermissionUtils.has_permission(self.request.user, organization, 'accounting', 'generalledger', 'delete'),
             'page_title': f'General Ledger Entry: {self.object.gl_entry_id}',
             'breadcrumbs': [
                 ('General Ledger', reverse('accounting:general_ledger_list')),
@@ -1614,10 +1617,10 @@ class JournalCreateView(PermissionRequiredMixin, UserOrganizationMixin, CreateVi
 @login_required
 def journal_save_ajax(request):
     """AJAX endpoint for saving journal entries."""
-    if not request.user.has_perm('accounting.add_journal'):
+    organization = request.user.get_active_organization()
+    if not PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'add'):
         return JsonResponse({'error': 'Permission denied'}, status=403)
 
-    organization = request.user.get_active_organization()
     form = JournalForm(request.POST, organization=organization)
     formset = JournalLineFormSet(request.POST, form_kwargs={'organization': organization})
 
@@ -1650,11 +1653,11 @@ def journal_save_ajax(request):
 @login_required
 def journal_load_ajax(request):
     """AJAX endpoint for loading journal entries with filtering."""
-    if not request.user.has_perm('accounting.view_journal'):
+    organization = request.user.get_active_organization()
+    if not PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'view'):
         return JsonResponse({'error': 'Permission denied'}, status=403)
     
     try:
-        organization = request.user.get_active_organization()
         
         # Get filter parameters
         start_date = request.GET.get('start_date')
@@ -1730,7 +1733,8 @@ def journal_load_ajax(request):
 @login_required
 def journal_post_ajax(request):
     """AJAX endpoint for posting journal entries."""
-    if not request.user.has_perm('accounting.post_journal'):
+    organization = request.user.get_active_organization()
+    if not PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'post_journal'):
         return JsonResponse({'error': 'Permission denied'}, status=403)
 
     try:
@@ -1739,10 +1743,10 @@ def journal_post_ajax(request):
 
         journal = Journal.objects.get(
             journal_id=journal_id,
-            organization_id=request.user.get_active_organization().id
+            organization_id=organization.id
         )
  
-        post_journal(journal)
+        post_journal(journal, request.user)
  
         return JsonResponse({
             'success': True,
@@ -1775,7 +1779,8 @@ def journal_post_ajax(request):
 @login_required
 def journal_delete_ajax(request):
     """AJAX endpoint for deleting journal entries."""
-    if not request.user.has_perm('accounting.delete_journal'):
+    organization = request.user.get_active_organization()
+    if not PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'delete'):
         return JsonResponse({'error': 'Permission denied'}, status=403)
     
     try:
@@ -1820,7 +1825,8 @@ def htmx_delete_journal_line(request):
     try:
         line = JournalLine.objects.get(pk=line_id)
         # Permission check: only allow delete if user has permission
-        if not request.user.has_perm('accounting.delete_journalline'):
+        organization = request.user.get_active_organization()
+        if not PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'delete'):
             from django.http import HttpResponse
             return HttpResponse('<tr><td colspan="100%"><div class="alert alert-danger">No permission to delete journal line.</div></td></tr>', status=403)
         line.delete()
