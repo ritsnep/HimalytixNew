@@ -1,0 +1,89 @@
+# Django collectstatic output
+/collected_static_files/
+
+
+
+# # --- Python bytecode & build ---
+# __pycache__/
+# *.py[cod]
+# *.pyo
+# *.pyd
+# *.so
+# *.egg
+# *.egg-info/
+# dist/
+# build/
+
+# # --- Virtualenvs ---
+# .venv/
+# venv/
+# env/
+
+# # --- OS/editor junk ---
+# .DS_Store
+# Thumbs.db
+# .idea/
+# .vscode/
+# *.swp
+# *.swo
+
+# # --- Logs & runtime ---
+# *.log
+# *.sqlite3-journal
+# celerybeat-schedule
+# *.pid
+
+# # --- Environment & local settings ---
+# .env
+# .env.*
+# .settings.local.py
+# /local_settings.py
+# /settings/local.py
+
+# # --- Test/coverage ---
+# .coverage
+# htmlcov/
+# .tox/
+# .pytest_cache/
+
+# # --- Django collected static (STATIC_ROOT) ---
+# # Common names; keep ONLY the one you actually use.
+# staticfiles/
+# static_root/
+# public/static/
+# static_cdn/
+
+# # --- User uploads (MEDIA_ROOT) ---
+# media/
+# uploads/
+
+# # --- Frontend build artifacts (keep source, ignore compiled) ---
+# node_modules/
+# .npm/
+# .pnpm-store/
+# .yarn/
+# .yarn-cache/
+# *.tsbuildinfo
+
+# # Typical build outputs (adjust to your toolchain)
+# frontend/.cache/
+# frontend/.parcel-cache/
+# frontend/.vite/
+# frontend/.next/
+# frontend/.nuxt/
+# frontend/build/
+# frontend/dist/
+# assets/.cache/
+# assets/build/
+# assets/dist/
+# webpack-stats.json
+# *.map
+
+# # --- Translations cache ---
+# *.mo
+
+# # --- Temporary/work directories ---
+# tmp/
+# temp/
+# .work/
+# work/
