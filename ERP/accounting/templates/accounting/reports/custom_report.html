@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}{{ definition.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-1">
+                        <i class="fas fa-bezier-curve me-2"></i>
+                        {{ definition.name }}
+                    </h1>
+                    <p class="text-muted mb-0">
+                        {{ definition.description|default:_("Parameterised stored procedure report.") }}
+                    </p>
+                </div>
+                <a href="{% url 'accounting:report_list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>
+                    {% trans "Back to Reports" %}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                {% for param in parameter_schema.parameters %}
+                    <div class="col-md-4">
+                        <label class="form-label" for="param_{{ param.name }}">
+                            {{ param.label|default:param.name|capfirst }}
+                            {% if param.required %}<span class="text-danger">*</span>{% endif %}
+                        </label>
+                        {% if param.type == "date" %}
+                            <input type="date" class="form-control" id="param_{{ param.name }}" name="{{ param.name }}" value="{{ submitted_params[param.name]|default:param.default }}">
+                        {% elif param.type == "number" or param.type == "decimal" %}
+                            <input type="number" step="any" class="form-control" id="param_{{ param.name }}" name="{{ param.name }}" value="{{ submitted_params[param.name]|default:param.default }}">
+                        {% elif param.type == "int" or param.type == "integer" %}
+                            <input type="number" class="form-control" id="param_{{ param.name }}" name="{{ param.name }}" value="{{ submitted_params[param.name]|default:param.default }}">
+                        {% else %}
+                            <input type="text" class="form-control" id="param_{{ param.name }}" name="{{ param.name }}" value="{{ submitted_params[param.name]|default:param.default }}">
+                        {% endif %}
+                        {% if param.help_text %}
+                            <small class="text-muted">{{ param.help_text }}</small>
+                        {% endif %}
+                    </div>
+                {% empty %}
+                    <div class="col-md-12">
+                        <p class="text-muted mb-0">{% trans "This report does not require any parameters." %}</p>
+                    </div>
+                {% endfor %}
+                <div class="col-md-12 d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-play me-2"></i>
+                        {% trans "Run Report" %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if error %}
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+        </div>
+    {% endif %}
+
+    {% if report_data %}
+        <div class="card shadow-sm">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">{% trans "Report Output" %}</h5>
+                    <small class="text-muted">
+                        {% trans "Rows" %}: {{ report_data.rows|length }}
+                    </small>
+                </div>
+                <form method="post" action="{% url 'accounting:report_export' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="report_type" value="custom:{{ definition.code }}">
+                    {% for key, value in submitted_params.items %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endfor %}
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary" name="export_format" value="csv">
+                            <i class="fas fa-file-csv me-1"></i>CSV
+                        </button>
+                        <button class="btn btn-outline-secondary" name="export_format" value="excel">
+                            <i class="fas fa-file-excel me-1"></i>Excel
+                        </button>
+                        <button class="btn btn-outline-secondary" name="export_format" value="pdf">
+                            <i class="fas fa-file-pdf me-1"></i>PDF
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                {% for column in report_data.columns %}
+                                    <th>{{ column|replace:"_"|" "|capfirst }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in report_data.rows %}
+                                <tr>
+                                    {% for column in report_data.columns %}
+                                        <td>{{ row[column] }}</td>
+                                    {% endfor %}
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="{{ report_data.columns|length }}" class="text-center text-muted py-4">
+                                        {% trans "No results returned by the stored procedure." %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% elif not error and parameter_schema.parameters %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            {% trans "Provide the required parameters above and run the report." %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

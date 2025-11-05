@@ -6,6 +6,7 @@
 {% block extra_css %}
 {{ block.super }}
 <link rel="stylesheet" href="{% static 'accounting/css/voucher_entry.css' %}">
+<link rel="stylesheet" href="{% static 'accounting/css/voucher_entry_dason.css' %}">
 {% endblock extra_css %}
 
 {% block extra_js %}
@@ -15,28 +16,187 @@
 {% endblock extra_js %}
 
 {% block content %}
-<div class="page-content ve-page-content">
+<div class="page-content">
   <div class="container-fluid">
-    <div
-      id="app"
-      class="ve-app"
-      data-endpoint-save="{% url 'accounting:journal_save_draft' %}"
-      data-endpoint-submit="{% url 'accounting:journal_submit' %}"
-      data-endpoint-approve="{% url 'accounting:journal_approve' %}"
-      data-endpoint-reject="{% url 'accounting:journal_reject' %}"
-      data-endpoint-post="{% url 'accounting:journal_post' %}"
-      data-config-url="{% url 'accounting:journal_config' %}"
-      data-lookup-account="{% url 'accounting:journal_account_lookup' %}"
-      data-lookup-cost-center="{% url 'accounting:journal_cost_center_lookup' %}"
-      data-default-journal-type="{{ journal_default_type }}"
-      data-initial-journal-id="{{ initial_journal_id }}"
-      data-detail-url-template="{{ detail_url_template }}"
-      data-supported-currencies="{{ supported_currencies|join:',' }}"
-      data-can-submit="{{ permission_flags.can_submit|yesno:'true,false' }}"
-      data-can-approve="{{ permission_flags.can_approve|yesno:'true,false' }}"
-      data-can-reject="{{ permission_flags.can_reject|yesno:'true,false' }}"
-      data-can-post="{{ permission_flags.can_post|yesno:'true,false' }}"
-    ></div>
+    <!-- Page Title -->
+    <div class="row">
+      <div class="col-12">
+        <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+          <h4 class="mb-sm-0 font-size-18">Journal Entry</h4>
+          <div class="page-title-right">
+            <ol class="breadcrumb m-0">
+              <li class="breadcrumb-item"><a href="javascript: void(0);">Accounting</a></li>
+              <li class="breadcrumb-item active">Journal Entry</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Card -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body">
+            <div
+              id="app"
+              data-endpoint-save="{% url 'accounting:journal_save_draft' %}"
+              data-endpoint-submit="{% url 'accounting:journal_submit' %}"
+              data-endpoint-approve="{% url 'accounting:journal_approve' %}"
+              data-endpoint-reject="{% url 'accounting:journal_reject' %}"
+              data-endpoint-post="{% url 'accounting:journal_post' %}"
+              data-config-url="{{ config_endpoint }}"
+              data-lookup-account="{% url 'accounting:journal_account_lookup' %}"
+              data-lookup-cost-center="{% url 'accounting:journal_cost_center_lookup' %}"
+              data-default-journal-type="{{ journal_default_type }}"
+              data-initial-journal-id="{{ initial_journal_id }}"
+              data-detail-url-template="{{ detail_url_template }}"
+              data-supported-currencies="{{ supported_currencies|join:',' }}"
+              data-can-submit="{{ permission_flags.can_submit|yesno:'true,false' }}"
+              data-can-approve="{{ permission_flags.can_approve|yesno:'true,false' }}"
+              data-can-reject="{{ permission_flags.can_reject|yesno:'true,false' }}"
+              data-can-post="{{ permission_flags.can_post|yesno:'true,false' }}"
+              data-show-config-selector="{{ show_config_selector|yesno:'true,false' }}"
+            ></div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
+
+<!-- Voucher Config Selection Modal -->
+<div class="modal fade" id="voucherConfigModal" tabindex="-1" aria-labelledby="voucherConfigModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="voucherConfigModalLabel">
+          <i class="mdi mdi-clipboard-text-outline me-2"></i>
+          Select Voucher Configuration
+        </h5>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted mb-3">Choose a configuration to begin your entry:</p>
+        <div id="voucherConfigList" class="d-grid gap-2">
+          {% if voucher_configs %}
+            {% for config in voucher_configs %}
+            <div class="card mb-0 voucher-config-item" 
+                 data-config-id="{{ config.config_id }}" 
+                 data-journal-type="{{ config.journal_type_id }}"
+                 style="cursor: pointer; transition: all 0.2s ease;">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1">
+                      <i class="mdi mdi-file-document-outline me-2 text-primary"></i>
+                      {{ config.name }}
+                    </h6>
+                    {% if config.description %}
+                    <p class="text-muted mb-0 small">{{ config.description }}</p>
+                    {% endif %}
+                  </div>
+                  <div class="text-end ms-3">
+                    <span class="badge bg-primary">{{ config.code }}</span>
+                    {% if config.journal_type %}
+                    <div class="text-muted small mt-1">{{ config.journal_type.name }}</div>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="alert alert-warning mb-0" role="alert">
+              <i class="mdi mdi-alert-outline me-2"></i>
+              <strong>No configurations available</strong><br>
+              <small>Please contact your administrator to set up voucher configurations.</small>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Voucher Config Item Hover Effect */
+.voucher-config-item:hover {
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+  border-color: #1c84ee !important;
+}
+
+body[data-layout-mode=dark] .voucher-config-item:hover {
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.3);
+}
+
+.voucher-config-item:active {
+  transform: translateY(0);
+}
+
+/* Loading State */
+.ve-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem;
+}
+
+.ve-spinner {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 3px solid #1c84ee;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: ve-spin 0.6s linear infinite;
+}
+
+@keyframes ve-spin {
+  to { transform: rotate(360deg); }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const appElement = document.getElementById('app');
+  const showConfigSelector = appElement?.dataset?.showConfigSelector === 'true';
+  
+  if (showConfigSelector) {
+    const modal = new bootstrap.Modal(document.getElementById('voucherConfigModal'));
+    modal.show();
+    
+    // Handle config selection
+    document.querySelectorAll('.voucher-config-item').forEach(item => {
+      item.addEventListener('click', function() {
+        const configId = this.dataset.configId;
+        const journalType = this.dataset.journalType;
+        
+        // Add loading state
+        this.style.opacity = '0.6';
+        this.style.pointerEvents = 'none';
+        
+        const loadingHTML = `
+          <div class="ve-loading">
+            <div class="ve-spinner"></div>
+            <span class="text-muted">Loading configuration...</span>
+          </div>
+        `;
+        this.innerHTML = loadingHTML;
+        
+        // Redirect to journal entry with selected config
+        const url = new URL(window.location.href);
+        url.searchParams.set('config_id', configId);
+        if (journalType) {
+          url.searchParams.set('journal_type', journalType);
+        }
+        
+        setTimeout(() => {
+          window.location.href = url.toString();
+        }, 300);
+      });
+    });
+  }
+});
+</script>
 {% endblock content %}

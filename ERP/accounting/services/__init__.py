@@ -1,6 +1,7 @@
 from .post_journal import post_journal
 from .create_voucher import create_voucher
 from .close_period import close_period
+from .fiscal_year_service import close_fiscal_year, reopen_fiscal_year
 from .journal_import_service import import_journal_entries
 from .validation import JournalValidationService
 from .ocr_service import process_receipt_with_ocr
@@ -18,6 +19,8 @@ __all__ = [
     'post_journal',
     'create_voucher',
     'close_period',
+    'close_fiscal_year',
+    'reopen_fiscal_year',
     'import_journal_entries',
     'JournalValidationService',
     'process_receipt_with_ocr',

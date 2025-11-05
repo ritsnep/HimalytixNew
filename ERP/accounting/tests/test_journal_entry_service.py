@@ -61,7 +61,7 @@ class JournalEntryServiceTest(TestCase):
         )
         self.assertEqual(journal.status, 'draft')
         self.service.submit(journal)
-        self.assertEqual(journal.status, 'awaiting-approval')
+        self.assertEqual(journal.status, 'awaiting_approval')
         self.service.approve(journal)
         self.assertEqual(journal.status, 'approved')
         self.service.post(journal)

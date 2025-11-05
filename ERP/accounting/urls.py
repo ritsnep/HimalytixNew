@@ -13,6 +13,7 @@ from .views.report_views import (
     CashFlowView,
     AccountsReceivableAgingView,
     ReportExportView,
+    CustomReportView,
 )
 
 # Import from views_list.py
@@ -272,6 +273,7 @@ urlpatterns = [
     path('advanced-reports/balance-sheet/', BalanceSheetReportView.as_view(), name='report_bs'),
     path('advanced-reports/cash-flow/', CashFlowView.as_view(), name='report_cf'),
     path('advanced-reports/ar-aging/', AccountsReceivableAgingView.as_view(), name='report_ar_aging'),
+    path('advanced-reports/custom/<slug:code>/', CustomReportView.as_view(), name='custom_report'),
     path('advanced-reports/export/', ReportExportView.as_view(), name='report_export'),
 
     # AJAX URLs
@@ -315,8 +317,12 @@ path('journal-entry/upload-receipt/', journal_entry_view.UploadReceiptView.as_vi
 ]
 
 # Wizard URLs
+# IMPORTANT: journal_config URL added here due to registration issue in main list
 urlpatterns += [
+    # Add journal_config URL that was missing from main list
+    path('journal-entry/config/', journal_entry.journal_config, name='journal_config'),
 ]
+
 
 # Import URLs
 # urlpatterns += [

@@ -315,14 +315,26 @@ def reset_cache():
     cache.clear()
 
 
+_test_environment_active = False
+
+
 @pytest.fixture(autouse=True)
 def reset_settings():
     """
-    Reset Django settings after each test.
+    Ensure the Django test environment is toggled safely between tests.
+    pytest-django already manages most of this, but some legacy tests expect
+    explicit setup/teardown. Guard so we don't double-initialize when running
+    under xdist.
     """
-    from django.conf import settings
+    global _test_environment_active
     from django.test.utils import setup_test_environment, teardown_test_environment
-    
-    setup_test_environment()
-    yield
-    teardown_test_environment()
+
+    if not _test_environment_active:
+        setup_test_environment()
+        _test_environment_active = True
+    try:
+        yield
+    finally:
+        if _test_environment_active:
+            teardown_test_environment()
+            _test_environment_active = False

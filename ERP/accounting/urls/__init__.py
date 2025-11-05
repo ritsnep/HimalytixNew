@@ -12,6 +12,7 @@ from ..views.report_views import (
     CashFlowView,
     AccountsReceivableAgingView,
     ReportExportView,
+    CustomReportView,
 )
 
 # Import from views_list.py
@@ -92,6 +93,7 @@ urlpatterns = [
     path('journal-entry/approve/', journal_entry.journal_approve, name='journal_approve'),
     path('journal-entry/reject/', journal_entry.journal_reject, name='journal_reject'),
     path('journal-entry/post/', journal_entry.journal_post, name='journal_post'),
+    path('journal-entry/config/', journal_entry.journal_config, name='journal_config'),
     path('journal-entry/api/<int:pk>/', journal_entry.journal_entry_data, name='journal_entry_data'),
     path('journal-entry/lookup/accounts/', journal_entry.journal_account_lookup, name='journal_account_lookup'),
     path('journal-entry/lookup/cost-centers/', journal_entry.journal_cost_center_lookup, name='journal_cost_center_lookup'),
@@ -269,6 +271,7 @@ urlpatterns = [
     path('advanced-reports/balance-sheet/', BalanceSheetReportView.as_view(), name='report_bs'),
     path('advanced-reports/cash-flow/', CashFlowView.as_view(), name='report_cf'),
     path('advanced-reports/ar-aging/', AccountsReceivableAgingView.as_view(), name='report_ar_aging'),
+    path('advanced-reports/custom/<slug:code>/', CustomReportView.as_view(), name='custom_report'),
     path('advanced-reports/export/', ReportExportView.as_view(), name='report_export'),
 
     # AJAX URLs

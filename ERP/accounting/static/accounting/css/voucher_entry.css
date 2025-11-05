@@ -41,3 +41,23 @@
 }
 
 
+
+.ve-wrapper.ve-readonly #grid {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.ve-wrapper.ve-readonly input[data-hkey],
+.ve-wrapper.ve-readonly select[data-hkey],
+.ve-wrapper.ve-readonly textarea[data-hkey] {
+  pointer-events: none;
+  background-color: #f8fafc;
+  color: #64748b;
+}
+
+.ve-wrapper.ve-readonly .ve-summary-grid input,
+.ve-wrapper.ve-readonly .ve-summary-grid select,
+.ve-wrapper.ve-readonly .ve-summary-grid textarea {
+  pointer-events: none;
+}
+

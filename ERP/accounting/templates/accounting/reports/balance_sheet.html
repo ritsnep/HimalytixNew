@@ -1,154 +1,182 @@
-{% extends 'accounting/_list_base.html' %}
-{% load static %}
+{% extends 'base.html' %}
+{% load i18n %}
 
-{% block title %}Balance Sheet{% endblock %}
-{% block breadcrumb %}Balance Sheet{% endblock %}
-
-{% block list_header %}
-<div class="d-flex justify-content-between align-items-center">
-    <h4 class="card-title">Balance Sheet</h4>
-    <div>
-        <a href="{% url 'accounting:reports_list' %}" class="btn btn-secondary">
-            <i class="fas fa-arrow-left me-1"></i>Back to Reports
-        </a>
-        <button onclick="window.print()" class="btn btn-primary">
-            <i class="fas fa-print me-1"></i>Print
-        </button>
-    </div>
-</div>
-{% endblock %}
+{% block title %}{% trans "Balance Sheet" %}{% endblock %}
 
 {% block content %}
-{% if error %}
-<div class="alert alert-warning" role="alert">
-    {{ error }}
-</div>
-{% else %}
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body">
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <h5>Organization: {{ organization.name }}</h5>
-                        <p class="text-muted">Period: {{ period.name }}</p>
-                        <p class="text-muted">Date: {{ period.start_date|date:"M d, Y" }} - {{ period.end_date|date:"M d, Y" }}</p>
-                    </div>
-                    <div class="col-md-6 text-end">
-                        <p class="text-muted">Generated: {% now "M d, Y H:i" %}</p>
-                    </div>
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-1">
+                        <i class="fas fa-building-columns me-2"></i>
+                        {% trans "Balance Sheet" %}
+                    </h1>
+                    <p class="text-muted mb-0">
+                        {% trans "Snapshot of assets, liabilities, and equity at a specific point in time." %}
+                    </p>
                 </div>
-
-                <div class="row">
-                    <div class="col-md-8 mx-auto">
-                        <div class="text-center mb-4">
-                            <h3>BALANCE SHEET</h3>
-                            <p class="text-muted">As of {{ period.end_date|date:"M d, Y" }}</p>
-                        </div>
-
-                        <!-- Assets Section -->
-                        <div class="card border-success mb-3">
-                            <div class="card-header bg-success text-white">
-                                <h5 class="mb-0">ASSETS</h5>
-                            </div>
-                            <div class="card-body">
-                                {% for asset in balance_sheet.asset_details %}
-                                {% if asset.balance > 0 %}
-                                <div class="row">
-                                    <div class="col-8">{{ asset.account_name }}</div>
-                                    <div class="col-4 text-end">${{ asset.balance|floatformat:2 }}</div>
-                                </div>
-                                {% endif %}
-                                {% empty %}
-                                <div class="text-muted">No assets recorded</div>
-                                {% endfor %}
-                                <hr>
-                                <div class="row fw-bold">
-                                    <div class="col-8">Total Assets</div>
-                                    <div class="col-4 text-end">${{ balance_sheet.total_assets|floatformat:2 }}</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Liabilities Section -->
-                        <div class="card border-danger mb-3">
-                            <div class="card-header bg-danger text-white">
-                                <h5 class="mb-0">LIABILITIES</h5>
-                            </div>
-                            <div class="card-body">
-                                {% for liability in balance_sheet.liability_details %}
-                                {% if liability.balance > 0 %}
-                                <div class="row">
-                                    <div class="col-8">{{ liability.account_name }}</div>
-                                    <div class="col-4 text-end">${{ liability.balance|floatformat:2 }}</div>
-                                </div>
-                                {% endif %}
-                                {% empty %}
-                                <div class="text-muted">No liabilities recorded</div>
-                                {% endfor %}
-                                <hr>
-                                <div class="row fw-bold">
-                                    <div class="col-8">Total Liabilities</div>
-                                    <div class="col-4 text-end">${{ balance_sheet.total_liabilities|floatformat:2 }}</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Equity Section -->
-                        <div class="card border-info mb-3">
-                            <div class="card-header bg-info text-white">
-                                <h5 class="mb-0">EQUITY</h5>
-                            </div>
-                            <div class="card-body">
-                                {% for equity in balance_sheet.equity_details %}
-                                {% if equity.balance > 0 %}
-                                <div class="row">
-                                    <div class="col-8">{{ equity.account_name }}</div>
-                                    <div class="col-4 text-end">${{ equity.balance|floatformat:2 }}</div>
-                                </div>
-                                {% endif %}
-                                {% empty %}
-                                <div class="text-muted">No equity recorded</div>
-                                {% endfor %}
-                                <hr>
-                                <div class="row fw-bold">
-                                    <div class="col-8">Total Equity</div>
-                                    <div class="col-4 text-end">${{ balance_sheet.total_equity|floatformat:2 }}</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Total Liabilities and Equity -->
-                        <div class="card border-primary">
-                            <div class="card-header bg-primary text-white">
-                                <h5 class="mb-0">TOTAL LIABILITIES AND EQUITY</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="row fw-bold fs-5">
-                                    <div class="col-8">Total Liabilities and Equity</div>
-                                    <div class="col-4 text-end">${{ balance_sheet.total_liabilities_equity|floatformat:2 }}</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Summary -->
-                        <div class="mt-4">
-                            {% if balance_sheet.total_assets == balance_sheet.total_liabilities_equity %}
-                            <div class="alert alert-success" role="alert">
-                                <strong>Balanced:</strong> Assets equal Liabilities plus Equity. The balance sheet is in balance.
-                            </div>
-                            {% else %}
-                            <div class="alert alert-danger" role="alert">
-                                <strong>Out of Balance:</strong> Assets (${{ balance_sheet.total_assets|floatformat:2 }}) do not equal Liabilities plus Equity (${{ balance_sheet.total_liabilities_equity|floatformat:2 }}). 
-                                Difference: ${{ balance_sheet.total_assets|add:balance_sheet.total_liabilities_equity|floatformat:2 }}
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
+                <a href="{% url 'accounting:report_list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>
+                    {% trans "Back to Reports" %}
+                </a>
             </div>
         </div>
     </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="as_of_date" class="form-label">{% trans "As of Date" %}</label>
+                    <input type="date" id="as_of_date" name="as_of_date" value="{{ as_of_date }}" class="form-control" required>
+                </div>
+                <div class="col-md-2 d-grid">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-sync me-2"></i>
+                        {% trans "Generate" %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if error %}
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+        </div>
+    {% endif %}
+
+    {% if report_data %}
+        <div class="card shadow-sm">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">{% trans "Balance Sheet" %}</h5>
+                    <small class="text-muted">
+                        {% trans "Organisation" %}: {{ report_data.organization }}
+                        - {% trans "As of" %}: {{ report_data.as_of_date|date:"Y-m-d" }}
+                    </small>
+                </div>
+                <form method="post" action="{% url 'accounting:report_export' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="report_type" value="balance_sheet">
+                    <input type="hidden" name="as_of_date" value="{{ as_of_date }}">
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary" name="export_format" value="csv">
+                            <i class="fas fa-file-csv me-1"></i>CSV
+                        </button>
+                        <button class="btn btn-outline-secondary" name="export_format" value="excel">
+                            <i class="fas fa-file-excel me-1"></i>Excel
+                        </button>
+                        <button class="btn btn-outline-secondary" name="export_format" value="pdf">
+                            <i class="fas fa-file-pdf me-1"></i>PDF
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-lg-6">
+                        <h5 class="mb-3">{% trans "Assets" %}</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>{% trans "Account" %}</th>
+                                        <th class="text-end">{% trans "Amount" %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for line in report_data.lines %}
+                                        {% if line.line_type == 'asset' %}
+                                            <tr>
+                                                <td>
+                                                    <strong>{{ line.account_code }}</strong>
+                                                    <div class="text-muted small">{{ line.account_name }}</div>
+                                                </td>
+                                                <td class="text-end">{{ line.amount|floatformat:2 }}</td>
+                                            </tr>
+                                        {% endif %}
+                                    {% empty %}
+                                        <tr>
+                                            <td colspan="2" class="text-center text-muted py-4">
+                                                {% trans "No asset balances available." %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot class="table-light fw-bold">
+                                    <tr>
+                                        <td>{% trans "Total Assets" %}</td>
+                                        <td class="text-end">{{ report_data.totals.total_assets|floatformat:2 }}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <h5 class="mb-3">{% trans "Liabilities & Equity" %}</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>{% trans "Account" %}</th>
+                                        <th class="text-end">{% trans "Amount" %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for line in report_data.lines %}
+                                        {% if line.line_type in ('liability', 'equity') %}
+                                            <tr>
+                                                <td>
+                                                    <strong>{{ line.account_code }}</strong>
+                                                    <div class="text-muted small">{{ line.account_name }}</div>
+                                                </td>
+                                                <td class="text-end">{{ line.amount|floatformat:2 }}</td>
+                                            </tr>
+                                        {% endif %}
+                                    {% empty %}
+                                        <tr>
+                                            <td colspan="2" class="text-center text-muted py-4">
+                                                {% trans "No liability or equity balances available." %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot class="table-light fw-bold">
+                                    <tr>
+                                        <td>{% trans "Total Liabilities & Equity" %}</td>
+                                        <td class="text-end">{{ report_data.totals.total_liabilities_equity|floatformat:2 }}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    {% if report_data.is_balanced %}
+                        <div class="alert alert-success mb-0">
+                            <i class="fas fa-check-circle me-2"></i>
+                            {% trans "Balance sheet balances (Assets = Liabilities + Equity)." %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning mb-0">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            {% blocktrans with diff=report_data.totals.difference|floatformat:2 %}
+                                Out of balance by {{ diff }}.
+                            {% endblocktrans %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            {% trans "Select an 'as of' date to view the balance sheet." %}
+        </div>
+    {% endif %}
 </div>
-{% endif %}
-{% endblock %} 
+{% endblock %}

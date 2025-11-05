@@ -864,6 +864,17 @@ def _serialize_journal(journal: Journal) -> Dict[str, Any]:
             }
         )
 
+    posted_by_id = getattr(journal, "posted_by_id", None)
+    posted_by_name = None
+    if posted_by_id and getattr(journal, "posted_by", None):
+        posted_by_name = getattr(journal.posted_by, "get_full_name", None)
+        if callable(posted_by_name):
+            posted_by_name = posted_by_name() or journal.posted_by.get_username()
+        else:
+            posted_by_name = getattr(journal.posted_by, "username", None)
+
+    is_editable = journal.status in ('draft', 'rejected') and not journal.is_locked
+
     return {
         "id": journal.pk,
         "number": journal.journal_number or "",
@@ -882,6 +893,13 @@ def _serialize_journal(journal: Journal) -> Dict[str, Any]:
         "metadata": metadata,
         "createdAt": journal.created_at.isoformat() if journal.created_at else None,
         "updatedAt": journal.updated_at.isoformat() if journal.updated_at else None,
+        "isLocked": journal.is_locked,
+        "editable": is_editable,
+        "postedAt": journal.posted_at.isoformat() if journal.posted_at else None,
+        "postedBy": posted_by_id,
+        "postedByName": posted_by_name,
+        "isReversal": journal.is_reversal,
+        "reversalOfId": journal.reversal_of_id,
     }
 
 
@@ -1015,8 +1033,21 @@ def journal_entry(request):
     journal_id_param = request.GET.get("journal_id") or ""
     if journal_id_param and not journal_id_param.isdigit():
         journal_id_param = ""
+    
+    # Check if config_id is provided
+    config_id_param = request.GET.get("config_id") or ""
+    show_config_selector = not config_id_param and not journal_id_param
 
     organization = _active_organization(request.user)
+    
+    # Get available voucher configs for selection
+    voucher_configs = []
+    if show_config_selector:
+        from accounting.models import VoucherModeConfig
+        voucher_configs = VoucherModeConfig.objects.filter(
+            archived_at__isnull=True
+        ).select_related('journal_type').order_by('name')
+    
     permission_flags = {
         "can_submit": bool(request.user.has_perm('accounting.can_submit_for_approval') or (organization and PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'submit_journal'))),
         "can_approve": bool(request.user.has_perm('accounting.can_approve_journal') or (organization and PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'approve_journal'))),
@@ -1029,6 +1060,16 @@ def journal_entry(request):
         "costCenter": reverse('accounting:journal_cost_center_lookup'),
     }
 
+    # Compute config endpoint here (wrap reverse in try/except so template rendering
+    # doesn't fail if the named URL is not available at template-evaluation time).
+    try:
+        config_endpoint = reverse('accounting:journal_config')
+    except Exception:
+        # Fallback to the hard-coded path used by this app. This avoids template
+        # level NoReverseMatch while we investigate why the named URL may not
+        # be present at runtime (possible duplicate modules / import mismatch).
+        config_endpoint = '/accounting/journal-entry/config/'
+
     context = {
         "voucher_entry_page": True,
         "journal_default_type": journal_entry_settings.ui_settings.get("default_entry_type") or "JN",
@@ -1038,6 +1079,9 @@ def journal_entry(request):
         "permission_flags": permission_flags,
         "lookup_urls": lookup_urls,
         "active_organization": organization,
+        "config_endpoint": config_endpoint,
+        "show_config_selector": show_config_selector,
+        "voucher_configs": voucher_configs,
     }
     return render(request, "accounting/journal_entry.html", context)
 

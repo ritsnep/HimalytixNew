@@ -1,10 +1,14 @@
 from decimal import Decimal
-from typing import Dict, List, Any
+from typing import Any, Dict, List
+
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
-from accounting.models import Attachment, GeneralLedger, Journal, JournalLine, VoucherModeConfig, JournalType
+
+from accounting.models import Attachment, Journal, JournalLine, JournalType, VoucherModeConfig
+from accounting.services.posting_service import PostingService
+from accounting.utils.audit import log_audit_event
 from usermanagement.models import CustomUser, Organization
 from usermanagement.utils import PermissionUtils
-from accounting.utils.audit import log_audit_event
 
 class JournalEntryService:
     """
@@ -65,7 +69,12 @@ class JournalEntryService:
             if not self._has_permission('change'):
                 raise PermissionError("You do not have permission to update journal entries.")
 
-            if journal.status != 'draft':
+            if journal.status == 'rejected':
+                if not self._has_permission('modify'):
+                    raise PermissionError("You do not have permission to modify rejected journals.")
+                journal.status = 'draft'
+                journal.is_locked = False
+            elif journal.status != 'draft':
                 raise ValueError("Only draft journals can be updated.")
 
             errors = self._validate_journal_entry(journal_data, lines_data, config)
@@ -188,6 +197,7 @@ class JournalEntryService:
             'change': 'change_journal',
             'delete': 'delete_journal',
             'view': 'view_journal',
+            'modify': 'modify_journal',
             'submit_journal': 'can_submit_for_approval',
             'approve_journal': 'can_approve_journal',
             'reject_journal': 'can_reject_journal',
@@ -233,54 +243,29 @@ class JournalEntryService:
         if journal.status != 'awaiting_approval':
             raise ValueError("Only journals awaiting approval can be rejected.")
         journal.status = 'rejected'
+        journal.is_locked = False
         journal.updated_by = self.user
-        journal.save(update_fields=['status', 'updated_by', 'updated_at'])
+        journal.save(update_fields=['status', 'is_locked', 'updated_by', 'updated_at'])
         log_audit_event(self.user, journal, 'reject')
 
-    def post(self, journal: Journal):
+    def post(self, journal: Journal) -> Journal:
         """Posts a journal to the general ledger."""
         if not self._has_permission('post_journal'):
             raise PermissionError("You do not have permission to post journal entries.")
-        if journal.status != 'approved':
+
+        if journal.status not in ('approved', 'draft'):
             raise ValueError("Only approved journals can be posted.")
-        
-        # Logic from post_journal service
-        with transaction.atomic():
-            if journal.period.status != "open":
-                raise ValueError("Accounting period is closed")
 
-            jt = JournalType.objects.select_for_update().get(pk=journal.journal_type.pk)
-            if not journal.journal_number:
-                journal.journal_number = jt.get_next_journal_number(journal.period)
+        if journal.status == 'draft' and getattr(journal.journal_type, 'requires_approval', False):
+            raise ValueError("This journal type requires approval before posting.")
 
-            journal.status = 'posted'
-            journal.updated_by = self.user
-            journal.save(update_fields=['status', 'updated_by', 'updated_at'])
-
-            log_audit_event(self.user, journal, 'post')
-
-            for line in journal.lines.select_related("account").all():
-                line.functional_debit_amount = line.debit_amount * journal.exchange_rate
-                line.functional_credit_amount = line.credit_amount * journal.exchange_rate
-                line.save()
-
-                account = line.account
-                account.current_balance = account.current_balance + line.debit_amount - line.credit_amount
-                account.save(update_fields=["current_balance"])
-
-                GeneralLedger.objects.create(
-                    organization_id=journal.organization,
-                    account=account,
-                    journal=journal,
-                    journal_line=line,
-                    period=journal.period,
-                    transaction_date=journal.journal_date,
-                    debit_amount=line.debit_amount,
-                    credit_amount=line.credit_amount,
-                    balance_after=account.current_balance,
-                    currency_code=line.currency_code,
-                    exchange_rate=line.exchange_rate,
-                    functional_debit_amount=line.functional_debit_amount,
-                    functional_credit_amount=line.functional_credit_amount,
-                    department=line.department,
-                )
+        posting_service = PostingService(self.user)
+        try:
+            posted_journal = posting_service.post(journal)
+        except ValidationError as exc:
+            message = "; ".join(exc.messages)
+            raise ValueError(message) from exc
+        except PermissionDenied as exc:
+            raise PermissionError(str(exc)) from exc
+        journal.refresh_from_db()
+        return posted_journal

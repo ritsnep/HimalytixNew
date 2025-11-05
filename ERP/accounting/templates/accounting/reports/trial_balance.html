@@ -5,16 +5,17 @@
 
 {% block content %}
 <div class="container-fluid">
-    <!-- Header -->
     <div class="row mb-4">
         <div class="col-md-12">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <h1 class="mb-1">
-                        <i class="fas fa-balance-scale me-2"></i>
+                        <i class="fas fa-scale-balanced me-2"></i>
                         {% trans "Trial Balance" %}
                     </h1>
-                    <p class="text-muted">{% trans "Verify debits and credits balance for all accounts" %}</p>
+                    <p class="text-muted mb-0">
+                        {% trans "Ensure total debits and credits balance across the chart of accounts." %}
+                    </p>
                 </div>
                 <a href="{% url 'accounting:report_list' %}" class="btn btn-outline-secondary">
                     <i class="fas fa-arrow-left me-2"></i>
@@ -24,136 +25,143 @@
         </div>
     </div>
 
-    <!-- Filter Form -->
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <form method="get" class="row g-3">
-                        <div class="col-md-4">
-                            <label for="as_of_date" class="form-label">{% trans "As Of Date" %}</label>
-                            <input type="date" name="as_of_date" id="as_of_date" class="form-control" value="{{ as_of_date }}">
-                        </div>
-                        <div class="col-md-8 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-filter me-2"></i>
-                                {% trans "Generate" %}
-                            </button>
-                        </div>
-                    </form>
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="as_of_date" class="form-label">{% trans "As of Date" %}</label>
+                    <input type="date" id="as_of_date" name="as_of_date" value="{{ as_of_date }}" class="form-control" required>
                 </div>
-            </div>
+                <div class="col-md-2 d-grid">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-sync me-2"></i>
+                        {% trans "Generate" %}
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- Report Data -->
+    {% if error %}
+        <div class="alert alert-danger" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+        </div>
+    {% endif %}
+
     {% if report_data %}
-        {% if report_data.error %}
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                <strong>{% trans "Error:" %}</strong> {{ report_data.error }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <div class="card shadow-sm">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">{% trans "Summary" %}</h5>
+                    <small class="text-muted">
+                        {% trans "Organisation" %}: {{ report_data.organization }}
+                        - {% trans "As of" %}: {{ report_data.as_of_date|date:"Y-m-d" }}
+                    </small>
+                </div>
+                <form method="post" action="{% url 'accounting:report_export' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="report_type" value="trial_balance">
+                    <input type="hidden" name="as_of_date" value="{{ as_of_date }}">
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary" name="export_format" value="csv">
+                            <i class="fas fa-file-csv me-1"></i>CSV
+                        </button>
+                        <button class="btn btn-outline-secondary" name="export_format" value="excel">
+                            <i class="fas fa-file-excel me-1"></i>Excel
+                        </button>
+                        <button class="btn btn-outline-secondary" name="export_format" value="pdf">
+                            <i class="fas fa-file-pdf me-1"></i>PDF
+                        </button>
+                    </div>
+                </form>
             </div>
-        {% else %}
-            <div class="row mb-4">
-                <div class="col-md-12">
-                    <div class="card shadow-sm">
-                        <div class="card-header bg-light">
-                            <div class="row">
-                                <div class="col">
-                                    <h5 class="mb-0">{% trans "Trial Balance" %}</h5>
-                                    <small class="text-muted">
-                                        {% trans "Organization" %}: {{ report_data.organization }}
-                                        | {% trans "As Of" %}: {{ report_data.as_of_date|date:"Y-m-d" }}
-                                    </small>
-                                </div>
-                                <div class="col text-end">
-                                    {% if report_data.is_balanced %}
-                                    <span class="badge bg-success">
-                                        <i class="fas fa-check-circle me-1"></i>
-                                        {% trans "Balanced" %}
-                                    </span>
-                                    {% else %}
-                                    <span class="badge bg-danger">
-                                        <i class="fas fa-exclamation-circle me-1"></i>
-                                        {% trans "Out of Balance" %}
-                                    </span>
-                                    {% endif %}
-                                    
-                                    <form method="post" action="{% url 'accounting:report_export' %}" style="display: inline; margin-left: 20px;">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="report_type" value="trial_balance">
-                                        <input type="hidden" name="as_of_date" value="{{ as_of_date }}">
-                                        
-                                        <div class="btn-group" role="group">
-                                            <button type="submit" name="export_format" value="csv" class="btn btn-sm btn-outline-secondary">
-                                                <i class="fas fa-file-csv me-1"></i>CSV
-                                            </button>
-                                            <button type="submit" name="export_format" value="excel" class="btn btn-sm btn-outline-secondary">
-                                                <i class="fas fa-file-excel me-1"></i>Excel
-                                            </button>
-                                            <button type="submit" name="export_format" value="pdf" class="btn btn-sm btn-outline-secondary">
-                                                <i class="fas fa-file-pdf me-1"></i>PDF
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="text-muted small">{% trans "Total Debits" %}</div>
+                            <div class="fs-5 fw-semibold text-success">{{ report_data.totals.total_debits|floatformat:2 }}</div>
                         </div>
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>{% trans "Account Code" %}</th>
-                                        <th>{% trans "Account Name" %}</th>
-                                        <th>{% trans "Account Type" %}</th>
-                                        <th class="text-end">{% trans "Debit Balance" %}</th>
-                                        <th class="text-end">{% trans "Credit Balance" %}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for line in report_data.lines %}
-                                    <tr>
-                                        <td><strong>{{ line.account_code }}</strong></td>
-                                        <td>{{ line.account_name }}</td>
-                                        <td>
-                                            <span class="badge bg-secondary">{{ line.account_type }}</span>
-                                        </td>
-                                        <td class="text-end">
-                                            {% if line.debit_balance %}
-                                            <span class="fw-bold text-success">{{ line.debit_balance|floatformat:2 }}</span>
-                                            {% else %}
-                                            —
-                                            {% endif %}
-                                        </td>
-                                        <td class="text-end">
-                                            {% if line.credit_balance %}
-                                            <span class="fw-bold text-danger">{{ line.credit_balance|floatformat:2 }}</span>
-                                            {% else %}
-                                            —
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                                <tfoot class="table-light fw-bold">
-                                    <tr>
-                                        <td colspan="3" class="text-end">{% trans "Grand Totals" %}:</td>
-                                        <td class="text-end text-success">{{ report_data.totals.total_debits|floatformat:2 }}</td>
-                                        <td class="text-end text-danger">{{ report_data.totals.total_credits|floatformat:2 }}</td>
-                                    </tr>
-                                </tfoot>
-                            </table>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="text-muted small">{% trans "Total Credits" %}</div>
+                            <div class="fs-5 fw-semibold text-danger">{{ report_data.totals.total_credits|floatformat:2 }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="border rounded p-3 h-100 {% if report_data.is_balanced %}border-success{% else %}border-warning{% endif %}">
+                            <div class="text-muted small">{% trans "Difference" %}</div>
+                            <div class="fs-5 fw-semibold">
+                                {{ report_data.totals.difference|floatformat:2 }}
+                                {% if report_data.is_balanced %}
+                                    <span class="badge bg-success ms-2">
+                                        <i class="fas fa-check"></i> {% trans "Balanced" %}
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark ms-2">
+                                        <i class="fas fa-exclamation-triangle"></i> {% trans "Out of Balance" %}
+                                    </span>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
                 </div>
+
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>{% trans "Account Code" %}</th>
+                                <th>{% trans "Account Name" %}</th>
+                                <th>{% trans "Type" %}</th>
+                                <th class="text-end">{% trans "Debit" %}</th>
+                                <th class="text-end">{% trans "Credit" %}</th>
+                                <th class="text-end">{% trans "Detail" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for line in report_data.lines %}
+                                <tr>
+                                    <td><strong>{{ line.account_code }}</strong></td>
+                                    <td>{{ line.account_name }}</td>
+                                    <td><span class="badge bg-secondary">{{ line.account_type }}</span></td>
+                                    <td class="text-end">{{ line.debit_balance|floatformat:2 }}</td>
+                                    <td class="text-end">{{ line.credit_balance|floatformat:2 }}</td>
+                                    <td class="text-end">
+                                        {% if line.detail_url %}
+                                            <a href="{{ line.detail_url }}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-arrow-up-right-from-square me-1"></i>{% trans "Ledger" %}
+                                            </a>
+                                        {% else %}
+                                            &mdash;
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">
+                                        {% trans "No balances found for the selected criteria." %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-light fw-bold">
+                            <tr>
+                                <td colspan="3" class="text-end">{% trans "Totals" %}</td>
+                                <td class="text-end">{{ report_data.totals.total_debits|floatformat:2 }}</td>
+                                <td class="text-end">{{ report_data.totals.total_credits|floatformat:2 }}</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
             </div>
-        {% endif %}
+        </div>
     {% else %}
-        <div class="alert alert-info alert-dismissible fade show" role="alert">
+        <div class="alert alert-info">
             <i class="fas fa-info-circle me-2"></i>
-            {% trans "Select a date and click Generate to view the trial balance." %}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            {% trans "Choose an 'as of' date and click Generate to produce the trial balance." %}
         </div>
     {% endif %}
 </div>

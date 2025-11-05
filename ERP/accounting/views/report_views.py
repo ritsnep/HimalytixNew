@@ -1,407 +1,433 @@
-"""
-Advanced Reporting Views - Phase 3 Task 2
+from __future__ import annotations
 
-Views for generating and displaying financial reports:
-- ReportListView: List available reports
-- GeneralLedgerView: Generate and display ledger
-- TrialBalanceView: Generate trial balance
-- ProfitLossView: Generate P&L statement
-- BalanceSheetView: Generate balance sheet
-- CashFlowView: Generate cash flow
-- AccountsReceivableAgingView: Generate A/R aging
-- ReportExportView: Handle report exports (PDF/Excel/CSV)
-"""
-
-from django.shortcuts import render, redirect, get_object_or_404
-from django.views import View
-from django.views.generic import TemplateView, ListView
-from django.http import HttpResponse, JsonResponse
-from django.utils.translation import gettext as _
-from django.utils import timezone
-from datetime import datetime, date, timedelta
-from decimal import Decimal
 import logging
+from datetime import date, datetime, timedelta
+from decimal import Decimal
+from typing import Any, Dict, Optional
 
-from accounting.services.report_service import ReportService
+from django.db import models
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, render
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.translation import gettext as _
+from django.views import View
+from django.views.generic import TemplateView
+
+from accounting.models import ChartOfAccount, ReportDefinition
 from accounting.services.report_export_service import ReportExportService
-from accounting.models import Account, JournalType
-from usermanagement.models import Organization
+from accounting.services.report_service import ReportService
 from usermanagement.mixins import UserOrganizationMixin
 
 logger = logging.getLogger(__name__)
 
+DATE_FMT = "%Y-%m-%d"
+
+
+def _parse_date(value: Optional[str]) -> Optional[date]:
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, DATE_FMT).date()
+    except (TypeError, ValueError):
+        return None
+
+
+def _default_period() -> (date, date):
+    today = timezone.localdate()
+    start = today - timedelta(days=30)
+    return start, today
+
 
 class ReportListView(UserOrganizationMixin, TemplateView):
-    """
-    Display list of available reports with filters.
-    
-    Reports available:
-    - General Ledger
-    - Trial Balance
-    - Profit & Loss
-    - Balance Sheet
-    - Cash Flow
-    - Accounts Receivable Aging
-    """
-    
-    template_name = 'accounting/reports/report_list.html'
-    
+    template_name = "accounting/reports/report_list.html"
+
     def get_context_data(self, **kwargs):
-        """Add available reports to context."""
         context = super().get_context_data(**kwargs)
-        
-        reports = [
+        context["reports"] = [
             {
-                'id': 'general_ledger',
-                'name': _('General Ledger'),
-                'description': _('View all transactions by account with running balances'),
-                'url': 'accounting:report_ledger',
+                "id": "general_ledger",
+                "name": _("General Ledger"),
+                "description": _("View all transactions by account with running balances."),
+                "url": reverse("accounting:report_ledger"),
             },
             {
-                'id': 'trial_balance',
-                'name': _('Trial Balance'),
-                'description': _('Verify debits and credits balance for all accounts'),
-                'url': 'accounting:report_trial_balance',
+                "id": "trial_balance",
+                "name": _("Trial Balance"),
+                "description": _("Verify debits and credits balance for all accounts."),
+                "url": reverse("accounting:report_trial_balance"),
             },
             {
-                'id': 'profit_loss',
-                'name': _('Profit & Loss Statement'),
-                'description': _('View revenues, expenses, and net income'),
-                'url': 'accounting:report_pl',
+                "id": "profit_loss",
+                "name": _("Profit & Loss Statement"),
+                "description": _("Analyse revenues, expenses, and net income for a period."),
+                "url": reverse("accounting:report_pl"),
             },
             {
-                'id': 'balance_sheet',
-                'name': _('Balance Sheet'),
-                'description': _('View assets, liabilities, and equity'),
-                'url': 'accounting:report_bs',
+                "id": "balance_sheet",
+                "name": _("Balance Sheet"),
+                "description": _("Summarise assets, liabilities, and equity at a point in time."),
+                "url": reverse("accounting:report_bs"),
             },
             {
-                'id': 'cash_flow',
-                'name': _('Cash Flow Statement'),
-                'description': _('Analyze cash inflows and outflows'),
-                'url': 'accounting:report_cf',
+                "id": "cash_flow",
+                "name": _("Cash Flow Statement"),
+                "description": _("Track cash inflows and outflows by activity."),
+                "url": reverse("accounting:report_cf"),
             },
             {
-                'id': 'ar_aging',
-                'name': _('Accounts Receivable Aging'),
-                'description': _('Analyze customer balances by aging period'),
-                'url': 'accounting:report_ar_aging',
+                "id": "ar_aging",
+                "name": _("Accounts Receivable Aging"),
+                "description": _("Bucket outstanding receivables by age."),
+                "url": reverse("accounting:report_ar_aging"),
             },
         ]
-        
-        context['reports'] = reports
-        context['accounts'] = Account.objects.filter(
-            organization=self.organization,
-            is_active=True
-        ).order_by('code')
-        
+
+        custom_definitions = ReportDefinition.objects.filter(
+            is_active=True,
+        ).filter(
+            models.Q(organization__isnull=True) | models.Q(organization=self.organization)
+        ).order_by("organization_id", "name")
+        context["custom_reports"] = custom_definitions
         return context
 
 
 class GeneralLedgerView(UserOrganizationMixin, View):
-    """
-    Generate and display General Ledger report.
-    
-    Supports:
-    - Account filtering
-    - Date range selection
-    - Export to CSV/Excel/PDF
-    """
-    
-    template_name = 'accounting/reports/general_ledger.html'
-    
+    template_name = "accounting/reports/general_ledger.html"
+
     def get(self, request):
-        """Display report form and results."""
-        # Get filter parameters
-        account_id = request.GET.get('account_id')
-        start_date = request.GET.get('start_date')
-        end_date = request.GET.get('end_date')
-        
+        account_id_raw = request.GET.get("account_id")
+        start_raw = request.GET.get("start_date")
+        end_raw = request.GET.get("end_date")
+
+        accounts = ChartOfAccount.objects.filter(
+            organization=self.organization, is_active=True
+        ).order_by("account_code")
+
+        start_date, end_date = _default_period()
+        if start := _parse_date(start_raw):
+            start_date = start
+        if end := _parse_date(end_raw):
+            end_date = end
+
         report_data = None
-        
-        if start_date and end_date:
+        error = None
+        if start_raw and end_raw:
             try:
-                start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
-                end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
-                
-                # Generate report
                 service = ReportService(self.organization)
-                service.set_date_range(start_date_obj, end_date_obj)
-                report_data = service.generate_general_ledger(
-                    account_id=int(account_id) if account_id else None
-                )
-                
-                logger.info(f"Generated General Ledger for {self.organization}")
-            except Exception as e:
-                logger.exception(f"Error generating ledger: {e}")
-                report_data = {'error': str(e)}
-        
+                service.set_date_range(start_date, end_date)
+                account_id = int(account_id_raw) if account_id_raw else None
+                report_data = service.generate_general_ledger(account_id=account_id)
+            except ValueError as exc:
+                error = str(exc)
+                logger.warning("General ledger generation error: %s", exc)
+
         context = {
-            'report_data': report_data,
-            'accounts': Account.objects.filter(
-                organization=self.organization,
-                is_active=True
-            ).order_by('code'),
-            'selected_account': account_id,
-            'start_date': start_date,
-            'end_date': end_date,
+            "accounts": accounts,
+            "selected_account": account_id_raw or "",
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "report_data": report_data,
+            "error": error,
         }
-        
         return render(request, self.template_name, context)
 
 
 class TrialBalanceView(UserOrganizationMixin, View):
-    """
-    Generate and display Trial Balance report.
-    """
-    
-    template_name = 'accounting/reports/trial_balance.html'
-    
+    template_name = "accounting/reports/trial_balance.html"
+
     def get(self, request):
-        """Display trial balance as of date."""
-        as_of_date = request.GET.get('as_of_date')
-        
+        as_of_raw = request.GET.get("as_of_date")
+        as_of_date = _parse_date(as_of_raw) or timezone.localdate()
+
         report_data = None
-        
-        if as_of_date:
+        error = None
+        if as_of_raw:
             try:
-                as_of_date_obj = datetime.strptime(as_of_date, '%Y-%m-%d').date()
-                
                 service = ReportService(self.organization)
-                service.set_date_range(
-                    date(as_of_date_obj.year, 1, 1),
-                    as_of_date_obj
-                )
-                report_data = service.generate_trial_balance()
-                
-                logger.info(f"Generated Trial Balance for {self.organization}")
-            except Exception as e:
-                logger.exception(f"Error generating trial balance: {e}")
-                report_data = {'error': str(e)}
-        
+                report_data = service.generate_trial_balance(as_of_date)
+            except ValueError as exc:
+                error = str(exc)
+                logger.warning("Trial balance generation error: %s", exc)
+
         context = {
-            'report_data': report_data,
-            'as_of_date': as_of_date,
+            "as_of_date": as_of_date.isoformat(),
+            "report_data": report_data,
+            "error": error,
         }
-        
         return render(request, self.template_name, context)
 
 
 class ProfitLossView(UserOrganizationMixin, View):
-    """
-    Generate and display Profit & Loss statement.
-    """
-    
-    template_name = 'accounting/reports/profit_loss.html'
-    
+    template_name = "accounting/reports/profit_loss.html"
+
     def get(self, request):
-        """Display P&L for period."""
-        start_date = request.GET.get('start_date')
-        end_date = request.GET.get('end_date')
-        
+        start_raw = request.GET.get("start_date")
+        end_raw = request.GET.get("end_date")
+        start_date, end_date = _default_period()
+        if start := _parse_date(start_raw):
+            start_date = start
+        if end := _parse_date(end_raw):
+            end_date = end
+
         report_data = None
-        
-        if start_date and end_date:
+        error = None
+        if start_raw and end_raw:
             try:
-                start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
-                end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
-                
                 service = ReportService(self.organization)
-                service.set_date_range(start_date_obj, end_date_obj)
-                report_data = service.generate_profit_loss()
-                
-                logger.info(f"Generated P&L for {self.organization}")
-            except Exception as e:
-                logger.exception(f"Error generating P&L: {e}")
-                report_data = {'error': str(e)}
-        
+                service.set_date_range(start_date, end_date)
+                report_data = service.generate_profit_and_loss()
+            except ValueError as exc:
+                error = str(exc)
+                logger.warning("P&L generation error: %s", exc)
+
         context = {
-            'report_data': report_data,
-            'start_date': start_date,
-            'end_date': end_date,
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "report_data": report_data,
+            "error": error,
         }
-        
         return render(request, self.template_name, context)
 
 
 class BalanceSheetView(UserOrganizationMixin, View):
-    """
-    Generate and display Balance Sheet report.
-    """
-    
-    template_name = 'accounting/reports/balance_sheet.html'
-    
+    template_name = "accounting/reports/balance_sheet.html"
+
     def get(self, request):
-        """Display balance sheet as of date."""
-        as_of_date = request.GET.get('as_of_date')
-        
+        as_of_raw = request.GET.get("as_of_date")
+        as_of_date = _parse_date(as_of_raw) or timezone.localdate()
+
         report_data = None
-        
-        if as_of_date:
+        error = None
+        if as_of_raw:
             try:
-                as_of_date_obj = datetime.strptime(as_of_date, '%Y-%m-%d').date()
-                
                 service = ReportService(self.organization)
-                service.set_date_range(
-                    date(as_of_date_obj.year, 1, 1),
-                    as_of_date_obj
-                )
-                report_data = service.generate_balance_sheet()
-                
-                logger.info(f"Generated Balance Sheet for {self.organization}")
-            except Exception as e:
-                logger.exception(f"Error generating balance sheet: {e}")
-                report_data = {'error': str(e)}
-        
+                report_data = service.generate_balance_sheet(as_of_date)
+            except ValueError as exc:
+                error = str(exc)
+                logger.warning("Balance sheet generation error: %s", exc)
+
         context = {
-            'report_data': report_data,
-            'as_of_date': as_of_date,
+            "as_of_date": as_of_date.isoformat(),
+            "report_data": report_data,
+            "error": error,
         }
-        
         return render(request, self.template_name, context)
 
 
 class CashFlowView(UserOrganizationMixin, View):
-    """
-    Generate and display Cash Flow statement.
-    """
-    
-    template_name = 'accounting/reports/cash_flow.html'
-    
+    template_name = "accounting/reports/cash_flow.html"
+
     def get(self, request):
-        """Display cash flow for period."""
-        start_date = request.GET.get('start_date')
-        end_date = request.GET.get('end_date')
-        
+        start_raw = request.GET.get("start_date")
+        end_raw = request.GET.get("end_date")
+        start_date, end_date = _default_period()
+        if start := _parse_date(start_raw):
+            start_date = start
+        if end := _parse_date(end_raw):
+            end_date = end
+
         report_data = None
-        
-        if start_date and end_date:
+        error = None
+        if start_raw and end_raw:
             try:
-                start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
-                end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
-                
                 service = ReportService(self.organization)
-                service.set_date_range(start_date_obj, end_date_obj)
+                service.set_date_range(start_date, end_date)
                 report_data = service.generate_cash_flow()
-                
-                logger.info(f"Generated Cash Flow for {self.organization}")
-            except Exception as e:
-                logger.exception(f"Error generating cash flow: {e}")
-                report_data = {'error': str(e)}
-        
+            except ValueError as exc:
+                error = str(exc)
+                logger.warning("Cash flow generation error: %s", exc)
+
         context = {
-            'report_data': report_data,
-            'start_date': start_date,
-            'end_date': end_date,
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "report_data": report_data,
+            "error": error,
         }
-        
         return render(request, self.template_name, context)
 
 
 class AccountsReceivableAgingView(UserOrganizationMixin, View):
-    """
-    Generate and display Accounts Receivable Aging report.
-    """
-    
-    template_name = 'accounting/reports/ar_aging.html'
-    
+    template_name = "accounting/reports/ar_aging.html"
+
     def get(self, request):
-        """Display A/R aging as of date."""
-        as_of_date = request.GET.get('as_of_date')
-        
+        as_of_raw = request.GET.get("as_of_date")
+        as_of_date = _parse_date(as_of_raw) or timezone.localdate()
+
         report_data = None
-        
-        if as_of_date:
+        error = None
+        if as_of_raw:
             try:
-                as_of_date_obj = datetime.strptime(as_of_date, '%Y-%m-%d').date()
-                
                 service = ReportService(self.organization)
-                service.set_date_range(
-                    date(as_of_date_obj.year, 1, 1),
-                    as_of_date_obj
-                )
-                report_data = service.generate_accounts_receivable_aging()
-                
-                logger.info(f"Generated A/R Aging for {self.organization}")
-            except Exception as e:
-                logger.exception(f"Error generating A/R aging: {e}")
-                report_data = {'error': str(e)}
-        
+                report_data = service.generate_ar_aging(as_of_date)
+            except ValueError as exc:
+                error = str(exc)
+                logger.warning("A/R aging generation error: %s", exc)
+
         context = {
-            'report_data': report_data,
-            'as_of_date': as_of_date,
+            "as_of_date": as_of_date.isoformat(),
+            "report_data": report_data,
+            "error": error,
         }
-        
         return render(request, self.template_name, context)
+
+
+class CustomReportView(UserOrganizationMixin, View):
+    template_name = "accounting/reports/custom_report.html"
+
+    def get_definition(self, code: str) -> ReportDefinition:
+        queryset = ReportDefinition.objects.filter(is_active=True).filter(
+            models.Q(organization__isnull=True) | models.Q(organization=self.organization)
+        )
+        return get_object_or_404(queryset, code=code)
+
+    def get(self, request, code: str):
+        definition = self.get_definition(code)
+        raw_parameters = {k: v for k, v in request.GET.items() if k not in ("code",)}
+
+        report_data = None
+        error = None
+        parameter_schema = definition.parameter_schema or {}
+        require_params = bool(parameter_schema.get("parameters"))
+
+        if raw_parameters or not require_params:
+            try:
+                typed_params = self._coerce_parameters(parameter_schema, raw_parameters)
+                service = ReportService(self.organization)
+                report_data = service.run_custom_definition(definition, typed_params)
+            except ValueError as exc:
+                error = str(exc)
+                logger.warning("Custom report generation error for %s: %s", code, exc)
+
+        context = {
+            "definition": definition,
+            "parameter_schema": parameter_schema,
+            "submitted_params": raw_parameters,
+            "report_data": report_data,
+            "error": error,
+        }
+        return render(request, self.template_name, context)
+
+    @staticmethod
+    def _coerce_parameters(schema: Dict[str, Any], raw: Dict[str, Any]) -> Dict[str, Any]:
+        coerced: Dict[str, Any] = {}
+        for param in schema.get("parameters", []):
+            name = param.get("name")
+            if not name:
+                continue
+            value = raw.get(name, param.get("default"))
+            if (value is None or value == "") and param.get("required"):
+                raise ValueError(f"Parameter '{name}' is required.")
+            param_type = (param.get("type") or "string").lower()
+            if value in (None, ""):
+                coerced[name] = None
+                continue
+            try:
+                if param_type == "date":
+                    coerced[name] = _parse_date(value) or value
+                elif param_type in ("int", "integer"):
+                    coerced[name] = int(value)
+                elif param_type in ("decimal", "number", "numeric"):
+                    coerced[name] = Decimal(str(value))
+                else:
+                    coerced[name] = value
+            except Exception as exc:  # noqa: BLE001
+                raise ValueError(f"Invalid value for {name}: {value}") from exc
+        return coerced
 
 
 class ReportExportView(UserOrganizationMixin, View):
     """
-    Handle report export to CSV/Excel/PDF formats.
-    
-    Request parameters:
-    - report_type: Type of report
-    - export_format: csv, excel, pdf
-    - [other parameters specific to report type]
+    Export reports in CSV/Excel/PDF using the stored-procedure data.
     """
-    
-    def post(self, request):
-        """Export report in requested format."""
-        report_type = request.POST.get('report_type')
-        export_format = request.POST.get('export_format', 'csv')
-        
+
+    def post(self, request, *args, **kwargs):
+        report_type = request.POST.get("report_type")
+        export_format = request.POST.get("export_format", "csv").lower()
+
+        service = ReportService(self.organization)
         try:
-            # Generate report data based on type
-            service = ReportService(self.organization)
-            
-            # Parse dates from POST data
-            start_date = request.POST.get('start_date')
-            end_date = request.POST.get('end_date')
-            account_id = request.POST.get('account_id')
-            
-            if start_date and end_date:
-                start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
-                end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
-                service.set_date_range(start_date_obj, end_date_obj)
-            
-            # Generate report
-            if report_type == 'general_ledger':
-                report_data = service.generate_general_ledger(
-                    account_id=int(account_id) if account_id else None
-                )
-            elif report_type == 'trial_balance':
-                report_data = service.generate_trial_balance()
-            elif report_type == 'profit_loss':
-                report_data = service.generate_profit_loss()
-            elif report_type == 'balance_sheet':
-                report_data = service.generate_balance_sheet()
-            elif report_type == 'cash_flow':
-                report_data = service.generate_cash_flow()
-            elif report_type == 'ar_aging':
-                report_data = service.generate_accounts_receivable_aging()
-            else:
-                return JsonResponse({'error': 'Invalid report type'}, status=400)
-            
-            # Export to requested format
-            if export_format == 'csv':
+            report_data = self._generate_report_for_export(service, report_type, request.POST)
+        except ValueError as exc:
+            logger.warning("Export validation error: %s", exc)
+            return self._export_error_response(str(exc))
+
+        try:
+            if export_format == "csv":
                 file_buffer, filename = ReportExportService.to_csv(report_data)
-                content_type = 'text/csv'
-            elif export_format == 'excel':
+                content_type = "text/csv"
+            elif export_format == "excel":
                 file_buffer, filename = ReportExportService.to_excel(report_data)
-                content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-            elif export_format == 'pdf':
+                content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            elif export_format == "pdf":
                 file_buffer, filename = ReportExportService.to_pdf(report_data)
-                content_type = 'application/pdf'
+                content_type = "application/pdf"
             else:
-                return JsonResponse({'error': 'Invalid export format'}, status=400)
-            
-            # Create response
-            response = HttpResponse(file_buffer.read(), content_type=content_type)
-            response['Content-Disposition'] = f'attachment; filename="{filename}"'
-            
-            logger.info(f"Exported {report_type} as {export_format} for {self.organization}")
-            return response
-        
-        except Exception as e:
-            logger.exception(f"Error exporting report: {e}")
-            return JsonResponse({'error': str(e)}, status=500)
+                raise ValueError(f"Unsupported export format: {export_format}")
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Export failed:")
+            return self._export_error_response(str(exc))
+
+        response = HttpResponse(file_buffer.getvalue(), content_type=content_type)
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    def _generate_report_for_export(self, service: ReportService, report_type: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        if report_type == "general_ledger":
+            start = _parse_date(data.get("start_date"))
+            end = _parse_date(data.get("end_date"))
+            if not (start and end):
+                raise ValueError("Start and end dates are required for the general ledger export.")
+            service.set_date_range(start, end)
+            account_id = int(data["account_id"]) if data.get("account_id") else None
+            return service.generate_general_ledger(account_id=account_id)
+
+        if report_type == "trial_balance":
+            as_of = _parse_date(data.get("as_of_date"))
+            if not as_of:
+                raise ValueError("As of date is required for the trial balance export.")
+            return service.generate_trial_balance(as_of)
+
+        if report_type == "profit_loss":
+            start = _parse_date(data.get("start_date"))
+            end = _parse_date(data.get("end_date"))
+            if not (start and end):
+                raise ValueError("Start and end dates are required for the profit & loss export.")
+            service.set_date_range(start, end)
+            return service.generate_profit_and_loss()
+
+        if report_type == "balance_sheet":
+            as_of = _parse_date(data.get("as_of_date"))
+            if not as_of:
+                raise ValueError("As of date is required for the balance sheet export.")
+            return service.generate_balance_sheet(as_of)
+
+        if report_type == "cash_flow":
+            start = _parse_date(data.get("start_date"))
+            end = _parse_date(data.get("end_date"))
+            if not (start and end):
+                raise ValueError("Start and end dates are required for the cash flow export.")
+            service.set_date_range(start, end)
+            return service.generate_cash_flow()
+
+        if report_type == "ar_aging":
+            as_of = _parse_date(data.get("as_of_date"))
+            if not as_of:
+                raise ValueError("As of date is required for the aging export.")
+            return service.generate_ar_aging(as_of)
+
+        if report_type and report_type.startswith("custom:"):
+            code = report_type.split(":", 1)[1]
+            queryset = ReportDefinition.objects.filter(is_active=True).filter(
+                models.Q(organization__isnull=True) | models.Q(organization=self.organization)
+            )
+            definition = get_object_or_404(queryset, code=code)
+            params = {k: v for k, v in data.items() if k not in {"report_type", "export_format", "csrfmiddlewaretoken"}}
+            typed_params = CustomReportView._coerce_parameters(definition.parameter_schema or {}, params)
+            return service.run_custom_definition(definition, typed_params)
+
+        raise ValueError(f"Unsupported report type: {report_type}")
+
+    def _export_error_response(self, message: str) -> HttpResponse:
+        response = HttpResponse(message, content_type="text/plain", status=400)
+        return response

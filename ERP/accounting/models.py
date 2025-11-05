@@ -842,6 +842,19 @@ class JournalType(models.Model):
     fiscal_year_prefix = models.BooleanField(default=False, help_text="If true, prefix with current fiscal year code.")
     auto_numbering_suffix = models.CharField(max_length=10, null=True, blank=True)
     sequence_next = models.BigIntegerField(default=1, help_text="Next available sequence number for auto-numbering.")
+    sequence_padding = models.PositiveSmallIntegerField(
+        default=3,
+        validators=[MinValueValidator(1), MaxValueValidator(12)],
+        help_text="Total digits for sequence portion when zero-padding.",
+    )
+    last_sequence_fiscal_year = models.ForeignKey(
+        'FiscalYear',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='journal_types_last_sequence',
+        help_text="Tracks the fiscal year that last consumed this sequence.",
+    )
     is_system_type = models.BooleanField(default=False)
     requires_approval = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
@@ -879,28 +892,40 @@ class JournalType(models.Model):
         from accounting.models import FiscalYear # Import here to avoid circular dependency
 
         with transaction.atomic():
-            # Lock the JournalType row to prevent race conditions
             jt = JournalType.objects.select_for_update().get(pk=self.pk)
-            
+
             prefix_parts = []
+            fiscal_year = None
             if jt.fiscal_year_prefix:
-                current_fiscal_year = FiscalYear.objects.filter(organization=jt.organization, is_current=True).first()
-                if current_fiscal_year:
-                    prefix_parts.append(current_fiscal_year.code)
-            
+                if period and getattr(period, "fiscal_year_id", None):
+                    fiscal_year = period.fiscal_year
+                else:
+                    fiscal_year = FiscalYear.objects.filter(
+                        organization=jt.organization, is_current=True
+                    ).first()
+                if fiscal_year:
+                    prefix_parts.append(fiscal_year.code)
+                    if jt.last_sequence_fiscal_year_id != fiscal_year.pk:
+                        jt.sequence_next = 1
+                        jt.last_sequence_fiscal_year = fiscal_year
+
             if jt.auto_numbering_prefix:
                 prefix_parts.append(jt.auto_numbering_prefix)
-            
+
             prefix = "".join(prefix_parts)
             suffix = jt.auto_numbering_suffix or ''
-            
+
             next_num = jt.sequence_next
             jt.sequence_next = next_num + 1
-            jt.save(update_fields=["sequence_next"])
-        
-        # Format the number with leading zeros if needed, e.g., 001
-        # Assuming a fixed width for the sequence part, e.g., 3 digits
-        formatted_num = str(next_num).zfill(3)
+
+            update_fields = ["sequence_next"]
+            if jt.fiscal_year_prefix and fiscal_year:
+                update_fields.append("last_sequence_fiscal_year")
+
+            jt.save(update_fields=update_fields)
+
+        padding = jt.sequence_padding or 3
+        formatted_num = str(next_num).zfill(padding)
         return f"{prefix}{formatted_num}{suffix}"
 
 class Journal(models.Model):
@@ -908,6 +933,7 @@ class Journal(models.Model):
         ('draft', 'Draft'),
         ('awaiting_approval', 'Awaiting Approval'),
         ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
         ('posted', 'Posted'),
         ('reversed', 'Reversed'),
     ]
@@ -941,6 +967,14 @@ class Journal(models.Model):
     is_locked = models.BooleanField(default=False)
     is_recurring = models.BooleanField(default=False)
     is_reversal = models.BooleanField(default=False)
+    reversal_of = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='reversal_entries',
+        help_text="Links reversal journals back to the original entry.",
+    )
     is_archived = models.BooleanField(default=False)
     schema_version = models.CharField(max_length=20, default="1.0.0") # Current schema version
     idempotency_key = models.CharField(max_length=255, unique=True, null=True, blank=True, help_text="Ensures idempotent journal submissions.")
@@ -1871,3 +1905,57 @@ class ScheduledTaskExecution(models.Model):
         if self.started_at and self.completed_at:
             return (self.completed_at - self.started_at).total_seconds()
         return None
+
+
+class ReportDefinition(models.Model):
+    """
+    Allows power users to register custom stored-procedure backed reports.
+    """
+
+    report_id = models.BigAutoField(primary_key=True)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='report_definitions',
+        help_text="Optional organization scope; null makes the report available to every tenant.",
+    )
+    code = models.CharField(max_length=100)
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    stored_procedure = models.CharField(
+        max_length=255,
+        help_text="Name of the database function or stored procedure to call.",
+    )
+    parameter_schema = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Declarative parameter definitions for dynamic parameter forms.",
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_report_definitions',
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='updated_report_definitions',
+    )
+
+    class Meta:
+        db_table = 'report_definition'
+        unique_together = ('organization', 'code')
+        ordering = ['organization_id', 'code']
+
+    def __str__(self):
+        scope = self.organization.name if self.organization else 'Global'
+        return f"{self.code} ({scope})"

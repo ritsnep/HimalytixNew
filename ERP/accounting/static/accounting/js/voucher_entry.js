@@ -163,16 +163,20 @@ const App = {
     journalId: INITIAL_JOURNAL_ID,
     journalNumber: '',
     status: 'draft',
+    isLocked: false,
+    isEditable: true,
+    postedAt: null,
+    postedBy: null,
+    postedByName: '',
+    isReversal: false,
+    reversalOfId: null,
     configUrl: __root?.dataset?.configUrl || null,
     supportedCurrencies: SUPPORTED_CURRENCIES,
     header: {
-      party: '',
       date: new Date().toISOString().slice(0, 10),
       branch: 'Main',
       currency: SUPPORTED_CURRENCIES[0] || 'NPR',
       exRate: 1,
-      creditDays: 0,
-      priceInclusiveTax: true,
       reference: '',
       description: '',
     },
@@ -182,11 +186,8 @@ const App = {
     udfLineDefs: [],
     colPrefsByType: {},
     rows: [],
-    charges: [
-      { id: uid(), label: 'Freight', mode: 'amount', value: 0, sign: 1 },
-      { id: uid(), label: 'Discount @ Bill', mode: 'percent', value: 0, sign: -1 },
-    ],
-    numbering: { prefix: { Sales: 'SI', Purchase: 'PI', Journal: 'JV' }, nextSeq: { Sales: 1, Purchase: 1, Journal: 1 }, width: 4 },
+    charges: [],
+    numbering: { prefix: { Journal: 'JV' }, nextSeq: { Journal: 1 }, width: 4 },
     focus: { r: 0, c: 0 },
     showUdfModal: false,
     udfScope: 'Header',
@@ -213,27 +214,28 @@ const App = {
   init() {
     const presets = loadPresets();
     this.state.colPrefsByType = presets.colPrefsByType || {};
-    this.state.udfHeaderDefs = presets.udfHeaderDefs || [];
-    this.state.udfLineDefs = presets.udfLineDefs || [];
+    // Don't load UDF presets - use config from server
     this.state.collapsed = presets.collapsed || this.state.collapsed;
-    this.state.charges = presets.charges || this.state.charges;
     this.state.numbering = presets.numbering || this.state.numbering;
-
-    // Ensure default Header UDF present
-    if (!this.state.udfHeaderDefs.some(x => x.label.toLowerCase().includes('invoice'))) {
-      this.state.udfHeaderDefs.push({ id: 'udf_' + uid(), label: 'Invoice No.', type: 'text', required: true });
-    }
 
     if (!Array.isArray(this.state.rows) || !this.state.rows.length) {
       this.resetRows();
     }
     this.render();
-    const initialType = this.state.journalTypeCode || DEFAULT_JOURNAL_TYPE;
-    const initialConfigId = this.state.metadata?.configId || null;
-    if (this.state.configUrl) {
+    
+    // Check URL parameters for config_id
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlConfigId = urlParams.get('config_id');
+    const urlJournalType = urlParams.get('journal_type');
+    
+    const initialType = urlJournalType || this.state.journalTypeCode || DEFAULT_JOURNAL_TYPE;
+    const initialConfigId = urlConfigId || this.state.metadata?.configId || null;
+    
+    // Always fetch config if we have URL params
+    if (this.state.configUrl && (urlConfigId || urlJournalType)) {
       this.fetchConfig(initialType, initialConfigId);
-    }
-    if (this.state.journalId) {
+    } else if (this.state.journalId) {
+      // Only fetch journal if no config params
       this.fetchJournal(this.state.journalId);
     }
 
@@ -248,9 +250,12 @@ const App = {
   },
 
   getColumns() {
-    const { voucherType, udfLineDefs, colPrefsByType, configLineDefs, configBaseOverrides } = this.state;
+    const { udfLineDefs, colPrefsByType, configLineDefs, configBaseOverrides } = this.state;
+    const voucherType = 'Journal'; // Always use Journal
     let cols = buildColumns(voucherType, udfLineDefs, colPrefsByType[voucherType]);
-    if (voucherType === 'Journal' && configBaseOverrides) {
+    
+    // Apply config-based overrides to base columns
+    if (configBaseOverrides) {
       cols = cols.map((col) => {
         if (configBaseOverrides[col.id]) {
           return { ...col, ...configBaseOverrides[col.id] };
@@ -258,7 +263,9 @@ const App = {
         return col;
       });
     }
-    if (voucherType === 'Journal' && Array.isArray(configLineDefs) && configLineDefs.length) {
+    
+    // Add extra columns from config
+    if (Array.isArray(configLineDefs) && configLineDefs.length) {
       configLineDefs.forEach((extra) => {
         const existing = cols.find((c) => c.id === extra.id);
         if (existing) {
@@ -270,45 +277,48 @@ const App = {
     }
     return cols;
   },
-  setSaving(flag) {
-    this.state.isSaving = !!flag;
-    this.render();
-  },
   blankRow() {
-    if (this.state.voucherType === 'Journal') {
-      const base = {
-        id: uid(),
-        accountId: null,
-        accountCode: '',
-        accountName: '',
-        account: '',
-        narr: '',
-        dr: 0,
-        cr: 0,
-        costCenterId: null,
-        costCenter: '',
-        projectId: null,
-        project: '',
-        departmentId: null,
-        department: '',
-        taxCodeId: null,
-        taxCode: '',
-        udf: {},
-      };
-      (this.state.dynamicLineKeys || []).forEach((key) => {
-        if (base[key] === undefined) base[key] = '';
-      });
-      const defaults = this.state.lineDefaults || {};
-      Object.keys(defaults).forEach((key) => {
-        if (base[key] === undefined || base[key] === '') {
-          base[key] = defaults[key];
-        }
-      });
-      return base;
-    }
-    return { id: uid(), item: '', desc: '', qty: 1, uom: '', rate: 0, discP: 0, taxP: 13, taxGroup: 'VAT 13%', warehouse: '', batch: '', amount: 0 };
+    // Always return journal row structure
+    const base = {
+      id: uid(),
+      accountId: null,
+      accountCode: '',
+      accountName: '',
+      account: '',
+      narr: '',
+      dr: 0,
+      cr: 0,
+      costCenterId: null,
+      costCenter: '',
+      projectId: null,
+      project: '',
+      departmentId: null,
+      department: '',
+      taxCodeId: null,
+      taxCode: '',
+      udf: {},
+    };
+    (this.state.dynamicLineKeys || []).forEach((key) => {
+      if (base[key] === undefined) base[key] = '';
+    });
+    const defaults = this.state.lineDefaults || {};
+    Object.keys(defaults).forEach((key) => {
+      if (base[key] === undefined || base[key] === '') {
+        base[key] = defaults[key];
+      }
+    });
+    return base;
   },
-  resetRows(n = 5) { this.state.rows = Array.from({ length: n }, () => this.blankRow()); },
+  resetRows(n = 5) {
+    this.state.rows = Array.from({ length: n }, () => this.blankRow());
+    this.state.isEditable = true;
+    this.state.isLocked = false;
+    this.state.postedAt = null;
+    this.state.postedBy = null;
+    this.state.postedByName = '';
+    this.state.isReversal = false;
+    this.state.reversalOfId = null;
+  },
 
   voucherDisplayNumber() {
     if (this.state.journalNumber) return this.state.journalNumber;
@@ -464,6 +474,18 @@ const App = {
     if (journal.number !== undefined) this.state.journalNumber = journal.number || '';
     if (journal.status) this.state.status = journal.status;
     if (journal.journalTypeCode) this.state.journalTypeCode = journal.journalTypeCode;
+    if (typeof journal.isLocked === 'boolean') this.state.isLocked = journal.isLocked;
+    if (journal.editable !== undefined) {
+      this.state.isEditable = !!journal.editable;
+    } else if (journal.status) {
+      const lockedStatuses = ['posted', 'awaiting_approval', 'approved'];
+      this.state.isEditable = !lockedStatuses.includes(journal.status);
+    }
+    this.state.postedAt = journal.postedAt || null;
+    this.state.postedBy = journal.postedBy ?? null;
+    this.state.postedByName = journal.postedByName || '';
+    this.state.isReversal = !!journal.isReversal;
+    this.state.reversalOfId = journal.reversalOfId ?? null;
     if (typeof journal.notes === 'string') this.state.notes = journal.notes;
     if (journal.header) {
       const h = journal.header;
@@ -580,7 +602,11 @@ const App = {
     const headerSchema = ui.header || {};
     const lineSchema = ui.lines || {};
     const metadata = config.metadata || {};
-    this.state.metadata = { ...metadata };\n    if (config.udf) {\n      if (Array.isArray(config.udf.header)) this.state.udfHeaderDefs = config.udf.header;\n      if (Array.isArray(config.udf.line)) this.state.udfLineDefs = config.udf.line;\n    }
+    this.state.metadata = { ...metadata };
+    if (config.udf) {
+      if (Array.isArray(config.udf.header)) this.state.udfHeaderDefs = config.udf.header;
+      if (Array.isArray(config.udf.line)) this.state.udfLineDefs = config.udf.line;
+    }
     if (Array.isArray(metadata.supportedCurrencies) && metadata.supportedCurrencies.length) {
       this.state.supportedCurrencies = metadata.supportedCurrencies;
     }
@@ -756,55 +782,27 @@ const App = {
   },
 
   renderDefaultHeaderForm() {
-    const { voucherType, header, udfHeaderDefs } = this.state;
+    const { header, udfHeaderDefs } = this.state;
     const controls = [
-      voucherType !== 'Journal'
-        ? Labeled('Customer/Supplier', `<input class="h-10 px-3 py-2 rounded-xl border border-slate-300 bg-white" placeholder="Search name / phone" value="${escapeHtml(header.party)}" data-hkey="party" title="${escapeHtml(header.party)}">`)
-        : '',
-      Labeled('Date', `<input type="date" class="h-10 px-3 py-2 rounded-xl border border-slate-300 bg-white" value="${escapeHtml(header.date)}" data-hkey="date" title="${escapeHtml(header.date)}">`),
-      Labeled('Branch', `<input class="h-10 px-3 py-2 rounded-xl border border-slate-300 bg-white" value="${escapeHtml(header.branch)}" data-hkey="branch" title="${escapeHtml(header.branch)}">`),
-      Labeled('Currency', `<select class="h-10 px-3 py-2 rounded-xl border border-slate-300 bg-white" data-hkey="currency" title="${escapeHtml(header.currency)}">${this.state.supportedCurrencies.map(cur => `<option value="${escapeHtml(cur)}" ${cur === header.currency ? 'selected' : ''}>${escapeHtml(cur)}</option>`).join('')}</select>`),
-      Labeled('Exchange Rate', `<input type="number" step="0.0001" class="h-10 px-3 py-2 rounded-xl border border-slate-300 bg-white text-right" value="${escapeHtml(header.exRate)}" data-hkey="exRate" title="${escapeHtml(header.exRate)}">`),
-      Labeled('Credit Days', `<input type="number" class="h-10 px-3 py-2 rounded-xl border border-slate-300 bg-white text-right" value="${escapeHtml(header.creditDays)}" data-hkey="creditDays" title="${escapeHtml(header.creditDays)}">`),
-      ...(voucherType !== 'Journal'
-        ? [Labeled('Prices are', `<select class="h-10 px-3 py-2 rounded-xl border border-slate-300 bg-white" data-hkey="priceInclusiveTax" title="${header.priceInclusiveTax ? 'Tax Inclusive' : 'Tax Exclusive'}"><option value="inc" ${header.priceInclusiveTax ? 'selected' : ''}>Tax Inclusive</option><option value="exc" ${!header.priceInclusiveTax ? 'selected' : ''}>Tax Exclusive</option></select>`)]
-        : []),
-      ...udfHeaderDefs.map((f) => Labeled(`UDF: ${escapeHtml(f.label)}${f.required ? ' *' : ''}`, fieldControl(f, header[f.id] ?? '', 'header'))),
+      Labeled('Date', `<input type="date" class="form-control" value="${escapeHtml(header.date)}" data-hkey="date" title="${escapeHtml(header.date)}">`),
+      Labeled('Branch', `<input class="form-control" value="${escapeHtml(header.branch || '')}" data-hkey="branch" title="${escapeHtml(header.branch || '')}">`),
+      Labeled('Currency', `<select class="form-select" data-hkey="currency" title="${escapeHtml(header.currency)}">${this.state.supportedCurrencies.map(cur => `<option value="${escapeHtml(cur)}" ${cur === header.currency ? 'selected' : ''}>${escapeHtml(cur)}</option>`).join('')}</select>`),
+      Labeled('Exchange Rate', `<input type="number" step="0.0001" class="form-control text-end" value="${escapeHtml(header.exRate)}" data-hkey="exRate" title="${escapeHtml(header.exRate)}">`),
+      Labeled('Reference', `<input class="form-control" value="${escapeHtml(header.reference || '')}" data-hkey="reference" placeholder="Reference Number">`),
+      Labeled('Description', `<textarea class="form-control" rows="2" data-hkey="description" placeholder="Description">${escapeHtml(header.description || '')}</textarea>`),
+      ...udfHeaderDefs.map((f) => Labeled(`${escapeHtml(f.label)}${f.required ? ' *' : ''}`, fieldControl(f, header[f.id] ?? '', 'header'))),
     ].filter(Boolean);
-    return `<div class="ve-summary-grid grid grid-cols-1 md:grid-cols-3 gap-3">${controls.join('')}</div>`;
+    return `<div class="row g-3">${controls.join('')}</div>`;
   },
 
 
-  /** Totals engine (VAT, discounts, charges, journal balance) */
+  /** Totals engine for journal entries */
   computeTotals() {
-    const { voucherType, rows, header, charges } = this.state;
-    if (voucherType === 'Journal') {
-      const dr = rows.reduce((s, r) => s + asNum(r.dr), 0);
-      const cr = rows.reduce((s, r) => s + asNum(r.cr), 0);
-      return { dr, cr, diff: +(dr - cr).toFixed(2) };
-    }
-    let sub = 0, disc = 0, tax = 0; const taxBreak = new Map();
-    rows.forEach(r => {
-      const qty = asNum(r.qty, 0), rate = asNum(r.rate, 0), dP = asNum(r.discP, 0), tP = asNum(r.taxP, 0);
-      const lineBase = qty * rate;
-      const lineDisc = (lineBase * dP) / 100;
-      const taxable = header.priceInclusiveTax ? (lineBase - lineDisc) / (1 + tP / 100 || 1) : (lineBase - lineDisc);
-      const lineTax = taxable * (tP / 100);
-      const lineAmount = taxable + lineTax;
-      sub += taxable; disc += lineDisc; tax += lineTax; r.amount = +lineAmount.toFixed(2);
-      if (tP > 0) taxBreak.set(tP, (taxBreak.get(tP) || 0) + lineTax);
-    });
-    const baseForCharges = sub + tax;
-    let chargesTotal = 0;
-    charges.forEach(c => {
-      const v = asNum(c.value, 0);
-      if (!v) return;
-      const add = c.mode === 'percent' ? baseForCharges * (v / 100) : v;
-      chargesTotal += (c.sign === -1 ? -1 : 1) * add;
-    });
-    const roundAdj = +(Math.round((sub + tax + chargesTotal) * 100) / 100 - (sub + tax + chargesTotal)).toFixed(2);
-    const grand = +(sub + tax + chargesTotal + roundAdj).toFixed(2);
-    return { sub, disc, tax, chargesTotal, roundAdj, grand, taxBreak: [...taxBreak.entries()].sort((a, b) => a[0] - b[0]) };
+    const { rows } = this.state;
+    // For journal entries, compute debit/credit totals
+    const dr = rows.reduce((s, r) => s + asNum(r.dr), 0);
+    const cr = rows.reduce((s, r) => s + asNum(r.cr), 0);
+    return { dr, cr, diff: +(dr - cr).toFixed(2) };
   },
 
   persistPresets() {
@@ -832,193 +830,227 @@ const App = {
     const normalizedStatus = (status || '').toLowerCase();
     const isWaitingApproval = normalizedStatus === 'awaiting_approval' || normalizedStatus === 'submitted';
     const isSaving = !!this.state.isSaving;
-    const canSaveDraft = !isSaving;
-    const canSubmit = PERMISSIONS.submit && normalizedStatus === 'draft' && !isSaving;
+    const readOnly = !this.state.isEditable;
+    const wrapperClasses = `ve-wrapper${readOnly ? ' ve-readonly' : ''}`;
+    const canSaveDraft = !isSaving && this.state.isEditable;
+    const canSubmit = PERMISSIONS.submit && normalizedStatus === 'draft' && !isSaving && this.state.isEditable;
     const canApprove = PERMISSIONS.approve && isWaitingApproval && !isSaving;
     const canReject = PERMISSIONS.reject && isWaitingApproval && !isSaving;
     const canPost = PERMISSIONS.post && normalizedStatus === 'approved' && !isSaving;
     const attachmentsCount = Array.isArray(this.state.attachments) ? this.state.attachments.length : 0;
+    const postedBadge = this.state.postedAt
+      ? `<span class="ve-pill px-2 py-1 rounded-lg text-xs bg-blue-100 text-blue-700">Posted ${escapeHtml(this.state.postedAt.slice(0, 10))}${this.state.postedByName ? ` · ${escapeHtml(this.state.postedByName)}` : ''}</span>`
+      : '';
+    const lockBadge = readOnly ? '<span class="ve-pill px-2 py-1 rounded-lg text-xs bg-slate-100 text-slate-600">Read only</span>' : '';
+    const reversalBadge = this.state.isReversal ? '<span class="ve-pill px-2 py-1 rounded-lg text-xs bg-purple-100 text-purple-700">Reversal</span>' : '';
 
     el.innerHTML = `
-      <div class="ve-wrapper">
-      <header class="ve-card ve-toolbar flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div class="flex items-center gap-3">
-          <h1 class="text-2xl font-semibold tracking-tight">Voucher Entry</h1>
-          <span class="ve-pill px-2 py-1 rounded-lg text-xs bg-slate-200 text-slate-800">${voucherType}</span>
-          <span class="ve-status-badge ${statusBadge}">${statusLabel}</span>
-          <span class="badge">No: <strong>${this.voucherDisplayNumber()}</strong></span>
-          <span class="text-xs text-slate-500 ml-2">Excel paste + Sample Excel export</span>
+      <div class="${wrapperClasses}">
+      <div class="card mb-3">
+        <div class="card-body">
+          <div class="d-sm-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center flex-wrap gap-2 mb-2 mb-sm-0">
+              <h5 class="mb-0">Voucher Entry</h5>
+              <span class="badge bg-secondary">${voucherType}</span>
+              <span class="voucher-status-badge ${statusBadge}">${statusLabel}</span>
+              <span class="badge bg-light text-dark">No: <strong>${this.voucherDisplayNumber()}</strong></span>
+              ${postedBadge}
+              ${lockBadge}
+              ${reversalBadge}
+            </div>
+            <div class="d-flex flex-wrap gap-2 voucher-actions">
+              ${voucherTypes.length > 1 ? `<div class="btn-group btn-group-sm" role="group">
+                ${voucherTypes.map(v => `
+                  <button type="button" data-action="setType" data-type="${v}"
+                    class="btn ${voucherType === v ? 'btn-primary' : 'btn-outline-primary'}">${v}</button>
+                `).join('')}
+              </div>` : ''}
+              <button data-action="saveDraft" class="btn btn-sm btn-info btn-icon" ${canSaveDraft ? '' : 'disabled'}>
+                <i class="mdi mdi-content-save-outline"></i>${isSaving ? 'Working…' : 'Save Draft'}
+              </button>
+              ${PERMISSIONS.submit ? `<button data-action="submit" class="btn btn-sm btn-primary btn-icon" ${canSubmit ? '' : 'disabled'}><i class="mdi mdi-send"></i>Submit</button>` : ''}
+              ${PERMISSIONS.approve ? `<button data-action="approve" class="btn btn-sm btn-success btn-icon" ${canApprove ? '' : 'disabled'}><i class="mdi mdi-check-circle-outline"></i>Approve</button>` : ''}
+              ${PERMISSIONS.reject ? `<button data-action="reject" class="btn btn-sm btn-danger btn-icon" ${canReject ? '' : 'disabled'}><i class="mdi mdi-close-circle-outline"></i>Reject</button>` : ''}
+              ${PERMISSIONS.post ? `<button data-action="post" class="btn btn-sm btn-success btn-icon" ${canPost ? '' : 'disabled'}><i class="mdi mdi-publish"></i>Post</button>` : ''}
+              <button data-action="attach" class="btn btn-sm btn-secondary btn-icon">
+                <i class="mdi mdi-paperclip"></i>Attachments${attachmentsCount ? ` (${attachmentsCount})` : ''}
+              </button>
+            </div>
+          </div>
         </div>
-        <div class="flex gap-2">
-          ${voucherTypes.length > 1 ? `<div class="ve-type-toggle inline-flex rounded-xl p-1 bg-slate-100 text-sm">
-            ${voucherTypes.map(v => `
-              <button data-action="setType" data-type="${v}"
-                class="px-3 py-1.5 rounded-lg transition ${voucherType === v ? 'active text-slate-800 font-medium' : 'text-slate-600 hover:bg-white/60'}">${v}</button>
-            `).join('')}
-          </div>` : ''}
-          <button data-action="saveDraft" class="ve-action-btn inline-flex items-center justify-center px-3 py-2 rounded-xl text-sm border border-slate-300 bg-white hover:bg-slate-50" ${canSaveDraft ? '' : 'disabled'}>
-            ${isSaving ? 'Working…' : 'Save Draft'}
-          </button>
-          ${PERMISSIONS.submit ? `<button data-action="submit" class="ve-action-btn inline-flex items-center justify-center px-3 py-2 rounded-xl text-sm border border-slate-300 bg-white hover:bg-slate-50" ${canSubmit ? '' : 'disabled'}>Submit</button>` : ''}
-          ${PERMISSIONS.approve ? `<button data-action="approve" class="ve-action-btn inline-flex items-center justify-center px-3 py-2 rounded-xl text-sm bg-emerald-600 text-white hover:bg-emerald-700" ${canApprove ? '' : 'disabled'}>Approve</button>` : ''}
-          ${PERMISSIONS.reject ? `<button data-action="reject" class="ve-action-btn inline-flex items-center justify-center px-3 py-2 rounded-xl text-sm border border-slate-300 bg-white hover:bg-slate-50" ${canReject ? '' : 'disabled'}>Reject</button>` : ''}
-          ${PERMISSIONS.post ? `<button data-action="post" class="ve-action-btn inline-flex items-center justify-center px-3 py-2 rounded-xl text-sm border border-slate-300 bg-white hover:bg-slate-50" ${canPost ? '' : 'disabled'}>Post</button>` : ''}
-          <button data-action="attach" class="ve-action-btn inline-flex items-center justify-center px-3 py-2 rounded-xl text-sm border border-slate-300 bg-white hover:bg-slate-50">
-            Attachments${attachmentsCount ? ` (${attachmentsCount})` : ''}
-          </button>
-        </div>
-      </header>
+      </div>
 
-      <section class="ve-section mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div class="ve-card col-span-2 rounded-2xl border bg-white p-4 shadow-sm">
-          <div class="flex items-center justify-between mb-3">
-            <h2 class="text-base font-semibold">Header</h2>
-            <button data-action="toggleSection" data-section="header" class="text-xs px-2 py-1 rounded-lg border" title="Hide/Show header">${collapsed.header ? 'Show' : 'Hide'}</button>
-          </div>
-          ${collapsed.header ? headerSummary(header, voucherType) : `
-          <div class="ve-summary-grid grid grid-cols-2 md:grid-cols-3 gap-3">
-            ${voucherType !== 'Journal' ? Labeled('Customer/Supplier', `<input class="h-10 px-3 py-2 rounded-xl border border-slate-300 bg-white" placeholder="Search name / phone" value="${escapeHtml(header.party)}" data-hkey="party" title="${escapeHtml(header.party)}">`) : ''}
-            ${Labeled('Date', `<input type="date" class="h-10 px-3 py-2 rounded-xl border border-slate-300 bg-white" value="${header.date}" data-hkey="date" title="${header.date}">`)}
-            ${Labeled('Branch', `<input class="h-10 px-3 py-2 rounded-xl border border-slate-300 bg-white" value="${escapeHtml(header.branch)}" data-hkey="branch" title="${escapeHtml(header.branch)}">`)}
-            ${Labeled('Currency', `<input class="h-10 px-3 py-2 rounded-xl border border-slate-300 bg-white" value="${escapeHtml(header.currency)}" data-hkey="currency" title="${escapeHtml(header.currency)}">`)}
-            ${Labeled('Exchange Rate', `<input type="number" class="h-10 px-3 py-2 rounded-xl border border-slate-300 bg-white text-right" value="${header.exRate}" data-hkey="exRate" title="${header.exRate}">`)}
-            ${Labeled('Credit Days', `<input type="number" class="h-10 px-3 py-2 rounded-xl border border-slate-300 bg-white text-right" value="${header.creditDays}" data-hkey="creditDays" title="${header.creditDays}">`)}
-            ${voucherType !== 'Journal' ? Labeled('Prices are', `
-              <select class="h-10 px-3 py-2 rounded-xl border border-slate-300 bg-white" data-hkey="priceInclusiveTax" title="${header.priceInclusiveTax ? 'Tax Inclusive' : 'Tax Exclusive'}">
-                <option value="inc" ${header.priceInclusiveTax ? 'selected' : ''} >Tax Inclusive</option>
-                <option value="exc" ${!header.priceInclusiveTax ? 'selected' : ''} >Tax Exclusive</option>
-              </select>
-            `) : ''}
-            ${udfHeaderDefs.map(f => Labeled(`UDF: ${escapeHtml(f.label)}${f.required ? ' *' : ''}`, fieldControl(f, header[f.id] ?? '', 'header'))).join('')}
-          </div>
-          <div class="mt-3 flex flex-wrap gap-2 items-center">
-            <button data-action="openUdf" data-scope="Header" class="ve-action-btn inline-flex items-center justify-center px-3 py-2 rounded-xl text-sm border border-slate-300 bg-white hover:bg-slate-50">+ UDF (Header)</button>
-            ${udfHeaderDefs.map(f => `<span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs cursor-pointer hover:bg-slate-200" data-action="removeUdf" data-scope="Header" data-udfid="${f.id}">U:${escapeHtml(f.label)} &times;</span>`).join('')}
-          </div>`}
-        </div>
-
-        <div class="ve-card rounded-2xl border bg-white p-4 shadow-sm">
-          <div class="flex items-center justify-between mb-3">
-            <h2 class="text-base font-semibold">Actions</h2>
-            <button data-action="toggleSection" data-section="actions" class="text-xs px-2 py-1 rounded-lg border" title="Hide/Show actions">${collapsed.actions ? 'Show' : 'Hide'}</button>
-          </div>
-          ${collapsed.actions ? actionsSummary(rows, cols) : `
-          <div class="flex flex-wrap gap-2">
-            <button data-action="addRow" class="ve-action-btn inline-flex items-center justify-center px-3 py-2 rounded-xl text-sm border border-slate-300 bg-white hover:bg-slate-50">Add Row</button>
-            <button data-action="add10" class="ve-action-btn inline-flex items-center justify-center px-3 py-2 rounded-xl text-sm border border-slate-300 bg-white hover:bg-slate-50">+10 Rows</button>
-            <button data-action="clearRows" class="ve-action-btn inline-flex items-center justify-center px-3 py-2 rounded-xl text-sm border border-slate-300 bg-white hover:bg-slate-50">Clear Rows</button>
-            <button data-action="openCols" class="ve-action-btn inline-flex items-center justify-center px-3 py-2 rounded-xl text-sm border border-slate-300 bg-white hover:bg-slate-50">Columns</button>
-            <button data-action="saveCols" class="ve-action-btn inline-flex items-center justify-center px-3 py-2 rounded-xl text-sm border border-slate-300 bg-white hover:bg-slate-50">Save Columns</button>
-            <button data-action="resetCols" class="ve-action-btn inline-flex items-center justify-center px-3 py-2 rounded-xl text-sm border border-slate-300 bg-white hover:bg-slate-50">Reset Columns</button>
-            <button data-action="importCsv" class="ve-action-btn inline-flex items-center justify-center px-3 py-2 rounded-xl text-sm border border-slate-300 bg-white hover:bg-slate-50">Import CSV</button>
-            <input id="csvFile" type="file" accept=".csv,text/csv" class="hidden" />
-            <button data-action="exportCsv" class="ve-action-btn inline-flex items-center justify-center px-3 py-2 rounded-xl text-sm border border-slate-300 bg-white hover:bg-slate-50">Export CSV</button>
-            <button data-action="sampleXlsx" class="ve-action-btn inline-flex items-center justify-center px-3 py-2 rounded-xl text-sm border border-slate-300 bg-white hover:bg-slate-50">Sample Excel (.xlsx)</button>
-            <button data-action="exportXlsx" class="ve-action-btn inline-flex items-center justify-center px-3 py-2 rounded-xl text-sm border border-slate-300 bg-white hover:bg-slate-50">Export Excel (.xlsx)</button>
-            <button data-action="runTests" class="ve-action-btn inline-flex items-center justify-center px-3 py-2 rounded-xl text-sm border border-slate-300 bg-white hover:bg-slate-50">Run Tests</button>
-          </div>
-          <p class="text-xs text-slate-500 mt-2">Tip: paste cells copied from Excel directly into the grid. Use arrow keys / Tab / Enter. Ctrl+Delete removes row.</p>
-          <div class="mt-3 flex gap-2 items-center">
-          </div>`}
-        </div>
-      </section>
-
-      <section class="ve-card mt-5 rounded-2xl border bg-white p-4 shadow-sm">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-base font-semibold">Lines</h2>
-          <div class="flex items-center gap-3">
-            <button data-action="openUdf" data-scope="Line" class="ve-action-btn inline-flex items-center justify-center px-3 py-2 rounded-xl text-sm border border-slate-300 bg-white hover:bg-slate-50">+ UDF (Line)</button>
-            ${udfLineDefs.map(f => `<span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs cursor-pointer hover:bg-slate-200" data-action="removeUdf" data-scope="Line" data-udfid="${f.id}">L:${escapeHtml(f.label)} &times;</span>`).join('')}
+      <div class="row">
+        <div class="col-lg-8">
+          <div class="card mb-3">
+            <div class="card-header">
+              <div class="d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Header</h5>
+                <button data-action="toggleSection" data-section="header" class="btn btn-sm btn-outline-secondary" title="Hide/Show header">
+                  <i class="mdi mdi-${collapsed.header ? 'eye' : 'eye-off'}"></i>
+                  ${collapsed.header ? 'Show' : 'Hide'}
+                </button>
+              </div>
+            </div>
+            <div class="card-body">
+              ${collapsed.header ? headerSummary(header, voucherType) : this.renderDefaultHeaderForm()}
+            </div>
           </div>
         </div>
 
-        <div id="grid" class="mt-3 overflow-auto border rounded-xl scroll-shadow" style="max-height: 440px">
-          <table class="ve-ledger min-w-full text-sm table-fixed">
-            <colgroup>
-              <col style="width:40px">
-              ${visibleCols.map(c => `<col data-colid="${c.id}" style="width:${c.width || 140}px">`).join('')}
-              <col style="width:48px">
-            </colgroup>
-            <thead class="bg-slate-50 sticky top-0 z-10">
-              <tr>
-                <th class="w-10 sticky-col text-left px-2 py-2">#</th>
-                ${visibleCols.map(c => `
-                  <th class="text-left px-2 py-2 whitespace-nowrap th-resizable" data-colid="${c.id}">
-                    <div class="relative">${escapeHtml(c.label)}<span class="resize-handle" data-colid="${c.id}"></span></div>
-                  </th>`).join('')}
-                <th class="w-10"></th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rows.map((row, ri) => `
-                <tr class="odd:bg-white even:bg-slate-50/40 hover:bg-amber-50">
-                  <td class="sticky-col text-center text-xs text-slate-500 px-1">${ri + 1}</td>
-                  ${visibleCols.map((col, vi) => `
-                    <td class="px-1 py-0.5" title="${cellTitle(row[col.id], col)}">
-                      ${col.type === 'calc'
-        ? `<div class="text-right font-medium tabular-nums pr-1 truncate-cell" title="${moneyFmt.format(row[col.id] || 0)}">${moneyFmt.format(row[col.id] || 0)}</div>`
+        <div class="col-lg-4">
+          <div class="card mb-3">
+            <div class="card-header">
+              <div class="d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Actions</h5>
+                <button data-action="toggleSection" data-section="actions" class="btn btn-sm btn-outline-secondary" title="Hide/Show actions">
+                  <i class="mdi mdi-${collapsed.actions ? 'eye' : 'eye-off'}"></i>
+                  ${collapsed.actions ? 'Show' : 'Hide'}
+                </button>
+              </div>
+            </div>
+            <div class="card-body">
+              ${collapsed.actions ? actionsSummary(rows, cols) : `
+              <div class="d-flex flex-wrap gap-2">
+                <button data-action="addRow" class="btn btn-sm btn-primary btn-icon"><i class="mdi mdi-plus"></i>Add Row</button>
+                <button data-action="add10" class="btn btn-sm btn-outline-primary">+10 Rows</button>
+                <button data-action="clearRows" class="btn btn-sm btn-outline-danger">Clear Rows</button>
+                <button data-action="openCols" class="btn btn-sm btn-outline-secondary">Columns</button>
+                <button data-action="importCsv" class="btn btn-sm btn-outline-info"><i class="mdi mdi-file-import"></i>Import CSV</button>
+                <input id="csvFile" type="file" accept=".csv,text/csv" class="d-none" />
+                <button data-action="exportCsv" class="btn btn-sm btn-outline-info"><i class="mdi mdi-file-export"></i>Export CSV</button>
+                <button data-action="sampleXlsx" class="btn btn-sm btn-outline-success"><i class="mdi mdi-file-excel-outline"></i>Sample Excel</button>
+                <button data-action="exportXlsx" class="btn btn-sm btn-outline-success"><i class="mdi mdi-file-excel"></i>Export Excel</button>
+              </div>
+              <p class="text-muted small mt-2 mb-0">Tip: paste cells copied from Excel directly into the grid. Use arrow keys / Tab / Enter.</p>
+              `}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header">
+          <div class="d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Journal Lines</h5>
+            <div class="d-flex gap-2">
+              <button data-action="openUdf" data-scope="Line" class="btn btn-sm btn-outline-secondary btn-icon">
+                <i class="mdi mdi-plus"></i>UDF (Line)
+              </button>
+              ${udfLineDefs.map(f => `<span class="badge bg-secondary" style="cursor:pointer" data-action="removeUdf" data-scope="Line" data-udfid="${f.id}">L:${escapeHtml(f.label)} &times;</span>`).join('')}
+            </div>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive voucher-grid-wrapper" style="max-height: 500px">
+            <table class="table table-bordered table-hover voucher-grid mb-0">
+              <colgroup>
+                <col style="width:40px">
+                ${visibleCols.map(c => `<col data-colid="${c.id}" style="width:${c.width || 140}px">`).join('')}
+                <col style="width:48px">
+              </colgroup>
+              <thead class="table-light">
+                <tr>
+                  <th class="text-center">#</th>
+                  ${visibleCols.map(c => `
+                    <th class="th-resizable" data-colid="${c.id}">
+                      <div class="position-relative">${escapeHtml(c.label)}<span class="resize-handle" data-colid="${c.id}"></span></div>
+                    </th>`).join('')}
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows.map((row, ri) => `
+                  <tr>
+                    <td class="text-center text-muted small">${ri + 1}</td>
+                    ${visibleCols.map((col, vi) => `
+                      <td title="${cellTitle(row[col.id], col)}">
+                        ${col.type === 'calc'
+        ? `<div class="text-end fw-medium" title="${moneyFmt.format(row[col.id] || 0)}">${moneyFmt.format(row[col.id] || 0)}</div>`
         : gridCell(row[col.id], col, ri, vi)}
-                    </td>`).join('')}
-                  <td class="text-center">
-                    <button data-action="delRow" data-ri="${ri}" class="text-xs text-red-600 hover:underline">Del</button>
-                  </td>
-                </tr>`).join('')}
-            </tbody>
-          </table>
+                      </td>`).join('')}
+                    <td class="text-center">
+                      <button data-action="delRow" data-ri="${ri}" class="btn btn-sm btn-link text-danger p-0">
+                        <i class="mdi mdi-delete-outline"></i>
+                      </button>
+                    </td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </section>
+      </div>
 
-      <section class="ve-section mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div class="ve-card rounded-2xl border bg-white p-4 shadow-sm lg:col-span-2">
-          <div class="flex items-center justify-between mb-3">
-            <h2 class="text-base font-semibold">Notes & Audit</h2>
-            <button data-action="toggleSection" data-section="notes" class="text-xs px-2 py-1 rounded-lg border" title="Hide/Show notes">${collapsed.notes ? 'Show' : 'Hide'}</button>
-          </div>
-          ${collapsed.notes ? notesSummary(notes, status) : `
-          <textarea class="h-28 px-3 py-2 rounded-xl border border-slate-300 bg-white w-full" placeholder="Internal note / customer note / delivery note ..." data-action="bindNotes">${escapeHtml(notes)}</textarea>
-          <div class="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs text-slate-600">
-            <div>Created: <strong>you</strong></div>
-            <div>Created On: <strong>${new Date().toLocaleString()} </strong></div>
-            <div>Last Edited: <strong>${new Date().toLocaleTimeString()} </strong></div>
-            <div>Status: <strong>${status} </strong></div>
-          </div>
-          <div class="mt-3">${keyboardHelp()}</div>`}
-        </div>
-
-        <div class="ve-card rounded-2xl border bg-white p-4 shadow-sm">
-          <div class="flex items-center justify-between mb-3">
-            <h2 class="text-base font-semibold">Totals</h2>
-            <button data-action="toggleSection" data-section="totals" class="text-xs px-2 py-1 rounded-lg border" title="Hide/Show totals">${collapsed.totals ? 'Show' : 'Hide'}</button>
-          </div>
-          ${collapsed.totals ? totalsSummary(this.state.voucherType, totals) : `
-          ${voucherType === 'Journal' ? `
-            <div class="space-y-1 text-sm">
-              ${rowKV('Total Dr', moneyFmt.format(totals.dr))}
-              ${rowKV('Total Cr', moneyFmt.format(totals.cr))}
-              ${rowKV('Difference', `<span class="${Math.abs(totals.diff) < 0.001 ? 'text-emerald-700' : 'text-red-700'}">${moneyFmt.format(totals.diff)}</span>`)}
+      <div class="row">
+        <div class="col-lg-8">
+          <div class="card mb-3">
+            <div class="card-header">
+              <div class="d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Notes & Audit</h5>
+                <button data-action="toggleSection" data-section="notes" class="btn btn-sm btn-outline-secondary">
+                  <i class="mdi mdi-${collapsed.notes ? 'eye' : 'eye-off'}"></i>
+                  ${collapsed.notes ? 'Show' : 'Hide'}
+                </button>
+              </div>
             </div>
-          ` : `
-            <div class="space-y-1 text-sm">
-              ${rowKV('Subtotal', moneyFmt.format(totals.sub))}
-              ${rowKV('Discounts', moneyFmt.format(totals.disc))}
-              ${totals.taxBreak.map(([p, val]) => rowKV(`Tax ${p}%`, moneyFmt.format(val))).join('')}
-              ${rowKV('Addl. Charges (+/-)', moneyFmt.format(totals.chargesTotal))}
-              ${rowKV('Rounding', moneyFmt.format(totals.roundAdj))}
-              <div class="border-t my-1"></div>
-              ${rowKV('<strong>Grand Total</strong>', `<strong>${moneyFmt.format(totals.grand)}</strong>`)}
-              <div class="mt-2 text-xs text-slate-500">Due Date: <strong>${this.computeDueDate(header.date, header.creditDays)}</strong></div>
+            <div class="card-body">
+              ${collapsed.notes ? notesSummary(notes, status) : `
+              <textarea class="form-control mb-3" rows="3" placeholder="Internal note / customer note / delivery note ..." data-action="bindNotes">${escapeHtml(notes)}</textarea>
+              <div class="row g-3 text-muted small">
+                <div class="col-md-3">Created: <strong>you</strong></div>
+                <div class="col-md-3">Created On: <strong>${new Date().toLocaleString()} </strong></div>
+                <div class="col-md-3">Last Edited: <strong>${new Date().toLocaleTimeString()} </strong></div>
+                <div class="col-md-3">Status: <strong>${status} </strong></div>
+              </div>
+              `}
             </div>
-          `}
-          <div class="mt-3 flex gap-2">
-            <button data-action="paymentTerms" class="ve-action-btn inline-flex items-center justify-center px-3 py-2 rounded-xl text-sm border border-slate-300 bg-white hover:bg-slate-50 w-full">Payment Terms</button>
-            <button data-action="toggleCharges" class="ve-action-btn inline-flex items-center justify-center px-3 py-2 rounded-xl text-sm border border-slate-300 bg-white hover:bg-slate-50 w-full">Additional Charges</button>
-          </div>`}
+          </div>
         </div>
-      </section>
 
-      <footer class="ve-footer mt-6 text-center text-xs text-slate-500">
-        Data syncs with server on save. Column widths remain stored locally for a personalised layout.
-      </footer>
+        <div class="col-lg-4">
+          <div class="card mb-3">
+            <div class="card-header">
+              <div class="d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Totals</h5>
+                <button data-action="toggleSection" data-section="totals" class="btn btn-sm btn-outline-secondary">
+                  <i class="mdi mdi-${collapsed.totals ? 'eye' : 'eye-off'}"></i>
+                  ${collapsed.totals ? 'Show' : 'Hide'}
+                </button>
+              </div>
+            </div>
+            <div class="card-body">
+              ${collapsed.totals ? totalsSummary(this.state.voucherType, totals) : `
+              <div class="voucher-totals">
+                ${voucherType === 'Journal' ? `
+                  <div class="voucher-totals-row">
+                    <span class="voucher-totals-label">Total Dr</span>
+                    <span class="voucher-totals-value">${moneyFmt.format(totals.dr)}</span>
+                  </div>
+                  <div class="voucher-totals-row">
+                    <span class="voucher-totals-label">Total Cr</span>
+                    <span class="voucher-totals-value">${moneyFmt.format(totals.cr)}</span>
+                  </div>
+                  <div class="voucher-totals-row">
+                    <span class="voucher-totals-label">Difference</span>
+                    <span class="voucher-totals-value ${Math.abs(totals.diff) < 0.001 ? 'text-success' : 'text-danger'}">${moneyFmt.format(totals.diff)}</span>
+                  </div>
+                  ${Math.abs(totals.diff) >= 0.001 ? `
+                    <div class="voucher-totals-mismatch">
+                      <i class="mdi mdi-alert-circle-outline"></i>
+                      <span>Debit and Credit must balance!</span>
+                    </div>
+                  ` : ''}
+                ` : ''}
+              </div>
+              `}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-center text-muted small mt-3">
+        <p class="mb-0">Data syncs with server on save. Column widths remain stored locally for a personalised layout.</p>
+      </div>
 
       </div>
       ${this.state.showUdfModal ? udfModalHtml(this.state) : ''}
@@ -1027,8 +1059,10 @@ const App = {
     `;
 
     setTimeout(() => { this.focusCurrent(); this.bindResizeHandles(); this.bindCsv(); }, 0);
-    const grid = document.getElementById('grid');
-    grid.addEventListener('paste', (e) => this.handlePaste(e));
+    const grid = document.querySelector('.voucher-grid-wrapper');
+    if (grid) {
+      grid.addEventListener('paste', (e) => this.handlePaste(e));
+    }
     el.onclick = (ev) => this.handleClick(ev);
     el.onchange = (ev) => this.handleChange(ev);
     el.onkeydown = (ev) => this.handleKeydown(ev);
@@ -1614,8 +1648,8 @@ if (action === 'addRow') { this.state.rows.push(this.blankRow()); this.render();
 /** Small UI helpers */
 function Labeled(label, inner, help) {
   const lbl = escapeHtml(label);
-  const helpBlock = help ? `<span class="text-xs text-slate-400">${escapeHtml(help)}</span>` : '';
-  return `<label class="flex flex-col gap-1 text-sm"><span class="text-slate-600">${lbl}</span>${helpBlock}${inner}</label>`;
+  const helpBlock = help ? `<small class="form-text text-muted">${escapeHtml(help)}</small>` : '';
+  return `<div class="col-md-6 col-lg-4 mb-3"><label class="form-label">${lbl}</label>${inner}${helpBlock}</div>`;
 }
 function rowKV(k, vHtml) { return `<div class="flex items-center justify-between"><span class="text-slate-600">${k}</span><span class="font-medium tabular-nums">${vHtml}</span></div>`; }
 function keyboardHelp() {
