@@ -54,8 +54,8 @@ urlpatterns = [
     path('account/', include('account.urls')),
     path('inventory/', include('Inventory.urls')),
     
-    # Include accounting app with namespace so templates can reverse with 'accounting:<name>'
-    path('accounting/', include(('accounting.urls', 'accounting'), namespace='accounting')),
+    # Include accounting app - namespace comes from app_name in accounting.urls
+    path('accounting/', include('accounting.urls')),
     # path('accounting/', include('accounting.new_journal_entry_urls')),
     # path('admin/', admin.site.urls),
     path("accounts/login/", CustomLoginView.as_view(), name="account_login"),

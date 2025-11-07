@@ -2,6 +2,22 @@ Himalytix ERP – Phase‑Wise Improvement Plan
 
 This document outlines a phase‑wise roadmap to evolve the Himalytix multi‑tenant ERP platform from the current MVP to a mature, scalable product. Each phase builds on the existing implementation (core accounting, inventory and user‑management modules) and addresses gaps identified during code review. For each phase you should inspect the current repository and ensure the tasks remain relevant, then confirm before advancing to the next phase.
 
+Immediate TODOs – Voucher Entry Remediation
+
+- [x] Scope `journal_select_config` queryset to the active organization and exclude inactive configs to stop cross-tenant exposure.
+- [x] Escape or strip HTML before calling `notify()` in `voucher_entry.js` so server messages cannot trigger XSS.
+- [x] Reset the cached config response in `fetchConfig` when an error occurs to allow safe retries.
+- [x] Ignore or redirect `journal_type=None` requests in `journal_select_config.html` to avoid rendering invalid filter states.
+- [x] Recompute line numbers sequentially when saving journal lines after skipping blank rows so the grid stays in sync.
+- [x] Add regression test to ensure blank journal rows do not create gaps in saved line numbering.
+
+Phase 1 – Local Hardening TODOs
+
+- [x] Enforce DRF authentication and active-organization guards on accounting suggestion APIs.
+- [x] Verify journal submit/approve/post views enforce tenant permission checks for active organization.
+- [x] Add unit tests covering journal grid balance validation, COA depth rules, and fiscal-period enforcement. (See `ERP/accounting/tests/test_journal_entry_grid.py`, `ERP/accounting/tests/test_forms.py`, and `ERP/accounting/tests/test_journal_period_validate.py`.)
+- [x] Extend integration test to cover login → tenant selection → journal save flow. (See `ERP/accounting/tests/test_journal_entry_ui.py::JournalEntryIntegrationTests`.)
+
 Phase 1 – Security & Infrastructure Hardening
 
 Objective: Ensure that the foundational codebase meets baseline security, configuration and operational standards before introducing new features.
@@ -155,8 +171,20 @@ Audit and regulatory readiness – Before engaging regulated clients, perform a 
 
 Security scanning & SBOM – Integrate dependency scanning tools (e.g., Dependabot, Snyk) and generate a Software Bill of Materials (SBOM) for each release. Use tools like trivy to scan container images for vulnerabilities. Document remediation procedures.
 
-Operational controls – Define incident response procedures, backup retention schedules and access controls. Create runbooks for common operations such as database failover, password resets and tenant onboarding. Store these runbooks in a /docs/operations directory for easy reference.
+Operational controls - Define incident response procedures, backup retention schedules and access controls. Create runbooks for common operations such as database failover, password resets and tenant onboarding. Store these runbooks in a /docs/operations directory for easy reference.
+
+8 - Automate Financial Close & Controls
+
+Year-end closing service - Build a `close_fiscal_year` routine inside `ERP/accounting/services/posting_service.py` (or a focused closing service) that aggregates every income and expense balance for the selected fiscal year, creates a closing journal flagged with `Journal.is_closing_entry=True`, and posts the net amount into a configurable retained earnings account. Provide a management command so operators can rerun it safely per tenant and add regression tests verifying that P&L accounts reset to zero when a new fiscal year starts.
+
+Currency revaluation & validation - When a journal currency differs from the organization's base, automatically pull the FX rate from `CurrencyExchangeRate` (`ERP/accounting/models.py:800`) or a new history table. Validate every `JournalLine` so the base amount equals the foreign currency amount multiplied by the stored rate, block posts that violate this rule, and create a scheduled revaluation job that generates adjustment journals. Extend `ERP/accounting/tests/test_journal_entry_grid.py` and related UI tests to cover mismatched currencies.
+
+Ledger integrity constraints - Complement the existing in-code balancing checks with database-level guarantees (e.g., `CheckConstraint` or triggers on `Journal`/`GeneralLedger`) so a journal with non-zero imbalance cannot be persisted, and ensure `GeneralLedger` rows cannot exist without a paired counter-entry. Harden `PostingService` (`ERP/accounting/services/posting_service.py`) with explicit `select_for_update()` coverage or batching to guard against concurrent postings, plus reconciliation commands that fail fast if any posted journal drifts off balance.
+
+Equity segmentation & statutory reporting - Extend `ChartOfAccount` definitions in `ERP/accounting/models.py` and the related forms so organizations can tag share capital, retained earnings, statutory reserves and current-year profit separately. Seed default accounts (e.g., Retained Earnings, Current Year Income) through migrations, update the reporting services so retained earnings roll forward automatically, and document how to map local GAAP/IFRS categories inside the chart-wizard UI.
+
+Enhanced audit & reporting automation - Use the existing `AuditLog` (`ERP/accounting/models.py:23`) to capture every `GeneralLedger` write, including the posting user, source journal and before/after amounts. Build nightly verification jobs or management commands that assert assets = liabilities + equity after closing entries and that income - expenses matches the change in equity; cover these invariants with integration tests so regressions are caught before deployment.
 
 Conclusion
 
-By following this structured set of next actions, Himalytix ERP will evolve from its current MVP into a secure, well‑documented and polished SaaS offering. Focusing on foundational security and test coverage lays the groundwork for stability; enhanced documentation and user experience make the product accessible to customers and partners; commercialisation and compliance planning ensure sustainable growth; and continuous attention to tenant‑aware security preserves trust. Each step should be revisited regularly as the codebase evolves to maintain alignment with industry best practices.
+By following this structured set of next actions, Himalytix ERP will evolve from its current MVP into a secure, well-documented and polished SaaS offering. Focusing on foundational security and test coverage lays the groundwork for stability; enhanced documentation and user experience make the product accessible to customers and partners; commercialisation and compliance planning ensure sustainable growth; and continuous attention to tenant-aware security preserves trust. Each step should be revisited regularly as the codebase evolves to maintain alignment with industry best practices.

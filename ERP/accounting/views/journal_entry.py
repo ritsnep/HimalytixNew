@@ -62,6 +62,13 @@ LINE_STATE_KEY_MAP = {
     "tax_code": "taxCode",
 }
 
+WORKFLOW_PERMISSION_RULES = {
+    "submit": ("can_submit_for_approval", "submit_journal"),
+    "approve": ("can_approve_journal", "approve_journal"),
+    "reject": ("can_reject_journal", "reject_journal"),
+    "post": ("can_post_journal", "post_journal"),
+}
+
 
 def _state_key_for_header(field_key: str) -> str:
     return HEADER_STATE_KEY_MAP.get(field_key, field_key)
@@ -369,6 +376,19 @@ def _active_organization(user):
     return getattr(user, "organization", None)
 
 
+def _user_can_workflow(user, organization, action: str) -> bool:
+    if not organization:
+        return False
+    rule = WORKFLOW_PERMISSION_RULES.get(action)
+    if not rule:
+        return False
+    global_perm, scoped_perm = rule
+    # Respect both Django model perms and tenant-scoped permissions.
+    if user.has_perm(f"accounting.{global_perm}"):
+        return True
+    return PermissionUtils.has_permission(user, organization, "accounting", "journal", scoped_perm)
+
+
 def _parse_request_json(request) -> Dict[str, Any]:
     if not request.body:
         return {}
@@ -565,13 +585,15 @@ def _build_lines(
         if value_str not in allowed:
             raise ValueError(f"Value '{value}' is not permitted for {_label_for(key)}.")
 
-    for idx, row in enumerate(rows, start=1):
+    for row in rows:
         debit = _safe_decimal(row.get("dr"))
         credit = _safe_decimal(row.get("cr"))
         account_fields = (row.get("account"), row.get("accountCode"), row.get("accountId"))
 
         if not any(account_fields) and debit == 0 and credit == 0:
             continue
+
+        line_number = len(prepared) + 1
 
         for key in required_map.keys():
             _ensure_required(row, key)
@@ -581,7 +603,7 @@ def _build_lines(
         account = _resolve_account(organization, row)
 
         line_payload: Dict[str, Any] = {
-            "line_number": idx,
+            "line_number": line_number,
             "account": account,
             "description": (row.get("narr") or "").strip(),
             "debit_amount": debit,
@@ -752,9 +774,11 @@ def _persist_journal_draft(user, payload: Dict[str, Any]) -> Tuple[Journal, bool
             journal = Journal.objects.select_related("organization").get(pk=int(journal_id), organization=organization)
         except (Journal.DoesNotExist, ValueError) as exc:
             raise ValueError("Journal entry not found.") from exc
-        journal = service.update_journal_entry(journal, journal_data, line_data, attachments)
+        # Attachments are managed below to support re-linking existing uploads by id
+        journal = service.update_journal_entry(journal, journal_data, line_data)
     else:
-        journal = service.create_journal_entry(journal_data, line_data, attachments)
+        # Create journal without attachments; we will associate uploaded files by id below
+        journal = service.create_journal_entry(journal_data, line_data)
         created = True
 
     attachment_ids: List[int] = []
@@ -1030,7 +1054,8 @@ def journal_config(request):
 @login_required
 def journal_entry(request):
     """Render the Excel-like Journal Entry UI."""
-    journal_id_param = request.GET.get("journal_id") or ""
+    # Support both journal_id and voucher_id parameters (for legacy and new URLs)
+    journal_id_param = request.GET.get("journal_id") or request.GET.get("voucher_id") or ""
     if journal_id_param and not journal_id_param.isdigit():
         journal_id_param = ""
     
@@ -1040,13 +1065,10 @@ def journal_entry(request):
 
     organization = _active_organization(request.user)
     
-    # Get available voucher configs for selection
-    voucher_configs = []
+    # If no config was chosen and no journal is being edited, route to a dedicated
+    # full-screen configuration selection page instead of an in-page modal.
     if show_config_selector:
-        from accounting.models import VoucherModeConfig
-        voucher_configs = VoucherModeConfig.objects.filter(
-            archived_at__isnull=True
-        ).select_related('journal_type').order_by('name')
+        return journal_select_config(request)
     
     permission_flags = {
         "can_submit": bool(request.user.has_perm('accounting.can_submit_for_approval') or (organization and PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'submit_journal'))),
@@ -1080,10 +1102,64 @@ def journal_entry(request):
         "lookup_urls": lookup_urls,
         "active_organization": organization,
         "config_endpoint": config_endpoint,
-        "show_config_selector": show_config_selector,
-        "voucher_configs": voucher_configs,
+        "show_config_selector": False,
     }
     return render(request, "accounting/journal_entry.html", context)
+
+
+@login_required
+def journal_select_config(request):
+    """Render a dedicated configuration selection screen before voucher entry."""
+    organization = _active_organization(request.user)
+    if organization:
+        configs = (
+            VoucherModeConfig.objects.filter(
+                organization=organization,
+                is_active=True,
+                archived_at__isnull=True,
+            )
+            .select_related('journal_type')
+            .order_by('name')
+        )
+    else:
+        configs = VoucherModeConfig.objects.none()
+    context = {
+        "voucher_entry_page": True,
+        "voucher_configs": configs,
+        "active_organization": organization,
+    }
+    return render(request, "accounting/journal_select_config.html", context)
+
+
+@login_required
+@require_GET
+def journal_period_validate(request):
+    """Validate whether a date falls within an open accounting period.
+
+    Returns JSON: { ok: bool, error?: str, period?: { id, label } }
+    """
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+    date_str = request.GET.get("date")
+    if not date_str:
+        return _json_error("Missing 'date' parameter.", status=400)
+    try:
+        journal_date = parse_date(date_str)
+        if not journal_date:
+            raise ValueError
+    except Exception:
+        return _json_error("Invalid date format. Use YYYY-MM-DD.", status=400)
+    try:
+        period = _resolve_period(organization, journal_date)
+        label = f"{period.fiscal_year.name if getattr(period, 'fiscal_year', None) else ''} {period.start_date}–{period.end_date}"
+        return JsonResponse({
+            "ok": True,
+            "period": {"id": period.pk, "label": label}
+        })
+    except ValueError as exc:
+        message, details = _format_value_error(exc)
+        return _json_error(message, status=400, details=details)
 
 
 @login_required
@@ -1111,8 +1187,12 @@ def journal_submit(request):
     try:
         payload = _parse_request_json(request)
         logger.debug("Journal submit payload: %s", payload)
-        journal, _ = _persist_journal_draft(request.user, payload)
         organization = _active_organization(request.user)
+        if not organization:
+            return _json_error("Active organization required.", status=400)
+        if not _user_can_workflow(request.user, organization, "submit"):
+            return _json_error("You do not have permission to submit journals.", status=403)
+        journal, _ = _persist_journal_draft(request.user, payload)
         service = JournalEntryService(request.user, organization)
         service.submit(journal)
         journal.refresh_from_db()
@@ -1141,8 +1221,12 @@ def journal_approve(request):
         journal_id = payload.get("journalId") or payload.get("journal_id")
         if not journal_id:
             raise ValueError("journalId is required to approve a journal.")
-        journal = _get_user_journal(request.user, int(journal_id))
         organization = _active_organization(request.user)
+        if not organization:
+            return _json_error("Active organization required.", status=400)
+        if not _user_can_workflow(request.user, organization, "approve"):
+            return _json_error("You do not have permission to approve journals.", status=403)
+        journal = _get_user_journal(request.user, int(journal_id))
         service = JournalEntryService(request.user, organization)
         service.approve(journal)
         journal.refresh_from_db()
@@ -1171,8 +1255,12 @@ def journal_reject(request):
         journal_id = payload.get("journalId") or payload.get("journal_id")
         if not journal_id:
             raise ValueError("journalId is required to reject a journal.")
-        journal = _get_user_journal(request.user, int(journal_id))
         organization = _active_organization(request.user)
+        if not organization:
+            return _json_error("Active organization required.", status=400)
+        if not _user_can_workflow(request.user, organization, "reject"):
+            return _json_error("You do not have permission to reject journals.", status=403)
+        journal = _get_user_journal(request.user, int(journal_id))
         service = JournalEntryService(request.user, organization)
         service.reject(journal)
         journal.refresh_from_db()
@@ -1201,8 +1289,12 @@ def journal_post(request):
         journal_id = payload.get("journalId") or payload.get("journal_id")
         if not journal_id:
             raise ValueError("journalId is required to post a journal.")
-        journal = _get_user_journal(request.user, int(journal_id))
         organization = _active_organization(request.user)
+        if not organization:
+            return _json_error("Active organization required.", status=400)
+        if not _user_can_workflow(request.user, organization, "post"):
+            return _json_error("You do not have permission to post journals.", status=403)
+        journal = _get_user_journal(request.user, int(journal_id))
         service = JournalEntryService(request.user, organization)
         service.post(journal)
         journal.refresh_from_db()

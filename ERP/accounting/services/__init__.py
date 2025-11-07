@@ -14,6 +14,8 @@ from .raw_sql import run_trial_balance, run_year_end_close
 from .fiscal_year_periods import generate_periods
 from .batch_operations import BatchOperationService
 from .auto_numbering import generate_auto_number
+from .exchange_rate_service import ExchangeRateService
+from .year_end_closing import YearEndClosingService
 
 __all__ = [
     'post_journal',
@@ -34,4 +36,6 @@ __all__ = [
     'generate_periods',
     'BatchOperationService',
     'generate_auto_number',
+    'ExchangeRateService',
+    'YearEndClosingService',
 ]

@@ -121,11 +121,11 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
         # Note: Adjust based on your actual requirements
         csp_directives = [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net",
-            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com",
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com",
             "img-src 'self' data: https:",
-            "font-src 'self' https://cdn.jsdelivr.net",
-            "connect-src 'self'",
+            "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com",
+            "connect-src 'self' https://cdnjs.cloudflare.com",
             "frame-ancestors 'none'",
             "base-uri 'self'",
             "form-action 'self'"

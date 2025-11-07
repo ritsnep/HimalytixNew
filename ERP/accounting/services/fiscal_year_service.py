@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from accounting.models import AccountingPeriod, FiscalYear
 from accounting.services.close_period import close_period
+from accounting.services.year_end_closing import YearEndClosingError, YearEndClosingService
 from accounting.utils.audit import log_audit_event
 from usermanagement.models import CustomUser
 from usermanagement.utils import PermissionUtils
@@ -39,9 +40,18 @@ def close_fiscal_year(
     _check_permission(user, fiscal_year, "close_fiscalyear")
 
     open_periods = fiscal_year.periods.filter(status="open").order_by("period_number")
+    if open_periods.exists() and not auto_close_open_periods:
+        raise ValidationError("All accounting periods must be closed before closing the fiscal year.")
+
+    closing_result = None
+    try:
+        closing_service = YearEndClosingService(fiscal_year, user)
+        closing_result = closing_service.close()
+    except YearEndClosingError as exc:
+        raise ValidationError(exc.messages) from exc
+
+    open_periods = fiscal_year.periods.filter(status="open").order_by("period_number")
     if open_periods.exists():
-        if not auto_close_open_periods:
-            raise ValidationError("All accounting periods must be closed before closing the fiscal year.")
         for period in open_periods:
             close_period(period, user=user)
 
@@ -56,7 +66,10 @@ def close_fiscal_year(
     fiscal_year.is_current = False
     fiscal_year.save(update_fields=["status", "closed_at", "closed_by", "is_current", "updated_at"])
 
-    log_audit_event(user, fiscal_year, "close_fiscal_year", details=f"Fiscal year {fiscal_year.code} closed.")
+    audit_details = f"Fiscal year {fiscal_year.code} closed."
+    if closing_result and closing_result.net_result is not None:
+        audit_details += f" Net result transferred: {closing_result.net_result}."
+    log_audit_event(user, fiscal_year, "close_fiscal_year", details=audit_details)
     logger.info("Fiscal year %s closed by %s", fiscal_year.code, getattr(user, "pk", None))
 
     # Promote the next fiscal year (if available) to current.

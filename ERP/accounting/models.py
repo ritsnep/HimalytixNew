@@ -5,7 +5,7 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 from usermanagement.models import CustomUser, Organization
 from django.utils.crypto import get_random_string
-from django.db.models import Max, Q, F, CheckConstraint, Sum
+from django.db.models import Max, Q, F, CheckConstraint, Sum, UniqueConstraint
 import logging
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -111,6 +111,16 @@ class FiscalYear(models.Model):
         ]
         constraints = [
             CheckConstraint(check=Q(start_date__lt=F('end_date')), name='fiscalyear_start_before_end'),
+            UniqueConstraint(
+                fields=['organization'],
+                condition=Q(is_current=True),
+                name='unique_current_fiscal_year_per_org',
+            ),
+            UniqueConstraint(
+                fields=['organization'],
+                condition=Q(is_default=True),
+                name='unique_default_fiscal_year_per_org',
+            ),
         ]
         # For DBA: Add UNIQUE WHERE is_current=1 and is_default=1 on (organization)
         # For DBA: CLUSTERED INDEX (organization, start_date)
@@ -416,6 +426,38 @@ class AccountType(models.Model):
         'income': 'INC',
         'expense': 'EXP',
     }
+    IFRS_DEFAULTS = {
+        'asset': {
+            'classification': 'Statement of Financial Position',
+            'balance_sheet': 'Assets',
+            'income_statement': None,
+            'cash_flow': 'Investing Activities',
+        },
+        'liability': {
+            'classification': 'Statement of Financial Position',
+            'balance_sheet': 'Liabilities',
+            'income_statement': None,
+            'cash_flow': 'Financing Activities',
+        },
+        'equity': {
+            'classification': 'Statement of Financial Position',
+            'balance_sheet': 'Equity',
+            'income_statement': None,
+            'cash_flow': 'Financing Activities',
+        },
+        'income': {
+            'classification': 'Statement of Profit or Loss',
+            'balance_sheet': None,
+            'income_statement': 'Revenue',
+            'cash_flow': 'Operating Activities',
+        },
+        'expense': {
+            'classification': 'Statement of Profit or Loss',
+            'balance_sheet': None,
+            'income_statement': 'Expense',
+            'cash_flow': 'Operating Activities',
+        },
+    }
     account_type_id = models.BigAutoField(primary_key=True)
     code = models.CharField(max_length=20, unique=True)
     name = models.CharField(max_length=100)
@@ -452,6 +494,15 @@ class AccountType(models.Model):
             }.get(self.nature, '9000')
         if not self.root_code_step:
             self.root_code_step = 100
+        defaults = self.IFRS_DEFAULTS.get(self.nature, {})
+        if not self.classification and defaults.get('classification'):
+            self.classification = defaults['classification']
+        if not self.balance_sheet_category and defaults.get('balance_sheet'):
+            self.balance_sheet_category = defaults['balance_sheet']
+        if not self.income_statement_category and defaults.get('income_statement'):
+            self.income_statement_category = defaults['income_statement']
+        if not self.cash_flow_category and defaults.get('cash_flow'):
+            self.cash_flow_category = defaults['cash_flow']
         if not self.code:
             prefix = self.NATURE_CODE_PREFIX.get(self.nature, 'ACC')
             # Get max code with the same prefix
@@ -734,6 +785,64 @@ class ChartOfAccount(models.Model):
             self.full_clean()
             logger.debug(f"ChartOfAccount.save: Saving with account_code={self.account_code}")
             super(ChartOfAccount, self).save(*args, **kwargs)
+
+
+class AccountingSettings(models.Model):
+    """Organization-level accounting settings for statutory controls."""
+
+    IFRS = 'ifrs'
+    NFRS = 'nfrs'
+    GAAP = 'gaap'
+
+    REPORTING_FRAMEWORK_CHOICES = [
+        (IFRS, 'IFRS'),
+        (NFRS, 'NFRS'),
+        (GAAP, 'GAAP / Local GAAP'),
+    ]
+
+    settings_id = models.BigAutoField(primary_key=True)
+    organization = models.OneToOneField(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name='accounting_settings',
+    )
+    retained_earnings_account = models.ForeignKey(
+        'ChartOfAccount',
+        on_delete=models.PROTECT,
+        related_name='+',
+    )
+    current_year_income_account = models.ForeignKey(
+        'ChartOfAccount',
+        on_delete=models.PROTECT,
+        related_name='+',
+    )
+    statutory_framework = models.CharField(
+        max_length=16,
+        choices=REPORTING_FRAMEWORK_CHOICES,
+        default=IFRS,
+        help_text='Primary statutory reporting framework used for classifications.',
+    )
+    auto_rollover_closing = models.BooleanField(
+        default=False,
+        help_text='Automatically generate opening balance journals after fiscal year close.',
+    )
+    auto_fx_lookup = models.BooleanField(
+        default=True,
+        help_text='Automatically hydrate exchange rates from CurrencyExchangeRate records when posting.',
+    )
+    enable_currency_revaluation = models.BooleanField(
+        default=False,
+        help_text='Run currency revaluation jobs during fiscal close.',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'accounting_settings'
+        verbose_name_plural = 'Accounting Settings'
+
+    def __str__(self):
+        return f"Accounting settings for {self.organization.name}"
     @classmethod
     def get_next_code(cls, org_id, parent_id, account_type_id):
         from django.db.models import Q
@@ -998,6 +1107,15 @@ class Journal(models.Model):
             ("can_edit_journal", "Can edit journal"),
             ("can_reopen_period", "Can reopen accounting period"),
         ]
+        constraints = [
+            models.CheckConstraint(
+                name='journal_balanced_when_posted',
+                check=(
+                    ~Q(status='posted')
+                    | Q(total_debit=F('total_credit'))
+                ),
+            ),
+        ]
 
     def __str__(self):
         return f"{self.journal_number} - {self.journal_type.name}"
@@ -1022,6 +1140,20 @@ class Journal(models.Model):
         old_instance = None
         if not is_new:
             old_instance = Journal.objects.get(pk=self.pk)
+
+        if old_instance and old_instance.is_locked and old_instance.status == "posted":
+            protected_fields = [
+                'journal_type_id',
+                'period_id',
+                'journal_date',
+                'currency_code',
+                'exchange_rate',
+                'total_debit',
+                'total_credit',
+            ]
+            for field in protected_fields:
+                if getattr(self, field) != getattr(old_instance, field):
+                    raise ValidationError("Posted journals are read-only and cannot be modified.")
 
         if not self.journal_number and self.journal_type:
             self.journal_number = self.journal_type.get_next_journal_number(period=self.period)
@@ -1079,6 +1211,15 @@ class JournalLine(models.Model):
         # For DBA: Partition monthly by journal.journal_date
         # For DBA: Non-clustered index (account_id, period_id)
         # For DBA: CHECK (debit_amount = 0 OR credit_amount = 0)
+        constraints = [
+            models.CheckConstraint(
+                name='journalline_single_sided',
+                check=(
+                    Q(debit_amount__gt=0, credit_amount=0)
+                    | Q(credit_amount__gt=0, debit_amount=0)
+                ),
+            ),
+        ]
     def __str__(self):
         return f"Line {self.line_number} of {self.journal.journal_number}"
     

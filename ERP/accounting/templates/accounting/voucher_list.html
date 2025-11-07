@@ -142,7 +142,7 @@
                                             <i class="fas fa-eye"></i>
                                         </a>
                                         {% if voucher.status == 'draft' and can_edit %}
-                                        <a href="{% url 'accounting:voucher_edit' pk=voucher.pk %}" 
+                                        <a href="{% url 'accounting:journal_entry' %}?voucher_id={{ voucher.pk }}" 
                                            class="btn btn-warning btn-sm" title="Edit Voucher">
                                             <i class="fas fa-edit"></i>
                                         </a>

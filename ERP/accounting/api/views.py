@@ -1,18 +1,22 @@
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from accounting.models import Journal, JournalLine
 from django.db.models import Count
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 
 from usermanagement.utils import PermissionUtils
 from accounting.services.post_journal import post_journal
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def suggest_journal_entries(request):
     """
     Suggests journal entries based on historical data.
     """
     organization = request.user.get_active_organization()
+    if not organization:
+        return Response({'detail': 'Active organization required'}, status=status.HTTP_400_BAD_REQUEST)
     if not PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'view'):
         return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -25,11 +29,14 @@ def suggest_journal_entries(request):
     return Response([s['description'] for s in suggestions])
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_line_suggestions(request):
     """
     Suggests lines to complete an entry based on the provided description.
     """
     organization = request.user.get_active_organization()
+    if not organization:
+        return Response({'detail': 'Active organization required'}, status=status.HTTP_400_BAD_REQUEST)
     if not PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'view'):
         return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -59,11 +66,14 @@ def get_line_suggestions(request):
     return Response(suggestions)
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def validate_field(request):
     """
     Validates a single field from the journal entry form.
     """
     organization = request.user.get_active_organization()
+    if not organization:
+        return Response({'detail': 'Active organization required'}, status=status.HTTP_400_BAD_REQUEST)
     if not PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'change'):
         return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -80,6 +90,8 @@ def validate_field(request):
 from rest_framework.views import APIView
 
 class JournalBulkActionView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def post(self, request, *args, **kwargs):
         action = request.data.get('action')
         journal_ids = request.data.get('journal_ids')
@@ -88,6 +100,8 @@ class JournalBulkActionView(APIView):
             return Response({'error': 'Missing action or journal_ids'}, status=status.HTTP_400_BAD_REQUEST)
 
         organization = request.user.get_active_organization()
+        if not organization:
+            return Response({'error': 'Active organization required'}, status=status.HTTP_400_BAD_REQUEST)
         permission_map = {
             'post': ('accounting', 'journal', 'post_journal'),
             'delete': ('accounting', 'journal', 'delete'),

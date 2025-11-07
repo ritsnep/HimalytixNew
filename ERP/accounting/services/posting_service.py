@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 from typing import Iterable, Optional
 
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -16,6 +16,7 @@ from accounting.models import (
     JournalLine,
 )
 from accounting.utils.audit import log_audit_event
+from accounting.services.exchange_rate_service import ExchangeRateService
 from usermanagement.models import CustomUser, Organization
 from usermanagement.utils import PermissionUtils
 
@@ -61,6 +62,7 @@ class PostingService:
     }
 
     QUANTIZE_TARGET = Decimal("0.0000")
+    FX_TOLERANCE = Decimal("0.0001")
 
     def __init__(self, user: Optional[CustomUser]):
         self.user = user
@@ -72,6 +74,7 @@ class PostingService:
             )()
         else:
             self.organization = None
+        self._exchange_service: Optional[ExchangeRateService] = None
 
     # ---------------------------------------------------------------------
     # Permission & validation helpers
@@ -156,9 +159,94 @@ class PostingService:
         lines = list(lines) if lines is not None else list(journal.lines.all())
         if not lines:
             raise ValidationError("Journal must contain at least one line.")
+        self._ensure_exchange_rate(journal)
+        for line in lines:
+            self._normalise_line_currency(line, journal)
         self._validate_period_control(journal)
         self._validate_double_entry_invariant(journal)
         self._validate_voucher_type_rules(journal, lines)
+
+    # ------------------------------------------------------------------
+    # Currency helpers
+    # ------------------------------------------------------------------
+    def _ensure_exchange_rate(self, journal: Journal) -> None:
+        organization = journal.organization
+        base_currency = getattr(organization, "base_currency_code", None)
+
+        if not journal.currency_code:
+            journal.currency_code = base_currency or "USD"
+
+        if not base_currency or journal.currency_code == base_currency:
+            if journal.exchange_rate != Decimal("1"):
+                journal.exchange_rate = Decimal("1")
+                journal.save(update_fields=["exchange_rate"])
+            return
+
+        settings = getattr(organization, "accounting_settings", None)
+        auto_lookup_enabled = True if settings is None else settings.auto_fx_lookup
+
+        if journal.exchange_rate and journal.exchange_rate > 0:
+            return
+
+        if not auto_lookup_enabled:
+            raise ValidationError(
+                "Exchange rate is required when posting foreign currency journals."
+            )
+
+        if self._exchange_service is None:
+            self._exchange_service = ExchangeRateService(organization)
+
+        quote = self._exchange_service.get_rate(
+            journal.currency_code,
+            base_currency,
+            journal.journal_date,
+        )
+        journal.exchange_rate = quote.rate.quantize(Decimal("0.000001"))
+        metadata = journal.metadata or {}
+        metadata.update(
+            {
+                "exchange_rate_source": quote.source,
+                "exchange_rate_date": quote.rate_date.isoformat(),
+                "exchange_rate_used_inverse": quote.used_inverse,
+            }
+        )
+        journal.metadata = metadata
+        journal.save(update_fields=["exchange_rate", "metadata"])
+
+    def _normalise_line_currency(self, line: JournalLine, journal: Journal) -> None:
+        if line.amount_txn in (None, Decimal("0")):
+            return
+
+        fx_rate_raw = line.fx_rate or journal.exchange_rate
+        try:
+            fx_rate = Decimal(fx_rate_raw).quantize(Decimal("0.000001"))
+        except (InvalidOperation, TypeError):
+            raise ValidationError(
+                f"Invalid exchange rate value for journal line {line.line_number}."
+            )
+        if not fx_rate or fx_rate <= 0:
+            raise ValidationError(
+                f"Exchange rate missing for journal line {line.line_number}."
+            )
+
+        expected_base = (line.amount_txn * fx_rate).quantize(self.QUANTIZE_TARGET, rounding=ROUND_HALF_UP)
+        updates = []
+        if line.fx_rate != fx_rate:
+            line.fx_rate = fx_rate
+            updates.append("fx_rate")
+        if line.amount_base != expected_base:
+            line.amount_base = expected_base
+            updates.append("amount_base")
+
+        posted_amount = line.debit_amount if line.debit_amount > 0 else line.credit_amount
+        posted_amount = posted_amount.quantize(self.QUANTIZE_TARGET, rounding=ROUND_HALF_UP)
+        if (posted_amount - expected_base).copy_abs() > self.FX_TOLERANCE:
+            raise ValidationError(
+                f"Journal line {line.line_number} base amount {posted_amount} does not match converted amount {expected_base}."
+            )
+
+        if updates:
+            line.save(update_fields=updates)
 
     # ---------------------------------------------------------------------
     # Posting helpers
@@ -200,8 +288,21 @@ class PostingService:
         account = ChartOfAccount.objects.select_for_update().get(pk=line.account_id)
         account.current_balance = (account.current_balance or Decimal("0")) + delta
         account.save(update_fields=["current_balance"])
+        log_audit_event(
+            self.user,
+            account,
+            "balance_updated",
+            changes={"current_balance": str(account.current_balance)},
+            details=f"Balance updated via journal {journal.journal_number}",
+        )
 
-        GeneralLedger.objects.create(
+        journal_metadata = journal.metadata or {}
+        is_closing_entry = bool(
+            journal_metadata.get("is_closing_entry")
+            or journal_metadata.get("closing_type") == "year_end"
+        )
+
+        gl_entry = GeneralLedger.objects.create(
             organization_id=journal.organization,
             account=account,
             journal=journal,
@@ -221,7 +322,19 @@ class PostingService:
             description=line.description,
             source_module="Accounting",
             source_reference=journal.journal_number,
+             is_closing_entry=is_closing_entry,
             created_by=self.user if hasattr(GeneralLedger, "created_by") else None,
+        )
+        log_audit_event(
+            self.user,
+            gl_entry,
+            "gl_posted",
+            details=f"GL entry {gl_entry.gl_entry_id} created for journal {journal.journal_number}",
+            changes={
+                "debit": str(gl_entry.debit_amount),
+                "credit": str(gl_entry.credit_amount),
+                "closing_entry": is_closing_entry,
+            },
         )
 
     # ---------------------------------------------------------------------

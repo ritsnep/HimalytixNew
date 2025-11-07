@@ -90,8 +90,10 @@ urlpatterns = [
     path('journal-entry-grid/account-lookup', journal_grid_view.account_lookup, name='journal_entry_grid_account_lookup'),
     # Journal Entry URLs
     path('journal-entry/', journal_entry.journal_entry, name='journal_entry'),
+    path('journal-entry/select-config/', journal_entry.journal_select_config, name='journal_select_config'),
     path('journal-entry/save-draft/', journal_entry.journal_save_draft, name='journal_save_draft'),
     path('journal-entry/submit/', journal_entry.journal_submit, name='journal_submit'),
+    path('journal-entry/period/validate/', journal_entry.journal_period_validate, name='journal_period_validate'),
     path('journal-entry/approve/', journal_entry.journal_approve, name='journal_approve'),
     path('journal-entry/reject/', journal_entry.journal_reject, name='journal_reject'),
     path('journal-entry/post/', journal_entry.journal_post, name='journal_post'),

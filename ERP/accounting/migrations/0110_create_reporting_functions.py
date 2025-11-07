@@ -288,8 +288,8 @@ WITH ar_accounts AS (
     WHERE acc.organization_id = p_org_id
       AND acc.is_active = TRUE
       AND (
-            LOWER(at.classification) LIKE 'account%receivable%' OR
-            LOWER(acc.account_name) LIKE '%receivable%'
+            LOWER(at.classification) LIKE 'account%%receivable%%' OR
+            LOWER(acc.account_name) LIKE '%%receivable%%'
       )
 ),
 balances AS (

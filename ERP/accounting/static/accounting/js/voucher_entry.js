@@ -17,6 +17,7 @@ const Endpoints = {
   approve: __root?.dataset?.endpointApprove || null,
   reject: __root?.dataset?.endpointReject || null,
   post: __root?.dataset?.endpointPost || null,
+  periodValidate: __root?.dataset?.endpointPeriodValidate || null,
 };
 const DEFAULT_JOURNAL_TYPE = __root?.dataset?.defaultJournalType || 'JN';
 const INITIAL_JOURNAL_ID_RAW = __root?.dataset?.initialJournalId || '';
@@ -58,7 +59,41 @@ async function postJSON(url, payload) {
   return { ok: res.ok, status: res.status, data, text };
 }
 
-function notify(msg) { try { console.info(msg); } catch {} alert(msg); }
+function notify(msg, level = 'success') {
+  try {
+    const alerts = document.getElementById('app-alerts');
+    const asText = (typeof msg === 'string') ? msg : (msg?.message || msg?.error || String(msg));
+    const plainMessage = String(asText ?? '').trim();
+    const sanitized = plainMessage.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+
+    if (alerts) {
+      // Render an in-page Bootstrap alert just below top bar without trusting HTML from the server
+      alerts.textContent = '';
+      const cls = level === 'error' ? 'alert-danger' : (level === 'warning' ? 'alert-warning' : 'alert-success');
+      const wrapper = document.createElement('div');
+      wrapper.className = `alert ${cls} d-flex align-items-center`;
+      wrapper.setAttribute('role', 'alert');
+
+      const icon = document.createElement('i');
+      icon.className = `mdi ${level === 'error' ? 'mdi-alert-octagon-outline' : 'mdi-check-circle-outline'} me-2`;
+      const textNode = document.createElement('div');
+      textNode.textContent = plainMessage;
+
+      wrapper.appendChild(icon);
+      wrapper.appendChild(textNode);
+      alerts.appendChild(wrapper);
+    }
+    // Also show toast if available (escape to guard against HTML execution)
+    if (typeof toastr !== 'undefined') {
+      if (level === 'error') toastr.error(sanitized); else if (level === 'warning') toastr.warning(sanitized); else toastr.success(sanitized);
+    } else if (!alerts && plainMessage) {
+      alert(plainMessage);
+    }
+  } catch (e) {
+    console.error('Notification error:', e);
+    try { alert(typeof msg === 'string' ? msg : JSON.stringify(msg)); } catch {}
+  }
+}
 // ---- End Django Integration Header ----
 
 
@@ -195,6 +230,7 @@ const App = {
     showColManager: false,
     colManagerDraft: [],
     showCharges: false,
+    showKeyboardHelp: false,
     availableVoucherTypes: ['Journal'],
     detailUrlTemplate: DETAIL_URL_TEMPLATE,
     serverTotals: null,
@@ -346,11 +382,30 @@ const App = {
   handleServerErrors(response) {
     const details = response?.data?.details;
     if (details?.errors?.length) {
-      alert('Fix issues:\n- ' + details.errors.join('\n- '));
+      notify('Fix issues:\n- ' + details.errors.join('\n- '), 'error');
     } else if (response?.data?.error) {
-      notify(response.data.error);
+      notify(response.data.error, 'error');
     } else {
-      notify('Server rejected the request.');
+      notify('Server rejected the request.', 'error');
+    }
+  },
+
+  async _preflightDate() {
+    const d = (this.state.header?.date || '').trim();
+    if (!d || !Endpoints.periodValidate) return true;
+    try {
+      const url = `${Endpoints.periodValidate}?date=${encodeURIComponent(d)}`;
+      const res = await fetch(url, { credentials: 'same-origin' });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) {
+        const msg = (data?.error) || 'Selected date is not in an open accounting period.';
+        notify(msg, 'error');
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.warn('Preflight date validation failed', e);
+      return true; // fail-open to avoid blocking if endpoint unreachable
     }
   },
 
@@ -554,7 +609,7 @@ const App = {
       .then((resp) => resp.json().catch(() => ({})).then((data) => ({ status: resp.status, data })))
       .then(({ status, data }) => {
         if (status >= 400 || !data?.ok) {
-          notify(data?.error || 'Unable to load journal entry.');
+          notify(data?.error || 'Unable to load journal entry.', 'error');
           return;
         }
         this.state.journalId = id;
@@ -562,8 +617,8 @@ const App = {
         this.render();
       })
       .catch((err) => {
-        console.error('Failed to fetch journal', err);
-        notify('Failed to load journal entry.');
+  console.error('Failed to fetch journal', err);
+  notify('Failed to load journal entry.', 'error');
       });
   },
 
@@ -585,7 +640,8 @@ const App = {
       .then(({ status, data }) => {
         if (status >= 400 || !data?.ok) {
           console.warn('Config fetch failed', status, data);
-          if (data?.error) notify(data.error);
+          if (data?.error) notify(data.error, 'error');
+          this.lastConfigRequest = { code: null, id: null };
           return;
         }
         this.applyConfig(data.config || {});
@@ -859,7 +915,7 @@ const App = {
               ${reversalBadge}
             </div>
             <div class="d-flex flex-wrap gap-2 voucher-actions">
-              ${voucherTypes.length > 1 ? `<div class="btn-group btn-group-sm" role="group">
+              ${!this.state.metadata?.configId && voucherTypes.length > 1 ? `<div class="btn-group btn-group-sm" role="group">
                 ${voucherTypes.map(v => `
                   <button type="button" data-action="setType" data-type="${v}"
                     class="btn ${voucherType === v ? 'btn-primary' : 'btn-outline-primary'}">${v}</button>
@@ -874,6 +930,9 @@ const App = {
               ${PERMISSIONS.post ? `<button data-action="post" class="btn btn-sm btn-success btn-icon" ${canPost ? '' : 'disabled'}><i class="mdi mdi-publish"></i>Post</button>` : ''}
               <button data-action="attach" class="btn btn-sm btn-secondary btn-icon">
                 <i class="mdi mdi-paperclip"></i>Attachments${attachmentsCount ? ` (${attachmentsCount})` : ''}
+              </button>
+              <button data-action="openKeyboardHelp" class="btn btn-sm btn-outline-secondary" title="Keyboard Shortcuts (Ctrl+/)">
+                <i class="mdi mdi-keyboard-outline"></i>
               </button>
             </div>
           </div>
@@ -1056,6 +1115,7 @@ const App = {
       ${this.state.showUdfModal ? udfModalHtml(this.state) : ''}
       ${this.state.showColManager ? colManagerHtml(this.getColumns(), this.state.colManagerDraft) : ''}
       ${this.state.showCharges ? chargesModalHtml(charges) : ''}
+      ${this.state.showKeyboardHelp ? keyboardHelpModalHtml() : ''}
     `;
 
     setTimeout(() => { this.focusCurrent(); this.bindResizeHandles(); this.bindCsv(); }, 0);
@@ -1159,7 +1219,7 @@ const App = {
   },
 
   /** Events */
-  handleClick(e) {
+  async handleClick(e) {
     const t = e.target;
     const action = t.getAttribute('data-action');
     if (!action) return;
@@ -1180,13 +1240,16 @@ const App = {
       const payload = this.buildPayload();
       this.persistPresets();
       if (Endpoints.save) {
-        this.setSaving(true);
+        const okDate = await this._preflightDate();
+        if (!okDate) return;
+        this.state.isSaving = true;
+        this.render();
         postJSON(Endpoints.save, payload)
           .then(r => {
             if (r.ok) {
               if (r.data?.journal) this.hydrateFromApi(r.data.journal);
               this.state.status = (r.data?.journal?.status) || 'draft';
-              notify(r.data?.message || 'Draft saved.');
+              notify(r.data?.message || 'Draft saved.', 'success');
             } else {
               console.warn('Server rejected draft save:', r.status, r.text);
               this.handleServerErrors(r);
@@ -1194,13 +1257,13 @@ const App = {
           })
           .catch(err => {
             console.error(err);
-            notify('Server unreachable. Draft saved locally (console shows payload).');
+            notify('Server unreachable. Draft saved locally (console shows payload).', 'warning');
           })
-          .finally(() => this.setSaving(false));
+          .finally(() => { this.state.isSaving = false; this.render(); });
       } else {
         console.log('Draft payload', payload);
         this.state.status = 'draft';
-        notify('Draft saved locally (console shows payload).');
+        notify('Draft saved locally (console shows payload).', 'success');
         this.render();
       }
       return;
@@ -1210,24 +1273,27 @@ const App = {
       if (errs.length) return alert('Fix issues:\n- ' + errs.join('\n- '));
       const payload = this.buildPayload();
       if (Endpoints.submit) {
-        this.setSaving(true);
+        const okDate = await this._preflightDate();
+        if (!okDate) return;
+        this.state.isSaving = true;
+        this.render();
         postJSON(Endpoints.submit, payload)
           .then(r => {
             if (r.ok) {
               if (r.data?.journal) this.hydrateFromApi(r.data.journal);
               this.state.status = (r.data?.journal?.status) || 'awaiting_approval';
-              notify(r.data?.message || 'Submitted for approval.');
+              notify(r.data?.message || 'Submitted for approval.', 'success');
             } else {
               console.warn('Server rejected submit:', r.status, r.text);
               this.handleServerErrors(r);
             }
           })
-          .catch(err => { console.error(err); notify('Server unreachable. Submit not sent.'); })
-          .finally(() => this.setSaving(false));
+          .catch(err => { console.error(err); notify('Server unreachable. Submit not sent.', 'error'); })
+          .finally(() => { this.state.isSaving = false; this.render(); });
       } else {
         this.state.status = 'awaiting_approval';
         this.render();
-        notify('Submitted locally (no backend endpoint configured).');
+        notify('Submitted locally (no backend endpoint configured).', 'success');
       }
       return;
     }
@@ -1235,7 +1301,8 @@ const App = {
       if (!(this.state.status && ['awaiting_approval', 'submitted'].includes(this.state.status.toLowerCase()))) return alert('Submit first');
       const payload = this.buildPayload();
       if (Endpoints.approve) {
-        this.setSaving(true);
+        this.state.isSaving = true;
+        this.render();
         postJSON(Endpoints.approve, payload)
           .then(r => {
             if (r.ok) {
@@ -1247,19 +1314,20 @@ const App = {
               this.handleServerErrors(r);
             }
           })
-          .catch(err => { console.error(err); notify('Server unreachable. Approve not sent.'); })
-          .finally(() => this.setSaving(false));
+          .catch(err => { console.error(err); notify('Server unreachable. Approve not sent.', 'error'); })
+          .finally(() => { this.state.isSaving = false; this.render(); });
       } else {
         this.state.status = 'approved';
         this.render();
-        notify('Approved locally (no backend endpoint configured).');
+  notify('Approved locally (no backend endpoint configured).', 'success');
       }
       return;
     }
     if (action === 'reject') {
       const payload = this.buildPayload();
       if (Endpoints.reject) {
-        this.setSaving(true);
+        this.state.isSaving = true;
+        this.render();
         postJSON(Endpoints.reject, payload)
           .then(r => {
             if (r.ok) {
@@ -1270,19 +1338,20 @@ const App = {
               this.handleServerErrors(r);
             }
           })
-          .catch(err => { console.error(err); notify('Server unreachable. Reject not sent.'); })
-          .finally(() => this.setSaving(false));
+          .catch(err => { console.error(err); notify('Server unreachable. Reject not sent.', 'error'); })
+          .finally(() => { this.state.isSaving = false; this.render(); });
       } else {
         this.state.status = 'rejected';
         this.render();
-        notify('Rejected locally (no backend endpoint configured).');
+  notify('Rejected locally (no backend endpoint configured).', 'success');
       }
       return;
     }
     if (action === 'post') {
       const payload = this.buildPayload();
       if (Endpoints.post) {
-        this.setSaving(true);
+        this.state.isSaving = true;
+        this.render();
         postJSON(Endpoints.post, payload)
           .then(r => {
             if (r.ok) {
@@ -1293,12 +1362,12 @@ const App = {
               this.handleServerErrors(r);
             }
           })
-          .catch(err => { console.error(err); notify('Server unreachable. Post not sent.'); })
-          .finally(() => this.setSaving(false));
+          .catch(err => { console.error(err); notify('Server unreachable. Post not sent.', 'error'); })
+          .finally(() => { this.state.isSaving = false; this.render(); });
       } else {
         this.state.status = 'posted';
         this.render();
-        notify('Posted locally (no backend endpoint configured).');
+  notify('Posted locally (no backend endpoint configured).', 'success');
       }
       return;
     }
@@ -1324,6 +1393,9 @@ if (action === 'addRow') { this.state.rows.push(this.blankRow()); this.render();
       if (this.state.udfScope === 'Header') this.state.udfHeaderDefs.push(out); else this.state.udfLineDefs.push(out);
       this.state.showUdfModal = false; this.persistPresets(); this.render();
     }
+    
+    if (action === 'closeKeyboardHelp') { this.state.showKeyboardHelp = false; this.render(); }
+    if (action === 'openKeyboardHelp') { this.state.showKeyboardHelp = true; this.render(); }
 
     if (action === 'openCols') { const cols = this.getColumns(); this.state.colManagerDraft = cols.map((c, i) => ({ ...c, order: i })); this.state.showColManager = true; this.render(); }
     if (action === 'cmCancel') { this.state.showColManager = false; this.render(); }
@@ -1449,6 +1521,172 @@ if (action === 'addRow') { this.state.rows.push(this.blankRow()); this.render();
   },
 
   handleKeydown(e) {
+    // Escape key - close modals
+    if (e.key === 'Escape') {
+      if (this.state.showKeyboardHelp) {
+        e.preventDefault();
+        this.state.showKeyboardHelp = false;
+        this.render();
+        return;
+      }
+      if (this.state.showUdfModal) {
+        e.preventDefault();
+        this.state.showUdfModal = false;
+        this.render();
+        return;
+      }
+      if (this.state.showCharges) {
+        e.preventDefault();
+        this.state.showCharges = false;
+        this.render();
+        return;
+      }
+      if (this.state.showCoaModal) {
+        e.preventDefault();
+        this.state.showCoaModal = false;
+        this.render();
+        return;
+      }
+    }
+    
+    // Global keyboard shortcuts - directly trigger actions (don't use button.click())
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
+      const normalizedStatus = (this.state.status || '').toLowerCase();
+      switch(e.key.toLowerCase()) {
+        case 's':
+          e.preventDefault();
+          if (this.state.isEditable && !this.state.isSaving) {
+            // Trigger saveDraft action directly
+            const payload = this.buildPayload();
+            this.persistPresets();
+            if (Endpoints.save) {
+              this.state.isSaving = true;
+              this.render();
+              postJSON(Endpoints.save, payload)
+                .then(r => {
+                  if (r.ok) {
+                    if (r.data?.journal) this.hydrateFromApi(r.data.journal);
+                    this.state.status = (r.data?.journal?.status) || 'draft';
+                    notify(r.data?.message || 'Draft saved.');
+                  } else {
+                    console.warn('Server rejected draft save:', r.status, r.text);
+                    this.handleServerErrors(r);
+                  }
+                })
+                .catch(err => {
+                  console.error(err);
+                  notify('Server unreachable. Draft saved locally (console shows payload).');
+                })
+                .finally(() => { this.state.isSaving = false; this.render(); });
+            } else {
+              console.log('Draft payload', payload);
+              this.state.status = 'draft';
+              notify('Draft saved locally (console shows payload).');
+              this.render();
+            }
+          }
+          return;
+        case 'enter':
+          e.preventDefault();
+          if (PERMISSIONS.submit && normalizedStatus === 'draft' && !this.state.isSaving && this.state.isEditable) {
+            // Trigger submit action directly
+            const errs = this.validate(); 
+            if (errs.length) {
+              alert('Fix issues:\n- ' + errs.join('\n- '));
+              return;
+            }
+            const payload = this.buildPayload();
+            if (Endpoints.submit) {
+              this.state.isSaving = true;
+              this.render();
+              postJSON(Endpoints.submit, payload)
+                .then(r => {
+                  if (r.ok) {
+                    if (r.data?.journal) this.hydrateFromApi(r.data.journal);
+                    this.state.status = (r.data?.journal?.status) || 'awaiting_approval';
+                    notify(r.data?.message || 'Submitted for approval.');
+                  } else {
+                    console.warn('Server rejected submit:', r.status, r.text);
+                    this.handleServerErrors(r);
+                  }
+                })
+                .catch(err => { console.error(err); notify('Server unreachable. Submit not sent.'); })
+                .finally(() => { this.state.isSaving = false; this.render(); });
+            } else {
+              this.state.status = 'awaiting_approval';
+              this.render();
+              notify('Submitted locally (no backend endpoint configured).');
+            }
+          }
+          return;
+        case 'a':
+          e.preventDefault();
+          const isWaitingApproval = normalizedStatus === 'awaiting_approval' || normalizedStatus === 'submitted';
+          if (PERMISSIONS.approve && isWaitingApproval && !this.state.isSaving) {
+            // Trigger approve action directly
+            const payload = this.buildPayload();
+            if (Endpoints.approve) {
+              this.state.isSaving = true;
+              this.render();
+              postJSON(Endpoints.approve, payload)
+                .then(r => {
+                  if (r.ok) {
+                    if (r.data?.journal) this.hydrateFromApi(r.data.journal);
+                    this.state.status = (r.data?.journal?.status) || 'approved';
+                    notify(r.data?.message || 'Journal approved.');
+                  } else {
+                    console.warn('Server rejected approval:', r.status, r.text);
+                    this.handleServerErrors(r);
+                  }
+                })
+                .catch(err => { console.error(err); notify('Server unreachable. Approval not sent.'); })
+                .finally(() => { this.state.isSaving = false; this.render(); });
+            } else {
+              this.state.status = 'approved';
+              this.render();
+              notify('Approved locally (no backend endpoint configured).');
+            }
+          }
+          return;
+        case 'p':
+          e.preventDefault();
+          if (PERMISSIONS.post && normalizedStatus === 'approved' && !this.state.isSaving) {
+            // Trigger post action directly
+            const payload = this.buildPayload();
+            if (Endpoints.post) {
+                this.state.isSaving = true;
+                this.render();
+              postJSON(Endpoints.post, payload)
+                .then(r => {
+                  if (r.ok) {
+                    if (r.data?.journal) this.hydrateFromApi(r.data.journal);
+                    this.state.status = (r.data?.journal?.status) || 'posted';
+                    this.state.isEditable = false;
+                    notify(r.data?.message || 'Journal posted to ledger.');
+                  } else {
+                    console.warn('Server rejected post:', r.status, r.text);
+                    this.handleServerErrors(r);
+                  }
+                })
+                .catch(err => { console.error(err); notify('Server unreachable. Post not sent.'); })
+                  .finally(() => { this.state.isSaving = false; this.render(); });
+            } else {
+              this.state.status = 'posted';
+              this.state.isEditable = false;
+              this.render();
+              notify('Posted locally (no backend endpoint configured).');
+            }
+          }
+          return;
+        case '/':
+          e.preventDefault();
+          this.state.showKeyboardHelp = !this.state.showKeyboardHelp;
+          this.render();
+          return;
+      }
+    }
+    
+    // Grid navigation shortcuts
     const t = e.target;
     if (!t.classList.contains('cell-input')) return;
     const ri = +t.getAttribute('data-ri');
@@ -1855,6 +2093,99 @@ function chargesModalHtml(charges) {
       <div class="flex justify-between items-center mt-4">
         <button data-action="chgAdd" class="px-3 py-2 rounded-xl border">+ Add Charge</button>
         <button data-action="chgClose" class="px-3 py-2 rounded-xl bg-emerald-600 text-white">Done</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function keyboardHelpModalHtml() {
+  return `
+  <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);" data-action="closeKeyboardHelp">
+    <div class="modal-dialog modal-lg modal-dialog-centered" onclick="event.stopPropagation()">
+      <div class="modal-content">
+        <div class="modal-header border-bottom">
+          <h5 class="modal-title">
+            <i class="mdi mdi-keyboard-outline me-2"></i>Keyboard Shortcuts
+          </h5>
+          <button type="button" class="btn-close" data-action="closeKeyboardHelp"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <h6 class="text-primary fw-bold mb-3">
+                <i class="mdi mdi-cog-outline me-1"></i>Global Actions
+              </h6>
+              <table class="table table-sm table-borderless">
+                <tbody>
+                  <tr>
+                    <td class="text-muted"><kbd class="bg-light border px-2 py-1 rounded">Ctrl</kbd> + <kbd class="bg-light border px-2 py-1 rounded">S</kbd></td>
+                    <td>Save Draft</td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted"><kbd class="bg-light border px-2 py-1 rounded">Ctrl</kbd> + <kbd class="bg-light border px-2 py-1 rounded">Enter</kbd></td>
+                    <td>Submit Voucher</td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted"><kbd class="bg-light border px-2 py-1 rounded">Ctrl</kbd> + <kbd class="bg-light border px-2 py-1 rounded">A</kbd></td>
+                    <td>Approve Voucher</td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted"><kbd class="bg-light border px-2 py-1 rounded">Ctrl</kbd> + <kbd class="bg-light border px-2 py-1 rounded">P</kbd></td>
+                    <td>Post Voucher</td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted"><kbd class="bg-light border px-2 py-1 rounded">Esc</kbd></td>
+                    <td>Close Modals</td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted"><kbd class="bg-light border px-2 py-1 rounded">Ctrl</kbd> + <kbd class="bg-light border px-2 py-1 rounded">/</kbd></td>
+                    <td>Show This Help</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="col-md-6 mb-3">
+              <h6 class="text-success fw-bold mb-3">
+                <i class="mdi mdi-table-edit me-1"></i>Grid Navigation
+              </h6>
+              <table class="table table-sm table-borderless">
+                <tbody>
+                  <tr>
+                    <td class="text-muted"><kbd class="bg-light border px-2 py-1 rounded">↑</kbd> <kbd class="bg-light border px-2 py-1 rounded">↓</kbd></td>
+                    <td>Navigate Rows</td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted"><kbd class="bg-light border px-2 py-1 rounded">←</kbd> <kbd class="bg-light border px-2 py-1 rounded">→</kbd></td>
+                    <td>Navigate Columns</td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted"><kbd class="bg-light border px-2 py-1 rounded">Tab</kbd></td>
+                    <td>Next Cell</td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted"><kbd class="bg-light border px-2 py-1 rounded">Shift</kbd> + <kbd class="bg-light border px-2 py-1 rounded">Tab</kbd></td>
+                    <td>Previous Cell</td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted"><kbd class="bg-light border px-2 py-1 rounded">Enter</kbd></td>
+                    <td>Insert Row Below</td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted"><kbd class="bg-light border px-2 py-1 rounded">Ctrl</kbd> + <kbd class="bg-light border px-2 py-1 rounded">Del</kbd></td>
+                    <td>Delete Current Row</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="alert alert-info d-flex align-items-center mb-0" role="alert">
+            <i class="mdi mdi-information-outline me-2 fs-5"></i>
+            <small>Use <kbd class="bg-white border px-2 py-1 rounded">Cmd</kbd> instead of <kbd class="bg-white border px-2 py-1 rounded">Ctrl</kbd> on macOS</small>
+          </div>
+        </div>
+        <div class="modal-footer border-top">
+          <button type="button" class="btn btn-secondary" data-action="closeKeyboardHelp">Close</button>
+        </div>
       </div>
     </div>
   </div>`;

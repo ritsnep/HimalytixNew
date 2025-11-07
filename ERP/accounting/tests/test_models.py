@@ -1,15 +1,20 @@
+from decimal import Decimal
+
 from django.forms import ValidationError
 from django.test import TestCase
+
 from accounting.models import (
-    FiscalYear,
     AccountingPeriod,
-    Organization,
     AccountType,
     ChartOfAccount,
-    JournalType,
+    Currency,
+    CurrencyExchangeRate,
+    FiscalYear,
+    GeneralLedger,
     Journal,
     JournalLine,
-    GeneralLedger,
+    JournalType,
+    Organization,
     VoucherModeConfig,
 )
 from accounting.services import post_journal
@@ -116,3 +121,56 @@ class JournalTests(TestCase):
 
         with self.assertRaises(ValidationError):
             post_journal(journal)
+
+    def test_post_journal_auto_exchange_rate_lookup(self):
+        usd = Currency.objects.create(currency_code="USD", currency_name="US Dollar", symbol="$")
+        eur = Currency.objects.create(currency_code="EUR", currency_name="Euro", symbol="€")
+        self.org.base_currency_code = "USD"
+        self.org.save(update_fields=["base_currency_code"])
+
+        CurrencyExchangeRate.objects.create(
+            organization=self.org,
+            from_currency=eur,
+            to_currency=usd,
+            rate_date=self.period.start_date,
+            exchange_rate=Decimal("1.200000"),
+            source="test",
+        )
+
+        journal = Journal.objects.create(
+            organization=self.org,
+            journal_type=self.jt,
+            period=self.period,
+            journal_date=self.period.start_date,
+            currency_code="EUR",
+            exchange_rate=Decimal("0"),
+            total_debit=Decimal("120"),
+            total_credit=Decimal("120"),
+        )
+        JournalLine.objects.create(
+            journal=journal,
+            line_number=1,
+            account=self.acc1,
+            debit_amount=Decimal("120"),
+            amount_txn=Decimal("100"),
+            amount_base=Decimal("0"),
+            fx_rate=Decimal("0"),
+        )
+        JournalLine.objects.create(
+            journal=journal,
+            line_number=2,
+            account=self.acc2,
+            credit_amount=Decimal("120"),
+            amount_txn=Decimal("100"),
+            amount_base=Decimal("0"),
+            fx_rate=Decimal("0"),
+        )
+
+        post_journal(journal)
+
+        journal.refresh_from_db()
+        self.assertEqual(journal.exchange_rate, Decimal("1.200000"))
+        self.assertEqual(journal.metadata.get("exchange_rate_source"), "test")
+        line = journal.lines.get(line_number=1)
+        self.assertEqual(line.amount_base, Decimal("120.0000"))
+        self.assertEqual(line.fx_rate, Decimal("1.200000"))

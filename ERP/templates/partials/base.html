@@ -30,6 +30,27 @@
 </head>
 
 <body {% block extra_body %} data-topbar="dark"{% endblock extra_body %}>
+  {# Hidden layout controls to prevent vendor script null errors on pages without right sidebar #}
+  <div id="layout-guard" style="display:none">
+    <input type="checkbox" id="layout-horizontal" />
+    <input type="checkbox" id="layout-vertical" />
+    <input type="checkbox" id="layout-mode-dark" />
+    <input type="checkbox" id="layout-mode-light" />
+    <input type="checkbox" id="layout-width-boxed" />
+    <input type="checkbox" id="layout-width-fuild" />
+    <input type="checkbox" id="layout-position-scrollable" />
+    <input type="checkbox" id="layout-position-fixed" />
+    <input type="checkbox" id="topbar-color-dark" />
+    <input type="checkbox" id="topbar-color-light" />
+    <input type="checkbox" id="sidebar-size-small" />
+    <input type="checkbox" id="sidebar-size-compact" />
+    <input type="checkbox" id="sidebar-size-default" />
+    <input type="checkbox" id="sidebar-color-brand" />
+    <input type="checkbox" id="sidebar-color-dark" />
+    <input type="checkbox" id="sidebar-color-light" />
+    <input type="checkbox" id="layout-direction-rtl" />
+    <input type="checkbox" id="layout-direction-ltr" />
+  </div>
     <!-- Begin page -->
     <div id="layout-wrapper">
         {% block header %}
