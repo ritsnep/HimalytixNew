@@ -90,7 +90,7 @@ To pick an active organization after login, visit `/manage/select-organization/`
 
 ## Support & Docs
 
-- Product planning and next actions live in `plantodo.md`
+- Product planning and next actions live in `Docs/consolidated_todo_register.md`
 - Module-specific READMEs exist under `ERP/<app>/README.md`
 - For security issues, email `security@himalytix.com`
 

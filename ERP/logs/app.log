@@ -11566,3 +11566,1465 @@ AttributeError: 'list' object has no attribute 'items'
 [2025-11-07 22:23:30,343] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
 [2025-11-07 22:23:30,343] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
 [2025-11-07 22:23:30,354] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-07 22:53:18,730] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\venv\Lib\site-packages\django_prometheus
+[2025-11-07 22:53:18,731] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\venv\Lib\site-packages\django\contrib\admin
+[2025-11-07 22:53:18,731] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\venv\Lib\site-packages\django\contrib\auth
+[2025-11-07 22:53:18,732] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-07 22:53:18,734] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-07 22:53:18,734] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\apps
+[2025-11-07 22:53:18,735] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\components
+[2025-11-07 22:53:18,737] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\pages
+[2025-11-07 22:53:18,737] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\usermanagement
+[2025-11-07 22:53:18,738] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\venv\Lib\site-packages\django\contrib\sites
+[2025-11-07 22:53:18,739] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\venv\Lib\site-packages\allauth
+[2025-11-07 22:53:18,739] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\venv\Lib\site-packages\allauth\account
+[2025-11-07 22:53:18,740] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-07 22:53:18,740] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\tenancy
+[2025-11-07 22:53:18,741] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\accounting
+[2025-11-07 22:53:18,741] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\api
+[2025-11-07 22:53:18,743] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-07 22:53:18,744] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\venv\Lib\site-packages\silk
+[2025-11-07 22:53:18,750] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\metadata
+[2025-11-07 22:53:18,756] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\voucher_schema
+[2025-11-07 22:53:18,757] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\venv\Lib\site-packages\mptt
+[2025-11-07 22:53:18,758] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\Inventory
+[2025-11-07 22:53:18,760] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\forms_designer
+[2025-11-07 22:53:18,764] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\venv\Lib\site-packages\widget_tweaks
+[2025-11-07 22:53:18,765] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\erp\venv\Lib\site-packages\formtools
+[2025-11-07 22:53:18,778] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-07 22:53:18,785] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-07 22:57:24,554] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-07 22:57:24,579] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-07 22:57:24,590] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-07 22:57:24,593] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-07 22:57:24,608] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-07 22:57:24,614] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-07 22:57:24,614] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-07 22:57:24,647] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-07 22:57:24,656] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-07 22:57:24,657] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-07 22:57:24,657] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-07 22:57:24,658] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-07 22:57:24,659] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-07 22:57:24,664] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-07 22:57:24,669] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-07 22:57:24,671] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-07 22:57:24,671] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-07 22:57:24,672] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-07 22:57:24,673] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-07 22:57:24,695] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-07 22:57:24,727] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-07 22:57:24,787] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-07 22:57:24,789] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-07 22:57:24,790] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-07 22:57:24,791] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-07 22:57:24,820] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-07 22:57:24,846] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 22:33:25,524] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django_prometheus
+[2025-11-14 22:33:25,525] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\admin
+[2025-11-14 22:33:25,526] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\auth
+[2025-11-14 22:33:25,526] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\contenttypes
+[2025-11-14 22:33:25,526] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sessions
+[2025-11-14 22:33:25,527] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-14 22:33:25,528] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-14 22:33:25,529] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-14 22:33:25,533] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-14 22:33:25,534] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sites
+[2025-11-14 22:33:25,534] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth
+[2025-11-14 22:33:25,535] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\account
+[2025-11-14 22:33:25,536] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\socialaccount
+[2025-11-14 22:33:25,536] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-14 22:33:25,537] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-14 22:33:25,537] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-14 22:33:25,538] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\rest_framework\authtoken
+[2025-11-14 22:33:25,538] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\silk
+[2025-11-14 22:33:25,539] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-14 22:33:25,539] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-14 22:33:25,540] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\mptt
+[2025-11-14 22:33:25,540] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-14 22:33:25,541] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-14 22:33:25,541] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\widget_tweaks
+[2025-11-14 22:33:25,542] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\formtools
+[2025-11-14 22:33:25,543] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-14 22:33:25,544] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 22:33:27,695] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-14 22:34:11,009] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django_prometheus
+[2025-11-14 22:34:11,010] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\admin
+[2025-11-14 22:34:11,011] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\auth
+[2025-11-14 22:34:11,011] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\contenttypes
+[2025-11-14 22:34:11,012] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sessions
+[2025-11-14 22:34:11,012] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-14 22:34:11,013] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-14 22:34:11,014] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-14 22:34:11,014] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-14 22:34:11,015] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sites
+[2025-11-14 22:34:11,015] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth
+[2025-11-14 22:34:11,016] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\account
+[2025-11-14 22:34:11,016] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\socialaccount
+[2025-11-14 22:34:11,016] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-14 22:34:11,017] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-14 22:34:11,017] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-14 22:34:11,018] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\rest_framework\authtoken
+[2025-11-14 22:34:11,018] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\silk
+[2025-11-14 22:34:11,019] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-14 22:34:11,020] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-14 22:34:11,020] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\mptt
+[2025-11-14 22:34:11,021] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-14 22:34:11,021] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-14 22:34:11,022] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\widget_tweaks
+[2025-11-14 22:34:11,022] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\formtools
+[2025-11-14 22:34:11,023] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-14 22:34:11,023] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 22:35:25,278] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django_prometheus
+[2025-11-14 22:35:25,279] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\admin
+[2025-11-14 22:35:25,280] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\auth
+[2025-11-14 22:35:25,281] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\contenttypes
+[2025-11-14 22:35:25,282] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sessions
+[2025-11-14 22:35:25,283] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-14 22:35:25,283] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-14 22:35:25,284] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-14 22:35:25,284] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-14 22:35:25,284] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sites
+[2025-11-14 22:35:25,285] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth
+[2025-11-14 22:35:25,285] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\account
+[2025-11-14 22:35:25,285] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\socialaccount
+[2025-11-14 22:35:25,286] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-14 22:35:25,286] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-14 22:35:25,287] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-14 22:35:25,287] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\rest_framework\authtoken
+[2025-11-14 22:35:25,288] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\silk
+[2025-11-14 22:35:25,289] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-14 22:35:25,290] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-14 22:35:25,291] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\mptt
+[2025-11-14 22:35:25,291] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-14 22:35:25,292] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-14 22:35:25,292] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\widget_tweaks
+[2025-11-14 22:35:25,293] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\formtools
+[2025-11-14 22:35:25,293] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-14 22:35:25,293] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 22:35:38,663] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django_prometheus
+[2025-11-14 22:35:38,664] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\admin
+[2025-11-14 22:35:38,665] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\auth
+[2025-11-14 22:35:38,666] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\contenttypes
+[2025-11-14 22:35:38,667] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sessions
+[2025-11-14 22:35:38,667] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-14 22:35:38,668] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-14 22:35:38,668] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-14 22:35:38,668] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-14 22:35:38,669] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sites
+[2025-11-14 22:35:38,669] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth
+[2025-11-14 22:35:38,669] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\account
+[2025-11-14 22:35:38,670] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\socialaccount
+[2025-11-14 22:35:38,671] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-14 22:35:38,671] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-14 22:35:38,671] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-14 22:35:38,671] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\rest_framework\authtoken
+[2025-11-14 22:35:38,672] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\silk
+[2025-11-14 22:35:38,672] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-14 22:35:38,672] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-14 22:35:38,673] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\mptt
+[2025-11-14 22:35:38,673] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-14 22:35:38,673] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-14 22:35:38,674] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\widget_tweaks
+[2025-11-14 22:35:38,674] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\formtools
+[2025-11-14 22:35:38,675] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-14 22:35:38,675] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 22:35:52,221] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django_prometheus
+[2025-11-14 22:35:52,221] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\admin
+[2025-11-14 22:35:52,222] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\auth
+[2025-11-14 22:35:52,222] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\contenttypes
+[2025-11-14 22:35:52,223] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sessions
+[2025-11-14 22:35:52,223] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-14 22:35:52,223] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-14 22:35:52,224] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-14 22:35:52,224] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-14 22:35:52,224] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sites
+[2025-11-14 22:35:52,225] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth
+[2025-11-14 22:35:52,225] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\account
+[2025-11-14 22:35:52,226] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\socialaccount
+[2025-11-14 22:35:52,226] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-14 22:35:52,226] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-14 22:35:52,227] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-14 22:35:52,227] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\rest_framework\authtoken
+[2025-11-14 22:35:52,228] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\silk
+[2025-11-14 22:35:52,228] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-14 22:35:52,228] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-14 22:35:52,229] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\mptt
+[2025-11-14 22:35:52,229] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-14 22:35:52,230] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-14 22:35:52,231] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\widget_tweaks
+[2025-11-14 22:35:52,232] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\formtools
+[2025-11-14 22:35:52,233] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-14 22:35:52,234] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 22:41:19,144] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django_prometheus
+[2025-11-14 22:41:19,145] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\admin
+[2025-11-14 22:41:19,145] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\auth
+[2025-11-14 22:41:19,145] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\contenttypes
+[2025-11-14 22:41:19,146] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sessions
+[2025-11-14 22:41:19,146] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-14 22:41:19,146] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-14 22:41:19,147] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-14 22:41:19,147] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-14 22:41:19,147] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sites
+[2025-11-14 22:41:19,148] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth
+[2025-11-14 22:41:19,153] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\account
+[2025-11-14 22:41:19,153] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\socialaccount
+[2025-11-14 22:41:19,154] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-14 22:41:19,154] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-14 22:41:19,155] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-14 22:41:19,155] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\rest_framework\authtoken
+[2025-11-14 22:41:19,157] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\silk
+[2025-11-14 22:41:19,157] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-14 22:41:19,158] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-14 22:41:19,160] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\mptt
+[2025-11-14 22:41:19,161] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-14 22:41:19,162] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-14 22:41:19,163] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\widget_tweaks
+[2025-11-14 22:41:19,164] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\formtools
+[2025-11-14 22:41:19,166] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-14 22:41:19,166] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 22:41:19,975] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-14 22:46:04,482] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django_prometheus
+[2025-11-14 22:46:04,482] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\admin
+[2025-11-14 22:46:04,482] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\auth
+[2025-11-14 22:46:04,483] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\contenttypes
+[2025-11-14 22:46:04,483] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sessions
+[2025-11-14 22:46:04,483] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-14 22:46:04,483] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-14 22:46:04,483] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-14 22:46:04,484] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-14 22:46:04,485] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sites
+[2025-11-14 22:46:04,485] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth
+[2025-11-14 22:46:04,486] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\account
+[2025-11-14 22:46:04,487] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\socialaccount
+[2025-11-14 22:46:04,487] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-14 22:46:04,488] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-14 22:46:04,488] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-14 22:46:04,489] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\rest_framework\authtoken
+[2025-11-14 22:46:04,493] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\silk
+[2025-11-14 22:46:04,493] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-14 22:46:04,493] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-14 22:46:04,493] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\mptt
+[2025-11-14 22:46:04,493] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-14 22:46:04,493] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-14 22:46:04,494] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\widget_tweaks
+[2025-11-14 22:46:04,494] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\formtools
+[2025-11-14 22:46:04,494] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-14 22:46:04,495] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 22:52:02,174] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django_prometheus
+[2025-11-14 22:52:02,175] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\admin
+[2025-11-14 22:52:02,175] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\auth
+[2025-11-14 22:52:02,175] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\contenttypes
+[2025-11-14 22:52:02,175] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sessions
+[2025-11-14 22:52:02,176] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-14 22:52:02,176] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-14 22:52:02,176] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-14 22:52:02,176] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-14 22:52:02,176] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sites
+[2025-11-14 22:52:02,177] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth
+[2025-11-14 22:52:02,178] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\account
+[2025-11-14 22:52:02,179] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\socialaccount
+[2025-11-14 22:52:02,180] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-14 22:52:02,180] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-14 22:52:02,180] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-14 22:52:02,180] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\rest_framework\authtoken
+[2025-11-14 22:52:02,181] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\silk
+[2025-11-14 22:52:02,181] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-14 22:52:02,181] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-14 22:52:02,181] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\mptt
+[2025-11-14 22:52:02,182] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-14 22:52:02,182] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-14 22:52:02,182] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\widget_tweaks
+[2025-11-14 22:52:02,182] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\formtools
+[2025-11-14 22:52:02,183] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-14 22:52:02,183] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 22:52:03,059] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-14 23:00:46,197] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django_prometheus
+[2025-11-14 23:00:46,197] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\admin
+[2025-11-14 23:00:46,198] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\auth
+[2025-11-14 23:00:46,198] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\contenttypes
+[2025-11-14 23:00:46,198] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sessions
+[2025-11-14 23:00:46,198] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-14 23:00:46,198] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-14 23:00:46,199] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-14 23:00:46,199] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-14 23:00:46,199] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sites
+[2025-11-14 23:00:46,199] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth
+[2025-11-14 23:00:46,200] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\account
+[2025-11-14 23:00:46,200] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\socialaccount
+[2025-11-14 23:00:46,200] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-14 23:00:46,200] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-14 23:00:46,200] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-14 23:00:46,201] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\rest_framework\authtoken
+[2025-11-14 23:00:46,209] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\silk
+[2025-11-14 23:00:46,210] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-14 23:00:46,210] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-14 23:00:46,210] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\mptt
+[2025-11-14 23:00:46,211] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-14 23:00:46,211] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-14 23:00:46,211] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\widget_tweaks
+[2025-11-14 23:00:46,211] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\formtools
+[2025-11-14 23:00:46,212] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-14 23:00:46,212] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 23:00:46,927] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-14 23:15:16,177] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django_prometheus
+[2025-11-14 23:15:16,178] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\admin
+[2025-11-14 23:15:16,178] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\auth
+[2025-11-14 23:15:16,178] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\contenttypes
+[2025-11-14 23:15:16,178] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sessions
+[2025-11-14 23:15:16,178] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-14 23:15:16,178] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-14 23:15:16,179] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-14 23:15:16,180] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-14 23:15:16,181] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sites
+[2025-11-14 23:15:16,181] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth
+[2025-11-14 23:15:16,181] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\account
+[2025-11-14 23:15:16,182] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\socialaccount
+[2025-11-14 23:15:16,182] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-14 23:15:16,182] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-14 23:15:16,183] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-14 23:15:16,183] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\rest_framework\authtoken
+[2025-11-14 23:15:16,189] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\silk
+[2025-11-14 23:15:16,189] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-14 23:15:16,190] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-14 23:15:16,190] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\mptt
+[2025-11-14 23:15:16,190] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-14 23:15:16,191] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-14 23:15:16,191] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\widget_tweaks
+[2025-11-14 23:15:16,191] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\formtools
+[2025-11-14 23:15:16,192] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-14 23:15:16,192] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 23:15:17,159] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-14 23:17:26,727] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-14 23:17:26,727] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-14 23:17:26,727] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-14 23:17:26,728] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-14 23:17:26,728] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-14 23:17:26,728] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-14 23:17:26,729] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-14 23:17:26,729] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-14 23:17:26,729] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-14 23:17:26,729] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-14 23:17:26,730] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-14 23:17:26,730] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-14 23:17:26,730] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-14 23:17:26,731] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-14 23:17:26,731] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-14 23:17:26,732] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-14 23:17:26,732] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-14 23:17:26,732] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-14 23:17:26,732] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-14 23:17:26,733] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-14 23:17:26,733] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-14 23:17:26,733] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-14 23:17:26,734] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-14 23:17:26,734] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-14 23:17:26,734] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-14 23:17:26,735] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-14 23:17:26,735] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 23:17:27,498] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-14 23:17:43,081] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-14 23:17:43,081] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-14 23:17:43,081] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-14 23:17:43,082] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-14 23:17:43,082] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-14 23:17:43,082] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-14 23:17:43,083] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-14 23:17:43,083] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-14 23:17:43,083] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-14 23:17:43,083] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-14 23:17:43,083] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-14 23:17:43,084] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-14 23:17:43,084] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-14 23:17:43,084] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-14 23:17:43,084] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-14 23:17:43,084] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-14 23:17:43,085] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-14 23:17:43,085] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-14 23:17:43,085] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-14 23:17:43,085] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-14 23:17:43,085] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-14 23:17:43,086] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-14 23:17:43,086] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-14 23:17:43,086] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-14 23:17:43,086] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-14 23:17:43,087] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-14 23:17:43,087] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 23:17:43,500] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-14 23:18:00,718] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-14 23:18:00,719] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-14 23:18:00,719] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-14 23:18:00,719] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-14 23:18:00,719] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-14 23:18:00,720] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-14 23:18:00,720] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-14 23:18:00,720] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-14 23:18:00,720] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-14 23:18:00,721] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-14 23:18:00,721] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-14 23:18:00,721] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-14 23:18:00,721] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-14 23:18:00,722] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-14 23:18:00,722] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-14 23:18:00,722] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-14 23:18:00,722] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-14 23:18:00,722] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-14 23:18:00,723] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-14 23:18:00,723] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-14 23:18:00,723] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-14 23:18:00,723] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-14 23:18:00,724] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-14 23:18:00,724] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-14 23:18:00,724] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-14 23:18:00,725] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-14 23:18:00,725] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 23:18:01,153] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-14 23:23:47,073] INFO django.utils.autoreload: Watching for file changes with StatReloader
+[2025-11-14 23:24:24,226] INFO django.utils.autoreload: C:\PythonProjects\Himalytix\ERP\accounting\admin.py changed, reloading.
+[2025-11-14 23:24:27,963] INFO django.utils.autoreload: Watching for file changes with StatReloader
+[2025-11-14 23:24:38,136] INFO django.utils.autoreload: C:\PythonProjects\Himalytix\ERP\accounting\admin.py changed, reloading.
+[2025-11-14 23:24:41,007] INFO django.utils.autoreload: Watching for file changes with StatReloader
+[2025-11-14 23:24:59,527] INFO django.utils.autoreload: C:\PythonProjects\Himalytix\ERP\accounting\admin.py changed, reloading.
+[2025-11-14 23:25:02,649] INFO django.utils.autoreload: Watching for file changes with StatReloader
+[2025-11-14 23:27:11,352] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-14 23:27:11,352] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-14 23:27:11,353] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-14 23:27:11,353] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-14 23:27:11,353] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-14 23:27:11,353] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-14 23:27:11,354] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-14 23:27:11,354] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-14 23:27:11,354] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-14 23:27:11,354] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-14 23:27:11,355] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-14 23:27:11,355] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-14 23:27:11,355] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-14 23:27:11,355] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-14 23:27:11,355] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-14 23:27:11,356] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-14 23:27:11,356] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-14 23:27:11,357] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-14 23:27:11,357] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-14 23:27:11,357] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-14 23:27:11,357] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-14 23:27:11,358] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-14 23:27:11,358] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-14 23:27:11,358] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-14 23:27:11,359] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-14 23:27:11,359] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-14 23:27:11,360] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 23:27:13,592] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-14 23:27:13,593] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-14 23:27:13,593] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-14 23:27:13,594] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-14 23:27:13,594] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-14 23:27:13,594] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-14 23:27:13,594] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-14 23:27:13,595] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-14 23:27:13,595] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-14 23:27:13,595] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-14 23:27:13,596] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-14 23:27:13,596] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-14 23:27:13,596] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-14 23:27:13,596] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-14 23:27:13,597] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-14 23:27:13,597] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-14 23:27:13,597] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-14 23:27:13,598] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-14 23:27:13,598] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-14 23:27:13,598] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-14 23:27:13,599] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-14 23:27:13,599] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-14 23:27:13,599] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-14 23:27:13,600] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-14 23:27:13,600] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-14 23:27:13,601] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-14 23:27:13,601] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 23:27:13,636] INFO django.utils.autoreload: Watching for file changes with StatReloader
+[2025-11-14 23:27:14,137] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-14 23:27:31,261] WARNING accounting.middleware: No tenant found on request.
+[2025-11-14 23:27:31,263] INFO middleware.logging.structured_logging: [2m2025-11-14T17:42:31.263081Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/[0m [36mrequest_id[0m=[35md3c3e2cb-ef67-427b-a555-dd8f66fe2d3e[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35mNone[0m [36musername[0m=[35manonymous[0m
+[2025-11-14 23:27:31,359] INFO middleware.logging.structured_logging: [2m2025-11-14T17:42:31.359271Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/[0m [36mrequest_id[0m=[35md3c3e2cb-ef67-427b-a555-dd8f66fe2d3e[0m [36mstatus_code[0m=[35m302[0m [36muser_id[0m=[35mNone[0m [36musername[0m=[35manonymous[0m
+[2025-11-14 23:27:31,365] WARNING accounting.middleware: No tenant found on request.
+[2025-11-14 23:27:39,518] INFO middleware.logging.structured_logging: [2m2025-11-14T17:42:39.518422Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounts/login/[0m [36mrequest_id[0m=[35mbac69f6d-4fec-4932-939c-3332b3deb2fa[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35mNone[0m [36musername[0m=[35manonymous[0m
+[2025-11-14 23:27:39,826] INFO middleware.logging.structured_logging: [2m2025-11-14T17:42:39.826289Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounts/login/[0m [36mrequest_id[0m=[35mbac69f6d-4fec-4932-939c-3332b3deb2fa[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35mNone[0m [36musername[0m=[35manonymous[0m
+[2025-11-14 23:27:40,269] WARNING accounting.middleware: No tenant found on request.
+[2025-11-14 23:27:42,521] WARNING accounting.middleware: No tenant found on request.
+[2025-11-14 23:27:48,369] INFO middleware.logging.structured_logging: [2m2025-11-14T17:42:48.369471Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounts/login/[0m [36mrequest_id[0m=[35mb643dc1f-04fd-45b1-bb04-0b04adf11880[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35mNone[0m [36musername[0m=[35manonymous[0m
+[2025-11-14 23:27:48,374] INFO middleware.logging.structured_logging: [2m2025-11-14T17:42:48.374631Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounts/login/[0m [36mrequest_id[0m=[35mb643dc1f-04fd-45b1-bb04-0b04adf11880[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35mNone[0m [36musername[0m=[35manonymous[0m
+[2025-11-14 23:27:50,619] INFO middleware.logging.structured_logging: [2m2025-11-14T17:42:50.619666Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mPOST[0m [36mpath[0m=[35m/accounts/login/[0m [36mrequest_id[0m=[35ma250bc25-6cb8-4a24-922b-43507133e1ac[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35mNone[0m [36musername[0m=[35manonymous[0m
+[2025-11-14 23:27:51,466] INFO middleware.logging.structured_logging: [2m2025-11-14T17:42:51.466599Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mPOST[0m [36mpath[0m=[35m/accounts/login/[0m [36mrequest_id[0m=[35ma250bc25-6cb8-4a24-922b-43507133e1ac[0m [36mstatus_code[0m=[35m302[0m [36muser_id[0m=[35mNone[0m [36musername[0m=[35manonymous[0m
+[2025-11-14 23:27:51,479] WARNING accounting.middleware: No tenant found on request.
+[2025-11-14 23:27:51,481] INFO middleware.logging.structured_logging: [2m2025-11-14T17:42:51.481184Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/[0m [36mrequest_id[0m=[35m67f8f8c1-2929-449c-b173-220bcd27b8c8[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:27:51,823] INFO middleware.logging.structured_logging: [2m2025-11-14T17:42:51.823530Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/[0m [36mrequest_id[0m=[35m67f8f8c1-2929-449c-b173-220bcd27b8c8[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:27:58,633] WARNING accounting.middleware: No tenant found on request.
+[2025-11-14 23:27:58,640] INFO middleware.logging.structured_logging: [2m2025-11-14T17:42:58.640027Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/chart-of-accounts/[0m [36mrequest_id[0m=[35m7ecba965-a8e2-4a1a-a07a-d086d955d13b[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:27:58,783] INFO middleware.logging.structured_logging: [2m2025-11-14T17:42:58.783269Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/chart-of-accounts/[0m [36mrequest_id[0m=[35m7ecba965-a8e2-4a1a-a07a-d086d955d13b[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:28:04,313] WARNING accounting.middleware: No tenant found on request.
+[2025-11-14 23:28:04,320] INFO middleware.logging.structured_logging: [2m2025-11-14T17:43:04.319965Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vouchers/new/[0m [36mrequest_id[0m=[35mfd3adc1a-5dc1-442f-b5a5-9d78279e8d93[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:28:04,398] INFO middleware.logging.structured_logging: [2m2025-11-14T17:43:04.398707Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vouchers/new/[0m [36mrequest_id[0m=[35mfd3adc1a-5dc1-442f-b5a5-9d78279e8d93[0m [36mstatus_code[0m=[35m302[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:28:04,411] WARNING accounting.middleware: No tenant found on request.
+[2025-11-14 23:28:04,413] INFO middleware.logging.structured_logging: [2m2025-11-14T17:43:04.413301Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vouchers/[0m [36mrequest_id[0m=[35m0a69cc43-2988-4a5b-8804-803bcb226f8f[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:28:04,544] INFO middleware.logging.structured_logging: [2m2025-11-14T17:43:04.544879Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vouchers/[0m [36mrequest_id[0m=[35m0a69cc43-2988-4a5b-8804-803bcb226f8f[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:28:06,415] WARNING accounting.middleware: No tenant found on request.
+[2025-11-14 23:28:06,419] INFO middleware.logging.structured_logging: [2m2025-11-14T17:43:06.418989Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vouchers/131/[0m [36mrequest_id[0m=[35md4d1c40a-b09d-4233-9383-15f01b5721db[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:28:06,541] INFO middleware.logging.structured_logging: [2m2025-11-14T17:43:06.540766Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vouchers/131/[0m [36mrequest_id[0m=[35md4d1c40a-b09d-4233-9383-15f01b5721db[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:28:09,660] WARNING accounting.middleware: No tenant found on request.
+[2025-11-14 23:28:09,664] INFO middleware.logging.structured_logging: [2m2025-11-14T17:43:09.664690Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/[0m [36mrequest_id[0m=[35ma17096ed-e858-4328-9c0a-b84e8c4d7d0f[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:28:09,739] INFO middleware.logging.structured_logging: [2m2025-11-14T17:43:09.739243Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/[0m [36mrequest_id[0m=[35ma17096ed-e858-4328-9c0a-b84e8c4d7d0f[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:28:12,572] WARNING accounting.middleware: No tenant found on request.
+[2025-11-14 23:28:12,579] INFO middleware.logging.structured_logging: [2m2025-11-14T17:43:12.579099Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/[0m [36mrequest_id[0m=[35m698fd509-e3b8-4c30-86dd-93338470148f[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:28:12,621] INFO middleware.logging.structured_logging: [2m2025-11-14T17:43:12.621527Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/[0m [36mrequest_id[0m=[35m698fd509-e3b8-4c30-86dd-93338470148f[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:28:13,467] WARNING accounting.middleware: No tenant found on request.
+[2025-11-14 23:28:13,475] INFO middleware.logging.structured_logging: [2m2025-11-14T17:43:13.475886Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/config/[0m [36mrequest_id[0m=[35m05e62324-3e48-4241-a9fc-1c8ce3744566[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:28:13,647] INFO middleware.logging.structured_logging: [2m2025-11-14T17:43:13.647398Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/config/[0m [36mrequest_id[0m=[35m05e62324-3e48-4241-a9fc-1c8ce3744566[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:28:23,354] WARNING accounting.middleware: No tenant found on request.
+[2025-11-14 23:28:23,359] INFO middleware.logging.structured_logging: [2m2025-11-14T17:43:23.359753Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/lookup/accounts/[0m [36mrequest_id[0m=[35md3c4aa6d-d103-4f3e-9e73-b947bdbc1a76[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:28:23,386] INFO middleware.logging.structured_logging: [2m2025-11-14T17:43:23.386153Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/lookup/accounts/[0m [36mrequest_id[0m=[35md3c4aa6d-d103-4f3e-9e73-b947bdbc1a76[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:28:25,431] WARNING accounting.middleware: No tenant found on request.
+[2025-11-14 23:28:25,433] INFO middleware.logging.structured_logging: [2m2025-11-14T17:43:25.433363Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/lookup/accounts/[0m [36mrequest_id[0m=[35ma10cd019-b08c-4ff3-bc27-6eb43bcc7e28[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:28:25,442] INFO middleware.logging.structured_logging: [2m2025-11-14T17:43:25.442131Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/lookup/accounts/[0m [36mrequest_id[0m=[35ma10cd019-b08c-4ff3-bc27-6eb43bcc7e28[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:28:49,772] WARNING accounting.middleware: No tenant found on request.
+[2025-11-14 23:28:49,774] INFO middleware.logging.structured_logging: [2m2025-11-14T17:43:49.774335Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/period/validate/[0m [36mrequest_id[0m=[35m1a7a4f8e-da05-4efa-9aee-e87550b4e3b1[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:28:49,798] INFO middleware.logging.structured_logging: [2m2025-11-14T17:43:49.798369Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/period/validate/[0m [36mrequest_id[0m=[35m1a7a4f8e-da05-4efa-9aee-e87550b4e3b1[0m [36mstatus_code[0m=[35m400[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:28:49,800] WARNING django.request: Bad Request: /accounting/journal-entry/period/validate/
+[2025-11-14 23:28:59,233] WARNING accounting.middleware: No tenant found on request.
+[2025-11-14 23:28:59,236] INFO middleware.logging.structured_logging: [2m2025-11-14T17:43:59.235966Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/period/validate/[0m [36mrequest_id[0m=[35md191a87d-602c-4758-8b71-eb4bd500c20f[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:28:59,242] INFO middleware.logging.structured_logging: [2m2025-11-14T17:43:59.242681Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/period/validate/[0m [36mrequest_id[0m=[35md191a87d-602c-4758-8b71-eb4bd500c20f[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:28:59,261] WARNING accounting.middleware: No tenant found on request.
+[2025-11-14 23:28:59,263] INFO middleware.logging.structured_logging: [2m2025-11-14T17:43:59.263041Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mPOST[0m [36mpath[0m=[35m/accounting/journal-entry/save-draft/[0m [36mrequest_id[0m=[35mb07ed63d-8030-4057-a75a-854d604ace3b[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:28:59,468] ERROR accounting.views.journal_entry: Unexpected error while saving journal draft.
+Traceback (most recent call last):
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+psycopg2.errors.NotNullViolation: null value in column "user_id" of relation "accounting_auditlog" violates not-null constraint
+DETAIL:  Failing row contains (213, 2025-11-14 17:43:59.453091+00, created, 11, {"memo": null, "account": 17, "fx_rate": 1, "journal": 133, "pro..., null, 40, null, null).
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\PythonProjects\Himalytix\ERP\accounting\views\journal_entry.py", line 1171, in journal_save_draft
+    journal, created = _persist_journal_draft(request.user, payload)
+                       ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\accounting\views\journal_entry.py", line 781, in _persist_journal_draft
+    journal = service.create_journal_entry(journal_data, line_data)
+  File "C:\PythonProjects\Himalytix\ERP\accounting\services\journal_entry_service.py", line 49, in create_journal_entry
+    JournalLine.objects.create(journal=journal, **line_data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\query.py", line 679, in create
+    obj.save(force_insert=True, using=self.db)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\accounting\models.py", line 2704, in save
+    log_audit_event(self.created_by, self, 'created', changes=model_to_dict(self))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\accounting\utils\audit.py", line 59, in log_audit_event
+    AuditLog.objects.create(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        user=user,
+        ^^^^^^^^^^
+    ...<5 lines>...
+        ip_address=ip_address
+        ^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\query.py", line 679, in create
+    obj.save(force_insert=True, using=self.db)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\base.py", line 822, in save
+    self.save_base(
+    ~~~~~~~~~~~~~~^
+        using=using,
+        ^^^^^^^^^^^^
+    ...<2 lines>...
+        update_fields=update_fields,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\base.py", line 909, in save_base
+    updated = self._save_table(
+        raw,
+    ...<4 lines>...
+        update_fields,
+    )
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\base.py", line 1071, in _save_table
+    results = self._do_insert(
+        cls._base_manager, using, fields, returning_fields, raw
+    )
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\base.py", line 1112, in _do_insert
+    return manager._insert(
+           ~~~~~~~~~~~~~~~^
+        [self],
+        ^^^^^^^
+    ...<3 lines>...
+        raw=raw,
+        ^^^^^^^^
+    )
+    ^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\query.py", line 1847, in _insert
+    return query.get_compiler(using=using).execute_sql(returning_fields)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1823, in execute_sql
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\backends\utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+django.db.utils.IntegrityError: null value in column "user_id" of relation "accounting_auditlog" violates not-null constraint
+DETAIL:  Failing row contains (213, 2025-11-14 17:43:59.453091+00, created, 11, {"memo": null, "account": 17, "fx_rate": 1, "journal": 133, "pro..., null, 40, null, null).
+
+[2025-11-14 23:28:59,592] INFO middleware.logging.structured_logging: [2m2025-11-14T17:43:59.592430Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mPOST[0m [36mpath[0m=[35m/accounting/journal-entry/save-draft/[0m [36mrequest_id[0m=[35mb07ed63d-8030-4057-a75a-854d604ace3b[0m [36mstatus_code[0m=[35m500[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:28:59,592] ERROR django.request: Internal Server Error: /accounting/journal-entry/save-draft/
+[2025-11-14 23:29:04,171] WARNING accounting.middleware: No tenant found on request.
+[2025-11-14 23:29:04,174] INFO middleware.logging.structured_logging: [2m2025-11-14T17:44:04.173967Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/period/validate/[0m [36mrequest_id[0m=[35m79b5994a-13bf-4e35-b72c-6bbbc0dee190[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:29:04,181] INFO middleware.logging.structured_logging: [2m2025-11-14T17:44:04.181207Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/period/validate/[0m [36mrequest_id[0m=[35m79b5994a-13bf-4e35-b72c-6bbbc0dee190[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:29:04,195] WARNING accounting.middleware: No tenant found on request.
+[2025-11-14 23:29:04,199] INFO middleware.logging.structured_logging: [2m2025-11-14T17:44:04.199254Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mPOST[0m [36mpath[0m=[35m/accounting/journal-entry/save-draft/[0m [36mrequest_id[0m=[35mf9840db6-8c49-48cb-ab42-6ce89ede5e2b[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:29:04,257] ERROR accounting.views.journal_entry: Unexpected error while saving journal draft.
+Traceback (most recent call last):
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+psycopg2.errors.NotNullViolation: null value in column "user_id" of relation "accounting_auditlog" violates not-null constraint
+DETAIL:  Failing row contains (217, 2025-11-14 17:44:04.256425+00, created, 12, {"memo": null, "account": 17, "fx_rate": 1, "journal": 134, "pro..., null, 40, null, null).
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\PythonProjects\Himalytix\ERP\accounting\views\journal_entry.py", line 1171, in journal_save_draft
+    journal, created = _persist_journal_draft(request.user, payload)
+                       ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\accounting\views\journal_entry.py", line 781, in _persist_journal_draft
+    journal = service.create_journal_entry(journal_data, line_data)
+  File "C:\PythonProjects\Himalytix\ERP\accounting\services\journal_entry_service.py", line 49, in create_journal_entry
+    JournalLine.objects.create(journal=journal, **line_data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\query.py", line 679, in create
+    obj.save(force_insert=True, using=self.db)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\accounting\models.py", line 2704, in save
+    log_audit_event(self.created_by, self, 'created', changes=model_to_dict(self))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\accounting\utils\audit.py", line 59, in log_audit_event
+    AuditLog.objects.create(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        user=user,
+        ^^^^^^^^^^
+    ...<5 lines>...
+        ip_address=ip_address
+        ^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\query.py", line 679, in create
+    obj.save(force_insert=True, using=self.db)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\base.py", line 822, in save
+    self.save_base(
+    ~~~~~~~~~~~~~~^
+        using=using,
+        ^^^^^^^^^^^^
+    ...<2 lines>...
+        update_fields=update_fields,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\base.py", line 909, in save_base
+    updated = self._save_table(
+        raw,
+    ...<4 lines>...
+        update_fields,
+    )
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\base.py", line 1071, in _save_table
+    results = self._do_insert(
+        cls._base_manager, using, fields, returning_fields, raw
+    )
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\base.py", line 1112, in _do_insert
+    return manager._insert(
+           ~~~~~~~~~~~~~~~^
+        [self],
+        ^^^^^^^
+    ...<3 lines>...
+        raw=raw,
+        ^^^^^^^^
+    )
+    ^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\query.py", line 1847, in _insert
+    return query.get_compiler(using=using).execute_sql(returning_fields)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1823, in execute_sql
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\backends\utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+django.db.utils.IntegrityError: null value in column "user_id" of relation "accounting_auditlog" violates not-null constraint
+DETAIL:  Failing row contains (217, 2025-11-14 17:44:04.256425+00, created, 12, {"memo": null, "account": 17, "fx_rate": 1, "journal": 134, "pro..., null, 40, null, null).
+
+[2025-11-14 23:29:04,265] INFO middleware.logging.structured_logging: [2m2025-11-14T17:44:04.265464Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mPOST[0m [36mpath[0m=[35m/accounting/journal-entry/save-draft/[0m [36mrequest_id[0m=[35mf9840db6-8c49-48cb-ab42-6ce89ede5e2b[0m [36mstatus_code[0m=[35m500[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:29:04,266] ERROR django.request: Internal Server Error: /accounting/journal-entry/save-draft/
+[2025-11-14 23:29:30,876] WARNING accounting.middleware: No tenant found on request.
+[2025-11-14 23:29:30,879] INFO middleware.logging.structured_logging: [2m2025-11-14T17:44:30.879624Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/period/validate/[0m [36mrequest_id[0m=[35md3c092eb-7bc0-4ac3-a819-c57bda408d38[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:29:30,890] INFO middleware.logging.structured_logging: [2m2025-11-14T17:44:30.890182Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/period/validate/[0m [36mrequest_id[0m=[35md3c092eb-7bc0-4ac3-a819-c57bda408d38[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:29:30,904] WARNING accounting.middleware: No tenant found on request.
+[2025-11-14 23:29:30,906] INFO middleware.logging.structured_logging: [2m2025-11-14T17:44:30.906514Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mPOST[0m [36mpath[0m=[35m/accounting/journal-entry/save-draft/[0m [36mrequest_id[0m=[35mad8396b7-b2f4-4d0c-8b0f-42c7087024a5[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:29:30,971] ERROR accounting.views.journal_entry: Unexpected error while saving journal draft.
+Traceback (most recent call last):
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+psycopg2.errors.NotNullViolation: null value in column "user_id" of relation "accounting_auditlog" violates not-null constraint
+DETAIL:  Failing row contains (221, 2025-11-14 17:44:30.969735+00, created, 13, {"memo": null, "account": 17, "fx_rate": 1, "journal": 135, "pro..., null, 40, null, null).
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\PythonProjects\Himalytix\ERP\accounting\views\journal_entry.py", line 1171, in journal_save_draft
+    journal, created = _persist_journal_draft(request.user, payload)
+                       ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\accounting\views\journal_entry.py", line 781, in _persist_journal_draft
+    journal = service.create_journal_entry(journal_data, line_data)
+  File "C:\PythonProjects\Himalytix\ERP\accounting\services\journal_entry_service.py", line 49, in create_journal_entry
+    JournalLine.objects.create(journal=journal, **line_data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\query.py", line 679, in create
+    obj.save(force_insert=True, using=self.db)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\accounting\models.py", line 2704, in save
+    log_audit_event(self.created_by, self, 'created', changes=model_to_dict(self))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\accounting\utils\audit.py", line 59, in log_audit_event
+    AuditLog.objects.create(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        user=user,
+        ^^^^^^^^^^
+    ...<5 lines>...
+        ip_address=ip_address
+        ^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\query.py", line 679, in create
+    obj.save(force_insert=True, using=self.db)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\base.py", line 822, in save
+    self.save_base(
+    ~~~~~~~~~~~~~~^
+        using=using,
+        ^^^^^^^^^^^^
+    ...<2 lines>...
+        update_fields=update_fields,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\base.py", line 909, in save_base
+    updated = self._save_table(
+        raw,
+    ...<4 lines>...
+        update_fields,
+    )
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\base.py", line 1071, in _save_table
+    results = self._do_insert(
+        cls._base_manager, using, fields, returning_fields, raw
+    )
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\base.py", line 1112, in _do_insert
+    return manager._insert(
+           ~~~~~~~~~~~~~~~^
+        [self],
+        ^^^^^^^
+    ...<3 lines>...
+        raw=raw,
+        ^^^^^^^^
+    )
+    ^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\query.py", line 1847, in _insert
+    return query.get_compiler(using=using).execute_sql(returning_fields)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1823, in execute_sql
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\backends\utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+django.db.utils.IntegrityError: null value in column "user_id" of relation "accounting_auditlog" violates not-null constraint
+DETAIL:  Failing row contains (221, 2025-11-14 17:44:30.969735+00, created, 13, {"memo": null, "account": 17, "fx_rate": 1, "journal": 135, "pro..., null, 40, null, null).
+
+[2025-11-14 23:29:30,978] INFO middleware.logging.structured_logging: [2m2025-11-14T17:44:30.978147Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mPOST[0m [36mpath[0m=[35m/accounting/journal-entry/save-draft/[0m [36mrequest_id[0m=[35mad8396b7-b2f4-4d0c-8b0f-42c7087024a5[0m [36mstatus_code[0m=[35m500[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:29:30,980] ERROR django.request: Internal Server Error: /accounting/journal-entry/save-draft/
+[2025-11-14 23:29:34,394] WARNING accounting.middleware: No tenant found on request.
+[2025-11-14 23:29:34,396] INFO middleware.logging.structured_logging: [2m2025-11-14T17:44:34.396372Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/period/validate/[0m [36mrequest_id[0m=[35m322e9923-a33f-4fd1-97c8-bf4f9d0b9b5d[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:29:34,404] INFO middleware.logging.structured_logging: [2m2025-11-14T17:44:34.404379Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/period/validate/[0m [36mrequest_id[0m=[35m322e9923-a33f-4fd1-97c8-bf4f9d0b9b5d[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:29:34,419] WARNING accounting.middleware: No tenant found on request.
+[2025-11-14 23:29:34,423] INFO middleware.logging.structured_logging: [2m2025-11-14T17:44:34.423230Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mPOST[0m [36mpath[0m=[35m/accounting/journal-entry/submit/[0m [36mrequest_id[0m=[35m858af8eb-752d-4033-9330-525d43085cd2[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:29:34,496] ERROR accounting.views.journal_entry: Unexpected error while submitting journal.
+Traceback (most recent call last):
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+psycopg2.errors.NotNullViolation: null value in column "user_id" of relation "accounting_auditlog" violates not-null constraint
+DETAIL:  Failing row contains (225, 2025-11-14 17:44:34.49573+00, created, 14, {"memo": null, "account": 17, "fx_rate": 1, "journal": 136, "pro..., null, 40, null, null).
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\PythonProjects\Himalytix\ERP\accounting\views\journal_entry.py", line 1195, in journal_submit
+    journal, _ = _persist_journal_draft(request.user, payload)
+                 ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\accounting\views\journal_entry.py", line 781, in _persist_journal_draft
+    journal = service.create_journal_entry(journal_data, line_data)
+  File "C:\PythonProjects\Himalytix\ERP\accounting\services\journal_entry_service.py", line 49, in create_journal_entry
+    JournalLine.objects.create(journal=journal, **line_data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\query.py", line 679, in create
+    obj.save(force_insert=True, using=self.db)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\accounting\models.py", line 2704, in save
+    log_audit_event(self.created_by, self, 'created', changes=model_to_dict(self))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\accounting\utils\audit.py", line 59, in log_audit_event
+    AuditLog.objects.create(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        user=user,
+        ^^^^^^^^^^
+    ...<5 lines>...
+        ip_address=ip_address
+        ^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\query.py", line 679, in create
+    obj.save(force_insert=True, using=self.db)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\base.py", line 822, in save
+    self.save_base(
+    ~~~~~~~~~~~~~~^
+        using=using,
+        ^^^^^^^^^^^^
+    ...<2 lines>...
+        update_fields=update_fields,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\base.py", line 909, in save_base
+    updated = self._save_table(
+        raw,
+    ...<4 lines>...
+        update_fields,
+    )
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\base.py", line 1071, in _save_table
+    results = self._do_insert(
+        cls._base_manager, using, fields, returning_fields, raw
+    )
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\base.py", line 1112, in _do_insert
+    return manager._insert(
+           ~~~~~~~~~~~~~~~^
+        [self],
+        ^^^^^^^
+    ...<3 lines>...
+        raw=raw,
+        ^^^^^^^^
+    )
+    ^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\query.py", line 1847, in _insert
+    return query.get_compiler(using=using).execute_sql(returning_fields)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1823, in execute_sql
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\backends\utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+django.db.utils.IntegrityError: null value in column "user_id" of relation "accounting_auditlog" violates not-null constraint
+DETAIL:  Failing row contains (225, 2025-11-14 17:44:34.49573+00, created, 14, {"memo": null, "account": 17, "fx_rate": 1, "journal": 136, "pro..., null, 40, null, null).
+
+[2025-11-14 23:29:34,503] INFO middleware.logging.structured_logging: [2m2025-11-14T17:44:34.503377Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mPOST[0m [36mpath[0m=[35m/accounting/journal-entry/submit/[0m [36mrequest_id[0m=[35m858af8eb-752d-4033-9330-525d43085cd2[0m [36mstatus_code[0m=[35m500[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-14 23:29:34,506] ERROR django.request: Internal Server Error: /accounting/journal-entry/submit/
+[2025-11-14 23:30:06,852] INFO django.utils.autoreload: C:\PythonProjects\Himalytix\ERP\accounting\models.py changed, reloading.
+[2025-11-14 23:30:10,487] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-14 23:30:10,488] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-14 23:30:10,489] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-14 23:30:10,489] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-14 23:30:10,490] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-14 23:30:10,490] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-14 23:30:10,490] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-14 23:30:10,491] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-14 23:30:10,491] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-14 23:30:10,491] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-14 23:30:10,492] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-14 23:30:10,492] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-14 23:30:10,492] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-14 23:30:10,492] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-14 23:30:10,493] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-14 23:30:10,493] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-14 23:30:10,493] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-14 23:30:10,493] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-14 23:30:10,494] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-14 23:30:10,494] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-14 23:30:10,494] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-14 23:30:10,494] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-14 23:30:10,495] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-14 23:30:10,495] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-14 23:30:10,495] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-14 23:30:10,496] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-14 23:30:10,496] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 23:30:10,537] INFO django.utils.autoreload: Watching for file changes with StatReloader
+[2025-11-14 23:30:10,915] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-14 23:30:26,926] INFO django.utils.autoreload: C:\PythonProjects\Himalytix\ERP\accounting\services\__init__.py changed, reloading.
+[2025-11-14 23:30:30,227] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-14 23:30:30,228] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-14 23:30:30,228] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-14 23:30:30,229] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-14 23:30:30,229] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-14 23:30:30,229] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-14 23:30:30,229] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-14 23:30:30,230] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-14 23:30:30,230] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-14 23:30:30,230] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-14 23:30:30,231] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-14 23:30:30,231] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-14 23:30:30,231] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-14 23:30:30,231] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-14 23:30:30,232] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-14 23:30:30,232] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-14 23:30:30,232] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-14 23:30:30,232] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-14 23:30:30,233] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-14 23:30:30,233] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-14 23:30:30,233] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-14 23:30:30,233] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-14 23:30:30,234] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-14 23:30:30,234] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-14 23:30:30,235] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-14 23:30:30,236] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-14 23:30:30,237] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 23:30:30,285] INFO django.utils.autoreload: Watching for file changes with StatReloader
+[2025-11-14 23:30:31,412] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-14 23:33:56,093] INFO django.utils.autoreload: C:\PythonProjects\Himalytix\ERP\accounting\models.py changed, reloading.
+[2025-11-14 23:34:02,424] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-14 23:34:02,425] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-14 23:34:02,425] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-14 23:34:02,425] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-14 23:34:02,425] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-14 23:34:02,426] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-14 23:34:02,426] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-14 23:34:02,426] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-14 23:34:02,427] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-14 23:34:02,427] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-14 23:34:02,427] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-14 23:34:02,427] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-14 23:34:02,428] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-14 23:34:02,429] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-14 23:34:02,430] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-14 23:34:02,431] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-14 23:34:02,432] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-14 23:34:02,432] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-14 23:34:02,433] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-14 23:34:02,433] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-14 23:34:02,433] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-14 23:34:02,435] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-14 23:34:02,438] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-14 23:34:02,439] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-14 23:34:02,440] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-14 23:34:02,441] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-14 23:34:02,441] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 23:34:02,494] INFO django.utils.autoreload: Watching for file changes with StatReloader
+[2025-11-14 23:34:03,413] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-14 23:34:15,967] INFO django.utils.autoreload: C:\PythonProjects\Himalytix\ERP\accounting\admin.py changed, reloading.
+[2025-11-14 23:34:20,433] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-14 23:34:20,434] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-14 23:34:20,434] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-14 23:34:20,434] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-14 23:34:20,434] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-14 23:34:20,435] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-14 23:34:20,435] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-14 23:34:20,436] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-14 23:34:20,436] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-14 23:34:20,436] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-14 23:34:20,437] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-14 23:34:20,437] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-14 23:34:20,438] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-14 23:34:20,440] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-14 23:34:20,440] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-14 23:34:20,441] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-14 23:34:20,441] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-14 23:34:20,441] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-14 23:34:20,442] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-14 23:34:20,442] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-14 23:34:20,442] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-14 23:34:20,443] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-14 23:34:20,443] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-14 23:34:20,444] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-14 23:34:20,444] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-14 23:34:20,445] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-14 23:34:20,445] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 23:34:20,493] INFO django.utils.autoreload: Watching for file changes with StatReloader
+[2025-11-14 23:34:21,117] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-14 23:34:26,729] INFO django.utils.autoreload: C:\PythonProjects\Himalytix\ERP\accounting\admin.py changed, reloading.
+[2025-11-14 23:34:30,526] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-14 23:34:30,526] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-14 23:34:30,527] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-14 23:34:30,527] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-14 23:34:30,527] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-14 23:34:30,528] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-14 23:34:30,528] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-14 23:34:30,529] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-14 23:34:30,529] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-14 23:34:30,529] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-14 23:34:30,529] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-14 23:34:30,530] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-14 23:34:30,530] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-14 23:34:30,530] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-14 23:34:30,531] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-14 23:34:30,531] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-14 23:34:30,531] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-14 23:34:30,532] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-14 23:34:30,532] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-14 23:34:30,532] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-14 23:34:30,533] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-14 23:34:30,533] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-14 23:34:30,533] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-14 23:34:30,534] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-14 23:34:30,534] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-14 23:34:30,535] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-14 23:34:30,535] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 23:34:30,579] INFO django.utils.autoreload: Watching for file changes with StatReloader
+[2025-11-14 23:34:31,134] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-14 23:34:51,612] INFO django.utils.autoreload: C:\PythonProjects\Himalytix\ERP\accounting\services\__init__.py changed, reloading.
+[2025-11-14 23:34:55,136] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-14 23:34:55,136] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-14 23:34:55,137] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-14 23:34:55,138] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-14 23:34:55,138] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-14 23:34:55,138] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-14 23:34:55,139] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-14 23:34:55,139] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-14 23:34:55,140] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-14 23:34:55,140] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-14 23:34:55,140] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-14 23:34:55,141] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-14 23:34:55,141] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-14 23:34:55,141] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-14 23:34:55,142] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-14 23:34:55,142] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-14 23:34:55,142] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-14 23:34:55,143] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-14 23:34:55,143] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-14 23:34:55,143] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-14 23:34:55,144] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-14 23:34:55,144] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-14 23:34:55,144] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-14 23:34:55,145] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-14 23:34:55,146] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-14 23:34:55,147] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-14 23:34:55,147] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 23:34:55,199] INFO django.utils.autoreload: Watching for file changes with StatReloader
+[2025-11-14 23:34:55,736] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-14 23:40:16,508] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-14 23:40:16,508] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-14 23:40:16,509] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-14 23:40:16,509] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-14 23:40:16,509] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-14 23:40:16,509] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-14 23:40:16,510] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-14 23:40:16,510] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-14 23:40:16,510] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-14 23:40:16,510] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-14 23:40:16,511] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-14 23:40:16,511] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-14 23:40:16,511] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-14 23:40:16,511] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-14 23:40:16,511] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-14 23:40:16,511] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-14 23:40:16,512] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-14 23:40:16,512] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-14 23:40:16,512] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-14 23:40:16,512] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-14 23:40:16,512] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-14 23:40:16,513] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-14 23:40:16,513] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-14 23:40:16,513] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-14 23:40:16,514] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-14 23:40:16,514] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-14 23:40:16,514] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 23:40:37,688] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-14 23:40:37,688] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-14 23:40:37,688] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-14 23:40:37,689] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-14 23:40:37,689] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-14 23:40:37,689] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-14 23:40:37,690] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-14 23:40:37,690] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-14 23:40:37,690] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-14 23:40:37,691] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-14 23:40:37,691] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-14 23:40:37,692] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-14 23:40:37,692] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-14 23:40:37,693] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-14 23:40:37,693] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-14 23:40:37,694] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-14 23:40:37,694] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-14 23:40:37,694] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-14 23:40:37,695] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-14 23:40:37,695] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-14 23:40:37,695] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-14 23:40:37,696] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-14 23:40:37,696] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-14 23:40:37,696] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-14 23:40:37,696] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-14 23:40:37,697] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-14 23:40:37,697] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 23:42:02,293] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django_prometheus
+[2025-11-14 23:42:02,294] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\admin
+[2025-11-14 23:42:02,294] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\auth
+[2025-11-14 23:42:02,294] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\contenttypes
+[2025-11-14 23:42:02,295] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sessions
+[2025-11-14 23:42:02,295] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-14 23:42:02,295] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-14 23:42:02,295] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-14 23:42:02,296] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-14 23:42:02,296] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sites
+[2025-11-14 23:42:02,296] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth
+[2025-11-14 23:42:02,296] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\account
+[2025-11-14 23:42:02,297] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\socialaccount
+[2025-11-14 23:42:02,297] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-14 23:42:02,297] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-14 23:42:02,298] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-14 23:42:02,299] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\rest_framework\authtoken
+[2025-11-14 23:42:02,299] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\silk
+[2025-11-14 23:42:02,300] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-14 23:42:02,300] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-14 23:42:02,300] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\mptt
+[2025-11-14 23:42:02,300] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-14 23:42:02,301] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-14 23:42:02,301] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\widget_tweaks
+[2025-11-14 23:42:02,301] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\formtools
+[2025-11-14 23:42:02,301] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-14 23:42:02,302] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-14 23:42:03,286] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-15 00:02:27,965] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django_prometheus
+[2025-11-15 00:02:27,966] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\admin
+[2025-11-15 00:02:27,967] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\auth
+[2025-11-15 00:02:27,967] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\contenttypes
+[2025-11-15 00:02:27,968] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sessions
+[2025-11-15 00:02:27,969] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-15 00:02:27,970] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-15 00:02:27,970] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-15 00:02:27,971] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-15 00:02:27,971] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sites
+[2025-11-15 00:02:27,971] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth
+[2025-11-15 00:02:27,972] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\account
+[2025-11-15 00:02:27,972] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\socialaccount
+[2025-11-15 00:02:27,972] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-15 00:02:27,972] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-15 00:02:27,973] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-15 00:02:27,973] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\rest_framework\authtoken
+[2025-11-15 00:02:27,974] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\silk
+[2025-11-15 00:02:27,974] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-15 00:02:27,974] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-15 00:02:27,975] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\mptt
+[2025-11-15 00:02:27,975] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-15 00:02:27,975] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-15 00:02:27,975] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\widget_tweaks
+[2025-11-15 00:02:27,976] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\formtools
+[2025-11-15 00:02:27,977] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-15 00:02:27,977] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-15 00:03:46,030] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-15 00:03:46,030] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-15 00:03:46,031] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-15 00:03:46,031] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-15 00:03:46,031] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-15 00:03:46,031] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-15 00:03:46,032] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-15 00:03:46,032] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-15 00:03:46,032] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-15 00:03:46,033] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-15 00:03:46,033] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-15 00:03:46,033] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-15 00:03:46,034] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-15 00:03:46,034] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-15 00:03:46,034] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-15 00:03:46,035] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-15 00:03:46,035] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-15 00:03:46,035] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-15 00:03:46,035] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-15 00:03:46,035] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-15 00:03:46,036] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-15 00:03:46,036] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-15 00:03:46,036] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-15 00:03:46,036] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-15 00:03:46,037] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-15 00:03:46,037] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-15 00:03:46,037] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-15 00:05:11,775] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-15 00:05:11,775] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-15 00:05:11,775] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-15 00:05:11,776] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-15 00:05:11,776] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-15 00:05:11,776] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-15 00:05:11,776] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-15 00:05:11,777] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-15 00:05:11,777] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-15 00:05:11,777] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-15 00:05:11,777] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-15 00:05:11,778] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-15 00:05:11,778] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-15 00:05:11,779] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-15 00:05:11,779] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-15 00:05:11,779] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-15 00:05:11,779] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-15 00:05:11,780] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-15 00:05:11,780] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-15 00:05:11,780] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-15 00:05:11,780] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-15 00:05:11,781] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-15 00:05:11,781] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-15 00:05:11,781] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-15 00:05:11,781] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-15 00:05:11,782] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-15 00:05:11,782] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-15 00:05:28,048] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-15 00:05:28,049] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-15 00:05:28,049] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-15 00:05:28,049] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-15 00:05:28,049] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-15 00:05:28,049] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-15 00:05:28,050] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-15 00:05:28,050] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-15 00:05:28,050] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-15 00:05:28,051] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-15 00:05:28,051] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-15 00:05:28,051] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-15 00:05:28,052] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-15 00:05:28,052] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-15 00:05:28,052] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-15 00:05:28,053] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-15 00:05:28,053] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-15 00:05:28,053] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-15 00:05:28,053] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-15 00:05:28,054] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-15 00:05:28,054] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-15 00:05:28,054] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-15 00:05:28,054] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-15 00:05:28,055] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-15 00:05:28,055] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-15 00:05:28,055] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-15 00:05:28,056] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-15 00:07:28,597] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-15 00:07:28,598] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-15 00:07:28,598] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-15 00:07:28,598] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-15 00:07:28,598] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-15 00:07:28,599] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-15 00:07:28,599] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-15 00:07:28,599] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-15 00:07:28,600] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-15 00:07:28,600] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-15 00:07:28,600] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-15 00:07:28,601] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-15 00:07:28,601] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-15 00:07:28,602] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-15 00:07:28,602] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-15 00:07:28,603] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-15 00:07:28,604] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-15 00:07:28,604] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-15 00:07:28,604] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-15 00:07:28,605] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-15 00:07:28,605] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-15 00:07:28,605] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-15 00:07:28,606] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-15 00:07:28,606] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-15 00:07:28,606] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-15 00:07:28,607] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-15 00:07:28,607] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-15 00:07:31,349] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-15 00:07:31,349] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-15 00:07:31,350] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-15 00:07:31,350] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-15 00:07:31,351] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-15 00:07:31,351] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-15 00:07:31,351] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-15 00:07:31,352] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-15 00:07:31,352] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-15 00:07:31,352] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-15 00:07:31,353] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-15 00:07:31,353] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-15 00:07:31,353] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-15 00:07:31,354] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-15 00:07:31,354] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-15 00:07:31,354] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-15 00:07:31,355] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-15 00:07:31,355] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-15 00:07:31,355] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-15 00:07:31,355] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-15 00:07:31,356] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-15 00:07:31,356] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-15 00:07:31,356] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-15 00:07:31,356] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-15 00:07:31,357] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-15 00:07:31,358] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-15 00:07:31,358] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-15 00:07:31,397] INFO django.utils.autoreload: Watching for file changes with StatReloader
+[2025-11-15 00:07:31,972] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-15 00:07:39,497] WARNING accounting.middleware: No tenant found on request.
+[2025-11-15 00:07:39,523] INFO middleware.logging.structured_logging: [2m2025-11-14T18:22:39.523411Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/[0m [36mrequest_id[0m=[35m94d90534-8f6e-4470-8d6a-262584b9be4d[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-15 00:07:39,723] INFO middleware.logging.structured_logging: [2m2025-11-14T18:22:39.723804Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/[0m [36mrequest_id[0m=[35m94d90534-8f6e-4470-8d6a-262584b9be4d[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-15 00:07:44,778] WARNING accounting.middleware: No tenant found on request.
+[2025-11-15 00:07:44,797] INFO middleware.logging.structured_logging: [2m2025-11-14T18:22:44.796989Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/config/[0m [36mrequest_id[0m=[35m2d4d0d3f-29cf-4f5b-bc2d-aab60fd8c221[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-15 00:07:44,988] INFO middleware.logging.structured_logging: [2m2025-11-14T18:22:44.988296Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/config/[0m [36mrequest_id[0m=[35m2d4d0d3f-29cf-4f5b-bc2d-aab60fd8c221[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-15 00:07:59,503] WARNING accounting.middleware: No tenant found on request.
+[2025-11-15 00:07:59,505] INFO middleware.logging.structured_logging: [2m2025-11-14T18:22:59.505751Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vouchers/new/[0m [36mrequest_id[0m=[35m71ae9e9b-5cee-4130-aa57-cf897c87b926[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-15 00:07:59,524] INFO middleware.logging.structured_logging: [2m2025-11-14T18:22:59.524586Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vouchers/new/[0m [36mrequest_id[0m=[35m71ae9e9b-5cee-4130-aa57-cf897c87b926[0m [36mstatus_code[0m=[35m302[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-15 00:07:59,537] WARNING accounting.middleware: No tenant found on request.
+[2025-11-15 00:07:59,540] INFO middleware.logging.structured_logging: [2m2025-11-14T18:22:59.540126Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vouchers/[0m [36mrequest_id[0m=[35m99b3e265-3e83-4162-b7b2-a80a2115e8e7[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-15 00:07:59,632] INFO middleware.logging.structured_logging: [2m2025-11-14T18:22:59.632000Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vouchers/[0m [36mrequest_id[0m=[35m99b3e265-3e83-4162-b7b2-a80a2115e8e7[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-15 00:08:01,853] WARNING accounting.middleware: No tenant found on request.
+[2025-11-15 00:08:01,856] INFO middleware.logging.structured_logging: [2m2025-11-14T18:23:01.855992Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vouchers/wizard/[0m [36mrequest_id[0m=[35m49f8e8e4-940b-4aa5-9d39-445d10784112[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-15 00:08:02,124] INFO middleware.logging.structured_logging: [2m2025-11-14T18:23:02.124273Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vouchers/wizard/[0m [36mrequest_id[0m=[35m49f8e8e4-940b-4aa5-9d39-445d10784112[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-15 00:08:05,597] WARNING accounting.middleware: No tenant found on request.
+[2025-11-15 00:08:05,602] INFO middleware.logging.structured_logging: [2m2025-11-14T18:23:05.601973Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mPOST[0m [36mpath[0m=[35m/accounting/vouchers/wizard/[0m [36mrequest_id[0m=[35mb4217228-7062-4f4e-a815-cbcc95a4fd30[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-15 00:08:05,675] INFO accounting.services.create_voucher: Journal GJ044 and its lines created successfully for user 1, organization 1
+[2025-11-15 00:08:05,681] INFO middleware.logging.structured_logging: [2m2025-11-14T18:23:05.681781Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mPOST[0m [36mpath[0m=[35m/accounting/vouchers/wizard/[0m [36mrequest_id[0m=[35mb4217228-7062-4f4e-a815-cbcc95a4fd30[0m [36mstatus_code[0m=[35m302[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-15 00:08:05,692] WARNING accounting.middleware: No tenant found on request.
+[2025-11-15 00:08:05,694] INFO middleware.logging.structured_logging: [2m2025-11-14T18:23:05.694665Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vouchers/137/[0m [36mrequest_id[0m=[35m0c5fcc4b-3cc9-4f71-8849-a4831acfd9dc[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-15 00:08:05,762] INFO middleware.logging.structured_logging: [2m2025-11-14T18:23:05.762227Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vouchers/137/[0m [36mrequest_id[0m=[35m0c5fcc4b-3cc9-4f71-8849-a4831acfd9dc[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-15 00:08:13,054] WARNING accounting.middleware: No tenant found on request.
+[2025-11-15 00:08:13,059] INFO middleware.logging.structured_logging: [2m2025-11-14T18:23:13.059114Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mPOST[0m [36mpath[0m=[35m/accounting/vouchers/137/post/[0m [36mrequest_id[0m=[35m9d1b651b-c7a7-4cb8-82f1-3ba888609560[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-15 00:08:13,065] INFO accounting.services.post_journal: Delegating journal 137 posting to PostingService
+[2025-11-15 00:08:13,103] ERROR accounting.services.post_journal: Validation error while posting journal 137: ['Journal must contain at least one line.']
+[2025-11-15 00:08:13,103] ERROR accounting.views.voucher_crud_views: Error posting voucher: ['Journal must contain at least one line.']
+Traceback (most recent call last):
+  File "C:\PythonProjects\Himalytix\ERP\accounting\services\post_journal.py", line 42, in post_journal
+    posted = service.post(journal)
+  File "C:\PythonProjects\Himalytix\ERP\accounting\services\posting_service.py", line 421, in post
+    return self._post_internal(journal, enforce_permission=True)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\contextlib.py", line 85, in inner
+    return func(*args, **kwds)
+  File "C:\PythonProjects\Himalytix\ERP\accounting\services\posting_service.py", line 369, in _post_internal
+    self.validate(journal, lines)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\accounting\services\posting_service.py", line 161, in validate
+    raise ValidationError("Journal must contain at least one line.")
+django.core.exceptions.ValidationError: ['Journal must contain at least one line.']
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\PythonProjects\Himalytix\ERP\accounting\views\voucher_crud_views.py", line 646, in post
+    post_journal(voucher, request.user)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\accounting\services\post_journal.py", line 46, in post_journal
+    raise JournalValidationError(exc.messages) from exc
+accounting.services.post_journal.JournalValidationError: ['Journal must contain at least one line.']
+[2025-11-15 00:08:13,137] INFO middleware.logging.structured_logging: [2m2025-11-14T18:23:13.137527Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mPOST[0m [36mpath[0m=[35m/accounting/vouchers/137/post/[0m [36mrequest_id[0m=[35m9d1b651b-c7a7-4cb8-82f1-3ba888609560[0m [36mstatus_code[0m=[35m302[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-15 00:08:13,151] WARNING accounting.middleware: No tenant found on request.
+[2025-11-15 00:08:13,153] INFO middleware.logging.structured_logging: [2m2025-11-14T18:23:13.153681Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vouchers/137/[0m [36mrequest_id[0m=[35m141c3339-0c9f-4531-81ea-3d681e77759f[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-15 00:08:13,192] INFO middleware.logging.structured_logging: [2m2025-11-14T18:23:13.192198Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vouchers/137/[0m [36mrequest_id[0m=[35m141c3339-0c9f-4531-81ea-3d681e77759f[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-15 00:08:17,735] WARNING accounting.middleware: No tenant found on request.
+[2025-11-15 00:08:17,738] INFO middleware.logging.structured_logging: [2m2025-11-14T18:23:17.738133Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/[0m [36mrequest_id[0m=[35m84c0b4b5-8853-4ebc-aa16-7d738a2ab64d[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-15 00:08:17,765] INFO middleware.logging.structured_logging: [2m2025-11-14T18:23:17.765286Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/journal-entry/[0m [36mrequest_id[0m=[35m84c0b4b5-8853-4ebc-aa16-7d738a2ab64d[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m

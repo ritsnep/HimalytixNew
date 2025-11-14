@@ -1,12 +1,35 @@
+from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from accounting.models import Journal, JournalLine
-from django.db.models import Count
-from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from django.db.models import Count
+from accounting.models import (
+    APPayment,
+    ARReceipt,
+    Asset,
+    BankAccount,
+    Customer,
+    IntegrationEvent,
+    Journal,
+    JournalLine,
+    PurchaseInvoice,
+    SalesInvoice,
+    Vendor,
+)
 
 from usermanagement.utils import PermissionUtils
 from accounting.services.post_journal import post_journal
+from .serializers import (
+    APPaymentSerializer,
+    ARReceiptSerializer,
+    AssetSerializer,
+    BankAccountSerializer,
+    CustomerSerializer,
+    IntegrationEventSerializer,
+    PurchaseInvoiceSerializer,
+    SalesInvoiceSerializer,
+    VendorSerializer,
+)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -128,6 +151,61 @@ class JournalBulkActionView(APIView):
                     posted += 1
             return Response({'success': True, 'posted': posted})
 
-        # Other actions would be implemented similarly
-
         return Response({'success': True, 'message': f'Action {action} acknowledged for {journals.count()} journals.'}, status=status.HTTP_200_OK)
+
+class OrganizationScopedMixin:
+    permission_classes = [IsAuthenticated]
+    def get_organization(self):
+        return self.request.user.get_active_organization()
+
+    def get_queryset(self):
+        org = self.get_organization()
+        if not org:
+            return self.queryset.none()
+        return self.queryset.filter(organization=org)
+
+
+class VendorViewSet(OrganizationScopedMixin, viewsets.ReadOnlyModelViewSet):
+    serializer_class = VendorSerializer
+    queryset = Vendor.objects.all()
+
+
+class CustomerViewSet(OrganizationScopedMixin, viewsets.ReadOnlyModelViewSet):
+    serializer_class = CustomerSerializer
+    queryset = Customer.objects.all()
+
+
+class PurchaseInvoiceViewSet(OrganizationScopedMixin, viewsets.ReadOnlyModelViewSet):
+    serializer_class = PurchaseInvoiceSerializer
+    queryset = PurchaseInvoice.objects.select_related('vendor')
+
+
+class SalesInvoiceViewSet(OrganizationScopedMixin, viewsets.ReadOnlyModelViewSet):
+    serializer_class = SalesInvoiceSerializer
+    queryset = SalesInvoice.objects.select_related('customer')
+
+
+class APPaymentViewSet(OrganizationScopedMixin, viewsets.ReadOnlyModelViewSet):
+    serializer_class = APPaymentSerializer
+    queryset = APPayment.objects.select_related('vendor')
+
+
+class ARReceiptViewSet(OrganizationScopedMixin, viewsets.ReadOnlyModelViewSet):
+    serializer_class = ARReceiptSerializer
+    queryset = ARReceipt.objects.select_related('customer')
+
+
+class BankAccountViewSet(OrganizationScopedMixin, viewsets.ReadOnlyModelViewSet):
+    serializer_class = BankAccountSerializer
+    queryset = BankAccount.objects.all()
+
+
+class AssetViewSet(OrganizationScopedMixin, viewsets.ReadOnlyModelViewSet):
+    serializer_class = AssetSerializer
+    queryset = Asset.objects.select_related('category')
+
+
+class IntegrationEventViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = IntegrationEventSerializer
+    queryset = IntegrationEvent.objects.all()

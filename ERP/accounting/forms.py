@@ -2,9 +2,55 @@
 from django import forms
 from django.forms import inlineformset_factory
 from .models import (
-    AccountType, Approval, Attachment, CostCenter, Currency, Department, Journal, Journal, JournalLine, JournalType, ChartOfAccount,
-    AccountingPeriod, Project, TaxAuthority, TaxCode, TaxType, VoucherModeConfig, VoucherModeDefault, CurrencyExchangeRate,
-    GeneralLedger, VoucherUDFConfig
+    AccountType,
+    Approval,
+    Attachment,
+    CostCenter,
+    Currency,
+    Department,
+    Journal,
+    Journal,
+    JournalLine,
+    JournalType,
+    ChartOfAccount,
+    AccountingPeriod,
+    Project,
+    TaxAuthority,
+    TaxCode,
+    TaxType,
+    VoucherModeConfig,
+    VoucherModeDefault,
+    CurrencyExchangeRate,
+    GeneralLedger,
+    VoucherUDFConfig,
+    PaymentTerm,
+    Vendor,
+    Customer,
+    Dimension,
+    DimensionValue,
+    PurchaseInvoice,
+    PurchaseInvoiceLine,
+    SalesInvoice,
+    SalesInvoiceLine,
+    ARReceipt,
+    ARReceiptLine,
+    APPayment,
+    APPaymentLine,
+    PaymentBatch,
+    PaymentApproval,
+    BankAccount,
+    CashAccount,
+    BankTransaction,
+    BankStatement,
+    BankStatementLine,
+    Budget,
+    BudgetLine,
+    AssetCategory,
+    Asset,
+    AssetEvent,
+    ApprovalWorkflow,
+    ApprovalStep,
+    ApprovalTask,
 )
 from django import forms
 from .models import FiscalYear
@@ -1296,3 +1342,601 @@ class VoucherUDFConfigForm(BootstrapFormMixin, forms.ModelForm):
         if commit:
             instance.save()
         return instance
+
+
+class PaymentTermForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = PaymentTerm
+        fields = (
+            'code',
+            'name',
+            'term_type',
+            'description',
+            'net_due_days',
+            'discount_percent',
+            'discount_days',
+            'is_active',
+        )
+        widgets = {
+            'code': forms.TextInput(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'term_type': forms.Select(attrs={'class': 'form-select'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'net_due_days': forms.NumberInput(attrs={'class': 'form-control'}),
+            'discount_percent': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'discount_days': forms.NumberInput(attrs={'class': 'form-control'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        discount_percent = cleaned.get('discount_percent') or 0
+        discount_days = cleaned.get('discount_days')
+        if discount_percent > 0 and not discount_days:
+            self.add_error('discount_days', 'Discount days are required when a discount percent is provided.')
+        return cleaned
+
+
+class VendorForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = Vendor
+        fields = (
+            'code',
+            'display_name',
+            'legal_name',
+            'status',
+            'tax_id',
+            'payment_term',
+            'default_currency',
+            'accounts_payable_account',
+            'expense_account',
+            'email',
+            'phone_number',
+            'website',
+            'credit_limit',
+            'on_hold',
+            'notes',
+            'is_active',
+        )
+        widgets = {
+            'code': forms.TextInput(attrs={'class': 'form-control'}),
+            'display_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'legal_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'tax_id': forms.TextInput(attrs={'class': 'form-control'}),
+            'payment_term': forms.Select(attrs={'class': 'form-select'}),
+            'default_currency': forms.Select(attrs={'class': 'form-select'}),
+            'accounts_payable_account': forms.Select(attrs={'class': 'form-select'}),
+            'expense_account': forms.Select(attrs={'class': 'form-select'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'phone_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'website': forms.URLInput(attrs={'class': 'form-control'}),
+            'credit_limit': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'on_hold': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.organization = kwargs.pop('organization', None)
+        super().__init__(*args, **kwargs)
+        if self.organization:
+            self.fields['payment_term'].queryset = PaymentTerm.objects.filter(
+                organization=self.organization,
+            ).filter(term_type__in=['ap', 'both'])
+            self.fields['accounts_payable_account'].queryset = ChartOfAccount.objects.filter(
+                organization=self.organization,
+            )
+            self.fields['expense_account'].queryset = ChartOfAccount.objects.filter(
+                organization=self.organization,
+            )
+
+
+class CustomerForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = Customer
+        fields = (
+            'code',
+            'display_name',
+            'legal_name',
+            'status',
+            'tax_id',
+            'payment_term',
+            'default_currency',
+            'accounts_receivable_account',
+            'revenue_account',
+            'email',
+            'phone_number',
+            'website',
+            'credit_limit',
+            'credit_rating',
+            'credit_review_at',
+            'on_credit_hold',
+            'notes',
+            'is_active',
+        )
+        widgets = {
+            'code': forms.TextInput(attrs={'class': 'form-control'}),
+            'display_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'legal_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'tax_id': forms.TextInput(attrs={'class': 'form-control'}),
+            'payment_term': forms.Select(attrs={'class': 'form-select'}),
+            'default_currency': forms.Select(attrs={'class': 'form-select'}),
+            'accounts_receivable_account': forms.Select(attrs={'class': 'form-select'}),
+            'revenue_account': forms.Select(attrs={'class': 'form-select'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'phone_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'website': forms.URLInput(attrs={'class': 'form-control'}),
+            'credit_limit': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'credit_rating': forms.TextInput(attrs={'class': 'form-control'}),
+            'credit_review_at': forms.TextInput(attrs={'class': 'form-control datepicker'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'on_credit_hold': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.organization = kwargs.pop('organization', None)
+        super().__init__(*args, **kwargs)
+        if self.organization:
+            self.fields['payment_term'].queryset = PaymentTerm.objects.filter(
+                organization=self.organization,
+            ).filter(term_type__in=['ar', 'both'])
+            for field_name in ('accounts_receivable_account', 'revenue_account'):
+                self.fields[field_name].queryset = ChartOfAccount.objects.filter(
+                    organization=self.organization,
+                )
+
+
+class DimensionForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = Dimension
+        fields = ('code', 'name', 'description', 'dimension_type', 'is_active')
+        widgets = {
+            'code': forms.TextInput(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'dimension_type': forms.Select(attrs={'class': 'form-select'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
+class DimensionValueForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = DimensionValue
+        fields = ('dimension', 'code', 'name', 'description', 'is_active')
+        widgets = {
+            'dimension': forms.Select(attrs={'class': 'form-select'}),
+            'code': forms.TextInput(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
+class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = PurchaseInvoice
+        fields = (
+            'organization',
+            'vendor',
+            'invoice_number',
+            'external_reference',
+            'invoice_date',
+            'due_date',
+            'payment_term',
+            'currency',
+            'exchange_rate',
+            'po_number',
+            'receipt_reference',
+            'notes',
+        )
+        widgets = {
+            'invoice_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'external_reference': forms.TextInput(attrs={'class': 'form-control'}),
+            'invoice_date': forms.TextInput(attrs={'class': 'form-control datepicker'}),
+            'due_date': forms.TextInput(attrs={'class': 'form-control datepicker'}),
+            'payment_term': forms.Select(attrs={'class': 'form-select'}),
+            'currency': forms.Select(attrs={'class': 'form-select'}),
+            'exchange_rate': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.000001'}),
+            'po_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'receipt_reference': forms.TextInput(attrs={'class': 'form-control'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.organization = kwargs.pop('organization', None)
+        super().__init__(*args, **kwargs)
+        if self.organization:
+            self.fields['vendor'].queryset = self.fields['vendor'].queryset.filter(
+                organization=self.organization
+            )
+
+    def clean(self):
+        cleaned = super().clean()
+        vendor = cleaned.get('vendor') or getattr(self.instance, 'vendor', None)
+        payment_term = cleaned.get('payment_term') or getattr(vendor, 'payment_term', None)
+        invoice_date = cleaned.get('invoice_date')
+        due_date = cleaned.get('due_date')
+        if invoice_date and not due_date and payment_term:
+            cleaned['due_date'] = payment_term.calculate_due_date(invoice_date)
+        return cleaned
+
+
+class PurchaseInvoiceLineForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = PurchaseInvoiceLine
+        fields = (
+            'description',
+            'product_code',
+            'quantity',
+            'unit_cost',
+            'discount_amount',
+            'account',
+            'tax_code',
+            'tax_amount',
+            'cost_center',
+            'department',
+            'project',
+            'dimension_value',
+            'po_reference',
+            'receipt_reference',
+        )
+        widgets = {
+            'description': forms.TextInput(attrs={'class': 'form-control'}),
+            'product_code': forms.TextInput(attrs={'class': 'form-control'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.0001'}),
+            'unit_cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.0001'}),
+            'discount_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'account': forms.Select(attrs={'class': 'form-select'}),
+            'tax_code': forms.Select(attrs={'class': 'form-select'}),
+            'tax_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'cost_center': forms.Select(attrs={'class': 'form-select'}),
+            'department': forms.Select(attrs={'class': 'form-select'}),
+            'project': forms.Select(attrs={'class': 'form-select'}),
+            'dimension_value': forms.Select(attrs={'class': 'form-select'}),
+            'po_reference': forms.TextInput(attrs={'class': 'form-control'}),
+            'receipt_reference': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+
+class SalesInvoiceForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = SalesInvoice
+        fields = (
+            'organization',
+            'customer',
+            'invoice_number',
+            'reference_number',
+            'invoice_date',
+            'due_date',
+            'payment_term',
+            'currency',
+            'exchange_rate',
+            'notes',
+        )
+        widgets = {
+            'invoice_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'reference_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'invoice_date': forms.TextInput(attrs={'class': 'form-control datepicker'}),
+            'due_date': forms.TextInput(attrs={'class': 'form-control datepicker'}),
+            'payment_term': forms.Select(attrs={'class': 'form-select'}),
+            'currency': forms.Select(attrs={'class': 'form-select'}),
+            'exchange_rate': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.000001'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.organization = kwargs.pop('organization', None)
+        super().__init__(*args, **kwargs)
+        if self.organization:
+            self.fields['customer'].queryset = self.fields['customer'].queryset.filter(
+                organization=self.organization
+            )
+
+    def clean(self):
+        cleaned = super().clean()
+        customer = cleaned.get('customer') or getattr(self.instance, 'customer', None)
+        payment_term = cleaned.get('payment_term') or getattr(customer, 'payment_term', None)
+        invoice_date = cleaned.get('invoice_date')
+        due_date = cleaned.get('due_date')
+        if invoice_date and not due_date and payment_term:
+            cleaned['due_date'] = payment_term.calculate_due_date(invoice_date)
+        return cleaned
+
+
+class SalesInvoiceLineForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = SalesInvoiceLine
+        fields = (
+            'description',
+            'product_code',
+            'quantity',
+            'unit_price',
+            'discount_amount',
+            'revenue_account',
+            'tax_code',
+            'tax_amount',
+            'cost_center',
+            'department',
+            'project',
+            'dimension_value',
+        )
+        widgets = {
+            'description': forms.TextInput(attrs={'class': 'form-control'}),
+            'product_code': forms.TextInput(attrs={'class': 'form-control'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.0001'}),
+            'unit_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.0001'}),
+            'discount_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'revenue_account': forms.Select(attrs={'class': 'form-select'}),
+            'tax_code': forms.Select(attrs={'class': 'form-select'}),
+            'tax_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'cost_center': forms.Select(attrs={'class': 'form-select'}),
+            'department': forms.Select(attrs={'class': 'form-select'}),
+            'project': forms.Select(attrs={'class': 'form-select'}),
+            'dimension_value': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+
+class ARReceiptForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = ARReceipt
+        fields = (
+            'organization',
+            'customer',
+            'receipt_number',
+            'receipt_date',
+            'payment_method',
+            'reference',
+            'currency',
+            'exchange_rate',
+            'amount',
+        )
+        widgets = {
+            'receipt_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'receipt_date': forms.TextInput(attrs={'class': 'form-control datepicker'}),
+            'payment_method': forms.TextInput(attrs={'class': 'form-control'}),
+            'reference': forms.TextInput(attrs={'class': 'form-control'}),
+            'currency': forms.Select(attrs={'class': 'form-select'}),
+            'exchange_rate': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.000001'}),
+            'amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+        }
+
+
+class BankAccountForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = BankAccount
+        fields = (
+            'organization',
+            'bank_name',
+            'account_name',
+            'account_number',
+            'account_type',
+            'currency',
+            'routing_number',
+            'swift_code',
+            'opening_balance',
+            'current_balance',
+        )
+        widgets = {
+            'bank_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'account_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'account_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'account_type': forms.Select(attrs={'class': 'form-select'}),
+            'currency': forms.Select(attrs={'class': 'form-select'}),
+            'routing_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'swift_code': forms.TextInput(attrs={'class': 'form-control'}),
+            'opening_balance': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'current_balance': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+        }
+
+
+class CashAccountForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = CashAccount
+        fields = ('organization', 'name', 'currency', 'current_balance', 'location')
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'currency': forms.Select(attrs={'class': 'form-select'}),
+            'current_balance': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'location': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+
+class BankStatementForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = BankStatement
+        fields = ('bank_account', 'period_start', 'period_end', 'status', 'metadata')
+        widgets = {
+            'bank_account': forms.Select(attrs={'class': 'form-select'}),
+            'period_start': forms.TextInput(attrs={'class': 'form-control datepicker'}),
+            'period_end': forms.TextInput(attrs={'class': 'form-control datepicker'}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'metadata': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+
+class BudgetForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = Budget
+        fields = ('organization', 'name', 'fiscal_year', 'version', 'status', 'notes')
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'fiscal_year': forms.Select(attrs={'class': 'form-select'}),
+            'version': forms.TextInput(attrs={'class': 'form-control'}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+
+class BudgetLineForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = BudgetLine
+        fields = (
+            'budget',
+            'account',
+            'amount_by_month',
+            'dimension_value',
+            'cost_center',
+            'project',
+            'department',
+        )
+        widgets = {
+            'budget': forms.Select(attrs={'class': 'form-select'}),
+            'account': forms.Select(attrs={'class': 'form-select'}),
+            'amount_by_month': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'dimension_value': forms.Select(attrs={'class': 'form-select'}),
+            'cost_center': forms.Select(attrs={'class': 'form-select'}),
+            'project': forms.Select(attrs={'class': 'form-select'}),
+            'department': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+
+class AssetCategoryForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = AssetCategory
+        fields = ('organization', 'name', 'depreciation_expense_account', 'accumulated_depreciation_account')
+        widgets = {
+            'organization': forms.Select(attrs={'class': 'form-select'}),
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'depreciation_expense_account': forms.Select(attrs={'class': 'form-select'}),
+            'accumulated_depreciation_account': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+
+class AssetForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = Asset
+        fields = (
+            'organization',
+            'name',
+            'category',
+            'acquisition_date',
+            'cost',
+            'salvage_value',
+            'useful_life_years',
+            'depreciation_method',
+        )
+        widgets = {
+            'organization': forms.Select(attrs={'class': 'form-select'}),
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'category': forms.Select(attrs={'class': 'form-select'}),
+            'acquisition_date': forms.TextInput(attrs={'class': 'form-control datepicker'}),
+            'cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'salvage_value': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'useful_life_years': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'depreciation_method': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+
+class AssetEventForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = AssetEvent
+        fields = ('asset', 'event_type', 'event_date', 'description', 'amount')
+        widgets = {
+            'asset': forms.Select(attrs={'class': 'form-select'}),
+            'event_type': forms.Select(attrs={'class': 'form-select'}),
+            'event_date': forms.TextInput(attrs={'class': 'form-control datepicker'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+        }
+
+
+class ApprovalWorkflowForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = ApprovalWorkflow
+        fields = ('organization', 'name', 'area', 'description', 'active')
+        widgets = {
+            'organization': forms.Select(attrs={'class': 'form-select'}),
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'area': forms.Select(attrs={'class': 'form-select'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
+class ApprovalStepForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = ApprovalStep
+        fields = ('workflow', 'sequence', 'role', 'min_amount')
+        widgets = {
+            'workflow': forms.Select(attrs={'class': 'form-select'}),
+            'sequence': forms.NumberInput(attrs={'class': 'form-control'}),
+            'role': forms.TextInput(attrs={'class': 'form-control'}),
+            'min_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+        }
+
+
+class ApprovalTaskForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = ApprovalTask
+        fields = ('workflow', 'current_step', 'status', 'notes')
+        widgets = {
+            'workflow': forms.Select(attrs={'class': 'form-select'}),
+            'current_step': forms.NumberInput(attrs={'class': 'form-control'}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+
+class PaymentBatchForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = PaymentBatch
+        fields = (
+            'organization',
+            'batch_number',
+            'scheduled_date',
+            'currency',
+            'status',
+            'metadata',
+        )
+        widgets = {
+            'batch_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'scheduled_date': forms.TextInput(attrs={'class': 'form-control datepicker'}),
+            'currency': forms.Select(attrs={'class': 'form-select'}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+
+class APPaymentForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = APPayment
+        fields = (
+            'organization',
+            'vendor',
+            'payment_number',
+            'payment_date',
+            'payment_method',
+            'bank_account',
+            'currency',
+            'exchange_rate',
+            'amount',
+            'discount_taken',
+            'status',
+            'batch',
+            'metadata',
+        )
+        widgets = {
+            'payment_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'payment_date': forms.TextInput(attrs={'class': 'form-control datepicker'}),
+            'payment_method': forms.TextInput(attrs={'class': 'form-control'}),
+            'bank_account': forms.Select(attrs={'class': 'form-select'}),
+            'currency': forms.Select(attrs={'class': 'form-select'}),
+            'exchange_rate': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.000001'}),
+            'amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'discount_taken': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'batch': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+
+class APPaymentLineForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = APPaymentLine
+        fields = ('invoice', 'applied_amount', 'discount_taken')
+        widgets = {
+            'invoice': forms.Select(attrs={'class': 'form-select'}),
+            'applied_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'discount_taken': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+        }

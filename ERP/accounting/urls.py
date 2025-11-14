@@ -25,6 +25,7 @@ from .views.views_list import (
 
 # Import from views.py (for reports, general views, and most list/detail views)
 from .views import views
+from .views import dashboard_views
 from .views.views import (
     ReportsListView, TrialBalanceView, IncomeStatementView, BalanceSheetView,
     GeneralLedgerDetailView, VoucherTypeConfigurationView, VoucherEntryView,
@@ -316,6 +317,12 @@ path('journal-entry/upload-receipt/', journal_entry_view.UploadReceiptView.as_vi
     path('api/v1/journals/line-suggest/', api_views.get_line_suggestions, name='get_line_suggestions'),
 
 
+]
+
+urlpatterns += [
+    path('api/', include('accounting.api.urls')),
+    path('dashboard/', dashboard_views.DashboardView.as_view(), name='dashboard'),
+    path('compliance/', dashboard_views.ComplianceView.as_view(), name='compliance'),
 ]
 
 # Wizard URLs

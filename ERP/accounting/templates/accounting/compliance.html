@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Compliance Reporting</h1>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% else %}
+<p>Organization: {{ organization.name }}</p>
+<div class="mb-3">
+  <a href="{{ export_url }}" class="btn btn-secondary">Export compliance CSVs</a>
+  <small class="text-muted ms-2">Tax liabilities &amp; approval tasks</small>
+</div>
+
+<h3>Tax Liabilities</h3>
+<table class="table">
+  <thead><tr><th>Tax Code</th><th>Period</th><th>Amount</th><th>Status</th></tr></thead>
+  <tbody>
+  {% for bucket in liabilities %}
+  <tr>
+    <td>{{ bucket.tax_code.code }}</td>
+    <td>{{ bucket.period_start }} - {{ bucket.period_end }}</td>
+    <td>{{ bucket.payable|default:0 }}</td>
+    <td>{{ bucket.payable|floatformat:2|default_if_none:"0" }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}
