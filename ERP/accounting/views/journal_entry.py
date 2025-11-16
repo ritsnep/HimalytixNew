@@ -1,5 +1,6 @@
 import json
 import logging
+import uuid
 from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -20,6 +21,7 @@ from accounting.models import (
     Currency,
     Department,
     Journal,
+    JournalDebugPreference,
     JournalLine,
     JournalType,
     Project,
@@ -376,6 +378,25 @@ def _active_organization(user):
     return getattr(user, "organization", None)
 
 
+def _is_journal_debug_enabled(organization) -> bool:
+    return JournalDebugPreference.is_enabled_for(organization)
+
+
+def _issue_debug_token(action: str, user, organization) -> Optional[str]:
+    if not _is_journal_debug_enabled(organization):
+        return None
+    token = uuid.uuid4().hex[:12]
+    org_id = getattr(organization, "pk", None)
+    logger.info(
+        "journal_debug_token=%s action=%s user=%s org=%s",
+        token,
+        action,
+        getattr(user, "pk", None),
+        org_id,
+    )
+    return token
+
+
 def _user_can_workflow(user, organization, action: str) -> bool:
     if not organization:
         return False
@@ -398,10 +419,17 @@ def _parse_request_json(request) -> Dict[str, Any]:
         raise ValueError("Invalid JSON payload") from exc
 
 
-def _json_error(message: str, status: int = 400, details: Optional[Dict[str, Any]] = None) -> JsonResponse:
+def _json_error(
+    message: str,
+    status: int = 400,
+    details: Optional[Dict[str, Any]] = None,
+    debug_token: Optional[str] = None,
+) -> JsonResponse:
     payload: Dict[str, Any] = {"ok": False, "error": message}
     if details:
         payload["details"] = details
+    if debug_token:
+        payload["debugToken"] = debug_token
     return JsonResponse(payload, status=status)
 
 
@@ -1103,6 +1131,7 @@ def journal_entry(request):
         "active_organization": organization,
         "config_endpoint": config_endpoint,
         "show_config_selector": False,
+        "journal_debug_enabled": _is_journal_debug_enabled(organization),
     }
     return render(request, "accounting/journal_entry.html", context)
 
@@ -1165,154 +1194,167 @@ def journal_period_validate(request):
 @login_required
 @require_POST
 def journal_save_draft(request):
+    organization = _active_organization(request.user)
+    debug_token = _issue_debug_token("journal_save_draft", request.user, organization)
     try:
         payload = _parse_request_json(request)
         logger.debug("Journal draft save payload: %s", payload)
         journal, created = _persist_journal_draft(request.user, payload)
         message = "Journal draft created." if created else "Journal draft updated."
-        return JsonResponse({"ok": True, "journal": _serialize_journal(journal), "message": message})
+        response = {"ok": True, "journal": _serialize_journal(journal), "message": message}
+        if debug_token:
+            response["debugToken"] = debug_token
+        return JsonResponse(response)
     except ValueError as exc:
         message, details = _format_value_error(exc)
-        return _json_error(message, status=400, details=details)
+        return _json_error(message, status=400, details=details, debug_token=debug_token)
     except PermissionError as exc:
-        return _json_error(str(exc), status=403)
+        return _json_error(str(exc), status=403, debug_token=debug_token)
     except Exception:
         logger.exception("Unexpected error while saving journal draft.")
-        return _json_error("Unexpected error while saving journal draft.", status=500)
+        return _json_error("Unexpected error while saving journal draft.", status=500, debug_token=debug_token)
 
 
 @login_required
 @require_POST
 def journal_submit(request):
+    organization = _active_organization(request.user)
+    debug_token = _issue_debug_token("journal_submit", request.user, organization)
     try:
         payload = _parse_request_json(request)
         logger.debug("Journal submit payload: %s", payload)
-        organization = _active_organization(request.user)
         if not organization:
-            return _json_error("Active organization required.", status=400)
+            return _json_error("Active organization required.", status=400, debug_token=debug_token)
         if not _user_can_workflow(request.user, organization, "submit"):
-            return _json_error("You do not have permission to submit journals.", status=403)
+            return _json_error("You do not have permission to submit journals.", status=403, debug_token=debug_token)
         journal, _ = _persist_journal_draft(request.user, payload)
         service = JournalEntryService(request.user, organization)
         service.submit(journal)
         journal.refresh_from_db()
-        return JsonResponse(
-            {
-                "ok": True,
-                "journal": _serialize_journal(journal),
-                "message": "Journal submitted for approval.",
-            }
-        )
+        response = {
+            "ok": True,
+            "journal": _serialize_journal(journal),
+            "message": "Journal submitted for approval.",
+        }
+        if debug_token:
+            response["debugToken"] = debug_token
+        return JsonResponse(response)
     except ValueError as exc:
         message, details = _format_value_error(exc)
-        return _json_error(message, status=400, details=details)
+        return _json_error(message, status=400, details=details, debug_token=debug_token)
     except PermissionError as exc:
-        return _json_error(str(exc), status=403)
+        return _json_error(str(exc), status=403, debug_token=debug_token)
     except Exception:
         logger.exception("Unexpected error while submitting journal.")
-        return _json_error("Unexpected error while submitting journal.", status=500)
+        return _json_error("Unexpected error while submitting journal.", status=500, debug_token=debug_token)
 
 
 @login_required
 @require_POST
 def journal_approve(request):
+    organization = _active_organization(request.user)
+    debug_token = _issue_debug_token("journal_approve", request.user, organization)
     try:
         payload = _parse_request_json(request)
         journal_id = payload.get("journalId") or payload.get("journal_id")
         if not journal_id:
             raise ValueError("journalId is required to approve a journal.")
-        organization = _active_organization(request.user)
         if not organization:
-            return _json_error("Active organization required.", status=400)
+            return _json_error("Active organization required.", status=400, debug_token=debug_token)
         if not _user_can_workflow(request.user, organization, "approve"):
-            return _json_error("You do not have permission to approve journals.", status=403)
+            return _json_error("You do not have permission to approve journals.", status=403, debug_token=debug_token)
         journal = _get_user_journal(request.user, int(journal_id))
         service = JournalEntryService(request.user, organization)
         service.approve(journal)
         journal.refresh_from_db()
-        return JsonResponse(
-            {
-                "ok": True,
-                "journal": _serialize_journal(journal),
-                "message": "Journal approved.",
-            }
-        )
+        response = {
+            "ok": True,
+            "journal": _serialize_journal(journal),
+            "message": "Journal approved.",
+        }
+        if debug_token:
+            response["debugToken"] = debug_token
+        return JsonResponse(response)
     except ValueError as exc:
         message, details = _format_value_error(exc)
-        return _json_error(message, status=400, details=details)
+        return _json_error(message, status=400, details=details, debug_token=debug_token)
     except PermissionError as exc:
-        return _json_error(str(exc), status=403)
+        return _json_error(str(exc), status=403, debug_token=debug_token)
     except Exception:
         logger.exception("Unexpected error while approving journal.")
-        return _json_error("Unexpected error while approving journal.", status=500)
+        return _json_error("Unexpected error while approving journal.", status=500, debug_token=debug_token)
 
 
 @login_required
 @require_POST
 def journal_reject(request):
+    organization = _active_organization(request.user)
+    debug_token = _issue_debug_token("journal_reject", request.user, organization)
     try:
         payload = _parse_request_json(request)
         journal_id = payload.get("journalId") or payload.get("journal_id")
         if not journal_id:
             raise ValueError("journalId is required to reject a journal.")
-        organization = _active_organization(request.user)
         if not organization:
-            return _json_error("Active organization required.", status=400)
+            return _json_error("Active organization required.", status=400, debug_token=debug_token)
         if not _user_can_workflow(request.user, organization, "reject"):
-            return _json_error("You do not have permission to reject journals.", status=403)
+            return _json_error("You do not have permission to reject journals.", status=403, debug_token=debug_token)
         journal = _get_user_journal(request.user, int(journal_id))
         service = JournalEntryService(request.user, organization)
         service.reject(journal)
         journal.refresh_from_db()
-        return JsonResponse(
-            {
-                "ok": True,
-                "journal": _serialize_journal(journal),
-                "message": "Journal rejected.",
-            }
-        )
+        response = {
+            "ok": True,
+            "journal": _serialize_journal(journal),
+            "message": "Journal rejected.",
+        }
+        if debug_token:
+            response["debugToken"] = debug_token
+        return JsonResponse(response)
     except ValueError as exc:
         message, details = _format_value_error(exc)
-        return _json_error(message, status=400, details=details)
+        return _json_error(message, status=400, details=details, debug_token=debug_token)
     except PermissionError as exc:
-        return _json_error(str(exc), status=403)
+        return _json_error(str(exc), status=403, debug_token=debug_token)
     except Exception:
         logger.exception("Unexpected error while rejecting journal.")
-        return _json_error("Unexpected error while rejecting journal.", status=500)
+        return _json_error("Unexpected error while rejecting journal.", status=500, debug_token=debug_token)
 
 
 @login_required
 @require_POST
 def journal_post(request):
+    organization = _active_organization(request.user)
+    debug_token = _issue_debug_token("journal_post", request.user, organization)
     try:
         payload = _parse_request_json(request)
         journal_id = payload.get("journalId") or payload.get("journal_id")
         if not journal_id:
             raise ValueError("journalId is required to post a journal.")
-        organization = _active_organization(request.user)
         if not organization:
-            return _json_error("Active organization required.", status=400)
+            return _json_error("Active organization required.", status=400, debug_token=debug_token)
         if not _user_can_workflow(request.user, organization, "post"):
-            return _json_error("You do not have permission to post journals.", status=403)
+            return _json_error("You do not have permission to post journals.", status=403, debug_token=debug_token)
         journal = _get_user_journal(request.user, int(journal_id))
         service = JournalEntryService(request.user, organization)
         service.post(journal)
         journal.refresh_from_db()
-        return JsonResponse(
-            {
-                "ok": True,
-                "journal": _serialize_journal(journal),
-                "message": "Journal posted.",
-            }
-        )
+        response = {
+            "ok": True,
+            "journal": _serialize_journal(journal),
+            "message": "Journal posted.",
+        }
+        if debug_token:
+            response["debugToken"] = debug_token
+        return JsonResponse(response)
     except ValueError as exc:
         message, details = _format_value_error(exc)
-        return _json_error(message, status=400, details=details)
+        return _json_error(message, status=400, details=details, debug_token=debug_token)
     except PermissionError as exc:
-        return _json_error(str(exc), status=403)
+        return _json_error(str(exc), status=403, debug_token=debug_token)
     except Exception:
         logger.exception("Unexpected error while posting journal.")
-        return _json_error("Unexpected error while posting journal.", status=500)
+        return _json_error("Unexpected error while posting journal.", status=500, debug_token=debug_token)
 
 
 @login_required

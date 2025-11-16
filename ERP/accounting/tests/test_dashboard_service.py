@@ -120,3 +120,11 @@ class DashboardServiceTests(TestCase):
         self.assertIn('cash', metrics)
         self.assertIn('budget_variance', metrics)
         self.assertIn('tax_liabilities', metrics)
+        self.assertIn('ap_aging_detail', metrics)
+        detail = metrics['ap_aging_detail']
+        self.assertTrue(detail['headers'])
+        self.assertGreaterEqual(len(detail['rows']), 1)
+        first = detail['rows'][0]
+        self.assertEqual(first['vendor_name'], 'Vendor')
+        self.assertEqual(len(first['buckets']), len(detail['headers']))
+        self.assertEqual(first['total'], Decimal('105'))

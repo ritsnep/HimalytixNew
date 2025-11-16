@@ -1,0 +1,64 @@
+<tr class="line-item-row">
+  {% for hidden in form.hidden_fields %}
+  {{ hidden }}
+  {% endfor %}
+  <td class="p-1">
+    {{ form.description.errors }}
+    {{ form.description }}
+  </td>
+  <td class="p-1">
+    {{ form.product_code.errors }}
+    {{ form.product_code }}
+  </td>
+  <td class="p-1">
+    {{ form.account.errors }}
+    {{ form.account }}
+  </td>
+  <td class="p-1">
+    {{ form.quantity.errors }}
+    {{ form.quantity }}
+  </td>
+  <td class="p-1">
+    {{ form.unit_cost.errors }}
+    {{ form.unit_cost }}
+  </td>
+  <td class="p-1">
+    {{ form.discount_amount.errors }}
+    {{ form.discount_amount }}
+  </td>
+  <td class="p-1">
+    {{ form.tax_code.errors }}
+    {{ form.tax_code }}
+  </td>
+  <td class="p-1">
+    {{ form.tax_amount.errors }}
+    {{ form.tax_amount }}
+  </td>
+  <td class="p-1">
+    {{ form.cost_center.errors }}
+    {{ form.cost_center }}
+  </td>
+  <td class="p-1">
+    {{ form.department.errors }}
+    {{ form.department }}
+  </td>
+  <td class="p-1">
+    {{ form.project.errors }}
+    {{ form.project }}
+  </td>
+  <td class="p-1">
+    {{ form.dimension_value.errors }}
+    {{ form.dimension_value }}
+  </td>
+  <td class="p-1">
+    {{ form.po_reference.errors }}
+    {{ form.po_reference }}
+  </td>
+  <td class="p-1">
+    {{ form.receipt_reference.errors }}
+    {{ form.receipt_reference }}
+  </td>
+  <td class="text-center">
+    <button type="button" class="btn btn-sm btn-outline-danger remove-line">Remove</button>
+  </td>
+</tr>

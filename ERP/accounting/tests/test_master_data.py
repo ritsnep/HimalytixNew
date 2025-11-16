@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 from decimal import Decimal
+import re
 
 from django.test import TestCase
 from django.utils import timezone
@@ -307,7 +308,6 @@ class FinanceMasterDataTests(TestCase):
         invoice = self.invoice_service.create_invoice(
             organization=self.organization,
             vendor=self.vendor,
-            invoice_number='PI-001',
             invoice_date=self.period.start_date,
             currency=self.currency,
             lines=[
@@ -328,7 +328,6 @@ class FinanceMasterDataTests(TestCase):
         invoice = self.invoice_service.create_invoice(
             organization=self.organization,
             vendor=self.vendor,
-            invoice_number='PI-002',
             invoice_date=self.period.start_date,
             currency=self.currency,
             lines=[
@@ -355,7 +354,6 @@ class FinanceMasterDataTests(TestCase):
         invoice = self.invoice_service.create_invoice(
             organization=self.organization,
             vendor=self.vendor,
-            invoice_number='PI-003',
             invoice_date=self.period.start_date,
             currency=self.currency,
             lines=[
@@ -378,7 +376,6 @@ class FinanceMasterDataTests(TestCase):
         invoice = self.sales_invoice_service.create_invoice(
             organization=self.organization,
             customer=self.customer,
-            invoice_number='SI-001',
             invoice_date=self.period.start_date,
             currency=self.currency,
             lines=[
@@ -393,12 +390,45 @@ class FinanceMasterDataTests(TestCase):
         self.assertIsInstance(invoice, SalesInvoice)
         self.assertEqual(invoice.total, Decimal('1200'))
         self.assertEqual(invoice.status, 'draft')
+        self.assertTrue(invoice.invoice_number)
+
+    def test_sales_invoice_auto_number_sequence(self):
+        first = self.sales_invoice_service.create_invoice(
+            organization=self.organization,
+            customer=self.customer,
+            invoice_date=self.period.start_date,
+            currency=self.currency,
+            lines=[{'description': 'Batch 1', 'revenue_account': self.revenue_account, 'quantity': Decimal('1'), 'unit_price': Decimal('10')}],
+        )
+        second = self.sales_invoice_service.create_invoice(
+            organization=self.organization,
+            customer=self.customer,
+            invoice_date=self.period.start_date,
+            currency=self.currency,
+            lines=[{'description': 'Batch 2', 'revenue_account': self.revenue_account, 'quantity': Decimal('2'), 'unit_price': Decimal('10')}],
+        )
+        match_first = re.search(r'(\d+)$', first.invoice_number)
+        match_second = re.search(r'(\d+)$', second.invoice_number)
+        self.assertIsNotNone(match_first)
+        self.assertIsNotNone(match_second)
+        self.assertEqual(int(match_first.group(1)) + 1, int(match_second.group(1)))
+
+    def test_sales_invoice_respects_manual_number(self):
+        manual_number = 'MANUAL-SI-001'
+        invoice = self.sales_invoice_service.create_invoice(
+            organization=self.organization,
+            customer=self.customer,
+            invoice_number=manual_number,
+            invoice_date=self.period.start_date,
+            currency=self.currency,
+            lines=[{'description': 'Manual', 'revenue_account': self.revenue_account, 'quantity': Decimal('1'), 'unit_price': Decimal('50')}],
+        )
+        self.assertEqual(invoice.invoice_number, manual_number)
 
     def test_sales_invoice_service_posts_invoice(self):
         invoice = self.sales_invoice_service.create_invoice(
             organization=self.organization,
             customer=self.customer,
-            invoice_number='SI-002',
             invoice_date=self.period.start_date,
             currency=self.currency,
             lines=[
@@ -414,6 +444,28 @@ class FinanceMasterDataTests(TestCase):
         posted = self.sales_invoice_service.post_invoice(invoice, self.sales_journal_type)
         invoice.refresh_from_db()
         self.assertEqual(posted.status, 'posted')
+        self.assertTrue(invoice.invoice_number)
+
+    def test_purchase_invoice_auto_number_sequence(self):
+        first = self.invoice_service.create_invoice(
+            organization=self.organization,
+            vendor=self.vendor,
+            invoice_date=self.period.start_date,
+            currency=self.currency,
+            lines=[{'description': 'PO Batch 1', 'account': self.expense_account, 'quantity': Decimal('1'), 'unit_cost': Decimal('25')}],
+        )
+        second = self.invoice_service.create_invoice(
+            organization=self.organization,
+            vendor=self.vendor,
+            invoice_date=self.period.start_date,
+            currency=self.currency,
+            lines=[{'description': 'PO Batch 2', 'account': self.expense_account, 'quantity': Decimal('1'), 'unit_cost': Decimal('30')}],
+        )
+        match_first = re.search(r'(\d+)$', first.invoice_number)
+        match_second = re.search(r'(\d+)$', second.invoice_number)
+        self.assertIsNotNone(match_first)
+        self.assertIsNotNone(match_second)
+        self.assertEqual(int(match_first.group(1)) + 1, int(match_second.group(1)))
         self.assertEqual(invoice.status, 'posted')
         self.assertEqual(posted.lines.count(), 2)  # revenue + AR
 
@@ -421,7 +473,6 @@ class FinanceMasterDataTests(TestCase):
         invoice = self.sales_invoice_service.create_invoice(
             organization=self.organization,
             customer=self.customer,
-            invoice_number='SI-003',
             invoice_date=self.period.start_date,
             currency=self.currency,
             lines=[
@@ -453,7 +504,6 @@ class FinanceMasterDataTests(TestCase):
         invoice = self.invoice_service.create_invoice(
             organization=self.organization,
             vendor=self.vendor,
-            invoice_number='PI-010',
             invoice_date=self.period.start_date,
             currency=self.currency,
             lines=[

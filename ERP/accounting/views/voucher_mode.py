@@ -1,19 +1,26 @@
-from django.views.generic import ListView
-from django.contrib.auth.mixins import PermissionRequiredMixin, LoginRequiredMixin
-from accounting.models import VoucherModeConfig
-from accounting.forms import VoucherModeConfigForm
+from django.views.generic import ListView, UpdateView
 from django.urls import reverse, reverse_lazy
 from django.contrib import messages
+from django.utils.decorators import method_decorator
 
-class VoucherModeConfigListView(PermissionRequiredMixin, LoginRequiredMixin, ListView):
+from accounting.mixins import PermissionRequiredMixin
+from accounting.models import VoucherModeConfig
+from accounting.forms import VoucherModeConfigForm
+from utils.htmx import require_htmx
+
+
+class VoucherModeConfigListView(PermissionRequiredMixin, ListView):
     model = VoucherModeConfig
     template_name = 'forms_designer/voucher_config_list_modal.html'
     context_object_name = 'configs'
     permission_required = ('accounting', 'vouchermodeconfig', 'view')
-    
+
     def get_queryset(self):
-        return VoucherModeConfig.objects.filter(organization_id=self.request.user.get_active_organization().id)
-    
+        organization = self.get_organization()
+        if not organization:
+            return VoucherModeConfig.objects.none()
+        return VoucherModeConfig.objects.filter(organization=organization)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['create_url'] = reverse('accounting:voucher_config_create')
@@ -24,23 +31,26 @@ class VoucherModeConfigListView(PermissionRequiredMixin, LoginRequiredMixin, Lis
         ]
         return context
 
-class VoucherModeConfigUpdateView(PermissionRequiredMixin, LoginRequiredMixin, ListView):
+
+class VoucherModeConfigUpdateView(PermissionRequiredMixin, UpdateView):
     model = VoucherModeConfig
     form_class = VoucherModeConfigForm
     template_name = 'forms_designer/voucher_config_form.html'
     permission_required = ('accounting', 'vouchermodeconfig', 'change')
-    
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs['organization'] = self.request.user.get_active_organization()
+        organization = self.get_organization()
+        if organization:
+            kwargs['organization'] = organization
         return kwargs
-    
+
     def form_valid(self, form):
         form.instance.updated_by = self.request.user
         form.instance.ui_schema = form.cleaned_data.get('ui_schema')
         messages.success(self.request, "Voucher configuration updated successfully.")
         return super().form_valid(form)
-    
+
     def get_success_url(self):
         return reverse_lazy('accounting:voucher_config_detail', kwargs={'pk': self.object.pk})
 
@@ -55,3 +65,4 @@ class VoucherModeConfigUpdateView(PermissionRequiredMixin, LoginRequiredMixin, L
             ]
         })
         return context
+

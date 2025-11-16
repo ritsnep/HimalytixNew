@@ -61,6 +61,10 @@ class APAgingService:
             previous = bucket
         return f">{self.bucket_days[-1]}"
 
+    def bucket_labels(self) -> list[str]:
+        """Return the ordered bucket labels used by this service."""
+        return list(self._empty_bucket_map().keys())
+
     def _outstanding_amount(self, invoice) -> Decimal:
         return (invoice.total or Decimal('0')) - (
             (invoice.paid_amount or Decimal('0')) + (invoice.discount_amount or Decimal('0'))

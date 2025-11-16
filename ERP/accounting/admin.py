@@ -56,6 +56,7 @@ from .models import (
     ApprovalStep,
     ApprovalTask,
     IntegrationEvent,
+    JournalDebugPreference,
 )
 
 # @admin.register(Journal)
@@ -88,6 +89,14 @@ admin.site.register(CashAccount)
 admin.site.register(BankTransaction)
 admin.site.register(BankStatement)
 admin.site.register(BankStatementLine)
+
+@admin.register(JournalDebugPreference)
+class JournalDebugPreferenceAdmin(admin.ModelAdmin):
+    list_display = ("organization", "enabled", "updated_at", "updated_by")
+    list_filter = ("enabled",)
+    search_fields = ("organization__name",)
+    autocomplete_fields = ("organization", "updated_by")
+    list_select_related = ("organization", "updated_by")
 
 
 class VendorAddressInline(admin.TabularInline):

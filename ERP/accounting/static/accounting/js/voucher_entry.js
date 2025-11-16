@@ -42,21 +42,259 @@ const STATUS_LABEL_MAP = {
   posted: 'Posted',
   submitted: 'Submitted',
 };
+const DEBUG_ENABLED = __root?.dataset?.debugEnabled === 'true';
 
-async function postJSON(url, payload) {
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRFToken': CSRFTOKEN || ''
+const cloneForDebug = (payload) => {
+  if (!DEBUG_ENABLED || payload === undefined) return undefined;
+  try {
+    return JSON.parse(JSON.stringify(payload));
+  } catch (err) {
+    console.warn('Unable to clone payload for debug log', err);
+    return payload;
+  }
+};
+
+const DebugPanel = (() => {
+  if (!DEBUG_ENABLED) {
+    return { enabled: false, record() {}, clear() {} };
+  }
+  const panel = document.getElementById('journal-debug-panel');
+  if (!panel) {
+    return { enabled: false, record() {}, clear() {} };
+  }
+  const entriesEl = document.getElementById('journal-debug-entries');
+  const copyBtn = document.getElementById('journal-debug-copy');
+  const downloadBtn = document.getElementById('journal-debug-download');
+  const clearBtn = document.getElementById('journal-debug-clear');
+  const buffer = [];
+  const MAX_ENTRIES = 50;
+
+  const toDuration = (start, end) => {
+    if (!start || !end) return '';
+    const diff = new Date(end) - new Date(start);
+    if (Number.isNaN(diff)) return '';
+    return `${diff} ms`;
+  };
+
+  const render = () => {
+    if (!entriesEl) return;
+    entriesEl.innerHTML = '';
+    buffer.slice().reverse().forEach((entry) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'mb-3 pb-2 border-bottom';
+
+      const header = document.createElement('div');
+      header.className = 'd-flex flex-wrap justify-content-between align-items-center gap-2';
+
+      const left = document.createElement('div');
+      left.innerHTML = `<strong>${entry.action || entry.url || 'Request'}</strong>
+        <div class="small text-muted">${entry.startedAt || ''}</div>`;
+
+      const right = document.createElement('div');
+      right.className = 'd-flex flex-wrap align-items-center gap-2';
+      if (entry.debugToken) {
+        const tokenBadge = document.createElement('span');
+        tokenBadge.className = 'badge bg-secondary';
+        tokenBadge.textContent = entry.debugToken;
+        tokenBadge.title = 'Share this token with support to correlate backend logs';
+        right.appendChild(tokenBadge);
+      }
+      if (entry.status !== undefined) {
+        const statusBadge = document.createElement('span');
+        statusBadge.className = `badge ${entry.ok ? 'bg-success' : 'bg-danger'}`;
+        statusBadge.textContent = entry.status ?? 'ERR';
+        right.appendChild(statusBadge);
+      }
+      const duration = toDuration(entry.startedAt, entry.finishedAt);
+      if (duration) {
+        const durBadge = document.createElement('span');
+        durBadge.className = 'badge bg-light text-dark border';
+        durBadge.textContent = duration;
+        right.appendChild(durBadge);
+      }
+
+      header.appendChild(left);
+      header.appendChild(right);
+
+      const pre = document.createElement('pre');
+      pre.textContent = JSON.stringify(entry, null, 2);
+
+      wrapper.appendChild(header);
+      wrapper.appendChild(pre);
+      entriesEl.appendChild(wrapper);
+    });
+  };
+
+  const feedback = (btn, label) => {
+    if (!btn) return;
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = label;
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.textContent = original;
+    }, 1200);
+  };
+
+  if (copyBtn) {
+    copyBtn.addEventListener('click', () => {
+      if (!buffer.length) return;
+      const text = JSON.stringify(buffer, null, 2);
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(text).then(() => feedback(copyBtn, 'Copied'), () => feedback(copyBtn, 'Copy failed'));
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+          document.execCommand('copy');
+          feedback(copyBtn, 'Copied');
+        } catch {
+          feedback(copyBtn, 'Copy failed');
+        }
+        document.body.removeChild(textarea);
+      }
+    });
+  }
+
+  if (downloadBtn) {
+    downloadBtn.addEventListener('click', () => {
+      if (!buffer.length) return;
+      const blob = new Blob([JSON.stringify(buffer, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `journal-debug-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      feedback(downloadBtn, 'Ready');
+    });
+  }
+
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      buffer.length = 0;
+      render();
+      feedback(clearBtn, 'Cleared');
+    });
+  }
+
+  return {
+    enabled: true,
+    record(entry) {
+      if (!entry) return;
+      const normalized = {
+        action: entry.action,
+        url: entry.url,
+        status: entry.status,
+        ok: entry.ok,
+        startedAt: entry.startedAt,
+        finishedAt: entry.finishedAt,
+        debugToken: entry.debugToken,
+        request: entry.request,
+        response: entry.response,
+        error: entry.error,
+      };
+      buffer.push(normalized);
+      if (buffer.length > MAX_ENTRIES) buffer.shift();
+      render();
     },
+    clear() {
+      buffer.length = 0;
+      render();
+    },
+  };
+})();
+
+async function postJSON(url, payload, meta = {}) {
+  const startedAt = new Date().toISOString();
+  const requestCopy = cloneForDebug(payload);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRFTOKEN || ''
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify(payload)
+    });
+    const text = await res.text();
+    let data = null;
+    try { data = JSON.parse(text); } catch (e) { /* non-JSON response */ }
+    const finishedAt = new Date().toISOString();
+    const debugToken = data?.debugToken || data?.debug_token || null;
+    DebugPanel.record({
+      action: meta.action || payload?.action || null,
+      url,
+      status: res.status,
+      ok: res.ok,
+      startedAt,
+      finishedAt,
+      debugToken,
+      request: requestCopy,
+      response: cloneForDebug(data ?? text)
+    });
+    return { ok: res.ok, status: res.status, data, text, debugToken };
+  } catch (error) {
+    const finishedAt = new Date().toISOString();
+    DebugPanel.record({
+      action: meta.action || payload?.action || null,
+      url,
+      status: null,
+      ok: false,
+      startedAt,
+      finishedAt,
+      request: requestCopy,
+      error: String(error)
+    });
+    throw error;
+  }
+}
+
+async function fetchJSON(url, options = {}, meta = {}) {
+  const startedAt = new Date().toISOString();
+  const method = options?.method || 'GET';
+  const normalizedOptions = {
     credentials: 'same-origin',
-    body: JSON.stringify(payload)
-  });
-  const text = await res.text();
-  let data = null;
-  try { data = JSON.parse(text); } catch(e) { /* non-JSON response */ }
-  return { ok: res.ok, status: res.status, data, text };
+    headers: { Accept: 'application/json', ...(options.headers || {}) },
+    ...options,
+  };
+  const requestBody = normalizedOptions.body;
+  try {
+    const res = await fetch(url, normalizedOptions);
+    const text = await res.text();
+    let data = null;
+    try { data = JSON.parse(text); } catch (err) { /* response not JSON */ }
+    const finishedAt = new Date().toISOString();
+    DebugPanel.record({
+      action: meta.action || `${method} ${url}`,
+      url,
+      status: res.status,
+      ok: res.ok,
+      startedAt,
+      finishedAt,
+      request: requestBody ? cloneForDebug(requestBody) : undefined,
+      response: cloneForDebug(data ?? text),
+    });
+    return { ok: res.ok, status: res.status, data, text };
+  } catch (error) {
+    const finishedAt = new Date().toISOString();
+    DebugPanel.record({
+      action: meta.action || `${method} ${url}`,
+      url,
+      status: null,
+      ok: false,
+      startedAt,
+      finishedAt,
+      error: String(error),
+      request: requestBody ? cloneForDebug(requestBody) : undefined,
+    });
+    throw error;
+  }
 }
 
 function notify(msg, level = 'success') {
@@ -395,9 +633,8 @@ const App = {
     if (!d || !Endpoints.periodValidate) return true;
     try {
       const url = `${Endpoints.periodValidate}?date=${encodeURIComponent(d)}`;
-      const res = await fetch(url, { credentials: 'same-origin' });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data?.ok) {
+      const { ok, data } = await fetchJSON(url, {}, { action: 'Validate Period' });
+      if (!ok || !data?.ok) {
         const msg = (data?.error) || 'Selected date is not in an open accounting period.';
         notify(msg, 'error');
         return false;
@@ -414,9 +651,8 @@ const App = {
     if (!LOOKUPS.account || !token) return Promise.resolve(null);
     const code = token.split(/\s|-/)[0];
     const url = `${LOOKUPS.account}?q=${encodeURIComponent(code)}`;
-    return fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
-      .then(resp => resp.json().catch(() => ({})))
-      .then(data => {
+    return fetchJSON(url, {}, { action: `Lookup Account ${code}` })
+      .then(({ data }) => {
         const results = Array.isArray(data?.results) ? data.results : [];
         if (!results.length) return null;
         const exact = results.find(r => (r.code || '').toLowerCase() === code.toLowerCase());
@@ -444,9 +680,8 @@ const App = {
     if (!LOOKUPS.costCenter || !token) return Promise.resolve(null);
     const code = token.split(/\s|-/)[0];
     const url = `${LOOKUPS.costCenter}?q=${encodeURIComponent(code)}`;
-    return fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
-      .then(resp => resp.json().catch(() => ({})))
-      .then(data => {
+    return fetchJSON(url, {}, { action: `Lookup Cost Center ${code}` })
+      .then(({ data }) => {
         const results = Array.isArray(data?.results) ? data.results : [];
         if (!results.length) return null;
         const exact = results.find(r => (r.code || '').toLowerCase() === code.toLowerCase());
@@ -605,10 +840,9 @@ const App = {
     const template = this.state.detailUrlTemplate || DETAIL_URL_TEMPLATE;
     if (!template || !id) return;
     const url = template.replace(/0\/?$/, `${id}/`);
-    fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
-      .then((resp) => resp.json().catch(() => ({})).then((data) => ({ status: resp.status, data })))
-      .then(({ status, data }) => {
-        if (status >= 400 || !data?.ok) {
+    fetchJSON(url, {}, { action: `Fetch Journal ${id}` })
+      .then(({ status, data, ok }) => {
+        if (!ok || status >= 400 || !data?.ok) {
           notify(data?.error || 'Unable to load journal entry.', 'error');
           return;
         }
@@ -617,8 +851,8 @@ const App = {
         this.render();
       })
       .catch((err) => {
-  console.error('Failed to fetch journal', err);
-  notify('Failed to load journal entry.', 'error');
+        console.error('Failed to fetch journal', err);
+        notify('Failed to load journal entry.', 'error');
       });
   },
 
@@ -635,10 +869,9 @@ const App = {
     }
     this.lastConfigRequest = { code: requestedCode, id: requestedId };
     const url = `${this.state.configUrl}?${params.toString()}`;
-    fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
-      .then((resp) => resp.json().catch(() => ({})).then((data) => ({ status: resp.status, data })))
-      .then(({ status, data }) => {
-        if (status >= 400 || !data?.ok) {
+    fetchJSON(url, {}, { action: `Fetch Config ${requestedCode || requestedId || ''}` })
+      .then(({ status, data, ok }) => {
+        if (!ok || status >= 400 || !data?.ok) {
           console.warn('Config fetch failed', status, data);
           if (data?.error) notify(data.error, 'error');
           this.lastConfigRequest = { code: null, id: null };
@@ -1244,7 +1477,7 @@ const App = {
         if (!okDate) return;
         this.state.isSaving = true;
         this.render();
-        postJSON(Endpoints.save, payload)
+        postJSON(Endpoints.save, payload, { action: 'Save Draft' })
           .then(r => {
             if (r.ok) {
               if (r.data?.journal) this.hydrateFromApi(r.data.journal);
@@ -1277,7 +1510,7 @@ const App = {
         if (!okDate) return;
         this.state.isSaving = true;
         this.render();
-        postJSON(Endpoints.submit, payload)
+        postJSON(Endpoints.submit, payload, { action: 'Submit Journal' })
           .then(r => {
             if (r.ok) {
               if (r.data?.journal) this.hydrateFromApi(r.data.journal);
@@ -1303,7 +1536,7 @@ const App = {
       if (Endpoints.approve) {
         this.state.isSaving = true;
         this.render();
-        postJSON(Endpoints.approve, payload)
+        postJSON(Endpoints.approve, payload, { action: 'Approve Journal' })
           .then(r => {
             if (r.ok) {
               if (r.data?.journal) this.hydrateFromApi(r.data.journal);
@@ -1328,7 +1561,7 @@ const App = {
       if (Endpoints.reject) {
         this.state.isSaving = true;
         this.render();
-        postJSON(Endpoints.reject, payload)
+        postJSON(Endpoints.reject, payload, { action: 'Reject Journal' })
           .then(r => {
             if (r.ok) {
               if (r.data?.journal) this.hydrateFromApi(r.data.journal);
@@ -1352,7 +1585,7 @@ const App = {
       if (Endpoints.post) {
         this.state.isSaving = true;
         this.render();
-        postJSON(Endpoints.post, payload)
+        postJSON(Endpoints.post, payload, { action: 'Post Journal' })
           .then(r => {
             if (r.ok) {
               if (r.data?.journal) this.hydrateFromApi(r.data.journal);
@@ -1562,7 +1795,7 @@ if (action === 'addRow') { this.state.rows.push(this.blankRow()); this.render();
             if (Endpoints.save) {
               this.state.isSaving = true;
               this.render();
-              postJSON(Endpoints.save, payload)
+              postJSON(Endpoints.save, payload, { action: 'Save Draft (Hotkey)' })
                 .then(r => {
                   if (r.ok) {
                     if (r.data?.journal) this.hydrateFromApi(r.data.journal);
@@ -1599,7 +1832,7 @@ if (action === 'addRow') { this.state.rows.push(this.blankRow()); this.render();
             if (Endpoints.submit) {
               this.state.isSaving = true;
               this.render();
-              postJSON(Endpoints.submit, payload)
+              postJSON(Endpoints.submit, payload, { action: 'Submit Journal (Hotkey)' })
                 .then(r => {
                   if (r.ok) {
                     if (r.data?.journal) this.hydrateFromApi(r.data.journal);
@@ -1628,7 +1861,7 @@ if (action === 'addRow') { this.state.rows.push(this.blankRow()); this.render();
             if (Endpoints.approve) {
               this.state.isSaving = true;
               this.render();
-              postJSON(Endpoints.approve, payload)
+              postJSON(Endpoints.approve, payload, { action: 'Approve Journal (Hotkey)' })
                 .then(r => {
                   if (r.ok) {
                     if (r.data?.journal) this.hydrateFromApi(r.data.journal);
@@ -1656,7 +1889,7 @@ if (action === 'addRow') { this.state.rows.push(this.blankRow()); this.render();
             if (Endpoints.post) {
                 this.state.isSaving = true;
                 this.render();
-              postJSON(Endpoints.post, payload)
+              postJSON(Endpoints.post, payload, { action: 'Post Journal (Hotkey)' })
                 .then(r => {
                   if (r.ok) {
                     if (r.data?.journal) this.hydrateFromApi(r.data.journal);

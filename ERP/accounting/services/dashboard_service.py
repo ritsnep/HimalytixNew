@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import Decimal
 import csv
 from io import StringIO
 from typing import Any, Dict
@@ -26,6 +27,23 @@ class DashboardService:
     def __init__(self, organization):
         self.organization = organization
         self.aging_service = APAgingService(organization)
+        self._ap_bucket_labels = self.aging_service.bucket_labels()
+
+    def get_ap_aging_detail(self) -> Dict[str, Any]:
+        rows = self.aging_service.build()
+        headers = self._ap_bucket_labels
+        detail_rows = []
+        for row in rows:
+            detail_rows.append(
+                {
+                    "vendor_name": row.vendor_name,
+                    "buckets": [
+                        row.buckets.get(label, Decimal('0')) for label in headers
+                    ],
+                    "total": row.total,
+                }
+            )
+        return {"headers": headers, "rows": detail_rows}
 
     def get_ap_aging_summary(self) -> Dict[str, Any]:
         summary = self.aging_service.summarize()
@@ -87,6 +105,7 @@ class DashboardService:
     def get_dashboard_metrics(self) -> Dict[str, Any]:
         return {
             "ap_aging": self.get_ap_aging_summary(),
+            "ap_aging_detail": self.get_ap_aging_detail(),
             "ar_aging": self.get_ar_aging_summary(),
             "cash": self.get_cash_summary(),
             "budget_variance": self.get_budget_variance_summary(),

@@ -20,6 +20,40 @@
   </div>
 </div>
 
+<div class="row mt-4">
+  <div class="col">
+    <h3>AP Aging Detail</h3>
+    {% if metrics.ap_aging_detail.rows %}
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered mb-0">
+        <thead>
+          <tr>
+            <th>Vendor</th>
+            {% for header in metrics.ap_aging_detail.headers %}
+            <th>{{ header }}</th>
+            {% endfor %}
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in metrics.ap_aging_detail.rows %}
+          <tr>
+            <td>{{ row.vendor_name }}</td>
+            {% for amount in row.buckets %}
+            <td>{{ amount }}</td>
+            {% endfor %}
+            <td>{{ row.total }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted mb-0">No outstanding vendor balances at this time.</p>
+    {% endif %}
+  </div>
+</div>
+
 <div class="row">
   <div class="col">
     <h3>Budget Variance</h3>

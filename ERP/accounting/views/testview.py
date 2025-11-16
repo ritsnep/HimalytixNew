@@ -1,30 +1,35 @@
 from django.views.generic import CreateView, UpdateView
-from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.urls import reverse_lazy
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
 
+from accounting.mixins import PermissionRequiredMixin
 from accounting.models import Journal, JournalLine
 from accounting.forms import JournalForm, JournalLineFormSet
 
-class JournalView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
+class JournalView(PermissionRequiredMixin, CreateView):
     model = Journal
     form_class = JournalForm
     template_name = 'accounting/vouchers/defaultjournal.html'
     success_url = reverse_lazy('accounting:defaultjournal')
-    permission_required = 'accounting.add_journal'
+    permission_required = ('accounting', 'journal', 'add')
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs['organization'] = self.request.user.organization
+        organization = self.get_organization()
+        if organization:
+            kwargs['organization'] = organization
         return kwargs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         if self.request.POST:
-            context['formset'] = JournalLineFormSet(self.request.POST, form_kwargs={'organization': self.request.user.organization})
+            context['formset'] = JournalLineFormSet(
+                self.request.POST,
+                form_kwargs={'organization': self.get_organization()}
+            )
         else:
-            context['formset'] = JournalLineFormSet(form_kwargs={'organization': self.request.user.organization})
+            context['formset'] = JournalLineFormSet(form_kwargs={'organization': self.get_organization()})
         return context
 
     def form_valid(self, form):
@@ -32,7 +37,7 @@ class JournalView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
         formset = context['formset']
         if formset.is_valid():
             self.object = form.save(commit=False)
-            self.object.organization = self.request.user.organization
+            self.object.organization = self.get_organization()
             self.object.created_by = self.request.user
             self.object.save()
             formset.instance = self.object

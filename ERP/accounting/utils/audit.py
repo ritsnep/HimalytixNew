@@ -1,8 +1,13 @@
-from django.contrib.contenttypes.models import ContentType
-from accounting.models import AuditLog
-from django.forms.models import model_to_dict
 import datetime
+import logging
 from decimal import Decimal
+
+from django.contrib.contenttypes.models import ContentType
+from django.forms.models import model_to_dict
+
+from accounting.models import AuditLog
+
+logger = logging.getLogger(__name__)
 
 def convert_dates_to_strings(obj):
     """Backward-compatible name: convert common types to JSON-safe values.
@@ -50,14 +55,32 @@ def get_changed_data(old_instance, new_data):
             
     return changes
 
+def _resolve_audit_user(user, model_instance):
+    if user:
+        return user
+    for attr in ("updated_by", "created_by", "user", "owner"):
+        candidate = getattr(model_instance, attr, None)
+        if candidate:
+            return candidate
+    return None
+
+
 def log_audit_event(user, model_instance, action, changes=None, details=None, ip_address=None):
     """
     Logs an audit event for a given model instance.
     """
+    resolved_user = _resolve_audit_user(user, model_instance)
+    if not resolved_user:
+        logger.warning(
+            "Skipping audit log for %s (action=%s) because no user was provided.",
+            model_instance,
+            action,
+        )
+        return
     content_type = ContentType.objects.get_for_model(model_instance)
     cleaned_changes = convert_dates_to_strings(changes or {})
     AuditLog.objects.create(
-        user=user,
+        user=resolved_user,
         content_type=content_type,
         object_id=model_instance.pk,
         action=action,

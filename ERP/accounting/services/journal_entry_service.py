@@ -46,7 +46,12 @@ class JournalEntryService:
             )
 
             for line_data in lines_data:
-                JournalLine.objects.create(journal=journal, **line_data)
+                JournalLine.objects.create(
+                    journal=journal,
+                    created_by=self.user,
+                    updated_by=self.user,
+                    **line_data,
+                )
 
             journal.update_totals()
             journal.save()
@@ -89,7 +94,12 @@ class JournalEntryService:
 
             journal.lines.all().delete()
             for line_data in lines_data:
-                JournalLine.objects.create(journal=journal, **line_data)
+                JournalLine.objects.create(
+                    journal=journal,
+                    created_by=self.user,
+                    updated_by=self.user,
+                    **line_data,
+                )
 
             journal.update_totals()
             journal.save()

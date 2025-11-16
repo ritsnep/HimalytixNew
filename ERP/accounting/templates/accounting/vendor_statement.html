@@ -1,0 +1,157 @@
+{% extends "partials/base.html" %}
+
+{% block title %}Vendor Statement{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <h1 class="h3 mb-3">Vendor Statement</h1>
+  <p class="text-muted mb-4">Review invoices and payments within a specific period before sending a statement.</p>
+
+  <form method="get" class="row g-3 mb-4">
+    <div class="col-md-4">
+      <label class="form-label" for="{{ form.vendor.id_for_label }}">Vendor</label>
+      {{ form.vendor }}
+    </div>
+    <div class="col-md-3">
+      <label class="form-label" for="{{ form.start_date.id_for_label }}">Start Date</label>
+      {{ form.start_date }}
+    </div>
+    <div class="col-md-3">
+      <label class="form-label" for="{{ form.end_date.id_for_label }}">End Date</label>
+      {{ form.end_date }}
+    </div>
+    <div class="col-md-2 d-flex align-items-end">
+      <button class="btn btn-primary w-100" type="submit">Load Statement</button>
+    </div>
+  </form>
+
+  {% if form.errors %}
+  <div class="alert alert-danger">
+    {% for field, errors in form.errors.items %}
+      {% for error in errors %}
+        <div>{{ error }}</div>
+      {% endfor %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if statement %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <p class="mb-1"><strong>Vendor</strong>: {{ statement.vendor.display_name }}</p>
+      <p class="mb-0 text-muted">Period {{ statement.start_date }} to {{ statement.end_date }}</p>
+    </div>
+    <div>
+      <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}export=csv" class="btn btn-outline-secondary btn-sm">Export CSV</a>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card border-start border-3 border-primary">
+        <div class="card-body">
+          <p class="text-muted mb-1">Total Invoiced</p>
+          <h4 class="mb-0">{{ statement.totals.total_invoiced }}</h4>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-start border-3 border-success">
+        <div class="card-body">
+          <p class="text-muted mb-1">Total Paid</p>
+          <h4 class="mb-0">{{ statement.totals.total_paid }}</h4>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-start border-3 border-warning">
+        <div class="card-body">
+          <p class="text-muted mb-1">Outstanding</p>
+          <h4 class="mb-0">{{ statement.totals.total_outstanding }}</h4>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-start border-3 border-info">
+        <div class="card-body">
+          <p class="text-muted mb-1">Payments</p>
+          <h4 class="mb-0">{{ statement.totals.total_payments }}</h4>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title">Invoices</h5>
+      {% if statement.invoices %}
+      <div class="table-responsive">
+        <table class="table table-sm table-striped">
+          <thead>
+            <tr>
+              <th>Invoice #</th>
+              <th>Date</th>
+              <th>Due</th>
+              <th>Total</th>
+              <th>Paid</th>
+              <th>Discount</th>
+              <th>Outstanding</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for invoice in statement.invoices %}
+            <tr>
+              <td>{{ invoice.invoice_number }}</td>
+              <td>{{ invoice.invoice_date }}</td>
+              <td>{{ invoice.due_date }}</td>
+              <td>{{ invoice.total }}</td>
+              <td>{{ invoice.paid }}</td>
+              <td>{{ invoice.discount }}</td>
+              <td>{{ invoice.outstanding }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted mb-0">No invoices in the selected period.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title">Payments</h5>
+      {% if statement.payments %}
+      <div class="table-responsive">
+        <table class="table table-sm table-striped">
+          <thead>
+            <tr>
+              <th>Payment #</th>
+              <th>Date</th>
+              <th>Amount</th>
+              <th>Method</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for payment in statement.payments %}
+            <tr>
+              <td>{{ payment.payment_number }}</td>
+              <td>{{ payment.payment_date }}</td>
+              <td>{{ payment.amount }}</td>
+              <td>{{ payment.method }}</td>
+              <td>{{ payment.status }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted mb-0">No payments were recorded for this period.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

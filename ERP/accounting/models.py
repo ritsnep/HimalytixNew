@@ -191,6 +191,22 @@ class FiscalYear(models.Model):
             raise ValidationError(
                 "Fiscal year must end the day before the next fiscal year starts."
             )
+
+    @classmethod
+    def get_for_date(cls, organization, target_date):
+        """Return the fiscal year covering the given date for an organization."""
+        if organization is None:
+            return None
+        filters = {
+            'organization': organization,
+        }
+        if target_date is not None:
+            filters['start_date__lte'] = target_date
+            filters['end_date__gte'] = target_date
+            qs = cls.objects.filter(**filters)
+        else:
+            qs = cls.objects.filter(**filters)
+        return qs.order_by('-is_current', '-start_date').first()
     def save(self, *args, **kwargs):
         logger.info(f"Saving FiscalYear: {self.code}")
         if not self.code:
@@ -848,6 +864,45 @@ class AccountingSettings(models.Model):
         return f"Accounting settings for {self.organization.name}"
 
 
+class JournalDebugPreference(models.Model):
+    """Per-organization switch that exposes the UI debug panel safely."""
+
+    organization = models.OneToOneField(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="journal_debug_preference",
+    )
+    enabled = models.BooleanField(
+        default=False,
+        help_text="When enabled, voucher entry surfaces an in-page debug panel for save flows.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="journal_debug_preferences",
+        help_text="Tracks who last toggled the debug mode.",
+    )
+
+    class Meta:
+        db_table = "journal_debug_preferences"
+        verbose_name = "Journal Debug Preference"
+        verbose_name_plural = "Journal Debug Preferences"
+
+    def __str__(self):
+        status = "enabled" if self.enabled else "disabled"
+        return f"Journal debug {status} for {self.organization.name}"
+
+    @classmethod
+    def is_enabled_for(cls, organization):
+        if not organization:
+            return False
+        return cls.objects.filter(organization=organization, enabled=True).exists()
+
+
 class PaymentTerm(models.Model):
     """Stores payables/receivables payment terms per organization."""
 
@@ -1140,7 +1195,7 @@ class PurchaseInvoice(models.Model):
         related_name='purchase_invoices',
     )
     vendor_display_name = models.CharField(max_length=255)
-    invoice_number = models.CharField(max_length=50)
+    invoice_number = models.CharField(max_length=50, blank=True, default='')
     external_reference = models.CharField(max_length=100, blank=True)
     invoice_date = models.DateField()
     due_date = models.DateField()
@@ -1197,7 +1252,7 @@ class PurchaseInvoice(models.Model):
 
     class Meta:
         db_table = 'purchase_invoice'
-        unique_together = ('organization', 'vendor', 'invoice_number')
+        unique_together = ('organization', 'invoice_number')
         ordering = ('-invoice_date', '-invoice_id')
         indexes = [
             models.Index(fields=['organization', 'status']),
@@ -1220,6 +1275,24 @@ class PurchaseInvoice(models.Model):
         self.base_currency_total = (self.total or Decimal('0')) * (self.exchange_rate or Decimal('1'))
         if save:
             super().save(update_fields=['subtotal', 'tax_total', 'total', 'base_currency_total', 'updated_at'])
+
+    def clean(self):
+        super().clean()
+        if not self.pk:
+            return
+        original = PurchaseInvoice.objects.get(pk=self.pk)
+        if original.status == 'posted' and original.invoice_number != self.invoice_number:
+            raise ValidationError("Invoice number cannot be changed after posting.")
+
+    def save(self, *args, **kwargs):
+        if not self.invoice_number and self.organization_id:
+            document_date = self.invoice_date or timezone.now().date()
+            self.invoice_number = DocumentSequenceConfig.get_next_number(
+                organization=self.organization,
+                document_type='purchase_invoice',
+                document_date=document_date,
+            )
+        super().save(*args, **kwargs)
 
 
 class PurchaseInvoiceLine(models.Model):
@@ -2052,7 +2125,7 @@ class SalesInvoice(models.Model):
         related_name='sales_invoices',
     )
     customer_display_name = models.CharField(max_length=255)
-    invoice_number = models.CharField(max_length=50)
+    invoice_number = models.CharField(max_length=50, blank=True, default='')
     invoice_date = models.DateField()
     due_date = models.DateField()
     payment_term = models.ForeignKey(
@@ -2124,6 +2197,24 @@ class SalesInvoice(models.Model):
         self.base_currency_total = (self.total or Decimal('0')) * (self.exchange_rate or Decimal('1'))
         if save:
             super().save(update_fields=['subtotal', 'tax_total', 'total', 'base_currency_total', 'updated_at'])
+
+    def clean(self):
+        super().clean()
+        if not self.pk:
+            return
+        original = SalesInvoice.objects.get(pk=self.pk)
+        if original.status == 'posted' and original.invoice_number != self.invoice_number:
+            raise ValidationError("Invoice number cannot be changed after posting.")
+
+    def save(self, *args, **kwargs):
+        if not self.invoice_number and self.organization_id:
+            document_date = self.invoice_date or timezone.now().date()
+            self.invoice_number = DocumentSequenceConfig.get_next_number(
+                organization=self.organization,
+                document_type='sales_invoice',
+                document_date=document_date,
+            )
+        super().save(*args, **kwargs)
 
 
 class SalesInvoiceLine(models.Model):
@@ -2723,6 +2814,133 @@ class JournalType(models.Model):
         padding = jt.sequence_padding or 3
         formatted_num = str(next_num).zfill(padding)
         return f"{prefix}{formatted_num}{suffix}"
+
+
+class DocumentSequenceConfig(models.Model):
+    """Configurable sequential numbering for business documents (invoices, notes)."""
+
+    DOCUMENT_TYPES = [
+        ('sales_invoice', 'Sales Invoice'),
+        ('purchase_invoice', 'Purchase Invoice'),
+        ('sales_credit_note', 'Sales Credit Note'),
+        ('purchase_debit_note', 'Purchase Debit Note'),
+    ]
+    RESET_CHOICES = [
+        ('fiscal_year', 'Fiscal Year'),
+        ('never', 'Never'),
+    ]
+    DEFAULT_PREFIXES = {
+        'sales_invoice': 'SI-',
+        'purchase_invoice': 'PI-',
+        'sales_credit_note': 'SCN-',
+        'purchase_debit_note': 'PDN-',
+    }
+
+    sequence_id = models.BigAutoField(primary_key=True)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name='document_sequences',
+    )
+    document_type = models.CharField(max_length=50, choices=DOCUMENT_TYPES)
+    prefix = models.CharField(max_length=20, blank=True, default='')
+    suffix = models.CharField(max_length=20, blank=True, default='')
+    fiscal_year_prefix = models.BooleanField(
+        default=True,
+        help_text="If enabled, prepend the fiscal year code before the prefix.",
+    )
+    reset_policy = models.CharField(
+        max_length=20,
+        choices=RESET_CHOICES,
+        default='fiscal_year',
+        help_text="Determines when the sequence resets back to 1.",
+    )
+    sequence_next = models.BigIntegerField(default=1)
+    sequence_padding = models.PositiveSmallIntegerField(
+        default=4,
+        validators=[MinValueValidator(1), MaxValueValidator(12)],
+        help_text="Digits reserved for the numeric component.",
+    )
+    last_sequence_fiscal_year = models.ForeignKey(
+        FiscalYear,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='document_sequences_last_used',
+    )
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'document_sequence_config'
+        unique_together = ('organization', 'document_type')
+        ordering = ('organization', 'document_type')
+
+    def __str__(self):
+        return f"{self.organization.code} - {self.document_type}"
+
+    @classmethod
+    def get_or_create_sequence(cls, organization, document_type):
+        defaults = {
+            'prefix': cls.DEFAULT_PREFIXES.get(document_type, ''),
+        }
+        sequence, _ = cls.objects.get_or_create(
+            organization=organization,
+            document_type=document_type,
+            defaults=defaults,
+        )
+        return sequence
+
+    @classmethod
+    def get_next_number(cls, *, organization, document_type, document_date=None):
+        from django.db import transaction
+
+        if organization is None:
+            raise ValidationError("Organization is required to generate document numbers.")
+
+        document_date = document_date or timezone.now().date()
+
+        with transaction.atomic():
+            try:
+                sequence = (
+                    cls.objects.select_for_update()
+                    .get(organization=organization, document_type=document_type)
+                )
+            except cls.DoesNotExist:
+                sequence = cls.get_or_create_sequence(organization, document_type)
+                sequence = (
+                    cls.objects.select_for_update()
+                    .get(organization=organization, document_type=document_type)
+                )
+
+            fiscal_year = None
+            if sequence.reset_policy == 'fiscal_year' or sequence.fiscal_year_prefix:
+                fiscal_year = FiscalYear.get_for_date(organization, document_date)
+                if (
+                    fiscal_year
+                    and sequence.reset_policy == 'fiscal_year'
+                    and sequence.last_sequence_fiscal_year_id != fiscal_year.pk
+                ):
+                    sequence.sequence_next = 1
+                    sequence.last_sequence_fiscal_year = fiscal_year
+
+            next_value = sequence.sequence_next
+            sequence.sequence_next = next_value + 1
+            update_fields = ['sequence_next']
+            if fiscal_year and sequence.reset_policy == 'fiscal_year':
+                update_fields.append('last_sequence_fiscal_year')
+            sequence.save(update_fields=update_fields)
+
+        prefix_parts = []
+        if sequence.fiscal_year_prefix and fiscal_year:
+            prefix_parts.append(fiscal_year.code)
+        if sequence.prefix:
+            prefix_parts.append(sequence.prefix)
+        prefix = ''.join(prefix_parts)
+        suffix = sequence.suffix or ''
+        number = str(next_value).zfill(sequence.sequence_padding or 1)
+        return f"{prefix}{number}{suffix}"
 
 class Journal(models.Model):
     STATUS_CHOICES = [

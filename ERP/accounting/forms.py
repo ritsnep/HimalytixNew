@@ -59,6 +59,7 @@ from .forms_mixin import BootstrapFormMixin
 import logging
 import re
 import json
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -1421,15 +1422,15 @@ class VendorForm(BootstrapFormMixin, forms.ModelForm):
         self.organization = kwargs.pop('organization', None)
         super().__init__(*args, **kwargs)
         if self.organization:
-            self.fields['payment_term'].queryset = PaymentTerm.objects.filter(
-                organization=self.organization,
-            ).filter(term_type__in=['ap', 'both'])
-            self.fields['accounts_payable_account'].queryset = ChartOfAccount.objects.filter(
-                organization=self.organization,
-            )
-            self.fields['expense_account'].queryset = ChartOfAccount.objects.filter(
-                organization=self.organization,
-            )
+        self.fields['payment_term'].queryset = PaymentTerm.objects.filter(
+            organization=self.organization,
+        ).filter(term_type__in=['ap', 'both'])
+        self.fields['accounts_payable_account'].queryset = ChartOfAccount.objects.filter(
+            organization=self.organization,
+        )
+        self.fields['expense_account'].queryset = ChartOfAccount.objects.filter(
+            organization=self.organization,
+        )
 
 
 class CustomerForm(BootstrapFormMixin, forms.ModelForm):
@@ -1515,92 +1516,6 @@ class DimensionValueForm(BootstrapFormMixin, forms.ModelForm):
         }
 
 
-class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
-    class Meta:
-        model = PurchaseInvoice
-        fields = (
-            'organization',
-            'vendor',
-            'invoice_number',
-            'external_reference',
-            'invoice_date',
-            'due_date',
-            'payment_term',
-            'currency',
-            'exchange_rate',
-            'po_number',
-            'receipt_reference',
-            'notes',
-        )
-        widgets = {
-            'invoice_number': forms.TextInput(attrs={'class': 'form-control'}),
-            'external_reference': forms.TextInput(attrs={'class': 'form-control'}),
-            'invoice_date': forms.TextInput(attrs={'class': 'form-control datepicker'}),
-            'due_date': forms.TextInput(attrs={'class': 'form-control datepicker'}),
-            'payment_term': forms.Select(attrs={'class': 'form-select'}),
-            'currency': forms.Select(attrs={'class': 'form-select'}),
-            'exchange_rate': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.000001'}),
-            'po_number': forms.TextInput(attrs={'class': 'form-control'}),
-            'receipt_reference': forms.TextInput(attrs={'class': 'form-control'}),
-            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-        }
-
-    def __init__(self, *args, **kwargs):
-        self.organization = kwargs.pop('organization', None)
-        super().__init__(*args, **kwargs)
-        if self.organization:
-            self.fields['vendor'].queryset = self.fields['vendor'].queryset.filter(
-                organization=self.organization
-            )
-
-    def clean(self):
-        cleaned = super().clean()
-        vendor = cleaned.get('vendor') or getattr(self.instance, 'vendor', None)
-        payment_term = cleaned.get('payment_term') or getattr(vendor, 'payment_term', None)
-        invoice_date = cleaned.get('invoice_date')
-        due_date = cleaned.get('due_date')
-        if invoice_date and not due_date and payment_term:
-            cleaned['due_date'] = payment_term.calculate_due_date(invoice_date)
-        return cleaned
-
-
-class PurchaseInvoiceLineForm(BootstrapFormMixin, forms.ModelForm):
-    class Meta:
-        model = PurchaseInvoiceLine
-        fields = (
-            'description',
-            'product_code',
-            'quantity',
-            'unit_cost',
-            'discount_amount',
-            'account',
-            'tax_code',
-            'tax_amount',
-            'cost_center',
-            'department',
-            'project',
-            'dimension_value',
-            'po_reference',
-            'receipt_reference',
-        )
-        widgets = {
-            'description': forms.TextInput(attrs={'class': 'form-control'}),
-            'product_code': forms.TextInput(attrs={'class': 'form-control'}),
-            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.0001'}),
-            'unit_cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.0001'}),
-            'discount_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'account': forms.Select(attrs={'class': 'form-select'}),
-            'tax_code': forms.Select(attrs={'class': 'form-select'}),
-            'tax_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'cost_center': forms.Select(attrs={'class': 'form-select'}),
-            'department': forms.Select(attrs={'class': 'form-select'}),
-            'project': forms.Select(attrs={'class': 'form-select'}),
-            'dimension_value': forms.Select(attrs={'class': 'form-select'}),
-            'po_reference': forms.TextInput(attrs={'class': 'form-control'}),
-            'receipt_reference': forms.TextInput(attrs={'class': 'form-control'}),
-        }
-
-
 class SalesInvoiceForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = SalesInvoice
@@ -1630,6 +1545,9 @@ class SalesInvoiceForm(BootstrapFormMixin, forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.organization = kwargs.pop('organization', None)
         super().__init__(*args, **kwargs)
+        self.fields['invoice_number'].required = False
+        self.fields['invoice_number'].widget.attrs.setdefault('placeholder', 'Auto-generated')
+        self.fields['invoice_number'].widget.attrs['readonly'] = True
         if self.organization:
             self.fields['customer'].queryset = self.fields['customer'].queryset.filter(
                 organization=self.organization

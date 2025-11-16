@@ -7,6 +7,25 @@
 {{ block.super }}
 <link rel="stylesheet" href="{% static 'accounting/css/voucher_entry.css' %}">
 <link rel="stylesheet" href="{% static 'accounting/css/voucher_entry_dason.css' %}">
+<style>
+  #journal-debug-panel {
+    font-size: 0.9rem;
+  }
+  #journal-debug-panel pre {
+    background-color: #f8f9fa;
+    border-radius: 0.35rem;
+    padding: 0.75rem;
+    max-height: 260px;
+    overflow: auto;
+    font-family: var(--bs-font-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace);
+    white-space: pre-wrap;
+    margin-bottom: 0;
+  }
+  #journal-debug-entries {
+    max-height: 320px;
+    overflow-y: auto;
+  }
+</style>
 {% endblock extra_css %}
 
 {% block extra_js %}
@@ -37,6 +56,25 @@
       <!-- In-page alert region (messages appear just below the top bar) -->
       <div id="app-alerts" class="mb-3" aria-live="polite" aria-atomic="true"></div>
 
+      {% if journal_debug_enabled %}
+      <div id="journal-debug-panel" class="card border border-warning mb-3" role="region" aria-label="Journal entry debug log">
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <div>
+            <strong>Save Debugging</strong>
+            <span class="text-muted d-block small">Every request & response is captured here while debug mode is enabled.</span>
+          </div>
+          <div class="btn-group btn-group-sm" role="group" aria-label="Debug log actions">
+            <button type="button" class="btn btn-outline-secondary" id="journal-debug-copy">Copy</button>
+            <button type="button" class="btn btn-outline-secondary" id="journal-debug-download">Download</button>
+            <button type="button" class="btn btn-outline-secondary" id="journal-debug-clear">Clear</button>
+          </div>
+        </div>
+        <div class="card-body p-3">
+          <div id="journal-debug-entries" class="debug-log-entries" aria-live="polite"></div>
+        </div>
+      </div>
+      {% endif %}
+
     <!-- Main Content Card -->
     <div class="row">
       <div class="col-12">
@@ -62,6 +100,7 @@
               data-can-reject="{{ permission_flags.can_reject|yesno:'true,false' }}"
               data-can-post="{{ permission_flags.can_post|yesno:'true,false' }}"
               data-show-config-selector="{{ show_config_selector|yesno:'true,false' }}"
+              data-debug-enabled="{{ journal_debug_enabled|yesno:'true,false' }}"
             ></div>
           </div>
         </div>

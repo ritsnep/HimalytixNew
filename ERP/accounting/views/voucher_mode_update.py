@@ -1,11 +1,12 @@
 from django.views.generic import UpdateView
-from django.contrib.auth.mixins import PermissionRequiredMixin, LoginRequiredMixin
-from accounting.models import VoucherModeConfig
-from accounting.forms import VoucherModeConfigForm
 from django.urls import reverse, reverse_lazy
 from django.contrib import messages
 
-class VoucherModeConfigUpdateView(PermissionRequiredMixin, LoginRequiredMixin, UpdateView):
+from accounting.mixins import PermissionRequiredMixin
+from accounting.models import VoucherModeConfig
+from accounting.forms import VoucherModeConfigForm
+
+class VoucherModeConfigUpdateView(PermissionRequiredMixin, UpdateView):
     model = VoucherModeConfig
     form_class = VoucherModeConfigForm
     template_name = 'forms_designer/voucher_config_form.html'
@@ -13,7 +14,9 @@ class VoucherModeConfigUpdateView(PermissionRequiredMixin, LoginRequiredMixin, U
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs['organization'] = self.request.user.get_active_organization()
+        organization = self.get_organization()
+        if organization:
+            kwargs['organization'] = organization
         return kwargs
     
     def form_valid(self, form):

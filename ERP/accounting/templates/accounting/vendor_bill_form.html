@@ -1,0 +1,186 @@
+{% extends "partials/base.html" %}
+{% load static %}
+
+{% block title %}New Vendor Bill{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="mb-4">
+    <h1 class="h3">Vendor Bill</h1>
+    <p class="text-muted">Capture the invoice, payment terms, and expense allocation before posting.</p>
+  </div>
+
+  {% if messages %}
+  <div class="mb-3">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger">
+      {{ form.non_field_errors }}
+    </div>
+    {% endif %}
+
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label for="{{ form.vendor.id_for_label }}" class="form-label">Vendor</label>
+            {{ form.vendor }}
+          </div>
+          <div class="col-md-4">
+            <label for="{{ form.invoice_number.id_for_label }}" class="form-label">Invoice #</label>
+            {{ form.invoice_number }}
+          </div>
+          <div class="col-md-4">
+            <label for="{{ form.external_reference.id_for_label }}" class="form-label">Reference</label>
+            {{ form.external_reference }}
+          </div>
+        </div>
+        <div class="row g-3 mt-2">
+          <div class="col-md-3">
+            <label class="form-label" for="{{ form.invoice_date.id_for_label }}">Invoice Date</label>
+            {{ form.invoice_date }}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" for="{{ form.due_date.id_for_label }}">Due Date</label>
+            {{ form.due_date }}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" for="{{ form.payment_term.id_for_label }}">Payment Term</label>
+            {{ form.payment_term }}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" for="{{ form.currency.id_for_label }}">Currency</label>
+            {{ form.currency }}
+          </div>
+        </div>
+        <div class="row g-3 mt-2">
+          <div class="col-md-2">
+            <label class="form-label" for="{{ form.exchange_rate.id_for_label }}">Exchange Rate</label>
+            {{ form.exchange_rate }}
+          </div>
+          <div class="col-md-5">
+            <label class="form-label" for="{{ form.po_number.id_for_label }}">PO Number</label>
+            {{ form.po_number }}
+          </div>
+          <div class="col-md-5">
+            <label class="form-label" for="{{ form.receipt_reference.id_for_label }}">Receipt Ref</label>
+            {{ form.receipt_reference }}
+          </div>
+        </div>
+        <div class="row mt-3">
+          <div class="col-md-12">
+            <label class="form-label" for="{{ form.notes.id_for_label }}">Notes</label>
+            {{ form.notes }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="vendor-summary"
+      hx-target="this"
+      hx-get="{{ vendor_summary_url }}"
+      hx-trigger="change from:#id_vendor"
+      hx-include="#id_vendor"
+    >
+      {% include "accounting/partials/vendor_summary.html" with vendor=None %}
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-body">
+        <div class="table-responsive">
+          {{ line_formset.management_form }}
+          <table class="table table-sm table-bordered align-middle mb-0">
+            <thead class="table-light text-muted">
+              <tr>
+                <th>Description</th>
+                <th>Product</th>
+                <th>Account</th>
+                <th>Qty</th>
+                <th>Unit Cost</th>
+                <th>Discount</th>
+                <th>Tax Code</th>
+                <th>Tax Amount</th>
+                <th>Cost Center</th>
+                <th>Department</th>
+                <th>Project</th>
+                <th>Dimension</th>
+                <th>PO Ref</th>
+                <th>Receipt Ref</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="line-table-body">
+              {% for line_form in line_formset.forms %}
+              {% include "accounting/partials/purchase_invoice_line_row.html" with form=line_form %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="d-flex justify-content-between pt-3">
+          <button type="button" class="btn btn-outline-primary" id="add-line">Add line</button>
+          <input type="submit" class="btn btn-primary" value="Save Vendor Bill">
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const addLineBtn = document.getElementById("add-line");
+  const lineBody = document.getElementById("line-table-body");
+  const totalInput = document.querySelector('[name="lines-TOTAL_FORMS"]');
+  const rowUrl = "{{ line_row_url|escapejs }}";
+
+  const insertRow = (html) => {
+    if (lineBody) {
+      lineBody.insertAdjacentHTML("beforeend", html);
+    }
+  };
+
+  const addLine = () => {
+    if (!totalInput) {
+      return;
+    }
+    const nextIndex = parseInt(totalInput.value, 10);
+    totalInput.value = nextIndex + 1;
+    fetch(`${rowUrl}?index=${nextIndex}`, {
+      headers: {
+        "HX-Request": "true"
+      }
+    })
+      .then((response) => response.text())
+      .then(insertRow);
+  };
+
+  if (addLineBtn) {
+    addLineBtn.addEventListener("click", addLine);
+  }
+
+  if (lineBody) {
+    lineBody.addEventListener("click", function (event) {
+    if (!event.target.matches(".remove-line")) {
+      return;
+    }
+    event.preventDefault();
+    const row = event.target.closest("tr");
+    row?.remove();
+    if (totalInput) {
+      const current = Math.max(parseInt(totalInput.value, 10) - 1, 0);
+      totalInput.value = current;
+    }
+  });
+});
+</script>
+{% endblock %}

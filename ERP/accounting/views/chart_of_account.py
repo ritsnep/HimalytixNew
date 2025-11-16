@@ -1,4 +1,3 @@
-from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.views.generic import ListView, UpdateView, DeleteView
 from django.urls import reverse, reverse_lazy
 from django.utils.decorators import method_decorator
@@ -6,22 +5,30 @@ from django.contrib import messages
 from django.http import HttpResponse, HttpResponseRedirect
 from django.db import transaction
 import logging
+
+from accounting.mixins import PermissionRequiredMixin
 from accounting.models import ChartOfAccount
 from accounting.forms import ChartOfAccountForm
 from utils.htmx import require_htmx
 
 logger = logging.getLogger(__name__)
 
-class ChartOfAccountListView(LoginRequiredMixin, ListView):
+class ChartOfAccountListView(PermissionRequiredMixin, ListView):
     model = ChartOfAccount
     template_name = 'accounting/chart_of_accounts_list.html'
     context_object_name = 'accounts'
     paginate_by = None  # Show all for tree
+    permission_required = ('accounting', 'chartofaccount', 'view')
 
     def get_queryset(self):
-        return ChartOfAccount.objects.filter(
-            organization_id=self.request.user.organization.id
-        ).select_related('parent_account', 'account_type').order_by('account_code')
+        organization = self.get_organization()
+        if not organization:
+            return ChartOfAccount.objects.none()
+        return (
+            ChartOfAccount.objects.filter(organization=organization)
+            .select_related('parent_account', 'account_type')
+            .order_by('account_code')
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -64,7 +71,7 @@ class ChartOfAccountListPartial(ChartOfAccountListView):
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 
-class ChartOfAccountUpdateView(PermissionRequiredMixin, LoginRequiredMixin, UpdateView):
+class ChartOfAccountUpdateView(PermissionRequiredMixin, UpdateView):
     model = ChartOfAccount
     form_class = ChartOfAccountForm
     template_name = 'accounting/chart_of_accounts_form.html'
@@ -73,11 +80,10 @@ class ChartOfAccountUpdateView(PermissionRequiredMixin, LoginRequiredMixin, Upda
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs['organization'] = self.request.user.organization
+        organization = self.get_organization()
+        if organization:
+            kwargs['organization'] = organization
         return kwargs
-
-    def get_queryset(self):
-        return ChartOfAccount.objects.filter(organization_id=self.request.user.organization.id)
 
     def form_valid(self, form):
         try:
@@ -125,7 +131,7 @@ class ChartOfAccountUpdateView(PermissionRequiredMixin, LoginRequiredMixin, Upda
         logger.warning(f"User {self.request.user} denied permission to update ChartOfAccount {self.get_object().pk if self.get_object() else ''}")
         return super().handle_no_permission()
 
-class ChartOfAccountDeleteView(PermissionRequiredMixin, LoginRequiredMixin, DeleteView):
+class ChartOfAccountDeleteView(PermissionRequiredMixin, DeleteView):
     model = ChartOfAccount
     template_name = 'accounting/chart_of_accounts_confirm_delete.html'
     success_url = reverse_lazy('accounting:chart_of_accounts_list')

@@ -1,0 +1,43 @@
+<div class="card shadow-sm">
+  <div class="card-body">
+    {% if vendor %}
+    <div class="d-flex justify-content-between">
+      <h5 class="card-title">{{ vendor.display_name }}</h5>
+      <span class="badge bg-{{ 'success' if vendor.is_active else 'secondary' }}">
+        {{ vendor.get_status_display }}
+      </span>
+    </div>
+    <p class="mb-1"><strong>Tax ID</strong>: {{ vendor.tax_id|default:"-" }}</p>
+    <p class="mb-1"><strong>Payment Term</strong>: {{ vendor.payment_term.name if vendor.payment_term else "Default" }}</p>
+    <p class="mb-3"><strong>Default Currency</strong>: {{ vendor.default_currency.currency_code|default:"–" }}</p>
+    <div class="row">
+      <div class="col-md-6">
+        <h6 class="mb-1">Primary Contact</h6>
+        {% with contact=vendor.primary_contact %}
+          {% if contact %}
+          <p class="mb-0">{{ contact.name }}</p>
+          <p class="mb-0 text-muted">{{ contact.email }}</p>
+          <p class="mb-0 text-muted">{{ contact.phone }}</p>
+          {% else %}
+          <p class="text-muted mb-0">No contact saved.</p>
+          {% endif %}
+        {% endwith %}
+      </div>
+      <div class="col-md-6">
+        <h6 class="mb-1">Remit Address</h6>
+        {% with address=vendor.addresses.filter(address_type='remit').first %}
+          {% if address %}
+          <p class="mb-0">{{ address.line1 }}</p>
+          <p class="mb-0">{{ address.city }}, {{ address.state_province }}</p>
+          <p class="mb-0">{{ address.country_code }}</p>
+          {% else %}
+          <p class="text-muted mb-0">No address recorded.</p>
+          {% endif %}
+        {% endwith %}
+      </div>
+    </div>
+    {% else %}
+    <p class="text-muted mb-0">Select a vendor to view their summary and contact details.</p>
+    {% endif %}
+  </div>
+</div>

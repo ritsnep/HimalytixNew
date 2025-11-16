@@ -75,7 +75,10 @@ from .views import journal_check_view
 from .views import views_actions
 from .views import views_api
 from .views import recurring_journal_views
+from .views import vendor_statement_views
 from .views import views_htmx
+from .views import payment_scheduler_views
+from .views import purchase_invoice_views
 from .views import wizard
 from .views import views_api
 
@@ -278,6 +281,13 @@ urlpatterns = [
     path('advanced-reports/ar-aging/', AccountsReceivableAgingView.as_view(), name='report_ar_aging'),
     path('advanced-reports/custom/<slug:code>/', CustomReportView.as_view(), name='custom_report'),
     path('advanced-reports/export/', ReportExportView.as_view(), name='report_export'),
+
+    # Vendor Billing
+    path('vendor-bills/new/', purchase_invoice_views.VendorBillCreateView.as_view(), name='vendor_bill_create'),
+    path('vendor-bills/line-row/', purchase_invoice_views.VendorBillLineRowView.as_view(), name='vendor_bill_line_row'),
+    path('vendor-bills/vendor-summary/', purchase_invoice_views.VendorSummaryHXView.as_view(), name='vendor_summary_hx'),
+    path('vendor-payments/scheduler/', payment_scheduler_views.PaymentSchedulerView.as_view(), name='payment_scheduler'),
+    path('vendor-payments/statement/', vendor_statement_views.VendorStatementView.as_view(), name='vendor_statement'),
 
     # AJAX URLs
     path('ajax/get-next-account-code/', get_next_account_code, name='get_next_account_code'),
