@@ -1,0 +1,35 @@
+{% extends 'accounting/_list_base.html' %}
+
+{% block title %}Sales Invoices{% endblock %}
+
+{% block table_head %}
+<thead>
+    <tr>
+        <th>#</th>
+        <th>Customer</th>
+        <th>Invoice Date</th>
+        <th>Due Date</th>
+        <th>Status</th>
+        <th class="text-end">Total</th>
+    </tr>
+</thead>
+{% endblock table_head %}
+
+{% block table_body %}
+<tbody>
+    {% for invoice in invoices %}
+    <tr>
+        <td>{{ invoice.invoice_number }}</td>
+        <td>{{ invoice.customer_display_name }}</td>
+        <td>{{ invoice.invoice_date }}</td>
+        <td>{{ invoice.due_date }}</td>
+        <td><span class="badge bg-info text-dark text-capitalize">{{ invoice.status }}</span></td>
+        <td class="text-end">{{ invoice.total }}</td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="6" class="text-center text-muted">No sales invoices yet.</td>
+    </tr>
+    {% endfor %}
+</tbody>
+{% endblock table_body %}

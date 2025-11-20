@@ -1,0 +1,35 @@
+{% extends 'accounting/_list_base.html' %}
+
+{% block title %}AR Receipts{% endblock %}
+
+{% block table_head %}
+<thead>
+    <tr>
+        <th>Receipt #</th>
+        <th>Customer</th>
+        <th>Date</th>
+        <th>Method</th>
+        <th>Reference</th>
+        <th class="text-end">Amount</th>
+    </tr>
+</thead>
+{% endblock table_head %}
+
+{% block table_body %}
+<tbody>
+    {% for receipt in receipts %}
+    <tr>
+        <td>{{ receipt.receipt_number }}</td>
+        <td>{{ receipt.customer.display_name }}</td>
+        <td>{{ receipt.receipt_date }}</td>
+        <td>{{ receipt.payment_method|default:"—" }}</td>
+        <td>{{ receipt.reference|default:"—" }}</td>
+        <td class="text-end">{{ receipt.amount }}</td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="6" class="text-center text-muted">No receipts found.</td>
+    </tr>
+    {% endfor %}
+</tbody>
+{% endblock table_body %}

@@ -11,6 +11,7 @@ from ..views.report_views import (
     BalanceSheetView as BalanceSheetReportView,
     CashFlowView,
     AccountsReceivableAgingView,
+    AccountsPayableAgingView,
     ReportExportView,
     CustomReportView,
 )
@@ -75,7 +76,8 @@ from ..views import views_api
 from ..views import recurring_journal_views
 from ..views import views_htmx
 from ..views import wizard
-from ..views import purchase_invoice_views, payment_scheduler_views, vendor_statement_views
+from ..views import purchase_invoice_views, payment_scheduler_views, vendor_statement_views, customer_statement_views, sales_invoice_views, ar_receipt_views, commerce_views
+from ..views import sales_invoice_views, ar_receipt_views, commerce_views
 
 app_name = "accounting"
 
@@ -274,6 +276,7 @@ urlpatterns = [
     path('advanced-reports/balance-sheet/', BalanceSheetReportView.as_view(), name='report_bs'),
     path('advanced-reports/cash-flow/', CashFlowView.as_view(), name='report_cf'),
     path('advanced-reports/ar-aging/', AccountsReceivableAgingView.as_view(), name='report_ar_aging'),
+    path('advanced-reports/ap-aging/', AccountsPayableAgingView.as_view(), name='report_ap_aging'),
     path('advanced-reports/custom/<slug:code>/', CustomReportView.as_view(), name='custom_report'),
     path('advanced-reports/export/', ReportExportView.as_view(), name='report_export'),
 
@@ -283,6 +286,20 @@ urlpatterns = [
     path('vendor-bills/vendor-summary/', purchase_invoice_views.VendorSummaryHXView.as_view(), name='vendor_summary_hx'),
     path('vendor-payments/scheduler/', payment_scheduler_views.PaymentSchedulerView.as_view(), name='payment_scheduler'),
     path('vendor-payments/statement/', vendor_statement_views.VendorStatementView.as_view(), name='vendor_statement'),
+    path('customer-payments/statement/', customer_statement_views.CustomerStatementView.as_view(), name='customer_statement'),
+    path('sales-invoices/', sales_invoice_views.SalesInvoiceListView.as_view(), name='sales_invoice_list'),
+    path('sales-invoices/new/', sales_invoice_views.SalesInvoiceCreateView.as_view(), name='sales_invoice_create'),
+    path('ar-receipts/', ar_receipt_views.ARReceiptListView.as_view(), name='ar_receipt_list'),
+    path('ar-receipts/new/', ar_receipt_views.ARReceiptCreateView.as_view(), name='ar_receipt_create'),
+    path('ap-payments/', commerce_views.APPaymentListView.as_view(), name='ap_payment_list'),
+    path('ap-payments/new/', commerce_views.APPaymentCreateView.as_view(), name='ap_payment_create'),
+    path('ap-payments/<int:pk>/edit/', commerce_views.APPaymentUpdateView.as_view(), name='ap_payment_edit'),
+    path('customers/', commerce_views.CustomerListView.as_view(), name='customer_list'),
+    path('customers/new/', commerce_views.CustomerCreateView.as_view(), name='customer_create'),
+    path('customers/<int:pk>/edit/', commerce_views.CustomerUpdateView.as_view(), name='customer_edit'),
+    path('vendors/', commerce_views.VendorListView.as_view(), name='vendor_list'),
+    path('vendors/new/', commerce_views.VendorCreateView.as_view(), name='vendor_create'),
+    path('vendors/<int:pk>/edit/', commerce_views.VendorUpdateView.as_view(), name='vendor_edit'),
 
     # AJAX URLs
     path('ajax/get-next-account-code/', get_next_account_code, name='get_next_account_code'),

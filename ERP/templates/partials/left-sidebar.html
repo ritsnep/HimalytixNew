@@ -77,6 +77,41 @@
                 <span>Journals</span>
             </a>
         </li>
+        {% if user|has_permission:'accounting_salesinvoice_view' %}
+        <li>
+            <a href="{% url 'accounting:sales_invoice_list' %}">
+                <span>Sales Invoices</span>
+            </a>
+        </li>
+        {% endif %}
+        {% if user|has_permission:'accounting_arreceipt_view' %}
+        <li>
+            <a href="{% url 'accounting:ar_receipt_list' %}">
+                <span>AR Receipts</span>
+            </a>
+        </li>
+        {% endif %}
+        {% if user|has_permission:'accounting_appayment_view' %}
+        <li>
+            <a href="{% url 'accounting:ap_payment_list' %}">
+                <span>AP Payments</span>
+            </a>
+        </li>
+        {% endif %}
+        {% if user|has_permission:'accounting_customer_view' %}
+        <li>
+            <a href="{% url 'accounting:customer_list' %}">
+                <span>Customers</span>
+            </a>
+        </li>
+        {% endif %}
+        {% if user|has_permission:'accounting_vendor_view' %}
+        <li>
+            <a href="{% url 'accounting:vendor_list' %}">
+                <span>Vendors</span>
+            </a>
+        </li>
+        {% endif %}
         <!-- Journal Entry -->
         <li>
             <a href="{% url 'accounting:journal_entry' %}">
@@ -145,6 +180,38 @@
                     <a href="{% url 'accounting:vendor_statement' %}">
                         <i class="fas fa-file-alt"></i>
                         <span>Vendor Statement</span>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </li>
+        <li>
+            <a href="javascript: void(0);" class="has-arrow">
+                <i class="fas fa-file-invoice"></i>
+                <span>Accounts Receivable</span>
+            </a>
+            <ul class="sub-menu" aria-expanded="false">
+                {% if user|has_permission:'accounting_salesinvoice_view' %}
+                <li>
+                    <a href="{% url 'accounting:sales_invoice_list' %}">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                        <span>Sales Invoices</span>
+                    </a>
+                </li>
+                {% endif %}
+                {% if user|has_permission:'accounting_arreceipt_view' %}
+                <li>
+                    <a href="{% url 'accounting:ar_receipt_list' %}">
+                        <i class="fas fa-money-check-alt"></i>
+                        <span>Customer Receipts</span>
+                    </a>
+                </li>
+                {% endif %}
+                {% if user|has_permission:'accounting_salesinvoice_view' %}
+                <li>
+                    <a href="{% url 'accounting:customer_statement' %}">
+                        <i class="fas fa-file-alt"></i>
+                        <span>Customer Statement</span>
                     </a>
                 </li>
                 {% endif %}

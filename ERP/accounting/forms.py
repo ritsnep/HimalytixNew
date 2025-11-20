@@ -51,10 +51,10 @@ from .models import (
     ApprovalWorkflow,
     ApprovalStep,
     ApprovalTask,
+    AutoIncrementCodeGenerator,
 )
 from django import forms
 from .models import FiscalYear
-from .utils import get_active_currency_choices
 from .forms_mixin import BootstrapFormMixin
 import logging
 import re
@@ -62,6 +62,14 @@ import json
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+
+
+def get_active_currency_choices():
+    """Return tuples of active currency codes for select widgets."""
+    return [
+        (currency.currency_code, f"{currency.currency_code} - {currency.currency_name}")
+        for currency in Currency.objects.filter(is_active=True)
+    ]
 
 
 # class FiscalYearForm(forms.ModelForm):
@@ -131,10 +139,36 @@ class AccountingPeriodForm(BootstrapFormMixin, forms.ModelForm):
 class DepartmentForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Department
-        fields = ('name',)
+        fields = ('code', 'name', 'is_active', 'start_date', 'end_date')
         widgets = {
+            'code': forms.TextInput(attrs={'class': 'form-control', 'readonly': True}),
             'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'start_date': forms.TextInput(attrs={'class': 'form-control datepicker', 'placeholder': 'YYYY-MM-DD'}),
+            'end_date': forms.TextInput(attrs={'class': 'form-control datepicker', 'placeholder': 'YYYY-MM-DD'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        self.organization = kwargs.pop('organization', None)
+        super().__init__(*args, **kwargs)
+        if self.organization:
+            self.instance.organization = self.organization
+        if not self.instance.pk and not self.initial.get('code'):
+            code_generator = AutoIncrementCodeGenerator(Department, 'code', prefix='DEP', suffix='')
+            generated_code = code_generator.generate_code()
+            self.initial['code'] = generated_code
+            self.fields['code'].initial = generated_code
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if self.organization:
+            instance.organization = self.organization
+        if not instance.code:
+            code_generator = AutoIncrementCodeGenerator(Department, 'code', prefix='DEP', suffix='')
+            instance.code = code_generator.generate_code()
+        if commit:
+            instance.save()
+        return instance
 
 class ProjectForm(BootstrapFormMixin, forms.ModelForm):
     code = forms.CharField(
@@ -1422,15 +1456,15 @@ class VendorForm(BootstrapFormMixin, forms.ModelForm):
         self.organization = kwargs.pop('organization', None)
         super().__init__(*args, **kwargs)
         if self.organization:
-        self.fields['payment_term'].queryset = PaymentTerm.objects.filter(
-            organization=self.organization,
-        ).filter(term_type__in=['ap', 'both'])
-        self.fields['accounts_payable_account'].queryset = ChartOfAccount.objects.filter(
-            organization=self.organization,
-        )
-        self.fields['expense_account'].queryset = ChartOfAccount.objects.filter(
-            organization=self.organization,
-        )
+            self.fields['payment_term'].queryset = PaymentTerm.objects.filter(
+                organization=self.organization,
+            ).filter(term_type__in=['ap', 'both'])
+            self.fields['accounts_payable_account'].queryset = ChartOfAccount.objects.filter(
+                organization=self.organization,
+            )
+            self.fields['expense_account'].queryset = ChartOfAccount.objects.filter(
+                organization=self.organization,
+            )
 
 
 class CustomerForm(BootstrapFormMixin, forms.ModelForm):
@@ -1620,6 +1654,38 @@ class ARReceiptForm(BootstrapFormMixin, forms.ModelForm):
             'exchange_rate': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.000001'}),
             'amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        self.organization = kwargs.pop('organization', None)
+        super().__init__(*args, **kwargs)
+        if self.organization:
+            self.fields['customer'].queryset = Customer.objects.filter(organization=self.organization)
+        self.fields['currency'].queryset = Currency.objects.filter(is_active=True)
+
+
+class ARReceiptLineForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = ARReceiptLine
+        fields = ('invoice', 'applied_amount', 'discount_taken')
+        widgets = {
+            'invoice': forms.Select(attrs={'class': 'form-select'}),
+            'applied_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'discount_taken': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.organization = kwargs.pop('organization', None)
+        self.customer = kwargs.pop('customer', None)
+        super().__init__(*args, **kwargs)
+        queryset = SalesInvoice.objects.none()
+        if self.organization:
+            queryset = SalesInvoice.objects.filter(
+                organization=self.organization,
+                status__in=['posted', 'validated'],
+            )
+        if self.customer:
+            queryset = queryset.filter(customer=self.customer)
+        self.fields['invoice'].queryset = queryset
 
 
 class BankAccountForm(BootstrapFormMixin, forms.ModelForm):
@@ -1848,6 +1914,17 @@ class APPaymentForm(BootstrapFormMixin, forms.ModelForm):
             'batch': forms.Select(attrs={'class': 'form-select'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        self.organization = kwargs.pop('organization', None)
+        super().__init__(*args, **kwargs)
+        if self.organization:
+            self.fields['vendor'].queryset = self.fields['vendor'].queryset.filter(
+                organization=self.organization
+            )
+            self.fields['bank_account'].queryset = self.fields['bank_account'].queryset.filter(
+                organization=self.organization
+            )
+            self.instance.organization = self.organization
 
 class APPaymentLineForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
@@ -1858,3 +1935,15 @@ class APPaymentLineForm(BootstrapFormMixin, forms.ModelForm):
             'applied_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'discount_taken': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        self.organization = kwargs.pop('organization', None)
+        self.vendor = kwargs.pop('vendor', None)
+        super().__init__(*args, **kwargs)
+
+        queryset = PurchaseInvoice.objects.none()
+        if self.organization:
+            queryset = PurchaseInvoice.objects.filter(organization=self.organization)
+        if self.vendor:
+            queryset = queryset.filter(vendor=self.vendor)
+        self.fields['invoice'].queryset = queryset

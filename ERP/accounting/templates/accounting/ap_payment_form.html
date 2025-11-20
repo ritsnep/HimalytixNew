@@ -1,0 +1,152 @@
+{% extends 'accounting/_form_base.html' %}
+
+{% block title %}AP Payment{% endblock %}
+
+{% block form_content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h4 class="card-title mb-0">{{ form_title }}</h4>
+        <a class="btn btn-secondary btn-sm" href="{% url back_url %}">Back</a>
+    </div>
+    <div class="card-body">
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Payment Number</label>
+                    {{ form.payment_number }}
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Vendor</label>
+                    {{ form.vendor }}
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Payment Date</label>
+                    {{ form.payment_date }}
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Payment Method</label>
+                    {{ form.payment_method }}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Bank / Cash Account</label>
+                    {{ form.bank_account }}
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Currency</label>
+                    {{ form.currency }}
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Exchange Rate</label>
+                    {{ form.exchange_rate }}
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Status</label>
+                    {{ form.status }}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Amount</label>
+                    {{ form.amount }}
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Discount Taken</label>
+                    {{ form.discount_taken }}
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                {{ formset.management_form }}
+                <table class="table table-bordered align-middle">
+                    <thead>
+                        <tr>
+                            <th>Purchase Invoice</th>
+                            <th>Applied Amount</th>
+                            <th>Discount</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="payment-lines">
+                        {% for line_form in formset %}
+                        <tr class="line-row">
+                            {% for hidden in line_form.hidden_fields %}{{ hidden }}{% endfor %}
+                            <td>{{ line_form.invoice }}</td>
+                            <td>{{ line_form.applied_amount }}</td>
+                            <td>{{ line_form.discount_taken }}</td>
+                            <td>
+                                {% if formset.can_delete %}
+                                <div class="form-check">
+                                    {{ line_form.DELETE }}
+                                    <label class="form-check-label" for="{{ line_form.DELETE.id_for_label }}">Delete</label>
+                                </div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="add-payment-line">Add Allocation</button>
+            </div>
+
+            <div class="d-flex justify-content-end mt-3">
+                <button type="submit" class="btn btn-primary">Save Payment</button>
+            </div>
+        </form>
+    </div>
+</div>
+<template id="payment-line-template">
+    <tr class="line-row">
+        {% with form=formset.empty_form %}
+            {% for hidden in form.hidden_fields %}{{ hidden.as_widget|safe }}{% endfor %}
+            <td>{{ form.invoice.as_widget }}</td>
+            <td>{{ form.applied_amount.as_widget }}</td>
+            <td>{{ form.discount_taken.as_widget }}</td>
+            <td>
+                <div class="form-check">
+                    {{ form.DELETE }}
+                    <label class="form-check-label" for="{{ form.DELETE.id_for_label }}">Delete</label>
+                </div>
+            </td>
+        {% endwith %}
+    </tr>
+</template>
+{% endblock form_content %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+(function() {
+    const addBtn = document.getElementById('add-payment-line');
+    const tbody = document.getElementById('payment-lines');
+    const totalForms = document.getElementById('id_lines-TOTAL_FORMS');
+    const template = document.getElementById('payment-line-template');
+    if (!addBtn || !tbody || !totalForms || !template) {
+        return;
+    }
+
+    addBtn.addEventListener('click', function() {
+        const index = parseInt(totalForms.value, 10);
+        const clone = template.content.cloneNode(true);
+        clone.querySelectorAll('[name]').forEach((el) => {
+            el.name = el.name.replace('__prefix__', index);
+            el.id = el.id.replace('__prefix__', index);
+            if (el.type !== 'hidden') {
+                if (el.type === 'checkbox') {
+                    el.checked = false;
+                } else {
+                    el.value = '';
+                }
+            }
+        });
+        totalForms.value = index + 1;
+        tbody.appendChild(clone);
+    });
+})();
+</script>
+{% endblock extra_js %}

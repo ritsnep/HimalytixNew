@@ -78,8 +78,6 @@ class CostCenterListView(BaseListView):
     def get_queryset(self):
         today = timezone.now().date()
         return super().get_queryset().filter(
-            is_active=True
-        ).filter(
             models.Q(start_date__isnull=True) | models.Q(start_date__lte=today),
             models.Q(end_date__isnull=True) | models.Q(end_date__gte=today)
         )
@@ -99,8 +97,6 @@ class DepartmentListView(BaseListView):
     def get_queryset(self):
         today = timezone.now().date()
         return super().get_queryset().filter(
-            is_active=True
-        ).filter(
             models.Q(start_date__isnull=True) | models.Q(start_date__lte=today),
             models.Q(end_date__isnull=True) | models.Q(end_date__gte=today)
         )

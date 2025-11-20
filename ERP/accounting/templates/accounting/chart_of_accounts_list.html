@@ -6,12 +6,18 @@
 {% block add_url %}{{ create_url }}{% endblock %}
 
 {% block list_header %}
-<h4 class="card-title">Chart of Accounts</h4>
+<div class="d-flex align-items-center flex-wrap gap-2">
+  <h4 class="card-title mb-0">Chart of Accounts</h4>
+  <div class="btn-group btn-group-sm" role="group" aria-label="Tree controls">
+    <button type="button" class="btn btn-outline-secondary" id="coa-expand-all" aria-label="Expand all accounts">Expand All</button>
+    <button type="button" class="btn btn-outline-secondary" id="coa-collapse-all" aria-label="Collapse all accounts">Collapse All</button>
+  </div>
+</div>
 {% endblock %}
 
 {% block create_button %}
-<a href="{{ create_url }}" class="btn btn-success mb-2">
-    <i class="mdi mdi-plus me-1"></i> New Chart of Account
+<a href="{{ create_url }}" class="btn btn-success mb-2" aria-label="Add a new account">
+    <i class="mdi mdi-plus me-1"></i> New Account
 </a>
 {% endblock %}
 
@@ -55,10 +61,13 @@ document.addEventListener('click', function(e){
   e.preventDefault();
   const id = btn.getAttribute('data-id');
   const currentlyCollapsed = btn.getAttribute('data-collapsed') === 'true';
-  const willExpand = currentlyCollapsed; // if collapsed, expand; else collapse
-  btn.setAttribute('data-collapsed', willExpand ? 'false' : 'true');
+  const willExpand = currentlyCollapsed;
+  const newState = willExpand ? 'false' : 'true';
+  const showChildren = willExpand;
+  btn.setAttribute('data-collapsed', newState);
+  btn.setAttribute('aria-expanded', showChildren ? 'true' : 'false');
   const icon = btn.querySelector('i');
-  if (icon) icon.className = willExpand ? 'mdi mdi-chevron-down' : 'mdi mdi-chevron-right';
+  if (icon) icon.className = showChildren ? 'mdi mdi-chevron-down' : 'mdi mdi-chevron-right';
 
   function setChildrenVisibility(parentId, visible){
     const rows = document.querySelectorAll('tr.coa-row[data-parent="'+parentId+'"]');
@@ -75,7 +84,24 @@ document.addEventListener('click', function(e){
     });
   }
 
-  setChildrenVisibility(id, !currentlyCollapsed);
+  setChildrenVisibility(id, showChildren);
 });
+
+function setAllToggles(collapsed) {
+  document.querySelectorAll('.coa-toggle').forEach(btn => {
+    btn.setAttribute('data-collapsed', collapsed ? 'true' : 'false');
+    btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    const icon = btn.querySelector('i');
+    if (icon) icon.className = collapsed ? 'mdi mdi-chevron-right' : 'mdi mdi-chevron-down';
+  });
+
+  document.querySelectorAll('tr.coa-row').forEach(row => {
+    const level = parseInt(row.getAttribute('data-level') || '0', 10);
+    row.style.display = collapsed && level > 0 ? 'none' : '';
+  });
+}
+
+document.getElementById('coa-expand-all')?.addEventListener('click', () => setAllToggles(false));
+document.getElementById('coa-collapse-all')?.addEventListener('click', () => setAllToggles(true));
 </script>
 {% endblock %}

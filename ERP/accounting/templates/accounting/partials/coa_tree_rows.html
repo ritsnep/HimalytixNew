@@ -3,8 +3,8 @@
   <tr class="align-middle coa-row" data-id="{{ acc.pk }}" data-parent="{{ acc.parent_account_id|default:'root' }}" data-level="{{ level }}">
     <td class="ps-0">
       {% if acc.children %}
-        <button type="button" class="tree-toggle btn btn-link btn-sm p-0 me-1 coa-toggle" data-id="{{ acc.pk }}" aria-label="Toggle">
-          <i class="mdi mdi-chevron-down"></i>
+        <button type="button" class="tree-toggle btn btn-link btn-sm p-0 me-1 coa-toggle" data-id="{{ acc.pk }}" data-collapsed="false" aria-expanded="true" aria-label="Toggle {{ acc.account_name }} children">
+          <i class="mdi mdi-chevron-down" aria-hidden="true"></i>
         </button>
       {% else %}
         <span class="me-4"></span>

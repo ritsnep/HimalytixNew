@@ -23,19 +23,27 @@
   {% for fy in fiscal_years %}
   <tr>
     <td>{{ fy.code }}</td>
-    <td>{{ fy.name }}</td>
+    <td>
+      {{ fy.name }}
+      {% if fy.is_current %}<span class="badge bg-info ms-1">Current</span>{% endif %}
+      {% if fy.is_default %}<span class="badge bg-primary ms-1">Default</span>{% endif %}
+    </td>
     <td>{{ fy.start_date }}</td>
     <td>{{ fy.end_date }}</td>
-    <td>{{ fy.status }}</td>
     <td>
-      <a href="{% url 'accounting:fiscal_year_detail' fy.pk %}">View</a> |
-      <a href="{% url 'accounting:fiscal_year_update' fy.pk %}">Edit</a>
-      {% if fy.status == 'open' %}|
-      <form method="post" action="{% url 'accounting:fiscal_year_close' fy.pk %}" class="d-inline">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-link p-0">Close</button>
-      </form>
-      {% endif %}
+      <span class="badge {% if fy.status == 'open' %}bg-success{% else %}bg-secondary{% endif %}">{{ fy.status|capfirst }}</span>
+    </td>
+    <td>
+      <div class="btn-group btn-group-sm" role="group" aria-label="Fiscal year actions">
+        <a href="{% url 'accounting:fiscal_year_detail' fy.pk %}" class="btn btn-outline-secondary">View</a>
+        <a href="{% url 'accounting:fiscal_year_update' fy.pk %}" class="btn btn-outline-primary">Edit</a>
+        {% if fy.status == 'open' %}
+        <form method="post" action="{% url 'accounting:fiscal_year_close' fy.pk %}" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-danger" aria-label="Close fiscal year {{ fy.code }}">Close</button>
+        </form>
+        {% endif %}
+      </div>
     </td>
   </tr>
   {% empty %}

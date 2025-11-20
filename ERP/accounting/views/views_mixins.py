@@ -64,3 +64,7 @@ class VoucherConfigMixin:
 
 class AccountsPayablePermissionMixin(PermissionRequiredMixin):
     permission_required = ('accounting', 'appayment', 'change')
+
+
+class AccountsReceivablePermissionMixin(PermissionRequiredMixin):
+    permission_required = ('accounting', 'salesinvoice', 'view')

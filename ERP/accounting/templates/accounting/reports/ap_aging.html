@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "A/P Aging" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-1">
+                        <i class="fas fa-file-invoice-dollar me-2"></i>
+                        {% trans "Accounts Payable Aging" %}
+                    </h1>
+                    <p class="text-muted mb-0">
+                        {% trans "Monitor unpaid vendor bills by aging bucket." %}
+                    </p>
+                </div>
+                <a href="{% url 'accounting:report_list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>
+                    {% trans "Back to Reports" %}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="as_of_date" class="form-label">{% trans "As of Date" %}</label>
+                    <input type="date" id="as_of_date" name="as_of_date" value="{{ as_of_date }}" class="form-control" required>
+                </div>
+                <div class="col-md-2 d-grid">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-sync me-2"></i>
+                        {% trans "Generate" %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if error %}
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+        </div>
+    {% endif %}
+
+    {% if report_data %}
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">{% trans "Aging Summary" %}</h5>
+                    <small class="text-muted">
+                        {% trans "Organisation" %}: {{ report_data.organization }}
+                        - {% trans "As of" %}: {{ report_data.as_of_date|date:"Y-m-d" }}
+                    </small>
+                </div>
+                <form method="post" action="{% url 'accounting:report_export' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="report_type" value="ap_aging">
+                    <input type="hidden" name="as_of_date" value="{{ as_of_date }}">
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary" name="export_format" value="csv">
+                            <i class="fas fa-file-csv me-1"></i>CSV
+                        </button>
+                        <button class="btn btn-outline-secondary" name="export_format" value="excel">
+                            <i class="fas fa-file-excel me-1"></i>Excel
+                        </button>
+                        <button class="btn btn-outline-secondary" name="export_format" value="pdf">
+                            <i class="fas fa-file-pdf me-1"></i>PDF
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-body">
+                <div class="row text-center mb-4">
+                    {% for bucket in report_data.aging_summary %}
+                        <div class="col-md-3 mb-3">
+                            <div class="border rounded p-3 h-100">
+                                <div class="text-muted small">{{ bucket.bucket }}</div>
+                                <div class="fs-5 fw-semibold">{{ bucket.balance|floatformat:2 }}</div>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <p class="text-muted">{% trans "No outstanding balances." %}</p>
+                    {% endfor %}
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-striped align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>{% trans "Vendor" %}</th>
+                                <th>{% trans "Bucket" %}</th>
+                                <th class="text-end">{% trans "Balance" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for line in report_data.lines %}
+                                <tr>
+                                    <td>{{ line.vendor_name }}</td>
+                                    <td>{{ line.bucket }}</td>
+                                    <td class="text-end">{{ line.balance|floatformat:2 }}</td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-4">
+                                        {% trans "No payable balances for the selected date." %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-light fw-bold">
+                            <tr>
+                                <td colspan="2" class="text-end">{% trans "Total Payables" %}</td>
+                                <td class="text-end">{{ report_data.total|floatformat:2 }}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            {% trans "Select an 'as of' date to produce the aging schedule." %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

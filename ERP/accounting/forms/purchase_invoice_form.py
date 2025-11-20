@@ -14,6 +14,7 @@ from accounting.models import (
     PurchaseInvoiceLine,
     TaxCode,
     Vendor,
+    Customer,
 )
 
 
@@ -139,6 +140,40 @@ class VendorStatementFilterForm(BootstrapFormMixin, forms.Form):
         first_of_month = today.replace(day=1)
         if self.organization:
             self.fields['vendor'].queryset = Vendor.objects.filter(organization=self.organization)
+        if not self.initial.get('start_date'):
+            self.fields['start_date'].initial = first_of_month
+        if not self.initial.get('end_date'):
+            self.fields['end_date'].initial = today
+
+    def clean(self):
+        cleaned = super().clean()
+        start_date = cleaned.get('start_date')
+        end_date = cleaned.get('end_date')
+        if start_date and end_date and start_date > end_date:
+            raise ValidationError("Start date cannot be after end date.")
+        return cleaned
+
+
+class CustomerStatementFilterForm(BootstrapFormMixin, forms.Form):
+    customer = forms.ModelChoiceField(
+        queryset=Customer.objects.none(),
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        required=True,
+    )
+    start_date = forms.DateField(
+        widget=forms.TextInput(attrs={'class': 'form-control datepicker'}),
+    )
+    end_date = forms.DateField(
+        widget=forms.TextInput(attrs={'class': 'form-control datepicker'}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        self.organization = kwargs.pop('organization', None)
+        super().__init__(*args, **kwargs)
+        today = timezone.now().date()
+        first_of_month = today.replace(day=1)
+        if self.organization:
+            self.fields['customer'].queryset = Customer.objects.filter(organization=self.organization)
         if not self.initial.get('start_date'):
             self.fields['start_date'].initial = first_of_month
         if not self.initial.get('end_date'):

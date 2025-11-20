@@ -1,0 +1,105 @@
+{% extends 'accounting/_form_base.html' %}
+
+{% block title %}Vendor{% endblock %}
+
+{% block form_content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h4 class="card-title mb-0">{{ form_title }}</h4>
+        <a href="{% url back_url %}" class="btn btn-secondary btn-sm">Back</a>
+    </div>
+    <div class="card-body">
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Code</label>
+                    {{ form.code }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Display Name</label>
+                    {{ form.display_name }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Legal Name</label>
+                    {{ form.legal_name }}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Status</label>
+                    {{ form.status }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Tax ID</label>
+                    {{ form.tax_id }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Payment Term</label>
+                    {{ form.payment_term }}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Default Currency</label>
+                    {{ form.default_currency }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">AP Account</label>
+                    {{ form.accounts_payable_account }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Expense Account</label>
+                    {{ form.expense_account }}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Email</label>
+                    {{ form.email }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Phone</label>
+                    {{ form.phone_number }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Website</label>
+                    {{ form.website }}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Credit Limit</label>
+                    {{ form.credit_limit }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="form-check mt-4">
+                        {{ form.on_hold }}
+                        <label class="form-check-label" for="{{ form.on_hold.id_for_label }}">On Hold</label>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="form-check mt-4">
+                        {{ form.is_active }}
+                        <label class="form-check-label" for="{{ form.is_active.id_for_label }}">Active</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Notes</label>
+                {{ form.notes }}
+            </div>
+
+            <div class="d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary">Save Vendor</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock form_content %}

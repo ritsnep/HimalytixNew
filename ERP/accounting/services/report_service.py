@@ -11,6 +11,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from accounting.models import FiscalYear, ReportDefinition
+from accounting.services.ap_aging_service import APAgingService
 from usermanagement.models import Organization
 
 
@@ -444,6 +445,43 @@ class ReportService:
                 {"bucket": bucket, "balance": amount} for bucket, amount in ordered_buckets
             ],
             "total": total_ar,
+        }
+
+    def generate_ap_aging(self, as_of: Optional[date] = None) -> Dict[str, Any]:
+        as_of_date = as_of or self.as_of_date
+        if not as_of_date:
+            raise ValueError("An 'as of' date is required for the aging report.")
+
+        service = APAgingService(self.organization, reference_date=as_of_date)
+        rows = service.build()
+        summary = service.summarize()
+
+        lines: List[Dict[str, Any]] = []
+        for row in rows:
+            for bucket, amount in row.buckets.items():
+                lines.append(
+                    {
+                        "vendor_id": row.vendor_id,
+                        "vendor_name": row.vendor_name,
+                        "bucket": bucket,
+                        "balance": amount,
+                    }
+                )
+
+        aging_summary = [
+            {"bucket": bucket, "balance": amount}
+            for bucket, amount in summary.items()
+            if bucket != "grand_total"
+        ]
+
+        return {
+            "report_type": "ap_aging",
+            "organization": self.organization.name,
+            "as_of_date": as_of_date,
+            "generated_at": timezone.now(),
+            "lines": lines,
+            "aging_summary": aging_summary,
+            "total": summary.get("grand_total", ZERO),
         }
 
     # ------------------------------------------------------------------

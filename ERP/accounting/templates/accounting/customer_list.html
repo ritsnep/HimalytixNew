@@ -1,0 +1,35 @@
+{% extends 'accounting/_list_base.html' %}
+
+{% block title %}Customers{% endblock %}
+
+{% block table_head %}
+<thead>
+    <tr>
+        <th>Code</th>
+        <th>Name</th>
+        <th>Status</th>
+        <th>Email</th>
+        <th>Phone</th>
+        <th>Credit Limit</th>
+        <th>Actions</th>
+    </tr>
+</thead>
+{% endblock table_head %}
+
+{% block table_body %}
+<tbody>
+    {% for customer in customers %}
+    <tr>
+        <td>{{ customer.code }}</td>
+        <td>{{ customer.display_name }}</td>
+        <td>{{ customer.get_status_display }}</td>
+        <td>{{ customer.email }}</td>
+        <td>{{ customer.phone_number }}</td>
+        <td>{{ customer.credit_limit }}</td>
+        <td><a class="btn btn-sm btn-primary" href="{% url 'accounting:customer_edit' customer.pk %}">Edit</a></td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="7" class="text-center text-muted">No customers found.</td></tr>
+    {% endfor %}
+</tbody>
+{% endblock table_body %}

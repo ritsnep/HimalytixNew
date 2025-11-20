@@ -16,6 +16,7 @@ from accounting.views.report_views import (
     BalanceSheetView,
     CashFlowView,
     AccountsReceivableAgingView,
+    AccountsPayableAgingView,
     ReportExportView,
 )
 
@@ -32,6 +33,7 @@ urlpatterns = [
     path('balance-sheet/', BalanceSheetView.as_view(), name='report_bs'),
     path('cash-flow/', CashFlowView.as_view(), name='report_cf'),
     path('ar-aging/', AccountsReceivableAgingView.as_view(), name='report_ar_aging'),
+    path('ap-aging/', AccountsPayableAgingView.as_view(), name='report_ap_aging'),
     
     # Export handler
     path('export/', ReportExportView.as_view(), name='report_export'),

@@ -42,9 +42,22 @@ django.setup()
 from django.contrib.auth import get_user_model
 from usermanagement.models import CustomUser, LoginLog, Organization, Module, Entity, Permission, Role, UserRole, UserOrganization, OrganizationAddress, OrganizationContact
 from accounting.models import (
-    FiscalYear, AccountingPeriod, Department, Project, CostCenter,
-    AccountType, ChartOfAccount, Currency, JournalType, TaxAuthority, 
-    TaxType, TaxCode, VoucherModeConfig, Journal, JournalLine
+    FiscalYear,
+    AccountingPeriod,
+    Department,
+    Project,
+    CostCenter,
+    AccountType,
+    ChartOfAccount,
+    Currency,
+    CurrencyExchangeRate,
+    JournalType,
+    TaxAuthority,
+    TaxType,
+    TaxCode,
+    VoucherModeConfig,
+    Journal,
+    JournalLine,
 )
 from django.utils import timezone
 from tenancy.models import Tenant, SubscriptionPlan, TenantSubscription, TenantConfig
@@ -204,6 +217,32 @@ def create_default_data():
         )
         if created:
             logger.info(f"Created currency: {currency.currency_code}")
+
+    # Seed baseline exchange rates (NPR as base)
+    npr_currency = Currency.objects.get(currency_code='NPR')
+    exchange_rate_data = [
+        {'code': 'USD', 'rate': Decimal('0.0075')},
+        {'code': 'EUR', 'rate': Decimal('0.0070')},
+        {'code': 'INR', 'rate': Decimal('0.6250')},
+    ]
+    rate_date = date.today()
+    for rate in exchange_rate_data:
+        try:
+            to_currency = Currency.objects.get(currency_code=rate['code'])
+        except Currency.DoesNotExist:
+            continue
+        CurrencyExchangeRate.objects.get_or_create(
+            organization=organization,
+            from_currency=npr_currency,
+            to_currency=to_currency,
+            rate_date=rate_date,
+            defaults={
+                'exchange_rate': rate['rate'],
+                'source': 'seed',
+                'is_active': True,
+                'created_by': superuser,
+            }
+        )
     
     # Create Nepali fiscal year 2081-2082 (2024-07-16 to 2025-07-16)
     fiscal_year = FiscalYear.objects.filter(
@@ -684,11 +723,18 @@ def create_default_data():
         {'name': 'Department', 'code': 'department', 'description': 'Department management'},
         {'name': 'Project', 'code': 'project', 'description': 'Project management'},
         {'name': 'Cost Center', 'code': 'costcenter', 'description': 'Cost Center management'},
+        {'name': 'Journal', 'code': 'journal', 'description': 'Journal management'},
         {'name': 'Journal Type', 'code': 'journaltype', 'description': 'Journal Type management'},
+        {'name': 'General Ledger', 'code': 'generalledger', 'description': 'General Ledger management'},
+        {'name': 'Currency', 'code': 'currency', 'description': 'Currency management'},
+        {'name': 'Currency Exchange Rate', 'code': 'currencyexchangerate', 'description': 'Currency Exchange Rate management'},
         {'name': 'Tax Authority', 'code': 'taxauthority', 'description': 'Tax Authority management'},
         {'name': 'Tax Type', 'code': 'taxtype', 'description': 'Tax Type management'},
         {'name': 'Tax Code', 'code': 'taxcode', 'description': 'Tax Code management'},
         {'name': 'Voucher Mode Config', 'code': 'vouchermodeconfig', 'description': 'Voucher Mode Config management'},
+        {'name': 'Voucher Mode Default', 'code': 'vouchermodedefault', 'description': 'Voucher Mode Default management'},
+        {'name': 'Voucher UDF Config', 'code': 'voucherudfconfig', 'description': 'Voucher UDF Configuration management'},
+        {'name': 'Accounts Payable Payment', 'code': 'appayment', 'description': 'Accounts Payable Payment management'},
     ]
     entity_objs = []
     for ent in entities_data:
@@ -705,9 +751,13 @@ def create_default_data():
 
     # 3. Create permissions for each entity (CRUD)
     actions = ['view', 'add', 'change', 'delete']
+    custom_actions = {
+        'journal': ['submit_journal', 'post_journal'],
+    }
     permission_objs = []
     for entity in entity_objs:
-        for action in actions:
+        entity_actions = actions + custom_actions.get(entity.code, [])
+        for action in entity_actions:
             perm, _ = Permission.objects.get_or_create(
                 module=accounting_module,
                 entity=entity,
@@ -724,11 +774,29 @@ def create_default_data():
     # 4. Assign permissions to roles
     admin_role = role_objs['ADMIN']
     user_role = role_objs['USER']
+    manager_role = role_objs.get('MANAGER')
+    clerk_role = role_objs.get('CLERK')
+    auditor_role = role_objs.get('AUDITOR')
     admin_role.permissions.set(permission_objs)
     admin_role.save()
     view_perms = [p for p in permission_objs if p.action == 'view']
     user_role.permissions.set(view_perms)
     user_role.save()
+
+    if auditor_role:
+        auditor_role.permissions.set(view_perms)
+
+    submit_perm = next((p for p in permission_objs if p.entity.code == 'journal' and p.action == 'submit_journal'), None)
+    post_perm = next((p for p in permission_objs if p.entity.code == 'journal' and p.action == 'post_journal'), None)
+
+    if clerk_role and submit_perm:
+        clerk_role.permissions.add(submit_perm)
+
+    if manager_role:
+        if submit_perm:
+            manager_role.permissions.add(submit_perm)
+        if post_perm:
+            manager_role.permissions.add(post_perm)
 
     # 5. Assign Administrator role to superuser
     UserRole.objects.get_or_create(

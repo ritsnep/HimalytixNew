@@ -133,6 +133,8 @@ class ReportExportService:
             ReportExportService._export_cf_csv(writer, report_data)
         elif report_type == "ar_aging":
             ReportExportService._export_ar_aging_csv(writer, report_data)
+        elif report_type == "ap_aging":
+            ReportExportService._export_ap_aging_csv(writer, report_data)
         else:
             handled = False
 
@@ -224,6 +226,8 @@ class ReportExportService:
             row = ReportExportService._export_cf_excel(ws, report_data, row, header_fill, header_font_white, border, total_fill, total_font)
         elif report_type == "ar_aging":
             row = ReportExportService._export_ar_aging_excel(ws, report_data, row, header_fill, header_font_white, border, total_fill, total_font)
+        elif report_type == "ap_aging":
+            row = ReportExportService._export_ap_aging_excel(ws, report_data, row, header_fill, header_font_white, border, total_fill, total_font)
         else:
             handled = False
 
@@ -473,6 +477,28 @@ class ReportExportService:
                 [
                     line.get("account_code") or "",
                     line.get("account_name") or "",
+                    line.get("bucket") or "",
+                    ReportExportService._decimal_to_str(line.get("balance")),
+                ]
+            )
+
+        writer.writerow([])
+        writer.writerow(["AGING SUMMARY"])
+        for bucket in report_data.get("aging_summary", []):
+            writer.writerow(
+                [bucket.get("bucket") or "", ReportExportService._decimal_to_str(bucket.get("balance"))]
+            )
+        writer.writerow(["TOTAL", ReportExportService._decimal_to_str(report_data.get("total"))])
+
+    @staticmethod
+    def _export_ap_aging_csv(writer, report_data: Dict) -> None:
+        """Export A/P Aging to CSV."""
+        writer.writerow(["Vendor", "Bucket", "Balance"])
+
+        for line in report_data.get("lines", []):
+            writer.writerow(
+                [
+                    line.get("vendor_name") or "",
                     line.get("bucket") or "",
                     ReportExportService._decimal_to_str(line.get("balance")),
                 ]
@@ -776,6 +802,43 @@ class ReportExportService:
             ws.cell(row, 2, line.get("account_name"))
             ws.cell(row, 3, line.get("bucket"))
             ws.cell(row, 4, ReportExportService._decimal_to_float(line.get("balance")))
+            row += 1
+
+        row += 2
+        ws.cell(row, 1, "AGING SUMMARY")
+        ws.cell(row, 1).font = Font(bold=True, size=11)
+        row += 1
+
+        for bucket in report_data.get("aging_summary", []):
+            ws.cell(row, 1, bucket.get("bucket"))
+            ws.cell(row, 2, ReportExportService._decimal_to_float(bucket.get("balance")))
+            row += 1
+
+        ws.cell(row, 1, "TOTAL")
+        ws.cell(row, 2, ReportExportService._decimal_to_float(report_data.get("total")))
+        for col in range(1, 3):
+            ws.cell(row, col).fill = total_fill
+            ws.cell(row, col).font = Font(bold=True)
+
+        return row + 1
+
+    @staticmethod
+    def _export_ap_aging_excel(ws, report_data: Dict, row: int, header_fill, header_font_white, border, total_fill, total_font) -> int:
+        """Export A/P Aging to Excel sheet."""
+        from openpyxl.styles import Font
+
+        headers = ["Vendor", "Bucket", "Balance"]
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row, col, header)
+            cell.fill = header_fill
+            cell.font = header_font_white
+            cell.border = border
+        row += 1
+
+        for line in report_data.get("lines", []):
+            ws.cell(row, 1, line.get("vendor_name"))
+            ws.cell(row, 2, line.get("bucket"))
+            ws.cell(row, 3, ReportExportService._decimal_to_float(line.get("balance")))
             row += 1
 
         row += 2

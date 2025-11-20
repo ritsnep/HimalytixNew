@@ -81,6 +81,12 @@ class ReportListView(UserOrganizationMixin, TemplateView):
                 "description": _("Bucket outstanding receivables by age."),
                 "url": reverse("accounting:report_ar_aging"),
             },
+            {
+                "id": "ap_aging",
+                "name": _("Accounts Payable Aging"),
+                "description": _("Review vendor balances by due date bucket."),
+                "url": reverse("accounting:report_ap_aging"),
+            },
         ]
 
         custom_definitions = ReportDefinition.objects.filter(
@@ -272,6 +278,31 @@ class AccountsReceivableAgingView(UserOrganizationMixin, View):
         return render(request, self.template_name, context)
 
 
+class AccountsPayableAgingView(UserOrganizationMixin, View):
+    template_name = "accounting/reports/ap_aging.html"
+
+    def get(self, request):
+        as_of_raw = request.GET.get("as_of_date")
+        as_of_date = _parse_date(as_of_raw) or timezone.localdate()
+
+        report_data = None
+        error = None
+        if as_of_raw:
+            try:
+                service = ReportService(self.organization)
+                report_data = service.generate_ap_aging(as_of_date)
+            except ValueError as exc:
+                error = str(exc)
+                logger.warning("A/P aging generation error: %s", exc)
+
+        context = {
+            "as_of_date": as_of_date.isoformat(),
+            "report_data": report_data,
+            "error": error,
+        }
+        return render(request, self.template_name, context)
+
+
 class CustomReportView(UserOrganizationMixin, View):
     template_name = "accounting/reports/custom_report.html"
 
@@ -415,6 +446,12 @@ class ReportExportView(UserOrganizationMixin, View):
             if not as_of:
                 raise ValueError("As of date is required for the aging export.")
             return service.generate_ar_aging(as_of)
+
+        if report_type == "ap_aging":
+            as_of = _parse_date(data.get("as_of_date"))
+            if not as_of:
+                raise ValueError("As of date is required for the aging export.")
+            return service.generate_ap_aging(as_of)
 
         if report_type and report_type.startswith("custom:"):
             code = report_type.split(":", 1)[1]
