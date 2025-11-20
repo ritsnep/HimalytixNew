@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends "partials/base.html" %}
 {% load i18n %}
 
 {% block title %}{% trans "A/P Aging" %}{% endblock %}
@@ -94,20 +94,24 @@
                         <thead class="table-light">
                             <tr>
                                 <th>{% trans "Vendor" %}</th>
-                                <th>{% trans "Bucket" %}</th>
-                                <th class="text-end">{% trans "Balance" %}</th>
+                                {% for label in report_data.bucket_labels %}
+                                    <th class="text-end">{{ label|upper }}</th>
+                                {% endfor %}
+                                <th class="text-end">{% trans "Total" %}</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for line in report_data.lines %}
+                            {% for vendor in report_data.vendors %}
                                 <tr>
-                                    <td>{{ line.vendor_name }}</td>
-                                    <td>{{ line.bucket }}</td>
-                                    <td class="text-end">{{ line.balance|floatformat:2 }}</td>
+                                    <td>{{ vendor.vendor_name }}</td>
+                                    {% for amount in vendor.buckets %}
+                                        <td class="text-end">{{ amount|floatformat:2 }}</td>
+                                    {% endfor %}
+                                    <td class="text-end fw-semibold">{{ vendor.total|floatformat:2 }}</td>
                                 </tr>
                             {% empty %}
                                 <tr>
-                                    <td colspan="3" class="text-center text-muted py-4">
+                                    <td colspan="{{ report_data.bucket_labels|length|add:2 }}" class="text-center text-muted py-4">
                                         {% trans "No payable balances for the selected date." %}
                                     </td>
                                 </tr>
@@ -115,7 +119,10 @@
                         </tbody>
                         <tfoot class="table-light fw-bold">
                             <tr>
-                                <td colspan="2" class="text-end">{% trans "Total Payables" %}</td>
+                                <td class="text-end">{% trans "Total Payables" %}</td>
+                                {% for bucket in report_data.aging_summary %}
+                                    <td class="text-end">{{ bucket.balance|floatformat:2 }}</td>
+                                {% endfor %}
                                 <td class="text-end">{{ report_data.total|floatformat:2 }}</td>
                             </tr>
                         </tfoot>

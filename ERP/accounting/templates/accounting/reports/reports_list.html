@@ -71,6 +71,29 @@
                         </div>
                     </div>
                 </div>
+
+                {% if advanced_reports %}
+                <hr class="my-4">
+                <h5 class="card-title">Advanced Financial Reports</h5>
+                <div class="row">
+                    {% for report in advanced_reports %}
+                    <div class="col-md-4 mb-3">
+                        <div class="card border-light shadow-sm h-100">
+                            <div class="card-body text-center">
+                                {% if report.icon %}
+                                <i class="{{ report.icon }} fa-3x text-primary mb-3"></i>
+                                {% endif %}
+                                <h5 class="card-title">{{ report.name }}</h5>
+                                <p class="card-text text-muted">{{ report.description }}</p>
+                                <a href="{{ report.url }}" class="btn btn-outline-primary">
+                                    View Report
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>

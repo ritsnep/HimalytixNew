@@ -454,32 +454,30 @@ class ReportService:
 
         service = APAgingService(self.organization, reference_date=as_of_date)
         rows = service.build()
-        summary = service.summarize()
+        summary = service.summarize(rows)
+        bucket_labels = service.bucket_labels()
 
-        lines: List[Dict[str, Any]] = []
+        vendors: List[Dict[str, Any]] = []
         for row in rows:
-            for bucket, amount in row.buckets.items():
-                lines.append(
-                    {
-                        "vendor_id": row.vendor_id,
-                        "vendor_name": row.vendor_name,
-                        "bucket": bucket,
-                        "balance": amount,
-                    }
-                )
+            vendor_buckets = [row.buckets.get(label, ZERO) for label in bucket_labels]
+            vendors.append(
+                {
+                    "vendor_id": row.vendor_id,
+                    "vendor_name": row.vendor_name,
+                    "buckets": vendor_buckets,
+                    "total": row.total,
+                }
+            )
 
-        aging_summary = [
-            {"bucket": bucket, "balance": amount}
-            for bucket, amount in summary.items()
-            if bucket != "grand_total"
-        ]
+        aging_summary = [{"bucket": bucket, "balance": summary.get(bucket, ZERO)} for bucket in bucket_labels]
 
         return {
             "report_type": "ap_aging",
             "organization": self.organization.name,
             "as_of_date": as_of_date,
             "generated_at": timezone.now(),
-            "lines": lines,
+            "vendors": vendors,
+            "bucket_labels": bucket_labels,
             "aging_summary": aging_summary,
             "total": summary.get("grand_total", ZERO),
         }

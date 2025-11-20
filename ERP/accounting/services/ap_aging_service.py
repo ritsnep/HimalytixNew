@@ -6,7 +6,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Iterable, List
 
-from django.db.models import Sum
+from django.db.models import Sum, Q
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -26,6 +26,7 @@ class APAgingService:
 
     DEFAULT_BUCKETS = [30, 60, 90]
     OPEN_STATUSES = ('validated', 'matched', 'ready_for_posting', 'posted')
+    APPLIED_PAYMENT_STATUSES = ('executed', 'reconciled')
 
     def __init__(
         self,
@@ -50,6 +51,8 @@ class APAgingService:
         return buckets
 
     def _bucket_label(self, due_date: date) -> str:
+        if not due_date:
+            return 'current'
         days_past_due = (self.reference_date - due_date).days
         if days_past_due <= 0:
             return 'current'
@@ -75,11 +78,30 @@ class APAgingService:
             PurchaseInvoice.objects.filter(
                 organization=self.organization,
                 status__in=self.OPEN_STATUSES,
+                invoice_date__lte=self.reference_date,
             )
             .select_related('vendor')
             .annotate(
-                paid_amount=Coalesce(Sum('payment_lines__applied_amount'), Decimal('0')),
-                discount_amount=Coalesce(Sum('payment_lines__discount_taken'), Decimal('0')),
+                paid_amount=Coalesce(
+                    Sum(
+                        'payment_lines__applied_amount',
+                        filter=Q(
+                            payment_lines__payment__payment_date__lte=self.reference_date,
+                            payment_lines__payment__status__in=self.APPLIED_PAYMENT_STATUSES,
+                        ),
+                    ),
+                    Decimal('0'),
+                ),
+                discount_amount=Coalesce(
+                    Sum(
+                        'payment_lines__discount_taken',
+                        filter=Q(
+                            payment_lines__payment__payment_date__lte=self.reference_date,
+                            payment_lines__payment__status__in=self.APPLIED_PAYMENT_STATUSES,
+                        ),
+                    ),
+                    Decimal('0'),
+                ),
             )
         )
 
@@ -104,9 +126,9 @@ class APAgingService:
 
         return sorted(vendor_map.values(), key=lambda r: r.vendor_name.lower())
 
-    def summarize(self) -> OrderedDict:
+    def summarize(self, rows: List[VendorAgingRow] | None = None) -> OrderedDict:
         summary = self._empty_bucket_map()
-        rows = self.build()
+        rows = rows or self.build()
         for row in rows:
             for label, amount in row.buckets.items():
                 summary[label] += amount

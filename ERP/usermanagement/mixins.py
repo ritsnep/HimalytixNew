@@ -63,6 +63,13 @@ class UserOrganizationMixin(LoginRequiredMixin):
         if not self.request.user.is_authenticated:
             return None
         return self.request.user.get_active_organization()
+
+    @property
+    def organization(self):
+        """Cached access to the active organization for convenient attribute usage."""
+        if not hasattr(self, "_organization_cache"):
+            self._organization_cache = self.get_organization()
+        return self._organization_cache
     
     def get_context_data(self, **kwargs):
         """Add organization to context."""

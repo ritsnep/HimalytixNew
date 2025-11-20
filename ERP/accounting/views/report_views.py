@@ -3,12 +3,12 @@ from __future__ import annotations
 import logging
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from django.db import models
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
-from django.urls import reverse
+from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.views import View
@@ -22,6 +22,79 @@ from usermanagement.mixins import UserOrganizationMixin
 logger = logging.getLogger(__name__)
 
 DATE_FMT = "%Y-%m-%d"
+
+REPORT_DEFINITIONS: List[Dict[str, Any]] = [
+    {
+        "id": "general_ledger",
+        "name": _("General Ledger"),
+        "description": _("View all transactions by account with running balances."),
+        "url_name": "report_ledger",
+        "icon": "fas fa-book-open",
+    },
+    {
+        "id": "trial_balance",
+        "name": _("Trial Balance"),
+        "description": _("Verify debits and credits balance for all accounts."),
+        "url_name": "report_trial_balance",
+        "icon": "fas fa-balance-scale",
+    },
+    {
+        "id": "profit_loss",
+        "name": _("Profit & Loss Statement"),
+        "description": _("Analyse revenues, expenses, and net income for a period."),
+        "url_name": "report_pl",
+        "icon": "fas fa-chart-line",
+    },
+    {
+        "id": "balance_sheet",
+        "name": _("Balance Sheet"),
+        "description": _("Summarise assets, liabilities, and equity at a point in time."),
+        "url_name": "report_bs",
+        "icon": "fas fa-landmark",
+    },
+    {
+        "id": "cash_flow",
+        "name": _("Cash Flow Statement"),
+        "description": _("Track cash inflows and outflows by activity."),
+        "url_name": "report_cf",
+        "icon": "fas fa-water",
+    },
+    {
+        "id": "ar_aging",
+        "name": _("Accounts Receivable Aging"),
+        "description": _("Bucket outstanding receivables by age."),
+        "url_name": "report_ar_aging",
+        "icon": "fas fa-user-clock",
+    },
+    {
+        "id": "ap_aging",
+        "name": _("Accounts Payable Aging"),
+        "description": _("Review vendor balances by due date bucket."),
+        "url_name": "report_ap_aging",
+        "icon": "fas fa-file-invoice-dollar",
+    },
+]
+
+
+def build_report_cards(namespace: str = "accounting") -> List[Dict[str, Any]]:
+    """Return report metadata with resolved URLs for the requested namespace."""
+
+    cards: List[Dict[str, Any]] = []
+    for report in REPORT_DEFINITIONS:
+        try:
+            url = reverse(f"{namespace}:{report['url_name']}")
+        except NoReverseMatch:
+            url = reverse(f"accounting:{report['url_name']}")
+        cards.append(
+            {
+                "id": report["id"],
+                "name": report["name"],
+                "description": report["description"],
+                "url": url,
+                "icon": report.get("icon", "fas fa-file-alt"),
+            }
+        )
+    return cards
 
 
 def _parse_date(value: Optional[str]) -> Optional[date]:
@@ -44,50 +117,8 @@ class ReportListView(UserOrganizationMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["reports"] = [
-            {
-                "id": "general_ledger",
-                "name": _("General Ledger"),
-                "description": _("View all transactions by account with running balances."),
-                "url": reverse("accounting:report_ledger"),
-            },
-            {
-                "id": "trial_balance",
-                "name": _("Trial Balance"),
-                "description": _("Verify debits and credits balance for all accounts."),
-                "url": reverse("accounting:report_trial_balance"),
-            },
-            {
-                "id": "profit_loss",
-                "name": _("Profit & Loss Statement"),
-                "description": _("Analyse revenues, expenses, and net income for a period."),
-                "url": reverse("accounting:report_pl"),
-            },
-            {
-                "id": "balance_sheet",
-                "name": _("Balance Sheet"),
-                "description": _("Summarise assets, liabilities, and equity at a point in time."),
-                "url": reverse("accounting:report_bs"),
-            },
-            {
-                "id": "cash_flow",
-                "name": _("Cash Flow Statement"),
-                "description": _("Track cash inflows and outflows by activity."),
-                "url": reverse("accounting:report_cf"),
-            },
-            {
-                "id": "ar_aging",
-                "name": _("Accounts Receivable Aging"),
-                "description": _("Bucket outstanding receivables by age."),
-                "url": reverse("accounting:report_ar_aging"),
-            },
-            {
-                "id": "ap_aging",
-                "name": _("Accounts Payable Aging"),
-                "description": _("Review vendor balances by due date bucket."),
-                "url": reverse("accounting:report_ap_aging"),
-            },
-        ]
+        namespace = self.request.resolver_match.namespace or "accounting"
+        context["reports"] = build_report_cards(namespace)
 
         custom_definitions = ReportDefinition.objects.filter(
             is_active=True,

@@ -62,6 +62,7 @@ from accounting.services.post_journal import JournalPostingError, post_journal, 
 from django.http import JsonResponse, HttpResponseForbidden
 from accounting.models import JournalLine
 from accounting.validation import JournalValidationService
+from accounting.views.report_views import build_report_cards
 
 logger = logging.getLogger(__name__)
 
@@ -1218,6 +1219,8 @@ class ReportsListView(LoginRequiredMixin, UserOrganizationMixin, TemplateView):
                 ('Reports', None),
             ]
         })
+
+        context['advanced_reports'] = build_report_cards()
         
         return context
 

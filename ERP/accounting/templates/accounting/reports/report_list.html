@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends "partials/base.html" %}
 {% load i18n %}
 
 {% block title %}{% trans "Financial Reports" %}{% endblock %}
@@ -23,7 +23,7 @@
                 <div class="card h-100 shadow-sm hover-shadow transition">
                     <div class="card-body">
                         <h5 class="card-title">
-                            <i class="fas fa-file-alt me-2 text-primary"></i>
+                            <i class="{{ report.icon|default:'fas fa-file-alt' }} me-2 text-primary"></i>
                             {{ report.name }}
                         </h5>
                         <p class="card-text text-muted small">

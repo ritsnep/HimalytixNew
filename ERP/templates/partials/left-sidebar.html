@@ -247,6 +247,60 @@
                 <span>Journal Types</span>
             </a>
         </li>
+        <!-- Financial Reports -->
+        <li>
+            <a href="javascript: void(0);" class="has-arrow">
+                <i class="fas fa-chart-pie"></i>
+                <span>Financial Reports</span>
+            </a>
+            <ul class="sub-menu" aria-expanded="false">
+                <li>
+                    <a href="{% url 'accounting:reports_list' %}">
+                        <span>Standard Reports</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'accounting:report_list' %}">
+                        <span>Advanced Reports Hub</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'accounting:report_ledger' %}">
+                        <span>General Ledger</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'accounting:report_trial_balance' %}">
+                        <span>Trial Balance</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'accounting:report_pl' %}">
+                        <span>Profit &amp; Loss</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'accounting:report_bs' %}">
+                        <span>Balance Sheet</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'accounting:report_cf' %}">
+                        <span>Cash Flow</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'accounting:report_ar_aging' %}">
+                        <span>A/R Aging</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'accounting:report_ap_aging' %}">
+                        <span>A/P Aging</span>
+                    </a>
+                </li>
+            </ul>
+        </li>
     </ul>
 </li>
 
