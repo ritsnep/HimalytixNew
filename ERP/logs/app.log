@@ -1,0 +1,1265 @@
+[2025-11-21 00:53:45,982] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django_prometheus
+[2025-11-21 00:53:45,984] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\admin
+[2025-11-21 00:53:45,985] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\auth
+[2025-11-21 00:53:45,985] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\contenttypes
+[2025-11-21 00:53:45,987] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sessions
+[2025-11-21 00:53:45,987] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-21 00:53:45,987] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-21 00:53:45,988] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-21 00:53:45,988] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-21 00:53:45,989] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sites
+[2025-11-21 00:53:45,989] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth
+[2025-11-21 00:53:45,990] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\account
+[2025-11-21 00:53:45,990] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\socialaccount
+[2025-11-21 00:53:45,991] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-21 00:53:45,991] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-21 00:53:45,991] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-21 00:53:45,992] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\rest_framework\authtoken
+[2025-11-21 00:53:45,993] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\silk
+[2025-11-21 00:53:45,993] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-21 00:53:45,994] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-21 00:53:45,994] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\mptt
+[2025-11-21 00:53:45,995] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-21 00:53:45,997] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-21 00:53:45,997] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\widget_tweaks
+[2025-11-21 00:53:45,998] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\formtools
+[2025-11-21 00:53:46,001] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-21 00:53:46,001] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-21 00:53:47,518] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-21 00:55:14,531] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django_prometheus
+[2025-11-21 00:55:14,531] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\admin
+[2025-11-21 00:55:14,532] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\auth
+[2025-11-21 00:55:14,532] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\contenttypes
+[2025-11-21 00:55:14,532] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sessions
+[2025-11-21 00:55:14,532] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-21 00:55:14,533] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-21 00:55:14,533] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-21 00:55:14,534] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-21 00:55:14,535] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sites
+[2025-11-21 00:55:14,535] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth
+[2025-11-21 00:55:14,536] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\account
+[2025-11-21 00:55:14,536] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\socialaccount
+[2025-11-21 00:55:14,536] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-21 00:55:14,537] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-21 00:55:14,537] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-21 00:55:14,537] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\rest_framework\authtoken
+[2025-11-21 00:55:14,538] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\silk
+[2025-11-21 00:55:14,538] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-21 00:55:14,538] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-21 00:55:14,538] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\mptt
+[2025-11-21 00:55:14,539] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-21 00:55:14,539] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-21 00:55:14,539] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\widget_tweaks
+[2025-11-21 00:55:14,540] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\formtools
+[2025-11-21 00:55:14,540] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-21 00:55:14,540] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-21 00:55:15,260] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-21 00:55:23,119] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-21 00:55:23,120] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-21 00:55:23,120] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-21 00:55:23,121] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-21 00:55:23,121] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-21 00:55:23,121] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-21 00:55:23,121] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-21 00:55:23,122] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-21 00:55:23,122] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-21 00:55:23,122] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-21 00:55:23,123] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-21 00:55:23,123] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-21 00:55:23,123] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-21 00:55:23,123] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-21 00:55:23,124] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-21 00:55:23,124] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-21 00:55:23,125] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-21 00:55:23,126] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-21 00:55:23,126] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-21 00:55:23,127] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-21 00:55:23,127] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-21 00:55:23,127] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-21 00:55:23,128] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-21 00:55:23,128] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-21 00:55:23,128] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-21 00:55:23,129] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-21 00:55:23,129] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-21 00:55:25,958] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-21 00:55:25,959] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-21 00:55:25,960] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-21 00:55:25,960] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-21 00:55:25,961] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-21 00:55:25,961] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-21 00:55:25,962] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-21 00:55:25,962] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-21 00:55:25,963] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-21 00:55:25,964] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-21 00:55:25,964] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-21 00:55:25,965] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-21 00:55:25,967] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-21 00:55:25,973] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-21 00:55:25,980] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-21 00:55:25,981] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-21 00:55:25,982] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-21 00:55:25,982] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-21 00:55:25,985] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-21 00:55:25,988] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-21 00:55:25,989] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-21 00:55:25,990] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-21 00:55:25,990] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-21 00:55:25,991] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-21 00:55:25,991] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-21 00:55:25,992] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-21 00:55:25,992] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-21 00:55:26,073] INFO django.utils.autoreload: Watching for file changes with StatReloader
+[2025-11-21 00:55:27,096] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-21 00:55:40,456] WARNING accounting.middleware: No tenant found on request.
+[2025-11-21 00:55:40,469] INFO middleware.logging.structured_logging: [2m2025-11-20T19:10:40.469686Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m825c05cf-3ab5-4c19-ae2d-066fe9766d4b[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 00:55:40,773] ERROR middleware.logging.structured_logging: [2m2025-11-20T19:10:40.773748Z[0m [[31m[1merror    [0m] [1mrequest_exception             [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mexception_type[0m=[35mTemplateSyntaxError[0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m825c05cf-3ab5-4c19-ae2d-066fe9766d4b[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+Could not parse the remainder: ' if vendor.is_active else 'secondary'' from ''success' if vendor.is_active else 'secondary''
+[2025-11-21 00:55:41,027] ERROR django.request: Internal Server Error: /accounting/vendor-bills/new/
+Traceback (most recent call last):
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\accounting\mixins.py", line 87, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth\mixins.py", line 73, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\views\generic\base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+  File "C:\PythonProjects\Himalytix\ERP\accounting\views\purchase_invoice_views.py", line 33, in get
+    return render(request, self.template_name, context)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader.py", line 62, in render_to_string
+    return template.render(context, request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\backends\django.py", line 61, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1000, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 961, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1000, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 961, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1000, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 961, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader_tags.py", line 199, in render
+    template = context.template.engine.select_template(template_name)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\engine.py", line 208, in select_template
+    return self.get_template(template_name)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\engine.py", line 177, in get_template
+    template, origin = self.find_template(template_name)
+                       ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\engine.py", line 159, in find_template
+    template = loader.get_template(name, skip=skip)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loaders\cached.py", line 57, in get_template
+    template = super().get_template(template_name, skip)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loaders\base.py", line 28, in get_template
+    return Template(
+        contents,
+    ...<2 lines>...
+        self.engine,
+    )
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 154, in __init__
+    self.nodelist = self.compile_nodelist()
+                    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 196, in compile_nodelist
+    return parser.parse()
+           ~~~~~~~~~~~~^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 510, in parse
+    raise self.error(token, e)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 508, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\defaulttags.py", line 961, in do_if
+    nodelist = parser.parse(("elif", "else", "endif"))
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 481, in parse
+    raise self.error(token, e)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 479, in parse
+    filter_expression = self.compile_filter(token.contents)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 597, in compile_filter
+    return FilterExpression(token, self)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 698, in __init__
+    raise TemplateSyntaxError(
+    ...<2 lines>...
+    )
+django.template.exceptions.TemplateSyntaxError: Could not parse the remainder: ' if vendor.is_active else 'secondary'' from ''success' if vendor.is_active else 'secondary''
+[2025-11-21 00:55:41,053] INFO middleware.logging.structured_logging: [2m2025-11-20T19:10:41.053292Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m825c05cf-3ab5-4c19-ae2d-066fe9766d4b[0m [36mstatus_code[0m=[35m500[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 00:55:45,763] WARNING accounting.middleware: No tenant found on request.
+[2025-11-21 00:55:45,777] INFO middleware.logging.structured_logging: [2m2025-11-20T19:10:45.777864Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/chart-of-accounts/[0m [36mrequest_id[0m=[35m618c6ff1-96b4-4725-aa00-7d765cfa7950[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 00:55:45,874] INFO middleware.logging.structured_logging: [2m2025-11-20T19:10:45.874521Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/chart-of-accounts/[0m [36mrequest_id[0m=[35m618c6ff1-96b4-4725-aa00-7d765cfa7950[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 00:56:02,695] WARNING accounting.middleware: No tenant found on request.
+[2025-11-21 00:56:02,703] INFO middleware.logging.structured_logging: [2m2025-11-20T19:11:02.702953Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/customers/[0m [36mrequest_id[0m=[35ma6414e0b-22a9-45ce-bb1d-f94ff17569c5[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 00:56:02,815] INFO middleware.logging.structured_logging: [2m2025-11-20T19:11:02.815595Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/customers/[0m [36mrequest_id[0m=[35ma6414e0b-22a9-45ce-bb1d-f94ff17569c5[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 00:56:05,210] WARNING accounting.middleware: No tenant found on request.
+[2025-11-21 00:56:05,212] INFO middleware.logging.structured_logging: [2m2025-11-20T19:11:05.212105Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendors/[0m [36mrequest_id[0m=[35mabc6ce97-da27-4a92-b0f8-bcd77b8f4c96[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 00:56:05,282] INFO middleware.logging.structured_logging: [2m2025-11-20T19:11:05.281956Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendors/[0m [36mrequest_id[0m=[35mabc6ce97-da27-4a92-b0f8-bcd77b8f4c96[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 00:56:08,260] WARNING accounting.middleware: No tenant found on request.
+[2025-11-21 00:56:08,262] INFO middleware.logging.structured_logging: [2m2025-11-20T19:11:08.262075Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m95cca868-eaf1-41fa-8bcd-9cf354bba27f[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 00:56:08,336] ERROR middleware.logging.structured_logging: [2m2025-11-20T19:11:08.336487Z[0m [[31m[1merror    [0m] [1mrequest_exception             [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mexception_type[0m=[35mTemplateSyntaxError[0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m95cca868-eaf1-41fa-8bcd-9cf354bba27f[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+Could not parse the remainder: ' if vendor.is_active else 'secondary'' from ''success' if vendor.is_active else 'secondary''
+[2025-11-21 00:56:08,646] ERROR django.request: Internal Server Error: /accounting/vendor-bills/new/
+Traceback (most recent call last):
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\accounting\mixins.py", line 87, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth\mixins.py", line 73, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\views\generic\base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+  File "C:\PythonProjects\Himalytix\ERP\accounting\views\purchase_invoice_views.py", line 33, in get
+    return render(request, self.template_name, context)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader.py", line 62, in render_to_string
+    return template.render(context, request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\backends\django.py", line 61, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1000, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 961, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1000, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 961, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1000, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 961, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader_tags.py", line 199, in render
+    template = context.template.engine.select_template(template_name)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\engine.py", line 208, in select_template
+    return self.get_template(template_name)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\engine.py", line 177, in get_template
+    template, origin = self.find_template(template_name)
+                       ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\engine.py", line 159, in find_template
+    template = loader.get_template(name, skip=skip)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loaders\cached.py", line 57, in get_template
+    template = super().get_template(template_name, skip)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loaders\base.py", line 28, in get_template
+    return Template(
+        contents,
+    ...<2 lines>...
+        self.engine,
+    )
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 154, in __init__
+    self.nodelist = self.compile_nodelist()
+                    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 196, in compile_nodelist
+    return parser.parse()
+           ~~~~~~~~~~~~^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 510, in parse
+    raise self.error(token, e)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 508, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\defaulttags.py", line 961, in do_if
+    nodelist = parser.parse(("elif", "else", "endif"))
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 481, in parse
+    raise self.error(token, e)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 479, in parse
+    filter_expression = self.compile_filter(token.contents)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 597, in compile_filter
+    return FilterExpression(token, self)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 698, in __init__
+    raise TemplateSyntaxError(
+    ...<2 lines>...
+    )
+django.template.exceptions.TemplateSyntaxError: Could not parse the remainder: ' if vendor.is_active else 'secondary'' from ''success' if vendor.is_active else 'secondary''
+[2025-11-21 00:56:08,653] INFO middleware.logging.structured_logging: [2m2025-11-20T19:11:08.653385Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m95cca868-eaf1-41fa-8bcd-9cf354bba27f[0m [36mstatus_code[0m=[35m500[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 00:58:54,612] WARNING accounting.middleware: No tenant found on request.
+[2025-11-21 00:58:54,615] INFO middleware.logging.structured_logging: [2m2025-11-20T19:13:54.615229Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m398084c2-9f07-4db0-a92b-962148b743e1[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 00:58:54,663] ERROR middleware.logging.structured_logging: [2m2025-11-20T19:13:54.663819Z[0m [[31m[1merror    [0m] [1mrequest_exception             [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mexception_type[0m=[35mTemplateSyntaxError[0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m398084c2-9f07-4db0-a92b-962148b743e1[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+Could not parse the remainder: ' if vendor.is_active else 'secondary'' from ''success' if vendor.is_active else 'secondary''
+[2025-11-21 00:58:54,760] ERROR django.request: Internal Server Error: /accounting/vendor-bills/new/
+Traceback (most recent call last):
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\accounting\mixins.py", line 87, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth\mixins.py", line 73, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\views\generic\base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+  File "C:\PythonProjects\Himalytix\ERP\accounting\views\purchase_invoice_views.py", line 33, in get
+    return render(request, self.template_name, context)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader.py", line 62, in render_to_string
+    return template.render(context, request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\backends\django.py", line 61, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1000, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 961, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1000, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 961, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1000, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 961, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader_tags.py", line 199, in render
+    template = context.template.engine.select_template(template_name)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\engine.py", line 208, in select_template
+    return self.get_template(template_name)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\engine.py", line 177, in get_template
+    template, origin = self.find_template(template_name)
+                       ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\engine.py", line 159, in find_template
+    template = loader.get_template(name, skip=skip)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loaders\cached.py", line 57, in get_template
+    template = super().get_template(template_name, skip)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loaders\base.py", line 28, in get_template
+    return Template(
+        contents,
+    ...<2 lines>...
+        self.engine,
+    )
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 154, in __init__
+    self.nodelist = self.compile_nodelist()
+                    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 196, in compile_nodelist
+    return parser.parse()
+           ~~~~~~~~~~~~^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 510, in parse
+    raise self.error(token, e)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 508, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\defaulttags.py", line 961, in do_if
+    nodelist = parser.parse(("elif", "else", "endif"))
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 481, in parse
+    raise self.error(token, e)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 479, in parse
+    filter_expression = self.compile_filter(token.contents)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 597, in compile_filter
+    return FilterExpression(token, self)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 698, in __init__
+    raise TemplateSyntaxError(
+    ...<2 lines>...
+    )
+django.template.exceptions.TemplateSyntaxError: Could not parse the remainder: ' if vendor.is_active else 'secondary'' from ''success' if vendor.is_active else 'secondary''
+[2025-11-21 00:58:54,770] INFO middleware.logging.structured_logging: [2m2025-11-20T19:13:54.770432Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m398084c2-9f07-4db0-a92b-962148b743e1[0m [36mstatus_code[0m=[35m500[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 00:58:56,114] WARNING accounting.middleware: No tenant found on request.
+[2025-11-21 00:58:56,118] INFO middleware.logging.structured_logging: [2m2025-11-20T19:13:56.118364Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m1c93ac63-f3ed-462b-96cc-16ba1fd4e4d5[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 00:58:56,157] ERROR middleware.logging.structured_logging: [2m2025-11-20T19:13:56.157773Z[0m [[31m[1merror    [0m] [1mrequest_exception             [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mexception_type[0m=[35mTemplateSyntaxError[0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m1c93ac63-f3ed-462b-96cc-16ba1fd4e4d5[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+Could not parse the remainder: ' if vendor.is_active else 'secondary'' from ''success' if vendor.is_active else 'secondary''
+[2025-11-21 00:58:56,255] ERROR django.request: Internal Server Error: /accounting/vendor-bills/new/
+Traceback (most recent call last):
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\accounting\mixins.py", line 87, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth\mixins.py", line 73, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\views\generic\base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+  File "C:\PythonProjects\Himalytix\ERP\accounting\views\purchase_invoice_views.py", line 33, in get
+    return render(request, self.template_name, context)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader.py", line 62, in render_to_string
+    return template.render(context, request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\backends\django.py", line 61, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1000, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 961, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1000, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 961, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1000, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 961, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader_tags.py", line 199, in render
+    template = context.template.engine.select_template(template_name)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\engine.py", line 208, in select_template
+    return self.get_template(template_name)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\engine.py", line 177, in get_template
+    template, origin = self.find_template(template_name)
+                       ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\engine.py", line 159, in find_template
+    template = loader.get_template(name, skip=skip)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loaders\cached.py", line 57, in get_template
+    template = super().get_template(template_name, skip)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loaders\base.py", line 28, in get_template
+    return Template(
+        contents,
+    ...<2 lines>...
+        self.engine,
+    )
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 154, in __init__
+    self.nodelist = self.compile_nodelist()
+                    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 196, in compile_nodelist
+    return parser.parse()
+           ~~~~~~~~~~~~^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 510, in parse
+    raise self.error(token, e)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 508, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\defaulttags.py", line 961, in do_if
+    nodelist = parser.parse(("elif", "else", "endif"))
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 481, in parse
+    raise self.error(token, e)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 479, in parse
+    filter_expression = self.compile_filter(token.contents)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 597, in compile_filter
+    return FilterExpression(token, self)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 698, in __init__
+    raise TemplateSyntaxError(
+    ...<2 lines>...
+    )
+django.template.exceptions.TemplateSyntaxError: Could not parse the remainder: ' if vendor.is_active else 'secondary'' from ''success' if vendor.is_active else 'secondary''
+[2025-11-21 00:58:56,270] INFO middleware.logging.structured_logging: [2m2025-11-20T19:13:56.270438Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m1c93ac63-f3ed-462b-96cc-16ba1fd4e4d5[0m [36mstatus_code[0m=[35m500[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 00:58:57,178] WARNING accounting.middleware: No tenant found on request.
+[2025-11-21 00:58:57,180] INFO middleware.logging.structured_logging: [2m2025-11-20T19:13:57.180113Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m2b7f7ca4-ce0f-4e3d-9329-fc1faab72ebd[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 00:58:57,259] ERROR middleware.logging.structured_logging: [2m2025-11-20T19:13:57.258981Z[0m [[31m[1merror    [0m] [1mrequest_exception             [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mexception_type[0m=[35mTemplateSyntaxError[0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m2b7f7ca4-ce0f-4e3d-9329-fc1faab72ebd[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+Could not parse the remainder: ' if vendor.is_active else 'secondary'' from ''success' if vendor.is_active else 'secondary''
+[2025-11-21 00:58:57,360] ERROR django.request: Internal Server Error: /accounting/vendor-bills/new/
+Traceback (most recent call last):
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\accounting\mixins.py", line 87, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth\mixins.py", line 73, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\views\generic\base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+  File "C:\PythonProjects\Himalytix\ERP\accounting\views\purchase_invoice_views.py", line 33, in get
+    return render(request, self.template_name, context)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader.py", line 62, in render_to_string
+    return template.render(context, request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\backends\django.py", line 61, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1000, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 961, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1000, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 961, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1000, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 961, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader_tags.py", line 199, in render
+    template = context.template.engine.select_template(template_name)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\engine.py", line 208, in select_template
+    return self.get_template(template_name)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\engine.py", line 177, in get_template
+    template, origin = self.find_template(template_name)
+                       ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\engine.py", line 159, in find_template
+    template = loader.get_template(name, skip=skip)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loaders\cached.py", line 57, in get_template
+    template = super().get_template(template_name, skip)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loaders\base.py", line 28, in get_template
+    return Template(
+        contents,
+    ...<2 lines>...
+        self.engine,
+    )
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 154, in __init__
+    self.nodelist = self.compile_nodelist()
+                    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 196, in compile_nodelist
+    return parser.parse()
+           ~~~~~~~~~~~~^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 510, in parse
+    raise self.error(token, e)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 508, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\defaulttags.py", line 961, in do_if
+    nodelist = parser.parse(("elif", "else", "endif"))
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 481, in parse
+    raise self.error(token, e)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 479, in parse
+    filter_expression = self.compile_filter(token.contents)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 597, in compile_filter
+    return FilterExpression(token, self)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 698, in __init__
+    raise TemplateSyntaxError(
+    ...<2 lines>...
+    )
+django.template.exceptions.TemplateSyntaxError: Could not parse the remainder: ' if vendor.is_active else 'secondary'' from ''success' if vendor.is_active else 'secondary''
+[2025-11-21 00:58:57,371] INFO middleware.logging.structured_logging: [2m2025-11-20T19:13:57.371057Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m2b7f7ca4-ce0f-4e3d-9329-fc1faab72ebd[0m [36mstatus_code[0m=[35m500[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:00:02,257] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django_prometheus
+[2025-11-21 01:00:02,257] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\admin
+[2025-11-21 01:00:02,258] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\auth
+[2025-11-21 01:00:02,258] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\contenttypes
+[2025-11-21 01:00:02,258] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sessions
+[2025-11-21 01:00:02,258] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-21 01:00:02,258] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-21 01:00:02,258] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-21 01:00:02,259] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-21 01:00:02,259] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sites
+[2025-11-21 01:00:02,259] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth
+[2025-11-21 01:00:02,259] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\account
+[2025-11-21 01:00:02,259] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\socialaccount
+[2025-11-21 01:00:02,260] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-21 01:00:02,260] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-21 01:00:02,260] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-21 01:00:02,260] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\rest_framework\authtoken
+[2025-11-21 01:00:02,261] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\silk
+[2025-11-21 01:00:02,261] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-21 01:00:02,261] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-21 01:00:02,261] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\mptt
+[2025-11-21 01:00:02,261] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-21 01:00:02,262] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-21 01:00:02,262] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\widget_tweaks
+[2025-11-21 01:00:02,262] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\formtools
+[2025-11-21 01:00:02,262] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-21 01:00:02,263] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-21 01:00:03,478] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-21 01:00:37,009] WARNING accounting.middleware: No tenant found on request.
+[2025-11-21 01:00:37,011] INFO middleware.logging.structured_logging: [2m2025-11-20T19:15:37.011666Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35mf293f9d0-133d-48af-95c4-9eb606f40d29[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:00:37,132] ERROR middleware.logging.structured_logging: [2m2025-11-20T19:15:37.132857Z[0m [[31m[1merror    [0m] [1mrequest_exception             [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mexception_type[0m=[35mTemplateSyntaxError[0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35mf293f9d0-133d-48af-95c4-9eb606f40d29[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+Could not parse the remainder: '(address_type='remit').first' from 'vendor.addresses.filter(address_type='remit').first'
+[2025-11-21 01:00:37,192] ERROR django.request: Internal Server Error: /accounting/vendor-bills/new/
+Traceback (most recent call last):
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\accounting\mixins.py", line 87, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth\mixins.py", line 73, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\views\generic\base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+  File "C:\PythonProjects\Himalytix\ERP\accounting\views\purchase_invoice_views.py", line 33, in get
+    return render(request, self.template_name, context)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader.py", line 62, in render_to_string
+    return template.render(context, request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\backends\django.py", line 61, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1000, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 961, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1000, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 961, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1000, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 961, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader_tags.py", line 199, in render
+    template = context.template.engine.select_template(template_name)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\engine.py", line 208, in select_template
+    return self.get_template(template_name)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\engine.py", line 177, in get_template
+    template, origin = self.find_template(template_name)
+                       ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\engine.py", line 159, in find_template
+    template = loader.get_template(name, skip=skip)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loaders\cached.py", line 57, in get_template
+    template = super().get_template(template_name, skip)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loaders\base.py", line 28, in get_template
+    return Template(
+        contents,
+    ...<2 lines>...
+        self.engine,
+    )
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 154, in __init__
+    self.nodelist = self.compile_nodelist()
+                    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 196, in compile_nodelist
+    return parser.parse()
+           ~~~~~~~~~~~~^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 510, in parse
+    raise self.error(token, e)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 508, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\defaulttags.py", line 961, in do_if
+    nodelist = parser.parse(("elif", "else", "endif"))
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 510, in parse
+    raise self.error(token, e)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 508, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\defaulttags.py", line 1490, in do_with
+    extra_context = token_kwargs(remaining_bits, parser, support_legacy=True)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1111, in token_kwargs
+    kwargs[key] = parser.compile_filter(value)
+                  ~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 597, in compile_filter
+    return FilterExpression(token, self)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 698, in __init__
+    raise TemplateSyntaxError(
+    ...<2 lines>...
+    )
+django.template.exceptions.TemplateSyntaxError: Could not parse the remainder: '(address_type='remit').first' from 'vendor.addresses.filter(address_type='remit').first'
+[2025-11-21 01:00:37,201] INFO middleware.logging.structured_logging: [2m2025-11-20T19:15:37.201063Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35mf293f9d0-133d-48af-95c4-9eb606f40d29[0m [36mstatus_code[0m=[35m500[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:00:54,957] WARNING accounting.middleware: No tenant found on request.
+[2025-11-21 01:00:54,959] INFO middleware.logging.structured_logging: [2m2025-11-20T19:15:54.959575Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/sales-invoices/[0m [36mrequest_id[0m=[35mc161343f-0eaa-4af0-8666-07e04c902fb4[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:00:55,025] INFO middleware.logging.structured_logging: [2m2025-11-20T19:15:55.025121Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/sales-invoices/[0m [36mrequest_id[0m=[35mc161343f-0eaa-4af0-8666-07e04c902fb4[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:00:58,312] WARNING accounting.middleware: No tenant found on request.
+[2025-11-21 01:00:58,316] INFO middleware.logging.structured_logging: [2m2025-11-20T19:15:58.316456Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/ar-receipts/[0m [36mrequest_id[0m=[35me4797854-3d03-433a-99b5-1db851e2e04f[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:00:58,377] INFO middleware.logging.structured_logging: [2m2025-11-20T19:15:58.377133Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/ar-receipts/[0m [36mrequest_id[0m=[35me4797854-3d03-433a-99b5-1db851e2e04f[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:01:04,647] WARNING accounting.middleware: No tenant found on request.
+[2025-11-21 01:01:04,649] INFO middleware.logging.structured_logging: [2m2025-11-20T19:16:04.649268Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/tax-authorities/[0m [36mrequest_id[0m=[35m47522bbc-bf05-4865-b840-daf785554600[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:01:04,731] INFO middleware.logging.structured_logging: [2m2025-11-20T19:16:04.731068Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/tax-authorities/[0m [36mrequest_id[0m=[35m47522bbc-bf05-4865-b840-daf785554600[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:01:07,399] WARNING accounting.middleware: No tenant found on request.
+[2025-11-21 01:01:07,401] INFO middleware.logging.structured_logging: [2m2025-11-20T19:16:07.401308Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m5a1513db-602b-4a78-b50c-f7e7bcad0514[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:01:07,462] ERROR middleware.logging.structured_logging: [2m2025-11-20T19:16:07.462053Z[0m [[31m[1merror    [0m] [1mrequest_exception             [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mexception_type[0m=[35mTemplateSyntaxError[0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m5a1513db-602b-4a78-b50c-f7e7bcad0514[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+Could not parse the remainder: '(address_type='remit').first' from 'vendor.addresses.filter(address_type='remit').first'
+[2025-11-21 01:01:07,560] ERROR django.request: Internal Server Error: /accounting/vendor-bills/new/
+Traceback (most recent call last):
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\accounting\mixins.py", line 87, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth\mixins.py", line 73, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\views\generic\base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+  File "C:\PythonProjects\Himalytix\ERP\accounting\views\purchase_invoice_views.py", line 33, in get
+    return render(request, self.template_name, context)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader.py", line 62, in render_to_string
+    return template.render(context, request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\backends\django.py", line 61, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1000, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 961, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1000, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 961, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1000, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 961, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader_tags.py", line 199, in render
+    template = context.template.engine.select_template(template_name)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\engine.py", line 208, in select_template
+    return self.get_template(template_name)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\engine.py", line 177, in get_template
+    template, origin = self.find_template(template_name)
+                       ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\engine.py", line 159, in find_template
+    template = loader.get_template(name, skip=skip)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loaders\cached.py", line 57, in get_template
+    template = super().get_template(template_name, skip)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loaders\base.py", line 28, in get_template
+    return Template(
+        contents,
+    ...<2 lines>...
+        self.engine,
+    )
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 154, in __init__
+    self.nodelist = self.compile_nodelist()
+                    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 196, in compile_nodelist
+    return parser.parse()
+           ~~~~~~~~~~~~^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 510, in parse
+    raise self.error(token, e)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 508, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\defaulttags.py", line 961, in do_if
+    nodelist = parser.parse(("elif", "else", "endif"))
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 510, in parse
+    raise self.error(token, e)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 508, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\defaulttags.py", line 1490, in do_with
+    extra_context = token_kwargs(remaining_bits, parser, support_legacy=True)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1111, in token_kwargs
+    kwargs[key] = parser.compile_filter(value)
+                  ~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 597, in compile_filter
+    return FilterExpression(token, self)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 698, in __init__
+    raise TemplateSyntaxError(
+    ...<2 lines>...
+    )
+django.template.exceptions.TemplateSyntaxError: Could not parse the remainder: '(address_type='remit').first' from 'vendor.addresses.filter(address_type='remit').first'
+[2025-11-21 01:01:07,567] INFO middleware.logging.structured_logging: [2m2025-11-20T19:16:07.567797Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m5a1513db-602b-4a78-b50c-f7e7bcad0514[0m [36mstatus_code[0m=[35m500[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:01:13,204] WARNING accounting.middleware: No tenant found on request.
+[2025-11-21 01:01:13,207] INFO middleware.logging.structured_logging: [2m2025-11-20T19:16:13.207848Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/sales-invoices/[0m [36mrequest_id[0m=[35m1a3370d0-d333-479f-831d-92d6d90678ab[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:01:13,249] INFO middleware.logging.structured_logging: [2m2025-11-20T19:16:13.249031Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/sales-invoices/[0m [36mrequest_id[0m=[35m1a3370d0-d333-479f-831d-92d6d90678ab[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:01:15,479] WARNING accounting.middleware: No tenant found on request.
+[2025-11-21 01:01:15,481] INFO middleware.logging.structured_logging: [2m2025-11-20T19:16:15.481322Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/sales-invoices/new/[0m [36mrequest_id[0m=[35m8c54e9cc-55f5-446b-bc35-e68a9e0e14e5[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:01:15,676] INFO middleware.logging.structured_logging: [2m2025-11-20T19:16:15.676175Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/sales-invoices/new/[0m [36mrequest_id[0m=[35m8c54e9cc-55f5-446b-bc35-e68a9e0e14e5[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:01:27,203] WARNING accounting.middleware: No tenant found on request.
+[2025-11-21 01:01:27,207] INFO middleware.logging.structured_logging: [2m2025-11-20T19:16:27.207585Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m35ba57f8-90a1-4ff7-aed0-2762ef2668e5[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:01:27,249] ERROR middleware.logging.structured_logging: [2m2025-11-20T19:16:27.249703Z[0m [[31m[1merror    [0m] [1mrequest_exception             [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mexception_type[0m=[35mTemplateSyntaxError[0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m35ba57f8-90a1-4ff7-aed0-2762ef2668e5[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+Could not parse the remainder: '(address_type='remit').first' from 'vendor.addresses.filter(address_type='remit').first'
+[2025-11-21 01:01:27,320] ERROR django.request: Internal Server Error: /accounting/vendor-bills/new/
+Traceback (most recent call last):
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\accounting\mixins.py", line 87, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth\mixins.py", line 73, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\views\generic\base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+  File "C:\PythonProjects\Himalytix\ERP\accounting\views\purchase_invoice_views.py", line 33, in get
+    return render(request, self.template_name, context)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader.py", line 62, in render_to_string
+    return template.render(context, request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\backends\django.py", line 61, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1000, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 961, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1000, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 961, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1000, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 961, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loader_tags.py", line 199, in render
+    template = context.template.engine.select_template(template_name)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\engine.py", line 208, in select_template
+    return self.get_template(template_name)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\engine.py", line 177, in get_template
+    template, origin = self.find_template(template_name)
+                       ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\engine.py", line 159, in find_template
+    template = loader.get_template(name, skip=skip)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loaders\cached.py", line 57, in get_template
+    template = super().get_template(template_name, skip)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\loaders\base.py", line 28, in get_template
+    return Template(
+        contents,
+    ...<2 lines>...
+        self.engine,
+    )
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 154, in __init__
+    self.nodelist = self.compile_nodelist()
+                    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 196, in compile_nodelist
+    return parser.parse()
+           ~~~~~~~~~~~~^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 510, in parse
+    raise self.error(token, e)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 508, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\defaulttags.py", line 961, in do_if
+    nodelist = parser.parse(("elif", "else", "endif"))
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 510, in parse
+    raise self.error(token, e)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 508, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\defaulttags.py", line 1490, in do_with
+    extra_context = token_kwargs(remaining_bits, parser, support_legacy=True)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 1111, in token_kwargs
+    kwargs[key] = parser.compile_filter(value)
+                  ~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 597, in compile_filter
+    return FilterExpression(token, self)
+  File "C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\template\base.py", line 698, in __init__
+    raise TemplateSyntaxError(
+    ...<2 lines>...
+    )
+django.template.exceptions.TemplateSyntaxError: Could not parse the remainder: '(address_type='remit').first' from 'vendor.addresses.filter(address_type='remit').first'
+[2025-11-21 01:01:27,328] INFO middleware.logging.structured_logging: [2m2025-11-20T19:16:27.328804Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m35ba57f8-90a1-4ff7-aed0-2762ef2668e5[0m [36mstatus_code[0m=[35m500[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:01:37,030] INFO django.utils.autoreload: C:\PythonProjects\Himalytix\ERP\accounting\models.py changed, reloading.
+[2025-11-21 01:01:41,262] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-21 01:01:41,262] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-21 01:01:41,263] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-21 01:01:41,263] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-21 01:01:41,263] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-21 01:01:41,263] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-21 01:01:41,264] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-21 01:01:41,264] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-21 01:01:41,265] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-21 01:01:41,266] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-21 01:01:41,267] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-21 01:01:41,267] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-21 01:01:41,268] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-21 01:01:41,268] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-21 01:01:41,268] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-21 01:01:41,268] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-21 01:01:41,269] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-21 01:01:41,269] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-21 01:01:41,270] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-21 01:01:41,270] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-21 01:01:41,271] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-21 01:01:41,272] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-21 01:01:41,272] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-21 01:01:41,273] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-21 01:01:41,274] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-21 01:01:41,275] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-21 01:01:41,276] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-21 01:01:41,307] INFO django.utils.autoreload: Watching for file changes with StatReloader
+[2025-11-21 01:01:41,650] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django_prometheus
+[2025-11-21 01:01:41,650] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\admin
+[2025-11-21 01:01:41,650] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\auth
+[2025-11-21 01:01:41,650] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\contenttypes
+[2025-11-21 01:01:41,651] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sessions
+[2025-11-21 01:01:41,651] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-21 01:01:41,651] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-21 01:01:41,651] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-21 01:01:41,652] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-21 01:01:41,652] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sites
+[2025-11-21 01:01:41,652] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth
+[2025-11-21 01:01:41,652] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\account
+[2025-11-21 01:01:41,653] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\socialaccount
+[2025-11-21 01:01:41,653] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-21 01:01:41,654] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-21 01:01:41,654] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-21 01:01:41,655] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\rest_framework\authtoken
+[2025-11-21 01:01:41,656] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\silk
+[2025-11-21 01:01:41,656] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-21 01:01:41,657] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-21 01:01:41,657] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\mptt
+[2025-11-21 01:01:41,657] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-21 01:01:41,657] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-21 01:01:41,658] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\widget_tweaks
+[2025-11-21 01:01:41,658] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\formtools
+[2025-11-21 01:01:41,658] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-21 01:01:41,659] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-21 01:01:41,702] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-21 01:01:42,342] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-21 01:02:10,270] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-21 01:02:10,271] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-21 01:02:10,271] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-21 01:02:10,271] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-21 01:02:10,272] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-21 01:02:10,272] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-21 01:02:10,272] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-21 01:02:10,272] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-21 01:02:10,273] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-21 01:02:10,273] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-21 01:02:10,273] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-21 01:02:10,273] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-21 01:02:10,273] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-21 01:02:10,274] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-21 01:02:10,274] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-21 01:02:10,274] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-21 01:02:10,275] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-21 01:02:10,275] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-21 01:02:10,276] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-21 01:02:10,276] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-21 01:02:10,277] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-21 01:02:10,277] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-21 01:02:10,277] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-21 01:02:10,277] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-21 01:02:10,278] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-21 01:02:10,278] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-21 01:02:10,278] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-21 01:02:10,665] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-21 01:02:18,410] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-21 01:02:18,411] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-21 01:02:18,411] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-21 01:02:18,411] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-21 01:02:18,411] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-21 01:02:18,412] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-21 01:02:18,412] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-21 01:02:18,412] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-21 01:02:18,412] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-21 01:02:18,412] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-21 01:02:18,413] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-21 01:02:18,413] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-21 01:02:18,413] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-21 01:02:18,414] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-21 01:02:18,414] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-21 01:02:18,414] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-21 01:02:18,415] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-21 01:02:18,415] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-21 01:02:18,416] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-21 01:02:18,416] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-21 01:02:18,416] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-21 01:02:18,417] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-21 01:02:18,417] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-21 01:02:18,417] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-21 01:02:18,417] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-21 01:02:18,418] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-21 01:02:18,418] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-21 01:02:18,818] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-21 01:02:30,592] WARNING accounting.middleware: No tenant found on request.
+[2025-11-21 01:02:30,599] INFO middleware.logging.structured_logging: [2m2025-11-20T19:17:30.599059Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m771e9ddb-3e83-4dfd-9d89-3128045e462a[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:02:30,812] INFO middleware.logging.structured_logging: [2m2025-11-20T19:17:30.812107Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m771e9ddb-3e83-4dfd-9d89-3128045e462a[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:06:02,485] INFO django.utils.autoreload: C:\PythonProjects\Himalytix\ERP\accounting\models.py changed, reloading.
+[2025-11-21 01:06:06,703] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-21 01:06:06,704] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-21 01:06:06,705] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-21 01:06:06,705] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-21 01:06:06,706] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-21 01:06:06,706] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-21 01:06:06,706] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-21 01:06:06,707] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-21 01:06:06,707] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-21 01:06:06,708] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-21 01:06:06,708] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-21 01:06:06,709] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-21 01:06:06,709] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-21 01:06:06,710] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-21 01:06:06,711] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-21 01:06:06,711] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-21 01:06:06,712] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-21 01:06:06,714] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-21 01:06:06,715] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-21 01:06:06,715] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-21 01:06:06,716] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-21 01:06:06,716] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-21 01:06:06,717] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-21 01:06:06,717] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-21 01:06:06,717] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-21 01:06:06,717] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-21 01:06:06,718] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-21 01:06:06,754] INFO django.utils.autoreload: Watching for file changes with StatReloader
+[2025-11-21 01:06:07,167] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-21 01:06:36,749] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django_prometheus
+[2025-11-21 01:06:36,750] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\admin
+[2025-11-21 01:06:36,750] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\auth
+[2025-11-21 01:06:36,750] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\contenttypes
+[2025-11-21 01:06:36,750] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sessions
+[2025-11-21 01:06:36,750] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-21 01:06:36,751] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-21 01:06:36,751] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-21 01:06:36,751] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-21 01:06:36,751] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\django\contrib\sites
+[2025-11-21 01:06:36,752] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth
+[2025-11-21 01:06:36,752] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\account
+[2025-11-21 01:06:36,752] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\allauth\socialaccount
+[2025-11-21 01:06:36,752] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-21 01:06:36,753] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-21 01:06:36,753] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-21 01:06:36,753] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\rest_framework\authtoken
+[2025-11-21 01:06:36,753] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\silk
+[2025-11-21 01:06:36,754] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-21 01:06:36,754] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-21 01:06:36,754] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\mptt
+[2025-11-21 01:06:36,755] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-21 01:06:36,755] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-21 01:06:36,756] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\widget_tweaks
+[2025-11-21 01:06:36,756] INFO metadata.watcher: Watching models in: C:\Users\ritsn\AppData\Roaming\Python\Python313\site-packages\formtools
+[2025-11-21 01:06:36,757] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-21 01:06:36,757] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-21 01:06:37,533] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-21 01:07:02,056] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-21 01:07:02,057] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-21 01:07:02,057] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-21 01:07:02,057] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-21 01:07:02,058] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-21 01:07:02,058] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-21 01:07:02,059] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-21 01:07:02,059] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-21 01:07:02,059] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-21 01:07:02,059] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-21 01:07:02,060] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-21 01:07:02,060] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-21 01:07:02,060] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-21 01:07:02,060] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-21 01:07:02,061] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-21 01:07:02,061] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-21 01:07:02,061] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-21 01:07:02,061] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-21 01:07:02,062] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-21 01:07:02,062] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-21 01:07:02,062] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-21 01:07:02,062] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-21 01:07:02,063] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-21 01:07:02,063] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-21 01:07:02,063] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-21 01:07:02,064] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-21 01:07:02,064] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-21 01:07:02,462] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-21 01:07:08,790] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django_prometheus
+[2025-11-21 01:07:08,791] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\admin
+[2025-11-21 01:07:08,791] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\auth
+[2025-11-21 01:07:08,792] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\contenttypes
+[2025-11-21 01:07:08,792] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sessions
+[2025-11-21 01:07:08,792] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\apps
+[2025-11-21 01:07:08,793] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\components
+[2025-11-21 01:07:08,793] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\pages
+[2025-11-21 01:07:08,793] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\usermanagement
+[2025-11-21 01:07:08,794] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\django\contrib\sites
+[2025-11-21 01:07:08,794] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth
+[2025-11-21 01:07:08,794] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\account
+[2025-11-21 01:07:08,794] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\allauth\socialaccount
+[2025-11-21 01:07:08,795] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\tenancy
+[2025-11-21 01:07:08,795] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\accounting
+[2025-11-21 01:07:08,795] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\api
+[2025-11-21 01:07:08,796] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\rest_framework\authtoken
+[2025-11-21 01:07:08,796] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\silk
+[2025-11-21 01:07:08,796] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\metadata
+[2025-11-21 01:07:08,797] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\voucher_schema
+[2025-11-21 01:07:08,797] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\mptt
+[2025-11-21 01:07:08,797] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\Inventory
+[2025-11-21 01:07:08,797] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\forms_designer
+[2025-11-21 01:07:08,798] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\widget_tweaks
+[2025-11-21 01:07:08,799] INFO metadata.watcher: Watching models in: C:\PythonProjects\Himalytix\ERP\venv\Lib\site-packages\formtools
+[2025-11-21 01:07:08,799] ERROR metadata.watcher: Error starting metadata watcher: 'handle' must be a _ThreadHandle
+[2025-11-21 01:07:08,799] INFO metadata.apps: Metadata watcher started in development mode
+[2025-11-21 01:07:09,291] WARNING silk.profiling.profiler: Cannot execute silk_profile as silk is not installed correctly.
+[2025-11-21 01:07:17,564] WARNING accounting.middleware: No tenant found on request.
+[2025-11-21 01:07:17,570] INFO middleware.logging.structured_logging: [2m2025-11-20T19:22:17.570278Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m31e95070-a798-48c2-aa2e-b7c67fa6a09c[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:07:17,761] INFO middleware.logging.structured_logging: [2m2025-11-20T19:22:17.761405Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-bills/new/[0m [36mrequest_id[0m=[35m31e95070-a798-48c2-aa2e-b7c67fa6a09c[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:07:21,804] WARNING accounting.middleware: No tenant found on request.
+[2025-11-21 01:07:21,807] INFO middleware.logging.structured_logging: [2m2025-11-20T19:22:21.807431Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-payments/scheduler/[0m [36mrequest_id[0m=[35m4d52a669-382c-44f0-8aa1-8e5917725c64[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:07:21,851] INFO middleware.logging.structured_logging: [2m2025-11-20T19:22:21.851355Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-payments/scheduler/[0m [36mrequest_id[0m=[35m4d52a669-382c-44f0-8aa1-8e5917725c64[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:07:23,679] WARNING accounting.middleware: No tenant found on request.
+[2025-11-21 01:07:23,681] INFO middleware.logging.structured_logging: [2m2025-11-20T19:22:23.681577Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-payments/statement/[0m [36mrequest_id[0m=[35m95b933ca-52ed-4db5-b4ac-0eaeed33b72a[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:07:23,707] INFO middleware.logging.structured_logging: [2m2025-11-20T19:22:23.706934Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendor-payments/statement/[0m [36mrequest_id[0m=[35m95b933ca-52ed-4db5-b4ac-0eaeed33b72a[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:07:27,777] WARNING accounting.middleware: No tenant found on request.
+[2025-11-21 01:07:27,780] INFO middleware.logging.structured_logging: [2m2025-11-20T19:22:27.780145Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendors/[0m [36mrequest_id[0m=[35m992e30a5-4b46-4ac3-9b74-35338d20958c[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:07:27,821] INFO middleware.logging.structured_logging: [2m2025-11-20T19:22:27.821207Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendors/[0m [36mrequest_id[0m=[35m992e30a5-4b46-4ac3-9b74-35338d20958c[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:07:29,153] WARNING accounting.middleware: No tenant found on request.
+[2025-11-21 01:07:29,158] INFO middleware.logging.structured_logging: [2m2025-11-20T19:22:29.158768Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendors/new/[0m [36mrequest_id[0m=[35m0ec05aed-25be-4ab7-8ddc-0550b7c3849f[0m [36muser_agent[0m=[35m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m
+[2025-11-21 01:07:29,225] INFO middleware.logging.structured_logging: [2m2025-11-20T19:22:29.225028Z[0m [[32m[1minfo     [0m] [1mrequest_finished              [0m [[0m[1m[34mmiddleware.logging.structured_logging[0m][0m [36mip_address[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/accounting/vendors/new/[0m [36mrequest_id[0m=[35m0ec05aed-25be-4ab7-8ddc-0550b7c3849f[0m [36mstatus_code[0m=[35m200[0m [36muser_id[0m=[35m1[0m [36musername[0m=[35madmin[0m

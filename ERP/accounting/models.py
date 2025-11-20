@@ -1069,6 +1069,10 @@ class Vendor(models.Model):
     def primary_contact(self):
         return self.contacts.filter(is_primary=True).first() or self.contacts.first()
 
+    def remit_address(self):
+        """Return the remit address if present, otherwise fall back to the primary address."""
+        return self.addresses.filter(address_type='remit').first() or self.primary_address()
+
 
 class VendorAddress(models.Model):
     """Vendor address book entries."""
@@ -3315,6 +3319,123 @@ class TaxCode(models.Model):
             code_generator = AutoIncrementCodeGenerator(TaxCode, 'code', prefix='TC', suffix='')
             self.code = code_generator.generate_code()
         super(TaxCode, self).save(*args, **kwargs)
+
+
+class TaxCodeGroup(models.Model):
+    """Bundle multiple tax codes for reuse in rules."""
+
+    tax_code_group_id = models.BigAutoField(primary_key=True)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.PROTECT,
+        related_name='tax_code_groups',
+        db_column='organization_id',
+    )
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    tax_codes = models.ManyToManyField('TaxCode', related_name='tax_code_groups', blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'tax_code_group'
+        unique_together = ('organization', 'name')
+        ordering = ('name',)
+
+    def __str__(self):
+        return self.name
+
+
+class TaxRule(models.Model):
+    """Declarative tax rule registry for context-aware tax selection."""
+
+    ENTRY_MODE_CHOICES = [
+        ('sale', 'Sale'),
+        ('purchase', 'Purchase'),
+        ('journal', 'Journal'),
+    ]
+
+    tax_rule_id = models.BigAutoField(primary_key=True)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.PROTECT,
+        related_name='tax_rules',
+        db_column='organization_id',
+    )
+    name = models.CharField(max_length=150)
+    entry_mode = models.CharField(max_length=20, choices=ENTRY_MODE_CHOICES, null=True, blank=True)
+    country_code = models.CharField(max_length=2, blank=True)
+    state_code = models.CharField(max_length=10, blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    product_category = models.CharField(max_length=100, blank=True)
+    customer_type = models.CharField(max_length=100, blank=True)
+    vendor_type = models.CharField(max_length=100, blank=True)
+    industry_code = models.CharField(max_length=100, blank=True)
+    priority = models.PositiveIntegerField(default=100)
+    effective_from = models.DateField(null=True, blank=True)
+    effective_to = models.DateField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    tax_code_group = models.ForeignKey(
+        TaxCodeGroup,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='tax_rules',
+    )
+    tax_codes = models.ManyToManyField('TaxCode', related_name='tax_rules', blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'tax_rule'
+        ordering = ('priority', 'tax_rule_id')
+        indexes = [
+            models.Index(fields=['organization', 'entry_mode']),
+            models.Index(fields=['organization', 'country_code', 'state_code']),
+            models.Index(fields=['organization', 'is_active']),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class InvoiceLineTax(models.Model):
+    """
+    Stores per-line tax breakdown to support multiple/compound taxes.
+    Generic FK is used so the same table can serve sales and purchase lines.
+    """
+
+    invoice_line_tax_id = models.BigAutoField(primary_key=True)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.PROTECT,
+        related_name='invoice_line_taxes',
+        db_column='organization_id',
+    )
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    line_object = GenericForeignKey('content_type', 'object_id')
+    tax_code = models.ForeignKey('TaxCode', on_delete=models.PROTECT, related_name='invoice_line_taxes')
+    sequence = models.PositiveIntegerField(default=1)
+    base_amount = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    tax_amount = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'invoice_line_tax'
+        ordering = ('content_type', 'object_id', 'sequence')
+        unique_together = ('content_type', 'object_id', 'tax_code', 'sequence')
+        indexes = [
+            models.Index(fields=['content_type', 'object_id']),
+            models.Index(fields=['organization']),
+        ]
+
+    def __str__(self):
+        return f"{self.tax_code.code} ({self.base_amount}->{self.tax_amount})"
 
 
 
