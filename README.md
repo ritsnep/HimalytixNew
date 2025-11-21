@@ -82,6 +82,19 @@ To pick an active organization after login, visit `/manage/select-organization/`
 3. Run `python manage.py test` and lint before pushing
 4. See `ERP/CONTRIBUTING.md` for the full contribution workflow and PR checklist
 
+## Tenant Branding (Favicons)
+
+- **Admin UI:** In Django admin, open `Tenant branding settings` to pick a tenant and paste an absolute URL or `/static/...` path for the favicon. Leaving the field blank deletes the override and the default icon in `static/images/favicon.ico` is used.
+- **Management command:** Configure the same data from the CLI:
+
+	```powershell
+	cd ERP
+	python manage.py set_tenant_favicon TENANT_CODE --url /static/images/tenant-a.ico
+	python manage.py set_tenant_favicon TENANT_CODE --clear  # remove the override
+	```
+
+	The command accepts a tenant code, slug, or UUID and persists the value in `TenantConfig (branding.favicon_url)`.
+
 ## Architecture Overview
 
 ![Architecture Diagram](Docs/architecture.png)

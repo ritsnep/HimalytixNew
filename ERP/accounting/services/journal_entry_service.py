@@ -3,8 +3,9 @@ from typing import Any, Dict, List
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
+from django.utils import timezone
 
-from accounting.models import Attachment, Journal, JournalLine, JournalType, VoucherModeConfig
+from accounting.models import Attachment, Journal, JournalLine, JournalType, VoucherModeConfig, Approval
 from accounting.services.posting_service import PostingService
 from accounting.utils.audit import log_audit_event
 from usermanagement.models import CustomUser, Organization
@@ -242,8 +243,11 @@ class JournalEntryService:
         if journal.status != 'awaiting_approval':
             raise ValueError("Only journals awaiting approval can be approved.")
         journal.status = 'approved'
+        journal.approved_by = self.user
+        journal.approved_at = timezone.now()
         journal.updated_by = self.user
-        journal.save(update_fields=['status', 'updated_by', 'updated_at'])
+        journal.save(update_fields=['status', 'approved_by', 'approved_at', 'updated_by', 'updated_at'])
+        Approval.objects.get_or_create(journal=journal, approver=self.user)
         log_audit_event(self.user, journal, 'approve')
 
     def reject(self, journal: Journal):
@@ -263,11 +267,15 @@ class JournalEntryService:
         if not self._has_permission('post_journal'):
             raise PermissionError("You do not have permission to post journal entries.")
 
-        if journal.status not in ('approved', 'draft'):
-            raise ValueError("Only approved journals can be posted.")
-
-        if journal.status == 'draft' and getattr(journal.journal_type, 'requires_approval', False):
-            raise ValueError("This journal type requires approval before posting.")
+        requires_approval = getattr(journal.journal_type, 'requires_approval', False)
+        if requires_approval:
+            if journal.status != 'approved':
+                raise ValueError("This journal type requires approval before posting.")
+            if not journal.approvals.exists():
+                raise ValueError("Approval record is required before posting this journal.")
+        else:
+            if journal.status not in ('approved', 'draft'):
+                raise ValueError("Only approved or draft journals can be posted.")
 
         posting_service = PostingService(self.user)
         try:

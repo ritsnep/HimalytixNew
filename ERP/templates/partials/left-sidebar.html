@@ -217,17 +217,29 @@
                 {% endif %}
             </ul>
         </li>
-        <!-- Tax Authorities -->
+        <!-- Tax Configuration -->
         <li>
-            <a href="{% url 'accounting:tax_authority_list' %}">
-                <span>Tax Authorities</span>
+            <a href="javascript: void(0);" class="has-arrow">
+                <i class="fas fa-receipt"></i>
+                <span>Tax Configuration</span>
             </a>
-        </li>
-        <!-- Tax Types -->
-        <li>
-            <a href="{% url 'accounting:tax_type_list' %}" >
-                <span>Tax Types</span>
-            </a>
+            <ul class="sub-menu" aria-expanded="false">
+                <li>
+                    <a href="{% url 'accounting:tax_authority_list' %}">
+                        <span>Tax Authorities</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'accounting:tax_type_list' %}">
+                        <span>Tax Types</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'accounting:tax_code_list' %}">
+                        <span>Tax Codes</span>
+                    </a>
+                </li>
+            </ul>
         </li>
         <!-- Projects -->
         <li>

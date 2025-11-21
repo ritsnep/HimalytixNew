@@ -3,7 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Iterable, Optional
+import logging
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
@@ -16,8 +18,11 @@ from accounting.models import (
     SalesInvoice,
     SalesInvoiceLine,
 )
+from accounting.ird_service import submit_invoice_to_ird
 from accounting.services.posting_service import PostingService
+from accounting.services.inventory_posting_service import InventoryPostingService
 from accounting.utils.event_utils import emit_integration_event
+from Inventory.models import Product, Warehouse
 
 
 @dataclass
@@ -32,6 +37,7 @@ class SalesInvoiceService:
     def __init__(self, user):
         self.user = user
         self.posting_service = PostingService(user)
+        self.logger = logging.getLogger(__name__)
 
     def _calculate_due_date(self, customer, payment_term, invoice_date):
         payment_term = payment_term or getattr(customer, 'payment_term', None)
@@ -111,13 +117,51 @@ class SalesInvoiceService:
         return invoice
 
     @transaction.atomic
-    def post_invoice(self, invoice: SalesInvoice, journal_type) -> Journal:
+    def _should_submit_to_ird(self, submit_to_ird: Optional[bool]) -> bool:
+        """Determine whether to submit the invoice to IRD based on override or settings."""
+        if submit_to_ird is not None:
+            return submit_to_ird
+        return getattr(settings, "IRD_ENABLE_AUTO_SUBMIT", False)
+
+    def _submit_to_ird(self, invoice: SalesInvoice) -> None:
+        """Best-effort IRD submission; failures are logged but do not block posting."""
+        try:
+            result = submit_invoice_to_ird(invoice)
+            emit_integration_event(
+                "sales_invoice_submitted_to_ird",
+                invoice,
+                {
+                    "invoice_number": invoice.invoice_number,
+                    "ack_id": result.ack_id,
+                    "signature": result.signature,
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            self.logger.warning(
+                "IRD submission failed for invoice %s: %s",
+                invoice.invoice_number,
+                exc,
+                exc_info=True,
+            )
+
+    def post_invoice(
+        self,
+        invoice: SalesInvoice,
+        journal_type,
+        *,
+        submit_to_ird: Optional[bool] = None,
+        warehouse: Optional[Warehouse] = None,
+    ) -> Journal:
         if invoice.status not in {'validated', 'draft'}:
             raise ValidationError("Invoice must be validated before posting.")
         if invoice.customer.accounts_receivable_account is None:
             raise ValidationError("Customer is missing an Accounts Receivable account.")
 
         organization = invoice.organization
+        inventory_service = InventoryPostingService(organization=organization)
+        if warehouse and warehouse.organization_id != organization.id:
+            raise ValidationError("Warehouse must belong to the same organization as the invoice.")
+
         period = AccountingPeriod.get_current_period(organization)
         if not period:
             raise ValidationError("No open accounting period is available for posting.")
@@ -162,6 +206,49 @@ class SalesInvoiceService:
                 )
                 line_number += 1
 
+            # COGS and Inventory for inventory items
+            product = None
+            if sil.product_code:
+                product = Product.objects.filter(organization=organization, code=sil.product_code).first()
+            if product and product.is_inventory_item:
+                if warehouse is None:
+                    raise ValidationError("Warehouse is required when posting inventory items.")
+                try:
+                    issue = inventory_service.record_issue(
+                        product=product,
+                        warehouse=warehouse,
+                        quantity=sil.quantity,
+                        reference_id=invoice.invoice_number or str(invoice.pk),
+                        cogs_account=product.expense_account,
+                    )
+                except ValueError as exc:  # noqa: BLE001
+                    raise ValidationError(str(exc)) from exc
+
+                JournalLine.objects.create(
+                    journal=journal,
+                    line_number=line_number,
+                    account=issue.debit_account,
+                    description=f"COGS for {product.code}",
+                    debit_amount=issue.total_cost,
+                    department=sil.department,
+                    project=sil.project,
+                    cost_center=sil.cost_center,
+                    created_by=self.user,
+                )
+                line_number += 1
+                JournalLine.objects.create(
+                    journal=journal,
+                    line_number=line_number,
+                    account=issue.credit_account,
+                    description=f"Inventory out for {product.code}",
+                    credit_amount=issue.total_cost,
+                    department=sil.department,
+                    project=sil.project,
+                    cost_center=sil.cost_center,
+                    created_by=self.user,
+                )
+                line_number += 1
+
         JournalLine.objects.create(
             journal=journal,
             line_number=line_number,
@@ -176,6 +263,10 @@ class SalesInvoiceService:
         invoice.journal = posted_journal
         invoice.updated_by = self.user
         invoice.save(update_fields=['status', 'journal', 'updated_by', 'updated_at'])
+
+        if self._should_submit_to_ird(submit_to_ird):
+            self._submit_to_ird(invoice)
+
         emit_integration_event(
             'sales_invoice_posted',
             invoice,

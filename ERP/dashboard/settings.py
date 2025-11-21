@@ -110,6 +110,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'middleware.theme.theme',
                 'utils.i18n.i18n_context',
+                'dashboard.context_processors.branding_context',
             ],
             # Enable cached template loader when not in DEBUG
             **({

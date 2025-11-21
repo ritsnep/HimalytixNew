@@ -3,43 +3,47 @@
 {% load i18n %}
 
 {% block content %}
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="mb-0">{% translate "Import Journal Entries" %}</h3>
-                </div>
-                <div class="card-body">
-                    <form id="journal-import-form" hx-encoding="multipart/form-data">
-                        {% csrf_token %}
-                        <div class="mb-3">
-                            <label for="id_file" class="form-label">{% translate "Select File" %}</label>
-                            {% render_field form.file class="form-control" %}
-                            <div class="form-text">{% translate "Supported formats: Excel (.xlsx, .xls) and CSV (.csv)" %}</div>
-                            {% if form.file.errors %}
-                                {% for error in form.file.errors %}
-                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                {% endfor %}
-                            {% endif %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container mt-5">
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="mb-0">{% translate "Import Journal Entries" %}</h3>
                         </div>
-                        <button type="button" id="validate-button" class="btn btn-primary" hx-post="{% url 'accounting:journal_import_validate' %}" hx-target="#validation-results" hx-swap="innerHTML" hx-trigger="click" hx-include="#journal-import-form">
-                            {% translate "Validate File" %}
-                        </button>
-                    </form>
+                        <div class="card-body">
+                            <form id="journal-import-form" hx-encoding="multipart/form-data">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <label for="id_file" class="form-label">{% translate "Select File" %}</label>
+                                    {% render_field form.file class="form-control" %}
+                                    <div class="form-text">{% translate "Supported formats: Excel (.xlsx, .xls) and CSV (.csv)" %}</div>
+                                    {% if form.file.errors %}
+                                        {% for error in form.file.errors %}
+                                            <div class="invalid-feedback d-block">{{ error }}</div>
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+                                <button type="button" id="validate-button" class="btn btn-primary" hx-post="{% url 'accounting:journal_import_validate' %}" hx-target="#validation-results" hx-swap="innerHTML" hx-trigger="click" hx-include="#journal-import-form">
+                                    {% translate "Validate File" %}
+                                </button>
+                            </form>
 
-                    <div id="validation-results" class="mt-4">
-                        <!-- Validation results will be loaded here via HTMX -->
-                    </div>
+                            <div id="validation-results" class="mt-4">
+                                <!-- Validation results will be loaded here via HTMX -->
+                            </div>
 
-                    <div id="import-actions" class="mt-4" style="display: none;">
-                        <button type="button" id="import-button" class="btn btn-success" hx-post="{% url 'accounting:journal_import_process' %}" hx-target="#import-status" hx-swap="innerHTML" hx-trigger="click" hx-vals="js:{file_key: document.getElementById('file-key').value}">
-                            {% translate "Import Journals" %}
-                        </button>
-                    </div>
+                            <div id="import-actions" class="mt-4" style="display: none;">
+                                <button type="button" id="import-button" class="btn btn-success" hx-post="{% url 'accounting:journal_import_process' %}" hx-target="#import-status" hx-swap="innerHTML" hx-trigger="click" hx-vals="js:{file_key: document.getElementById('file-key').value}">
+                                    {% translate "Import Journals" %}
+                                </button>
+                            </div>
 
-                    <div id="import-status" class="mt-4">
-                        <!-- Import status will be loaded here via HTMX -->
+                            <div id="import-status" class="mt-4">
+                                <!-- Import status will be loaded here via HTMX -->
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

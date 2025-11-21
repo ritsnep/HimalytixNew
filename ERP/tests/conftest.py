@@ -5,8 +5,18 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.test import Client
 from rest_framework.test import APIClient
-from rest_framework_simplejwt.tokens import RefreshToken
 from tenancy.models import Tenant
+
+try:
+    from rest_framework_simplejwt.tokens import RefreshToken
+except ImportError:  # pragma: no cover - optional dependency in some environments
+    RefreshToken = None
+
+
+def _require_jwt():
+    """Skip tests that rely on JWT when the dependency is missing."""
+    if RefreshToken is None:
+        pytest.skip("rest_framework_simplejwt is not installed in this environment")
 
 User = get_user_model()
 
@@ -157,6 +167,7 @@ def authenticated_api_client(api_client, user):
     """
     DRF API client with JWT authentication.
     """
+    _require_jwt()
     refresh = RefreshToken.for_user(user)
     api_client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
     return api_client
@@ -167,6 +178,7 @@ def admin_api_client(api_client, admin_user):
     """
     DRF API client authenticated as admin.
     """
+    _require_jwt()
     refresh = RefreshToken.for_user(admin_user)
     api_client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
     return api_client
@@ -181,6 +193,7 @@ def user_token(user):
     """
     Generate JWT token for regular user.
     """
+    _require_jwt()
     refresh = RefreshToken.for_user(user)
     return {
         'refresh': str(refresh),
@@ -193,6 +206,7 @@ def admin_token(admin_user):
     """
     Generate JWT token for admin user.
     """
+    _require_jwt()
     refresh = RefreshToken.for_user(admin_user)
     return {
         'refresh': str(refresh),
@@ -330,11 +344,19 @@ def reset_settings():
     from django.test.utils import setup_test_environment, teardown_test_environment
 
     if not _test_environment_active:
-        setup_test_environment()
+        try:
+            setup_test_environment()
+        except RuntimeError:
+            # Environment was already set up by pytest-django; keep going.
+            pass
         _test_environment_active = True
     try:
         yield
     finally:
         if _test_environment_active:
-            teardown_test_environment()
+            try:
+                teardown_test_environment()
+            except RuntimeError:
+                # Environment teardown already handled; ignore.
+                pass
             _test_environment_active = False

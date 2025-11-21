@@ -4,7 +4,9 @@
 {% block title %}{% trans "Cash Flow Statement" %}{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
     <div class="row mb-4">
         <div class="col-md-12">
             <div class="d-flex justify-content-between align-items-center">
@@ -140,5 +142,7 @@
             {% trans "Specify a date range to generate the cash flow statement." %}
         </div>
     {% endif %}
+        </div>
+    </div>
 </div>
 {% endblock %}

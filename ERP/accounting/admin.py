@@ -57,6 +57,8 @@ from .models import (
     ApprovalTask,
     IntegrationEvent,
     JournalDebugPreference,
+    UDFDefinition,
+    UDFValue,
 )
 
 # @admin.register(Journal)
@@ -89,6 +91,22 @@ admin.site.register(CashAccount)
 admin.site.register(BankTransaction)
 admin.site.register(BankStatement)
 admin.site.register(BankStatementLine)
+
+
+@admin.register(UDFDefinition)
+class UDFDefinitionAdmin(admin.ModelAdmin):
+    list_display = ("display_name", "field_name", "field_type", "content_type", "organization", "is_active")
+    list_filter = ("organization", "content_type", "field_type", "is_active", "is_filterable", "is_pivot_dim")
+    search_fields = ("display_name", "field_name")
+    readonly_fields = ("created_at",)
+    autocomplete_fields = ("organization",)
+
+
+@admin.register(UDFValue)
+class UDFValueAdmin(admin.ModelAdmin):
+    list_display = ("udf_definition", "content_type", "object_id", "created_at")
+    list_filter = ("udf_definition", "content_type")
+    search_fields = ("object_id",)
 
 @admin.register(JournalDebugPreference)
 class JournalDebugPreferenceAdmin(admin.ModelAdmin):

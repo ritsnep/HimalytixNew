@@ -2,7 +2,9 @@
 {% load static %}
 {% block content %}
 {% url 'accounting:voucher_config_list' as default_back_url %}
-<div class="container-fluid py-4">
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid py-4">
   <div class="row justify-content-center">
     <div class="col-lg-8">
       <div class="card">
@@ -129,5 +131,8 @@
       </div>
     </div>
   </div>
+</div>
+        </div>
+    </div>
 </div>
 {% endblock %} 

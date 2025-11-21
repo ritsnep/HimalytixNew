@@ -597,6 +597,9 @@
 {% endblock %}
 
 {% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
 <div class="designer-container">
     <!-- Top Toolbar -->
     <div class="designer-toolbar">
@@ -835,7 +838,9 @@
 <input type="hidden" id="config-id" value="{{ config.config_id }}">
 <input type="hidden" id="schema-data" value="{{ schema_json|escapejs }}">
 <input type="hidden" id="csrf-token" value="{% csrf_token %}">
-
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}

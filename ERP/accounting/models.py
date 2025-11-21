@@ -2159,6 +2159,11 @@ class SalesInvoice(models.Model):
         blank=True,
         related_name='sales_invoices',
     )
+    ird_signature = models.CharField(max_length=512, null=True, blank=True)
+    ird_ack_id = models.CharField(max_length=100, null=True, blank=True)
+    ird_status = models.CharField(max_length=50, null=True, blank=True)
+    ird_last_response = models.JSONField(default=dict, blank=True)
+    ird_last_submitted_at = models.DateTimeField(null=True, blank=True)
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -2975,6 +2980,14 @@ class Journal(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     posted_at = models.DateTimeField(null=True, blank=True)
     posted_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='posted_journals')
+    approved_at = models.DateTimeField(null=True, blank=True)
+    approved_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='approved_journals',
+    )
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_journals')
@@ -3911,6 +3924,69 @@ class Approval(models.Model):
 
     def __str__(self):
         return f"Approval for Journal {self.journal.journal_number} by {self.approver.username}"
+
+
+# -----------------------------
+# Generic UDF (user-defined field) subsystem
+# -----------------------------
+class UDFDefinition(models.Model):
+    """Metadata for dynamic fields attachable to any model via content types."""
+
+    FIELD_TYPE_CHOICES = [
+        ('text', 'Text'),
+        ('number', 'Number'),
+        ('decimal', 'Decimal'),
+        ('date', 'Date'),
+        ('datetime', 'DateTime'),
+        ('boolean', 'Boolean'),
+        ('select', 'Select'),
+        ('multiselect', 'MultiSelect'),
+        ('json', 'JSON'),
+    ]
+
+    organization = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name='udf_definitions')
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    field_name = models.CharField(max_length=50, help_text="Internal field name (no spaces)")
+    display_name = models.CharField(max_length=100, help_text="Field label")
+    field_type = models.CharField(max_length=20, choices=FIELD_TYPE_CHOICES, default='text')
+    is_required = models.BooleanField(default=False)
+    is_filterable = models.BooleanField(default=False)
+    is_pivot_dim = models.BooleanField(default=False)
+    choices = models.JSONField(null=True, blank=True, help_text="For select/multiselect options")
+    default_value = models.CharField(max_length=255, blank=True, null=True)
+    help_text = models.TextField(blank=True, null=True)
+    min_value = models.DecimalField(max_digits=19, decimal_places=4, null=True, blank=True)
+    max_value = models.DecimalField(max_digits=19, decimal_places=4, null=True, blank=True)
+    min_length = models.IntegerField(null=True, blank=True)
+    max_length = models.IntegerField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'udf_definition'
+        unique_together = ('content_type', 'field_name', 'organization')
+        ordering = ['content_type', 'field_name']
+
+    def __str__(self):
+        return f"{self.display_name} ({self.field_name})"
+
+
+class UDFValue(models.Model):
+    """EAV-style storage for UDF values linked to any model instance."""
+
+    udf_definition = models.ForeignKey(UDFDefinition, on_delete=models.CASCADE, related_name='values')
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+    value = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'udf_value'
+        unique_together = ('udf_definition', 'content_type', 'object_id')
+
+    def __str__(self):
+        return f"UDF {self.udf_definition.field_name}={self.value}"
 
 class RecurringJournal(models.Model):
     """

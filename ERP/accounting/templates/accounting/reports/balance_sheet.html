@@ -4,7 +4,9 @@
 {% block title %}{% trans "Balance Sheet" %}{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
     <div class="row mb-4">
         <div class="col-md-12">
             <div class="d-flex justify-content-between align-items-center">
@@ -127,7 +129,7 @@
                                 </thead>
                                 <tbody>
                                     {% for line in report_data.lines %}
-                                        {% if line.line_type in ('liability', 'equity') %}
+                                        {% if line.line_type == 'liability' or line.line_type == 'equity' %}
                                             <tr>
                                                 <td>
                                                     <strong>{{ line.account_code }}</strong>
@@ -178,5 +180,7 @@
             {% trans "Select an 'as of' date to view the balance sheet." %}
         </div>
     {% endif %}
+        </div>
+    </div>
 </div>
 {% endblock %}

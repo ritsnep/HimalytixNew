@@ -84,3 +84,12 @@ class TenantConfig(models.Model):
         unique_together = ('tenant', 'config_key')
 
 
+class TenantBrandingConfig(TenantConfig):
+    """Proxy model to expose branding config entries in admin."""
+
+    class Meta:
+        proxy = True
+        verbose_name = "Tenant branding setting"
+        verbose_name_plural = "Tenant branding settings"
+
+

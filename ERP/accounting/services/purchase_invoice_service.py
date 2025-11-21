@@ -20,6 +20,8 @@ from accounting.models import (
 )
 from accounting.services.posting_service import PostingService
 from accounting.utils.event_utils import emit_integration_event
+from accounting.services.inventory_posting_service import InventoryPostingService
+from Inventory.models import Product, Warehouse
 
 
 @dataclass
@@ -212,17 +214,31 @@ class PurchaseInvoiceService:
     # Posting
     # ------------------------------------------------------------------
     @transaction.atomic
-    def post_invoice(self, invoice: PurchaseInvoice, journal_type) -> Journal:
+    def post_invoice(
+        self,
+        invoice: PurchaseInvoice,
+        journal_type,
+        *,
+        use_grir: bool = False,
+        warehouse: Optional[Warehouse] = None,
+        grir_account: Optional[ChartOfAccount] = None,
+    ) -> Journal:
         if invoice.status not in {'validated', 'matched', 'ready_for_posting'}:
             raise ValidationError("Invoice must be validated before posting.")
         if invoice.vendor.accounts_payable_account is None:
             raise ValidationError("Vendor is missing an Accounts Payable account.")
+        if use_grir and not grir_account:
+            raise ValidationError("GR/IR account must be provided when use_grir is True.")
+        if use_grir and not warehouse:
+            raise ValidationError("Warehouse is required for inventory receipts when use_grir is True.")
 
         invoice.recompute_totals(save=True)
         organization = invoice.organization
         period = AccountingPeriod.get_current_period(organization)
         if not period:
             raise ValidationError("No open accounting period is available for posting.")
+
+        inventory_service = InventoryPostingService(organization=organization)
 
         journal = Journal.objects.create(
             organization=organization,
@@ -239,20 +255,68 @@ class PurchaseInvoiceService:
 
         line_number = 1
         for pil in invoice.lines.select_related('account', 'tax_code'):
-            debit_amount = pil.line_total
-            if debit_amount > 0:
+            product = None
+            if pil.product_code:
+                product = Product.objects.filter(organization=organization, code=pil.product_code).first()
+
+            if use_grir and product and product.is_inventory_item:
+                receipt = inventory_service.record_receipt(
+                    product=product,
+                    warehouse=warehouse,
+                    quantity=pil.quantity,
+                    unit_cost=pil.unit_cost,
+                    grir_account=grir_account,
+                    reference_id=invoice.invoice_number,
+                )
+                # Dr Inventory
                 JournalLine.objects.create(
                     journal=journal,
                     line_number=line_number,
-                    account=pil.account,
-                    description=pil.description,
-                    debit_amount=debit_amount,
+                    account=receipt.debit_account,
+                    description=f"Inventory receipt for {product.code}",
+                    debit_amount=receipt.total_cost,
                     department=pil.department,
                     project=pil.project,
                     cost_center=pil.cost_center,
                     created_by=self.user,
                 )
                 line_number += 1
+                # Cr GR/IR (receipt)
+                JournalLine.objects.create(
+                    journal=journal,
+                    line_number=line_number,
+                    account=receipt.credit_account,
+                    description=f"GR/IR for {product.code}",
+                    credit_amount=receipt.total_cost,
+                    created_by=self.user,
+                )
+                line_number += 1
+                # Dr GR/IR to clear, Cr AP later
+                JournalLine.objects.create(
+                    journal=journal,
+                    line_number=line_number,
+                    account=receipt.credit_account,
+                    description=f"Clear GR/IR for {product.code}",
+                    debit_amount=receipt.total_cost,
+                    created_by=self.user,
+                )
+                line_number += 1
+                # Skip expense debit; inventory handled
+            else:
+                debit_amount = pil.line_total
+                if debit_amount > 0:
+                    JournalLine.objects.create(
+                        journal=journal,
+                        line_number=line_number,
+                        account=pil.account,
+                        description=pil.description,
+                        debit_amount=debit_amount,
+                        department=pil.department,
+                        project=pil.project,
+                        cost_center=pil.cost_center,
+                        created_by=self.user,
+                    )
+                    line_number += 1
 
             if pil.tax_amount > 0 and pil.tax_code and pil.tax_code.purchase_account:
                 JournalLine.objects.create(
