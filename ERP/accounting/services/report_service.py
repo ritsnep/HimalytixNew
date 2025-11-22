@@ -496,7 +496,7 @@ class ReportService:
 
         param_schema = definition.parameter_schema or {}
         schema_params = [
-            ReportParameter(**param_descriptor)
+            ReportParameter(**self._normalize_param_descriptor(param_descriptor))
             for param_descriptor in param_schema.get("parameters", [])
         ]
 
@@ -522,6 +522,13 @@ class ReportService:
             "parameters": params,
             "definition_id": definition.report_id,
         }
+
+    @staticmethod
+    def _normalize_param_descriptor(descriptor: Dict[str, Any]) -> Dict[str, Any]:
+        normalized = dict(descriptor)
+        if "param_type" not in normalized and "type" in normalized:
+            normalized["param_type"] = normalized.pop("type")
+        return normalized
 
     # ------------------------------------------------------------------
     # URL helpers

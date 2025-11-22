@@ -1052,7 +1052,7 @@ class JournalForm(BootstrapFormMixin, forms.ModelForm):
                 is_active=True
             )
             self.fields['period'].queryset = AccountingPeriod.objects.filter(
-                fiscal_year__organization=self.organization,
+                organization=self.organization,
                 status='open'
             )
             self.fields['currency_code'].choices = get_active_currency_choices()
@@ -1076,7 +1076,7 @@ class JournalForm(BootstrapFormMixin, forms.ModelForm):
         journal_date = self.cleaned_data['date']
         if self.organization:
             period = AccountingPeriod.objects.filter(
-                fiscal_year__organization=self.organization,
+                organization=self.organization,
                 start_date__lte=journal_date,
                 end_date__gte=journal_date,
                 status='open'

@@ -140,7 +140,7 @@ class AccountingPeriodDeleteView(PermissionRequiredMixin, LoginRequiredMixin, De
     permission_required = ('accounting', 'accountingperiod', 'delete')
 
     def get_queryset(self):
-        return AccountingPeriod.objects.filter(fiscal_year__organization_id=self.request.user.organization.id)
+        return AccountingPeriod.objects.filter(organization=self.request.user.organization)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

@@ -3,7 +3,7 @@
 
 {% block title %}User Permissions{% endblock %}
 
-{% block content %}
+{% block page_content %}
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
@@ -103,7 +103,7 @@
         </div>
     </div>
 </div>
-
+{% endblock %}
 {% for user_role in user_roles %}
 <!-- Role Management Modal -->
 <div class="modal fade" id="roleModal{{ user_role.user.id }}" tabindex="-1" role="dialog" aria-labelledby="roleModalLabel{{ user_role.user.id }}" aria-hidden="true">
@@ -173,4 +173,4 @@
 </div>
 {% endfor %}
 {% endfor %}
- 
+{% endblock %}

@@ -309,6 +309,11 @@ The built‑in `Super Admin` role on `CustomUser` bypasses normal permission che
 
 This repository contains a Django-based Enterprise Resource Planning (ERP) system. It provides modules for accounting, user management and exposes a REST API for integration with other services.
 
+### Billing module (Nepal IRD)
+- New `billing` app delivers sequential invoice numbering, immutable invoice headers/lines, credit/debit notes, and audit logging.
+- CBMS client + `resync_invoices` management command support replays of failed submissions.
+- Enable via `CBMS_API_URL`, `CBMS_API_KEY`, optional `BILLING_FISCAL_YEAR`, and `ENABLE_STRICT_SECURITY` for production hardening.
+
 ## Setup Instructions
 
 1. Ensure Python 3.11 or newer is installed.

@@ -62,7 +62,7 @@ def create_voucher(user, config_id: int, header_data: dict, lines_data: list, ud
         raise ValidationError("Missing organization. Cannot determine accounting period.")
 
     period = AccountingPeriod.objects.filter(
-        fiscal_year__organization=organization,
+        organization=organization,
         start_date__lte=journal_date,
         end_date__gte=journal_date,
         status='open'

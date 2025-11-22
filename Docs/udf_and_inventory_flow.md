@@ -31,4 +31,5 @@ This note documents the current end-to-end flow for user-defined fields (UDFs), 
 - Run: `python manage.py migrate accounting` after pulling these changes.
 
 ### 6) Testing Notes
-- Added unit tests for approval stamping and inventory weighted-average issue/receipt (`ERP/tests/test_services_unit.py`). They patch DB access where needed; a global coverage gate may block full pytest runs unless adjusted.
+- UDF form integration lives in `accounting/tests/test_udf_forms.py`, approval gating in `accounting/tests/test_journal_posting_requirements.py`, and the sales/purchase inventory flows in `accounting/tests/test_inventory_integration.py`. These suites cover the behaviours described above.
+- A lingering duplicate column (`forms_designer_voucherschema.created_by_id`) in the shared PostgreSQL test database (`test_erpdb`) currently blocks `manage.py test`; drop/recreate that database (or the column) before running the new tests.

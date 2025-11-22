@@ -25,7 +25,7 @@ class Command(BaseCommand):
                 code="GEN",
                 defaults={'name': 'General Journal', 'auto_numbering_prefix': 'GJ'}
             )
-            accounting_period = AccountingPeriod.objects.get(fiscal_year__organization=organization, status='open')
+            accounting_period = AccountingPeriod.objects.get(organization=organization, status='open')
 
         except (Organization.DoesNotExist, CustomUser.DoesNotExist, ChartOfAccount.DoesNotExist, JournalType.DoesNotExist, AccountingPeriod.DoesNotExist) as e:
             self.stderr.write(self.style.ERROR(f"Test environment not set up properly: {e}"))

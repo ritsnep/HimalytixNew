@@ -22,7 +22,7 @@ class JournalValidationService:
             return
 
         period = AccountingPeriod.objects.filter(
-            fiscal_year__organization=self.organization,
+            organization=self.organization,
             start_date__lte=journal_date,
             end_date__gte=journal_date,
             status='open'

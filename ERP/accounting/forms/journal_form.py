@@ -18,7 +18,7 @@ The form includes validation for:
 """
 
 import logging
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -26,11 +26,12 @@ from django.utils.translation import gettext_lazy as _
 
 from accounting.models import Journal, AccountingPeriod, JournalType, Currency
 from accounting.forms_mixin import BootstrapFormMixin
+from accounting.forms.udf_mixins import UDFFormMixin
 
 logger = logging.getLogger(__name__)
 
 
-class JournalForm(BootstrapFormMixin, forms.ModelForm):
+class JournalForm(UDFFormMixin, BootstrapFormMixin, forms.ModelForm):
     """
     Form for creating/editing Journal header information.
 
@@ -123,9 +124,9 @@ class JournalForm(BootstrapFormMixin, forms.ModelForm):
             )
 
             # Filter periods by organization and open status
-            # AccountingPeriod doesn't have organization directly, so filter through fiscal_year
+            # AccountingPeriod now pins organization for direct filtering.
             periods_qs = AccountingPeriod.objects.filter(
-                fiscal_year__organization=self.organization,
+                organization=self.organization,
                 status='open'
             ).select_related('fiscal_year')
 
@@ -279,3 +280,19 @@ class JournalForm(BootstrapFormMixin, forms.ModelForm):
                 )
 
         return cleaned_data
+
+    def save(self, commit: bool = True):
+        instance = super().save(commit)
+        if commit:
+            self.save_udf_fields(instance)
+        return instance
+
+    def after_udf_save(self, instance, payload: Dict[str, Any]) -> None:
+        prefixed_payload = self.udf_payload_with_form_names(payload)
+        if not prefixed_payload:
+            return
+        current = instance.header_udf_data or {}
+        merged = {**current, **prefixed_payload}
+        if merged != current:
+            instance.header_udf_data = merged
+            instance.save(update_fields=["header_udf_data"])

@@ -1,0 +1,32 @@
+{% extends "partials/base.html" %}
+
+{# Dason-aligned wrapper for app pages that previously extended a plain base. #}
+{% block title %}{% block page_title %}{% endblock page_title %}{% endblock title %}
+
+{# Optional head extras (inline styles, additional libs) for pages that need them. #}
+{% block css %}
+    {{ block.super }}
+    {% block head_extras %}{% endblock head_extras %}
+{% endblock css %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            {% if messages %}
+                <div class="mb-3">
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {% block page_header %}{% endblock page_header %}
+            {% block page_content %}{% endblock page_content %}
+        </div>
+    </div>
+</div>
+{% endblock content %}

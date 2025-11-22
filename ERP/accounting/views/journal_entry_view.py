@@ -55,7 +55,7 @@ class JournalCheckDateView(UserOrganizationMixin, View):
             date_str = data.get('date')
             date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
             period = AccountingPeriod.objects.filter(
-                fiscal_year__organization=self.get_organization(),
+                organization=self.get_organization(),
                 start_date__lte=date_obj,
                 end_date__gte=date_obj,
                 status='open'

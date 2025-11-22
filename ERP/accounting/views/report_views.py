@@ -14,9 +14,10 @@ from django.utils.translation import gettext as _
 from django.views import View
 from django.views.generic import TemplateView
 
-from accounting.models import ChartOfAccount, ReportDefinition
+from accounting.models import ChartOfAccount, Journal, JournalLine, ReportDefinition
 from accounting.services.report_export_service import ReportExportService
 from accounting.services.report_service import ReportService
+from accounting.utils.udf import filterable_udfs, pivot_udfs, serialize_udf_definition
 from usermanagement.mixins import UserOrganizationMixin
 
 logger = logging.getLogger(__name__)
@@ -126,6 +127,19 @@ class ReportListView(UserOrganizationMixin, TemplateView):
             models.Q(organization__isnull=True) | models.Q(organization=self.organization)
         ).order_by("organization_id", "name")
         context["custom_reports"] = custom_definitions
+
+        if self.organization:
+            context["journal_udf_filters"] = [
+                serialize_udf_definition(udf)
+                for udf in filterable_udfs(Journal, self.organization)
+            ]
+            context["journal_line_udf_pivots"] = [
+                serialize_udf_definition(udf)
+                for udf in pivot_udfs(JournalLine, self.organization)
+            ]
+        else:
+            context["journal_udf_filters"] = []
+            context["journal_line_udf_pivots"] = []
         return context
 
 

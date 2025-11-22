@@ -1,48 +1,60 @@
 import csv
+from datetime import date
 from io import StringIO
+
 from django.test import TestCase, Client
 from django.urls import reverse
-from usermanagement.models import CustomUser, Organization # Use CustomUser
-from accounting.models import AccountType, ChartOfAccount as Account, Journal, JournalLine, Currency, JournalType, FiscalYear, AccountingPeriod
-from datetime import date
+
+from accounting.models import Journal, JournalLine
+from accounting.tests import factories
 
 class JournalImportTestCase(TestCase):
     def setUp(self):
         self.client = Client()
         from django.conf import settings
         settings.CRISPY_TEMPLATE_PACK = 'bootstrap4'
-        self.organization = Organization.objects.create(name="Test Org")
-        self.user = CustomUser.objects.create_user(username='testuser', password='password', organization=self.organization)
+        self.organization = factories.create_organization(name="Test Org")
+        self.user = factories.create_user(organization=self.organization, username='testuser', password='password', role='superadmin')
         from django.contrib.auth.models import Permission
         from django.contrib.contenttypes.models import ContentType
-        from accounting.models import Journal
         content_type = ContentType.objects.get_for_model(Journal)
         permission = Permission.objects.get(content_type=content_type, codename='add_journal')
         self.user.user_permissions.add(permission)
         self.client.login(username='testuser', password='password')
 
         # Basic setup for a valid import
-        self.currency = Currency.objects.create(currency_code='USD', currency_name='US Dollar')
-        self.journal_type = JournalType.objects.create(code='GJ', name='General Journal', organization=self.organization)
-        self.account_type_asset = AccountType.objects.create(code='AST', name='Asset', nature='asset', classification='Current Asset', display_order=1)
-        self.account1 = Account.objects.create(account_code='1010', account_name='Cash', organization=self.organization, account_type=self.account_type_asset)
-        self.account_type_liability = AccountType.objects.create(code='LIA', name='Liability', nature='liability', classification='Current Liability', display_order=2)
-        self.account2 = Account.objects.create(account_code='2010', account_name='Accounts Payable', organization=self.organization, account_type=self.account_type_liability)
+        self.currency = factories.create_currency(code='USD', name='US Dollar')
+        self.journal_type = factories.create_journal_type(code='GJ', name='General Journal', organization=self.organization)
+        self.account_type_asset = factories.create_account_type(code='AST', name='Asset', nature='asset')
+        self.account1 = factories.create_chart_of_account(
+            organization=self.organization,
+            account_type=self.account_type_asset,
+            account_code='1010',
+            account_name='Cash',
+        )
+        self.account_type_liability = factories.create_account_type(code='LIA', name='Liability', nature='liability')
+        self.account2 = factories.create_chart_of_account(
+            organization=self.organization,
+            account_type=self.account_type_liability,
+            account_code='2010',
+            account_name='Accounts Payable',
+        )
         current_year = date.today().year
-        self.fiscal_year = FiscalYear.objects.create(
+        self.fiscal_year = factories.create_fiscal_year(
+            organization=self.organization,
             code=f'FY{current_year}',
             name=f'Fiscal Year {current_year}',
             start_date=date(current_year, 1, 1),
             end_date=date(current_year, 12, 31),
-            organization=self.organization
+            is_current=True,
         )
-        self.period = AccountingPeriod.objects.create(
+        self.period = factories.create_accounting_period(
             fiscal_year=self.fiscal_year,
             period_number=date.today().month,
             name=f"Period {date.today().month}",
             start_date=date.today().replace(day=1),
             end_date=date.today().replace(day=28),
-            status='open'
+            status='open',
         )
 
     def test_journal_import_view_get(self):

@@ -12,7 +12,7 @@ Comprehensive test coverage for approval workflow system:
 """
 
 from django.test import TestCase, Client
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
 from datetime import timedelta
@@ -26,6 +26,8 @@ from accounting.models.approval_workflow import (
     ApprovalDecision,
 )
 from usermanagement.models import Organization
+
+User = get_user_model()
 
 
 class ApprovalWorkflowModelTests(TestCase):

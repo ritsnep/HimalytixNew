@@ -503,7 +503,7 @@ class AccountingPeriodCloseView(PermissionRequiredMixin, LoginRequiredMixin, Vie
         period = get_object_or_404(
             AccountingPeriod,
             pk=period_id,
-            fiscal_year__organization=request.user.organization,
+            organization=request.user.organization,
         )
         try:
             close_period(period, request.user)
@@ -957,11 +957,11 @@ class IncomeStatementView(UserOrganizationMixin, TemplateView):
         if period_id:
             period = AccountingPeriod.objects.filter(
                 id=period_id,
-                fiscal_year__organization_id=organization.id
+                organization=organization
             ).first()
         else:
             period = AccountingPeriod.objects.filter(
-                fiscal_year__organization_id=organization.id,
+                organization=organization,
                 is_current=True
             ).first()
         
@@ -1061,11 +1061,11 @@ class BalanceSheetView(LoginRequiredMixin, UserOrganizationMixin, TemplateView):
         if period_id:
             period = AccountingPeriod.objects.filter(
                 id=period_id,
-                fiscal_year__organization_id=organization.id
+                organization=organization
             ).first()
         else:
             period = AccountingPeriod.objects.filter(
-                fiscal_year__organization_id=organization.id,
+                organization=organization,
                 is_current=True
             ).first()
         
@@ -1208,7 +1208,7 @@ class ReportsListView(LoginRequiredMixin, UserOrganizationMixin, TemplateView):
         
         # Get available periods
         periods = AccountingPeriod.objects.filter(
-            fiscal_year__organization_id=organization.id
+            organization=organization
         ).order_by('-start_date')
         
         context.update({

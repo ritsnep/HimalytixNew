@@ -1,28 +1,28 @@
 from django.test import TestCase, RequestFactory
 from django.urls import reverse
-from django.contrib.auth import get_user_model
-from accounting.models import VoucherModeConfig, Organization, JournalType, ChartOfAccount
-from accounting.views.voucher import VoucherEntryView
 
-User = get_user_model()
+from accounting.tests import factories
+from accounting.views.voucher import VoucherEntryView
 
 class VoucherEntryViewTest(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
-        self.user = User.objects.create_user(username='testuser', password='password')
-        self.organization = Organization.objects.create(name='Test Organization')
-        self.journal_type = JournalType.objects.create(organization=self.organization, name='Test Journal Type')
-        self.account = ChartOfAccount.objects.create(organization=self.organization, account_name='Test Account', account_code='1000')
-        self.config = VoucherModeConfig.objects.create(
+        self.organization = factories.create_organization(name='Test Organization')
+        self.user = factories.create_user(organization=self.organization, username='testuser', role='superadmin')
+        self.journal_type = factories.create_journal_type(organization=self.organization, name='Test Journal Type')
+        self.account = factories.create_chart_of_account(organization=self.organization)
+        self.config = factories.create_voucher_mode_config(
             organization=self.organization,
-            name='Test Voucher',
             journal_type=self.journal_type,
+            name='Test Voucher',
+            show_tax_details=True,
+            show_dimensions=True,
         )
 
     def test_get_voucher_schema(self):
         view = VoucherEntryView()
         view.kwargs = {'config_id': self.config.pk}
-        view.request = self.factory.get(reverse('accounting:voucher_entry', kwargs={'config_id': self.config.pk}))
+        view.request = self.factory.get(reverse('accounting:voucher_entry_config', args=[self.config.pk]))
         view.request.user = self.user
         
         # Test default schema
@@ -65,7 +65,7 @@ class VoucherEntryViewTest(TestCase):
             'form-1-credit_amount': 100,
         }
         
-        request = self.factory.post(reverse('accounting:voucher_entry', kwargs={'config_id': self.config.pk}), data)
+        request = self.factory.post(reverse('accounting:voucher_entry_config', args=[self.config.pk]), data)
         request.user = self.user
         
         view = VoucherEntryView()
@@ -88,7 +88,7 @@ class VoucherEntryViewTest(TestCase):
             'form-0-debit_amount': 100,
         }
 
-        request = self.factory.post(reverse('accounting:voucher_entry', kwargs={'config_id': self.config.pk}), data)
+        request = self.factory.post(reverse('accounting:voucher_entry_config', args=[self.config.pk]), data)
         request.user = self.user
 
         view = VoucherEntryView()

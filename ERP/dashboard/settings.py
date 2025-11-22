@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     'django_htmx',
     'widget_tweaks',
     'formtools',
+    'billing',
 ]
 
 MIDDLEWARE = [
@@ -509,4 +510,15 @@ SPECTACULAR_SETTINGS = {
 # Chart of Account hierarchy limits
 COA_MAX_DEPTH = int(os.environ.get("COA_MAX_DEPTH", 10))
 COA_MAX_SIBLINGS = int(os.environ.get("COA_MAX_SIBLINGS", 99))
+
+# =============================================================================
+# Optional production hardening (enable via ENV to avoid breaking local dev)
+# =============================================================================
+if os.environ.get("ENABLE_STRICT_SECURITY") == "1":
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", 31536000))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
 

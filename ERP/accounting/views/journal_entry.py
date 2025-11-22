@@ -489,7 +489,7 @@ def _resolve_period(organization, journal_date) -> AccountingPeriod:
     period = (
         AccountingPeriod.objects.select_related("fiscal_year")
         .filter(
-            fiscal_year__organization=organization,
+            organization=organization,
             start_date__lte=journal_date,
             end_date__gte=journal_date,
             status="open",

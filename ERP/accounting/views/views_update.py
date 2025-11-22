@@ -479,7 +479,7 @@ class AccountingPeriodUpdateView(LoginRequiredMixin, UpdateView):
 
     def get_queryset(self):
         return super().get_queryset().filter(
-            fiscal_year__organization=self.request.user.organization
+            organization=self.request.user.organization
         )
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

@@ -236,6 +236,12 @@ class AccountingPeriod(models.Model):
 
     period_id = models.BigAutoField(primary_key=True)
     fiscal_year = models.ForeignKey('FiscalYear', on_delete=models.PROTECT, related_name='periods')
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.PROTECT,
+        related_name='accounting_periods',
+        editable=False,
+    )
     period_number = models.SmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(16)])
     name = models.CharField(max_length=100)
     start_date = models.DateField()
@@ -270,12 +276,19 @@ class AccountingPeriod(models.Model):
     def clean(self):
         from django.core.exceptions import ValidationError
 
+        fy = None
+        if self.fiscal_year_id:
+            fy = self.fiscal_year
+            if fy.organization_id is None:
+                raise ValidationError("Fiscal year must belong to an organization before assigning a period.")
+            # Keep organization in sync with fiscal year to avoid orphaned periods.
+            self.organization_id = fy.organization_id
+
         if self.start_date >= self.end_date:
             raise ValidationError("Start date must be before end date.")
 
         # Ensure the period falls within its fiscal year
-        if self.fiscal_year_id:
-            fy = self.fiscal_year
+        if fy:
             if self.start_date < fy.start_date or self.end_date > fy.end_date:
                 raise ValidationError(
                     "Period dates must be within the selected fiscal year."
@@ -299,13 +312,21 @@ class AccountingPeriod(models.Model):
                     raise ValidationError(
                         "Only one accounting period can be current per fiscal year."
                     )
+    def save(self, *args, **kwargs):
+        if self.fiscal_year_id:
+            fy_org_id = self.fiscal_year.organization_id
+            if fy_org_id is None:
+                raise ValueError("Fiscal year must belong to an organization before saving periods.")
+            self.organization_id = fy_org_id
+        super().save(*args, **kwargs)
+
     @classmethod
     def is_date_in_open_period(cls, organization, date_to_check):
         """
         Checks if a given date is within any open accounting period for the organization.
         """
         return cls.objects.filter(
-            fiscal_year__organization=organization,
+            organization=organization,
             start_date__lte=date_to_check,
             end_date__gte=date_to_check,
             status='open'
@@ -319,7 +340,7 @@ class AccountingPeriod(models.Model):
         
         # Try to find an open period that contains today's date
         current_period = cls.objects.filter(
-            fiscal_year__organization=organization,
+            organization=organization,
             start_date__lte=today,
             end_date__gte=today,
             status='open'
@@ -330,7 +351,7 @@ class AccountingPeriod(models.Model):
         
         # Fallback: get the most recent open period
         fallback_period = cls.objects.filter(
-            fiscal_year__organization=organization,
+            organization=organization,
             status='open'
         ).order_by('-end_date').first()
         
@@ -2164,6 +2185,13 @@ class SalesInvoice(models.Model):
     ird_status = models.CharField(max_length=50, null=True, blank=True)
     ird_last_response = models.JSONField(default=dict, blank=True)
     ird_last_submitted_at = models.DateTimeField(null=True, blank=True)
+    ird_fiscal_year_code = models.CharField(max_length=20, blank=True, default='')
+    ird_is_realtime = models.BooleanField(default=True)
+    ird_digital_payment_amount = models.DecimalField(max_digits=19, decimal_places=4, null=True, blank=True)
+    ird_digital_payment_txn_id = models.CharField(max_length=100, blank=True, default='')
+    ird_reprint_count = models.PositiveIntegerField(default=0)
+    ird_last_printed_at = models.DateTimeField(null=True, blank=True)
+    ird_last_reprint_reason = models.CharField(max_length=255, blank=True, default='')
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -3969,6 +3997,22 @@ class UDFDefinition(models.Model):
 
     def __str__(self):
         return f"{self.display_name} ({self.field_name})"
+
+    def get_field_widget_attrs(self) -> dict:
+        """Return HTML widget attributes derived from definition metadata."""
+        attrs: dict[str, object] = {}
+        if self.max_length:
+            attrs.setdefault("maxlength", int(self.max_length))
+        if self.min_length:
+            attrs.setdefault("minlength", int(self.min_length))
+        if self.help_text and self.field_type in {"text", "number", "decimal", "select", "multiselect"}:
+            attrs.setdefault("title", self.help_text)
+        if self.default_value and self.field_type in {"text", "number", "decimal"}:
+            attrs.setdefault("placeholder", str(self.default_value))
+        metadata = getattr(self, "metadata", None)
+        if isinstance(metadata, dict):
+            attrs.update(metadata.get("widget_attrs", {}))
+        return attrs
 
 
 class UDFValue(models.Model):

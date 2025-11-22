@@ -168,7 +168,7 @@ urlpatterns = [
     path('voucher-udfs/<int:pk>/delete/', VoucherUDFConfigDeleteView.as_view(), name='voucher_udf_delete'),
     
     path('voucher-entry/', VoucherEntryView.as_view(), name='voucher_entry'),
-    # path('voucher-entry/<int:config_id>/', VoucherEntryView.as_view(), name='voucher_entry_config'),
+    path('voucher-entry/<int:config_id>/', VoucherEntryView.as_view(), name='voucher_entry_config'),
     
     # Voucher Wizard CRUD URLs (order matters - specific routes before generic!)
     path('vouchers/', voucher_crud_views.VoucherListView.as_view(), name='voucher_list'),

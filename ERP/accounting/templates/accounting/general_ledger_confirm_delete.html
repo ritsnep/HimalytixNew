@@ -11,7 +11,7 @@
     <li class="breadcrumb-item active">Delete General Ledger Entry</li>
 {% endblock %}
 
-{% block content %}
+{% block page_content %}
 <div class="row">
     <div class="col-12">
         <div class="card">
@@ -21,17 +21,6 @@
             <div class="card-body">
                 <p>Are you sure you want to delete the General Ledger Entry with ID: <strong>{{ object.gl_entry_id }}</strong>?</p>
                 <p>This action cannot be undone.</p>
-                
-                {% if messages %}
-                    {% for message in messages %}
-                        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %} alert-dismissible fade show" role="alert">
-                            {{ message }}
-                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
 
                 <form method="post">
                     {% csrf_token %}

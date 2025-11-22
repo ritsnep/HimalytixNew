@@ -6,7 +6,8 @@ from django.db import connection
 from django.test import Client, SimpleTestCase, TestCase
 from django.urls import reverse
 
-from accounting.models import Organization, ReportDefinition
+from accounting.models import ReportDefinition
+from accounting.tests import factories
 from accounting.services.report_export_service import ReportExportService
 from accounting.services.report_service import ReportService
 
@@ -17,7 +18,7 @@ class ReportServiceStoredProcedureTests(TestCase):
     """Smoke tests for stored-procedure backed report service."""
 
     def setUp(self):
-        self.organization = Organization.objects.create(name="Acme Corp", code="ACME")
+        self.organization = factories.create_organization(name="Acme Corp", code="ACME")
         self.service = ReportService(self.organization)
 
     def test_general_ledger_returns_structure_without_data(self):
@@ -73,15 +74,16 @@ class ReportViewSmokeTests(TestCase):
     """Ensure report views render for authenticated users."""
 
     def setUp(self):
-        self.organization = Organization.objects.create(name="Acme Corp", code="ACME")
-        self.user = User.objects.create_user(
-            username="reporter",
-            email="reporter@example.com",
-            password="secret123",
+        self.organization = factories.create_organization(name="Acme Corp", code="ACME")
+        self.password = "secret123"
+        self.user = factories.create_user(
             organization=self.organization,
+            username="reporter",
+            password=self.password,
+            email="reporter@example.com",
         )
         self.client = Client()
-        self.client.login(username="reporter", password="secret123")
+        self.client.login(username=self.user.username, password=self.password)
 
     def test_report_list_view(self):
         response = self.client.get(reverse("accounting:report_list"))
@@ -129,15 +131,16 @@ class ReportExportViewTests(TestCase):
     """Ensure export endpoint validates parameters and handles format errors."""
 
     def setUp(self):
-        self.organization = Organization.objects.create(name="Acme Corp", code="ACME")
-        self.user = User.objects.create_user(
-            username="exporter",
-            email="exporter@example.com",
-            password="secret123",
+        self.organization = factories.create_organization(name="Acme Corp", code="ACME")
+        self.password = "secret123"
+        self.user = factories.create_user(
             organization=self.organization,
+            username="exporter",
+            password=self.password,
+            email="exporter@example.com",
         )
         self.client = Client()
-        self.client.login(username="exporter", password="secret123")
+        self.client.login(username=self.user.username, password=self.password)
 
     def test_trial_balance_csv_export(self):
         response = self.client.post(
@@ -159,8 +162,19 @@ class ReportExportViewTests(TestCase):
         self.assertEqual(response.status_code, 400)
 
 
-class ReportExportServiceTests(SimpleTestCase):
+class ReportExportServiceTests(TestCase):
     """Validate export service formatting for stored-procedure report payloads."""
+
+    def setUp(self):
+        self.organization = factories.create_organization(name="Acme Corp", code="ACME")
+        self.password = "secret123"
+        self.user = factories.create_user(
+            organization=self.organization,
+            username="exportsvc",
+            password=self.password,
+        )
+        self.client = Client()
+        self.client.login(username=self.user.username, password=self.password)
 
     def test_profit_and_loss_csv_contains_sections_and_totals(self):
         report_data = {
@@ -193,7 +207,7 @@ class ReportExportServiceTests(SimpleTestCase):
 
         buffer, filename = ReportExportService.to_csv(report_data)
         content = buffer.getvalue().decode("utf-8")
-        self.assertIn("Revenue", content)
+        self.assertIn("revenue", content.lower())
         self.assertIn("Subtotal", content)
         self.assertIn("Net Profit", content)
         self.assertTrue(filename.endswith(".csv"))

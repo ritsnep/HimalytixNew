@@ -53,6 +53,7 @@ urlpatterns = [
     path('manage/', include('usermanagement.urls')),
     path('account/', include('account.urls')),
     path('inventory/', include('Inventory.urls')),
+    path('billing/', include('billing.urls', namespace='billing')),
     
     # Include accounting app - namespace comes from app_name in accounting.urls
     path('accounting/', include('accounting.urls')),

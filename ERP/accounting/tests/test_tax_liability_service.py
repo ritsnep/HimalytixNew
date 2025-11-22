@@ -3,54 +3,60 @@ from decimal import Decimal
 
 from django.test import TestCase
 
-from accounting.models import (
-    AccountType,
-    ChartOfAccount,
-    Currency,
-    Organization,
-    PurchaseInvoice,
-    SalesInvoice,
-    TaxCode,
-)
+from accounting.models import Customer, PurchaseInvoice, SalesInvoice, Vendor
+from accounting.tests import factories
 from accounting.services.tax_liability_service import TaxLiabilityService
 
 
 class TaxLiabilityServiceTests(TestCase):
     def setUp(self):
-        self.org = Organization.objects.create(name='TaxOrg', code='TAX', type='company')
-        self.currency = Currency.objects.create(currency_code='USD', currency_name='US Dollar', symbol='$')
-        self.account_type = AccountType.objects.create(
-            code='EXP200',
-            name='Expense',
-            nature='expense',
-            classification='Statement of Profit or Loss',
-            balance_sheet_category=None,
-            income_statement_category='Expense',
-            cash_flow_category='Operating Activities',
-            display_order=1,
-        )
-        self.account = ChartOfAccount.objects.create(
+        self.org = factories.create_organization(name='TaxOrg', code='TAX')
+        self.currency = factories.create_currency()
+        self.expense_account = factories.create_chart_of_account(
             organization=self.org,
-            account_type=self.account_type,
-            account_code='5001',
-            account_name='Taxable Expense',
+            account_type=factories.create_account_type(nature='expense'),
             currency=self.currency,
         )
-        self.tax_code = TaxCode.objects.create(
+        self.revenue_account = factories.create_chart_of_account(
             organization=self.org,
-            code='TX1',
-            name='VAT',
-            tax_type_id=1,
-            tax_rate=Decimal('0.10'),
-            rate=Decimal('0.10'),
+            account_type=factories.create_account_type(nature='income'),
+            currency=self.currency,
+        )
+        self.ap_account = factories.create_chart_of_account(
+            organization=self.org,
+            account_type=factories.create_account_type(nature='liability'),
+            currency=self.currency,
+        )
+        self.ar_account = factories.create_chart_of_account(
+            organization=self.org,
+            account_type=factories.create_account_type(nature='asset'),
+            currency=self.currency,
+        )
+        self.tax_code = factories.create_tax_code(organization=self.org)
+        self.tax_code.tax_rate = Decimal('0.10')
+        self.tax_code.rate = Decimal('0.10')
+        self.tax_code.save(update_fields=['tax_rate', 'rate'])
+        self.customer = Customer.objects.create(
+            organization=self.org,
+            code='CUST1',
+            display_name='Customer One',
+            accounts_receivable_account=self.ar_account,
+            revenue_account=self.revenue_account,
+        )
+        self.vendor = Vendor.objects.create(
+            organization=self.org,
+            code='VEND1',
+            display_name='Vendor One',
+            accounts_payable_account=self.ap_account,
+            expense_account=self.expense_account,
         )
 
     def test_tax_service_aggregates_payable_and_receivable(self):
         period_start = date(2025, 1, 1)
-        SalesInvoice.objects.create(
+        invoice = SalesInvoice.objects.create(
             organization=self.org,
-            customer_id=1,
-            customer_display_name='Acct',
+            customer=self.customer,
+            customer_display_name=self.customer.display_name,
             invoice_number='SI-1',
             invoice_date=period_start,
             due_date=period_start,
@@ -61,15 +67,39 @@ class TaxLiabilityServiceTests(TestCase):
             total=Decimal('110'),
             base_currency_total=Decimal('110'),
             status='posted',
-        ).lines.create(
+        )
+        invoice.lines.create(
             line_number=1,
-            account=self.account,
             description='Sales',
-            currency=self.currency,
-            debit_amount=0,
-            credit_amount=110,
+            quantity=1,
+            unit_price=Decimal('100'),
+            revenue_account=self.revenue_account,
             tax_code=self.tax_code,
             tax_amount=Decimal('10'),
+        )
+        purchase_invoice = PurchaseInvoice.objects.create(
+            organization=self.org,
+            vendor=self.vendor,
+            vendor_display_name=self.vendor.display_name,
+            invoice_number='PI-1',
+            invoice_date=period_start,
+            due_date=period_start,
+            currency=self.currency,
+            exchange_rate=Decimal('1'),
+            subtotal=Decimal('50'),
+            tax_total=Decimal('5'),
+            total=Decimal('55'),
+            base_currency_total=Decimal('55'),
+            status='posted',
+        )
+        purchase_invoice.lines.create(
+            line_number=1,
+            description='Supplies',
+            quantity=1,
+            unit_cost=Decimal('50'),
+            account=self.expense_account,
+            tax_code=self.tax_code,
+            tax_amount=Decimal('5'),
         )
         service = TaxLiabilityService(self.org)
         buckets = service.aggregate(period_start)
@@ -77,4 +107,4 @@ class TaxLiabilityServiceTests(TestCase):
         bucket = buckets[0]
         self.assertEqual(bucket.tax_code.pk, self.tax_code.pk)
         self.assertEqual(bucket.receivable, Decimal('10'))
-        self.assertEqual(bucket.payable, Decimal('0'))
+        self.assertEqual(bucket.payable, Decimal('5'))

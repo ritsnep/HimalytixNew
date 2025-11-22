@@ -21,7 +21,7 @@ Validation:
 
 import logging
 from decimal import Decimal
-from typing import Optional, Dict
+from typing import Any, Dict, Optional
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -31,11 +31,12 @@ from django.utils.translation import gettext_lazy as _
 from accounting.models import Journal, JournalLine, ChartOfAccount, Currency, Department
 from accounting.models import Project, CostCenter, TaxCode
 from accounting.forms_mixin import BootstrapFormMixin
+from accounting.forms.udf_mixins import UDFFormMixin
 
 logger = logging.getLogger(__name__)
 
 
-class JournalLineForm(BootstrapFormMixin, forms.ModelForm):
+class JournalLineForm(UDFFormMixin, BootstrapFormMixin, forms.ModelForm):
     """
     Form for creating/editing individual journal line items.
 
@@ -355,6 +356,22 @@ class JournalLineForm(BootstrapFormMixin, forms.ModelForm):
             self.add_error('account', _('Account is required.'))
 
         return cleaned_data
+
+    def save(self, commit: bool = True):
+        instance = super().save(commit)
+        if commit:
+            self.save_udf_fields(instance)
+        return instance
+
+    def after_udf_save(self, instance, payload: Dict[str, Any]) -> None:
+        prefixed = self.udf_payload_with_form_names(payload)
+        if not prefixed:
+            return
+        current = instance.udf_data or {}
+        merged = {**current, **prefixed}
+        if merged != current:
+            instance.udf_data = merged
+            instance.save(update_fields=['udf_data'])
 
 
 # Create inline formset for JournalLine

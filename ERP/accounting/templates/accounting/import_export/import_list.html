@@ -2,17 +2,22 @@
 {% load i18n %}
 
 {% block title %}{% trans "Import/Export" %}{% endblock %}
+{% block page_title %}{% trans "Import/Export" %}{% endblock page_title %}
 
-{% block content %}
-<div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <h1 class="mb-4">
-                <i class="fas fa-exchange-alt me-2"></i>
-                {% trans "Batch Import & Export" %}
-            </h1>
-        </div>
+{% block page_header %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="mb-1">
+            <i class="fas fa-exchange-alt me-2"></i>
+            {% trans "Batch Import & Export" %}
+        </h4>
+        <p class="text-muted mb-0">{% trans "Upload or export journals in bulk." %}</p>
     </div>
+</div>
+{% endblock %}
+
+{% block page_content %}
+<div class="container-fluid">
 
     <div class="row">
         <!-- Import Card -->

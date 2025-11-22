@@ -10,21 +10,90 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('accounting', '0001_initial'),
-        ('forms_designer', '0001_initial'),
+        # Keep the swappable user dependency, but avoid duplicating accounting/forms_designer FKs if
+        # those apps already ran their own initial migrations in the target database. The
+        # database-level operations below handle idempotency.
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+        ('forms_designer', '0001_initial'),
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='voucherschema',
-            name='created_by',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunSQL(
+                    sql="""
+                        DO $$
+                        BEGIN
+                            IF NOT EXISTS (
+                                SELECT 1 FROM information_schema.columns
+                                WHERE table_schema = current_schema()
+                                  AND table_name = 'forms_designer_voucherschema'
+                                  AND column_name = 'created_by_id'
+                            ) THEN
+                                ALTER TABLE "forms_designer_voucherschema"
+                                ADD COLUMN created_by_id bigint
+                                REFERENCES "auth_user" (id)
+                                DEFERRABLE INITIALLY DEFERRED;
+                            END IF;
+                        END;
+                        $$;
+                    """,
+                    reverse_sql="""
+                        ALTER TABLE "forms_designer_voucherschema"
+                        DROP COLUMN IF EXISTS created_by_id;
+                    """,
+                ),
+            ],
+            state_operations=[
+                migrations.AddField(
+                    model_name='voucherschema',
+                    name='created_by',
+                    field=models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+            ],
         ),
-        migrations.AddField(
-            model_name='voucherschema',
-            name='voucher_mode_config',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='schemas', to='accounting.vouchermodeconfig'),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunSQL(
+                    sql="""
+                        DO $$
+                        BEGIN
+                            IF NOT EXISTS (
+                                SELECT 1 FROM information_schema.columns
+                                WHERE table_schema = current_schema()
+                                  AND table_name = 'forms_designer_voucherschema'
+                                  AND column_name = 'voucher_mode_config_id'
+                            ) THEN
+                                ALTER TABLE "forms_designer_voucherschema"
+                                ADD COLUMN voucher_mode_config_id bigint
+                                REFERENCES "accounting_vouchermodeconfig" (id)
+                                DEFERRABLE INITIALLY DEFERRED;
+                            END IF;
+                        END;
+                        $$;
+                    """,
+                    reverse_sql="""
+                        ALTER TABLE "forms_designer_voucherschema"
+                        DROP COLUMN IF EXISTS voucher_mode_config_id;
+                    """,
+                ),
+            ],
+            state_operations=[
+                migrations.AddField(
+                    model_name='voucherschema',
+                    name='voucher_mode_config',
+                    field=models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='schemas',
+                        to='accounting.vouchermodeconfig',
+                    ),
+                ),
+            ],
         ),
         migrations.AlterUniqueTogether(
             name='voucherschema',

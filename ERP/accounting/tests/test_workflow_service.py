@@ -15,45 +15,44 @@ from accounting.models import (
     Organization,
 )
 from accounting.services.workflow_service import WorkflowService
+from accounting.tests import factories
 from usermanagement.models import CustomUser
 
 
 class WorkflowServiceTests(TestCase):
     def setUp(self):
-        self.org = Organization.objects.create(name='WF Org', code='WF', type='company')
-        self.currency = Currency.objects.create(currency_code='USD', currency_name='US Dollar', symbol='$')
-        self.fiscal_year = FiscalYear.objects.create(
+        self.org = factories.create_organization(name='WF Org', code='WF')
+        self.currency = factories.create_currency(code='USD', name='US Dollar', symbol='$')
+        self.fiscal_year = factories.create_fiscal_year(
             organization=self.org,
             code='WF22',
             name='FY22',
             start_date=date(2022, 1, 1),
             end_date=date(2022, 12, 31),
-            status='open',
             is_current=True,
         )
-        self.journal_type = JournalType.objects.create(
+        self.period = factories.create_accounting_period(
+            fiscal_year=self.fiscal_year,
+            period_number=1,
+            name='P1',
+            start_date=date(2022, 1, 1),
+            end_date=date(2022, 1, 31),
+            is_current=True,
+        )
+        self.journal_type = factories.create_journal_type(
             organization=self.org,
             code='GEN',
             name='General',
         )
-        acc_type = AccountType.objects.create(
-            code='EXP300',
-            name='Expense',
-            nature='expense',
-            classification='Statement of Profit or Loss',
-            balance_sheet_category=None,
-            income_statement_category='Expense',
-            cash_flow_category='Operating Activities',
-            display_order=1,
-        )
-        self.account = ChartOfAccount.objects.create(
+        acc_type = factories.create_account_type(code='EXP300', nature='expense', name='Expense')
+        self.account = factories.create_chart_of_account(
             organization=self.org,
             account_type=acc_type,
+            currency=self.currency,
             account_code='5002',
             account_name='Consulting Expense',
-            currency=self.currency,
         )
-        self.user = CustomUser.objects.create_user(username='wfuser', password='pass', organization=self.org)
+        self.user = factories.create_user(username='wfuser', password='pass', organization=self.org)
         self.workflow = ApprovalWorkflow.objects.create(
             organization=self.org,
             name='Journal Approval',
@@ -66,14 +65,13 @@ class WorkflowServiceTests(TestCase):
         self.service = WorkflowService(self.user)
 
     def create_journal(self):
-        period = self.fiscal_year.periods.first()
-        return Journal.objects.create(
+        return factories.create_journal(
             organization=self.org,
-            journal_number='GEN-001',
             journal_type=self.journal_type,
-            period=period,
+            period=self.period,
             journal_date=date(2022, 1, 5),
             currency_code='USD',
+            journal_number='GEN-001',
             created_by=self.user,
         )
 

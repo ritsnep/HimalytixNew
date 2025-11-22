@@ -87,8 +87,10 @@ class JournalTests(TestCase):
         JournalLine.objects.create(journal=journal, line_number=1, account=self.acc1, debit_amount=100)
         JournalLine.objects.create(journal=journal, line_number=2, account=self.acc2, credit_amount=100)
 
-        post_journal(journal)
+        posted_journal = post_journal(journal)
 
+        journal.refresh_from_db()
+        self.assertEqual(posted_journal.status, "posted")
         self.assertEqual(journal.status, "posted")
         self.assertEqual(GeneralLedger.objects.filter(journal=journal).count(), 2)
         self.acc1.refresh_from_db()

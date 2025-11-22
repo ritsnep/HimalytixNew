@@ -31,7 +31,7 @@ class GeneralLedgerForm(BootstrapFormMixin, forms.ModelForm):
             self.fields['account'].queryset = ChartOfAccount.objects.filter(organization=organization)
             self.fields['journal'].queryset = Journal.objects.filter(organization=organization)
             self.fields['journal_line'].queryset = JournalLine.objects.filter(journal__organization=organization)
-            self.fields['period'].queryset = AccountingPeriod.objects.filter(fiscal_year__organization=organization)
+            self.fields['period'].queryset = AccountingPeriod.objects.filter(organization=organization)
             self.fields['department'].queryset = Department.objects.filter(organization=organization)
             self.fields['project'].queryset = Project.objects.filter(organization=organization)
             self.fields['cost_center'].queryset = CostCenter.objects.filter(organization=organization)

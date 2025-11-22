@@ -1,15 +1,14 @@
 {% extends "base.html" %}
 
-{% block extra_head %}
-<script src="https://unpkg.com/htmx.org@1.9.10"></script>
-<script src="https://unpkg.com/hyperscript.org@0.9.12"></script>
+{% block page_title %}{% block metadata_title %}Metadata{% endblock metadata_title %}{% endblock page_title %}
+
+{# Keep lightweight field/error styling without duplicating global assets. #}
+{% block head_extras %}
 <style>
     .htmx-indicator {
         display: none;
     }
-    .htmx-request .htmx-indicator {
-        display: inline;
-    }
+    .htmx-request .htmx-indicator,
     .htmx-request.htmx-indicator {
         display: inline;
     }
@@ -39,10 +38,18 @@
         100% { transform: rotate(360deg); }
     }
 </style>
-{% endblock %}
+{% endblock head_extras %}
 
-{% block content %}
-<div class="container mt-4">
-    {% block metadata_content %}{% endblock %}
+{% block page_header %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">{% block metadata_heading %}Metadata{% endblock metadata_heading %}</h4>
 </div>
-{% endblock %} 
+{% endblock page_header %}
+
+{% block page_content %}
+<div class="row justify-content-center">
+    <div class="col-xl-10 col-lg-12">
+        {% block metadata_content %}{% endblock metadata_content %}
+    </div>
+</div>
+{% endblock page_content %} 
