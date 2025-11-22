@@ -412,30 +412,30 @@ SESSION_COOKIE_AGE = 3 * 60 * 60  # 3 hours
 # SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_SAVE_EVERY_REQUEST = True
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-        'file': {                               # <--- new handler
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs/app.log',   # path for your log text file
-            'formatter': 'verbose',
-        },
-    },
-    'formatters': {                            # optional formatting
-        'verbose': {
-            'format': '[{asctime}] {levelname} {name}: {message}',
-            'style': '{',
-        },
-    },
-    'root': {
-        'handlers': ['console', 'file'],       # output to both terminal and file
-        'level': 'INFO',
-    },
-}
+# LOGGING = {
+#     'version': 1,
+#     'disable_existing_loggers': False,
+#     'handlers': {
+#         'console': {
+#             'class': 'logging.StreamHandler',
+#         },
+#         'file': {                               # <--- new handler
+#             'class': 'logging.FileHandler',
+#             'filename': BASE_DIR / 'logs/app.log',   # path for your log text file
+#             'formatter': 'verbose',
+#         },
+#     },
+#     'formatters': {                            # optional formatting
+#         'verbose': {
+#             'format': '[{asctime}] {levelname} {name}: {message}',
+#             'style': '{',
+#         },
+#     },
+#     'root': {
+#         'handlers': ['console', 'file'],       # output to both terminal and file
+#         'level': 'INFO',
+#     },
+# }
 
 
 REST_FRAMEWORK = {
