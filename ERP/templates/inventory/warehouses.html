@@ -4,7 +4,48 @@
 <div class="main-content">
     <div class="page-content">
         <div class="container-fluid">
-            <h1>Warehouses Page</h1>
+            <div class="row align-items-center mb-4">
+                <div class="col">
+                    <h1 class="h3 mb-1">Warehouses</h1>
+                    <p class="text-muted mb-0">Storage locations for {{ organization.name }}</p>
+                </div>
+                <div class="col-auto">
+                    <a href="{% url 'inventory:stock_receipt_create' %}" class="btn btn-outline-secondary">Record Movement</a>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-body p-0">
+                    {% if warehouses %}
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Code</th>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Locations</th>
+                                    <th scope="col" class="text-end">On Hand</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for warehouse in warehouses %}
+                                <tr>
+                                    <td class="fw-semibold">{{ warehouse.code }}</td>
+                                    <td>{{ warehouse.name }}</td>
+                                    <td>{{ warehouse.location_count }}</td>
+                                    <td class="text-end">{{ warehouse.total_on_hand }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="p-4">
+                        <p class="text-muted mb-0">No warehouses configured. Create at least one warehouse to begin tracking inventory.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </div>
 </div>

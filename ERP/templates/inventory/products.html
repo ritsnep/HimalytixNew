@@ -4,7 +4,50 @@
 <div class="main-content">
     <div class="page-content">
         <div class="container-fluid">
-            <h1>Products Page</h1>
+            <div class="row align-items-center mb-4">
+                <div class="col">
+                    <h1 class="h3 mb-1">Products</h1>
+                    <p class="text-muted mb-0">All items configured for {{ organization.name }}</p>
+                </div>
+                <div class="col-auto">
+                    <a href="{% url 'inventory:stock_receipt_create' %}" class="btn btn-outline-primary">Quick Receipt</a>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-body p-0">
+                    {% if products %}
+                    <div class="table-responsive">
+                        <table class="table table-striped align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Code</th>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Category</th>
+                                    <th scope="col">UOM</th>
+                                    <th scope="col" class="text-end">On Hand</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in products %}
+                                <tr>
+                                    <td class="fw-semibold">{{ product.code }}</td>
+                                    <td>{{ product.name }}</td>
+                                    <td>{{ product.category.name|default:"Uncategorized" }}</td>
+                                    <td>{{ product.uom }}</td>
+                                    <td class="text-end">{{ product.total_on_hand }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="p-4">
+                        <p class="text-muted mb-0">No products found yet. Start by creating items from the Inventory admin area.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </div>
 </div>

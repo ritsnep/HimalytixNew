@@ -1,26 +1,150 @@
+from decimal import Decimal
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Sum, Count
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
 from .forms import StockReceiptForm, StockIssueForm
-from .models import Batch, InventoryItem
+from .models import (
+    Batch,
+    InventoryItem,
+    Product,
+    ProductCategory,
+    Warehouse,
+    StockLedger,
+)
 from .services import InventoryService
 
+@login_required
 def dashboard(request):
-    return render(request, 'inventory/dashboard.html')
+    organization = _get_request_organization(request)
+    if organization is None:
+        messages.error(request, 'Select an organization to view inventory insights.')
+        return redirect('dashboard')
 
+    product_count = Product.objects.filter(organization=organization, is_inventory_item=True).count()
+    warehouse_count = Warehouse.objects.filter(organization=organization).count()
+    level_rows = (
+        InventoryItem.objects.filter(
+            organization=organization,
+            product__reorder_level__isnull=False,
+        )
+        .values('product_id', 'product__reorder_level')
+        .annotate(total_qty=Sum('quantity_on_hand'))
+    )
+    low_stock_count = sum(
+        1 for row in level_rows if row['total_qty'] is not None and row['total_qty'] < row['product__reorder_level']
+    )
+
+    recent_movements = (
+        StockLedger.objects.filter(organization=organization)
+        .select_related('product', 'warehouse')
+        .order_by('-txn_date')[:10]
+    )
+
+    context = {
+        'organization': organization,
+        'product_count': product_count,
+        'warehouse_count': warehouse_count,
+        'recent_movements': recent_movements,
+        'low_stock_count': low_stock_count,
+    }
+    return render(request, 'inventory/dashboard.html', context)
+
+
+@login_required
 def products(request):
-    return render(request, 'inventory/products.html')
+    organization = _get_request_organization(request)
+    if organization is None:
+        messages.error(request, 'Select an organization before viewing products.')
+        return redirect('dashboard')
 
+    products_qs = list(
+        Product.objects.filter(organization=organization)
+        .select_related('category')
+        .order_by('name')
+    )
+    on_hand_map = {
+        row['product_id']: row['total_qty']
+        for row in InventoryItem.objects.filter(organization=organization)
+        .values('product_id')
+        .annotate(total_qty=Sum('quantity_on_hand'))
+    }
+
+    for product in products_qs:
+        product.total_on_hand = on_hand_map.get(product.id, Decimal('0'))
+
+    context = {
+        'organization': organization,
+        'products': products_qs,
+    }
+    return render(request, 'inventory/products.html', context)
+
+
+@login_required
 def categories(request):
-    return render(request, 'inventory/categories.html')
+    organization = _get_request_organization(request)
+    if organization is None:
+        messages.error(request, 'Select an organization before viewing categories.')
+        return redirect('dashboard')
 
+    categories_qs = ProductCategory.objects.filter(organization=organization).order_by('name')
+    context = {
+        'organization': organization,
+        'categories': categories_qs,
+    }
+    return render(request, 'inventory/categories.html', context)
+
+
+@login_required
 def warehouses(request):
-    return render(request, 'inventory/warehouses.html')
+    organization = _get_request_organization(request)
+    if organization is None:
+        messages.error(request, 'Select an organization before viewing warehouses.')
+        return redirect('dashboard')
 
+    warehouses_qs = list(
+        Warehouse.objects.filter(organization=organization)
+        .annotate(location_count=Count('locations'))
+        .order_by('name')
+    )
+    warehouse_balances = {
+        row['warehouse_id']: row['total_qty']
+        for row in InventoryItem.objects.filter(organization=organization)
+        .values('warehouse_id')
+        .annotate(total_qty=Sum('quantity_on_hand'))
+    }
+
+    for warehouse in warehouses_qs:
+        warehouse.total_on_hand = warehouse_balances.get(warehouse.id, Decimal('0'))
+
+    context = {
+        'organization': organization,
+        'warehouses': warehouses_qs,
+    }
+    return render(request, 'inventory/warehouses.html', context)
+
+
+@login_required
 def stock_movements(request):
-    return render(request, 'inventory/stock_movements.html')
+    organization = _get_request_organization(request)
+    if organization is None:
+        messages.error(request, 'Select an organization before reviewing stock movements.')
+        return redirect('dashboard')
+
+    recent_movements = (
+        StockLedger.objects.filter(organization=organization)
+        .select_related('product', 'warehouse', 'location')
+        .order_by('-txn_date')[:20]
+    )
+
+    context = {
+        'organization': organization,
+        'recent_movements': recent_movements,
+    }
+    return render(request, 'inventory/stock_movements.html', context)
 
 
 def _get_request_organization(request):

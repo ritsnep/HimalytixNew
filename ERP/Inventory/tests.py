@@ -3,10 +3,11 @@ from decimal import Decimal
 from django.conf import settings
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from usermanagement.models import Organization, CustomUser
 
-from .models import Product, Warehouse, Location, InventoryItem, StockLedger
+from .models import Product, ProductCategory, Warehouse, Location, InventoryItem, StockLedger
 from .services import InventoryService
 
 
@@ -144,3 +145,90 @@ class StockTransactionViewTests(TestCase):
 		ledger_entry = StockLedger.objects.filter(txn_type='manual_issue').latest('id')
 		self.assertEqual(ledger_entry.qty_out, Decimal('5'))
 		self.assertIn('Damaged goods', ledger_entry.reference_id)
+
+
+class InventoryNavigationViewTests(TestCase):
+	def setUp(self):
+		self.organization = Organization.objects.create(
+			name="Nav Org",
+			code="NAV",
+			type="company",
+		)
+		self.user = CustomUser.objects.create_user(
+			username="nav-user",
+			password="pass",
+			organization=self.organization,
+		)
+		self.client.force_login(self.user)
+
+		self.category = ProductCategory.objects.create(
+			organization=self.organization,
+			code="CAT",
+			name="Hardware",
+		)
+		self.product = Product.objects.create(
+			organization=self.organization,
+			category=self.category,
+			code="NAV-1",
+			name="Navigation Widget",
+			is_inventory_item=True,
+			reorder_level=Decimal('5'),
+		)
+		self.warehouse = Warehouse.objects.create(
+			organization=self.organization,
+			code="NAV-WH",
+			name="Navigation Warehouse",
+			address_line1="1 Main",
+			city="Kathmandu",
+			country_code="NP",
+		)
+		self.location = Location.objects.create(
+			warehouse=self.warehouse,
+			code="NAV-BIN",
+			name="Primary",
+		)
+		InventoryItem.objects.create(
+			organization=self.organization,
+			product=self.product,
+			warehouse=self.warehouse,
+			location=self.location,
+			quantity_on_hand=Decimal('10'),
+			unit_cost=Decimal('1.00'),
+		)
+
+	def test_dashboard_context(self):
+		response = self.client.get(reverse('inventory:dashboard'))
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.context['product_count'], 1)
+		self.assertEqual(response.context['warehouse_count'], 1)
+
+	def test_products_view_lists_items(self):
+		response = self.client.get(reverse('inventory:products'))
+		self.assertContains(response, "Navigation Widget")
+		products = response.context['products']
+		self.assertEqual(products[0].total_on_hand, Decimal('10'))
+
+	def test_categories_view_lists_category(self):
+		response = self.client.get(reverse('inventory:categories'))
+		self.assertContains(response, "Hardware")
+
+	def test_warehouses_view_lists_totals(self):
+		response = self.client.get(reverse('inventory:warehouses'))
+		self.assertEqual(response.status_code, 200)
+		warehouses = response.context['warehouses']
+		self.assertEqual(warehouses[0].total_on_hand, Decimal('10'))
+
+	def test_stock_movements_requires_org(self):
+		StockLedger.objects.create(
+			organization=self.organization,
+			product=self.product,
+			warehouse=self.warehouse,
+			location=self.location,
+			txn_type='manual_receipt',
+			reference_id='TEST',
+			txn_date=timezone.now(),
+			qty_in=Decimal('2'),
+			unit_cost=Decimal('1.00'),
+		)
+		response = self.client.get(reverse('inventory:stock_movements'))
+		self.assertContains(response, 'Recent Movements')

@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
             field=models.ForeignKey(
                 blank=True,
                 null=True,
-                on_delete=migrations.deletion.SET_NULL,
+                on_delete=models.SET_NULL,
                 related_name="revisions",
                 to="enterprise.budget",
             ),
