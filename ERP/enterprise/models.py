@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -139,7 +140,127 @@ class PayrollCycle(OrganizationScopedModel):
         return f"{self.name} ({self.period_start} - {self.period_end})"
 
 
+class PayComponent(OrganizationScopedModel):
+    class ComponentType(models.TextChoices):
+        EARNING = "earning", _("Earning")
+        DEDUCTION = "deduction", _("Deduction")
+        TAX = "tax", _("Tax")
+        BENEFIT = "benefit", _("Benefit")
+
+    class AmountType(models.TextChoices):
+        FIXED = "fixed", _("Fixed")
+        PERCENT = "percent", _("Percent of base")
+
+    code = models.CharField(max_length=50)
+    name = models.CharField(max_length=150)
+    component_type = models.CharField(
+        max_length=20,
+        choices=ComponentType.choices,
+        default=ComponentType.EARNING,
+    )
+    amount_type = models.CharField(
+        max_length=20,
+        choices=AmountType.choices,
+        default=AmountType.FIXED,
+    )
+    amount_value = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    account = models.ForeignKey(
+        ChartOfAccount,
+        on_delete=models.PROTECT,
+        related_name="pay_components",
+    )
+    is_taxable = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ("organization", "code")
+        ordering = ["name"]
+
+    def __str__(self) -> str:
+        return f"{self.code} - {self.name}"
+
+
+class PayrollRun(OrganizationScopedModel):
+    class RunStatus(models.TextChoices):
+        DRAFT = "draft", _("Draft")
+        APPROVED = "approved", _("Approved")
+        POSTED = "posted", _("Posted")
+
+    payroll_cycle = models.ForeignKey(
+        PayrollCycle,
+        on_delete=models.PROTECT,
+        related_name="runs",
+        null=True,
+        blank=True,
+    )
+    period_start = models.DateField()
+    period_end = models.DateField()
+    status = models.CharField(
+        max_length=20,
+        choices=RunStatus.choices,
+        default=RunStatus.DRAFT,
+    )
+    expense_account = models.ForeignKey(
+        ChartOfAccount,
+        on_delete=models.PROTECT,
+        related_name="payroll_expense_runs",
+    )
+    liability_account = models.ForeignKey(
+        ChartOfAccount,
+        on_delete=models.PROTECT,
+        related_name="payroll_liability_runs",
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_payroll_runs",
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    posted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-period_end"]
+
+    def __str__(self) -> str:
+        return f"Payroll {self.period_start} - {self.period_end}"
+
+
+class PayrollRunLine(OrganizationScopedModel):
+    payroll_run = models.ForeignKey(
+        PayrollRun,
+        on_delete=models.CASCADE,
+        related_name="lines",
+    )
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        related_name="payroll_run_lines",
+    )
+    component = models.ForeignKey(
+        PayComponent,
+        on_delete=models.PROTECT,
+        related_name="payroll_run_lines",
+    )
+    amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    notes = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["employee__last_name", "component__name"]
+
+    def __str__(self) -> str:
+        return f"{self.employee} - {self.component}"
+
+
 class PayrollEntry(OrganizationScopedModel):
+    payroll_run = models.ForeignKey(
+        "PayrollRun",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="entries",
+    )
     employee = models.ForeignKey(
         Employee,
         on_delete=models.PROTECT,
@@ -238,18 +359,24 @@ class FixedAssetCategory(OrganizationScopedModel):
         on_delete=models.PROTECT,
         related_name="enterprise_asset_accounts",
         help_text="Balance sheet account to hold the asset cost.",
+        null=True,
+        blank=True,
     )
     depreciation_expense_account = models.ForeignKey(
         ChartOfAccount,
         on_delete=models.PROTECT,
         related_name="enterprise_depreciation_expense_accounts",
         help_text="Income statement account for depreciation expense.",
+        null=True,
+        blank=True,
     )
     accumulated_depreciation_account = models.ForeignKey(
         ChartOfAccount,
         on_delete=models.PROTECT,
         related_name="enterprise_accumulated_depreciation_accounts",
         help_text="Balance sheet contra-asset for accumulated depreciation.",
+        null=True,
+        blank=True,
     )
     disposal_gain_account = models.ForeignKey(
         ChartOfAccount,
@@ -312,6 +439,22 @@ class FixedAsset(OrganizationScopedModel):
 
     def __str__(self) -> str:
         return f"{self.asset_code} - {self.name}"
+
+    @property
+    def accumulated_depreciation(self):
+        from django.db.models import Sum
+
+        total = (
+            self.depreciation_schedule.filter(posted_journal=True)
+            .aggregate(total=Sum("depreciation_amount"))
+            .get("total")
+            or Decimal("0")
+        )
+        return total
+
+    @property
+    def book_value(self):
+        return max(self.acquisition_cost - self.accumulated_depreciation, Decimal("0"))
 
 
 class AssetDepreciationSchedule(OrganizationScopedModel):
@@ -389,6 +532,64 @@ class WorkOrder(OrganizationScopedModel):
         return self.work_order_number
 
 
+class WorkCenter(OrganizationScopedModel):
+    name = models.CharField(max_length=150)
+    code = models.CharField(max_length=50)
+    capacity_per_day = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ("organization", "code")
+        ordering = ["name"]
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.code})"
+
+
+class Routing(OrganizationScopedModel):
+    name = models.CharField(max_length=150)
+    work_center = models.ForeignKey(
+        WorkCenter,
+        on_delete=models.PROTECT,
+        related_name="routings",
+    )
+    standard_duration_hours = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class WorkOrderOperation(OrganizationScopedModel):
+    work_order = models.ForeignKey(
+        WorkOrder,
+        on_delete=models.CASCADE,
+        related_name="operations",
+    )
+    routing = models.ForeignKey(
+        Routing,
+        on_delete=models.PROTECT,
+        related_name="operations",
+    )
+    sequence = models.PositiveIntegerField(default=1)
+    planned_start = models.DateTimeField(null=True, blank=True)
+    planned_end = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=WorkOrder.WorkOrderStatus.choices,
+        default=WorkOrder.WorkOrderStatus.PLANNED,
+    )
+
+    class Meta:
+        ordering = ["sequence"]
+
+    def __str__(self) -> str:
+        return f"{self.work_order} - {self.routing}"
+
+
 class WorkOrderMaterial(models.Model):
     work_order = models.ForeignKey(
         WorkOrder,
@@ -463,6 +664,14 @@ class Budget(OrganizationScopedModel):
 
     name = models.CharField(max_length=150)
     fiscal_year = models.CharField(max_length=10)
+    revision_label = models.CharField(max_length=50, default="v1")
+    revision_of = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="revisions",
+    )
     status = models.CharField(
         max_length=20,
         choices=BudgetStatus.choices,
@@ -521,6 +730,41 @@ class IntegrationEndpoint(OrganizationScopedModel):
         return f"{self.name} ({self.connector_type})"
 
 
+class IntegrationCredential(OrganizationScopedModel):
+    """Stores connector credentials (vaulted/opaque)."""
+
+    name = models.CharField(max_length=150)
+    connector_type = models.CharField(
+        max_length=50,
+        choices=IntegrationEndpoint.ConnectorType.choices,
+    )
+    credential_blob = models.JSONField(default=dict, blank=True)
+    masked_display = models.CharField(max_length=100, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["name"]
+        unique_together = ("organization", "name")
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class WebhookSubscription(OrganizationScopedModel):
+    """Inbound webhook endpoint registration."""
+
+    name = models.CharField(max_length=150)
+    token = models.UUIDField(unique=True)
+    source = models.CharField(max_length=100, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self) -> str:
+        return self.name
+
+
 class POSDevice(OrganizationScopedModel):
     identifier = models.CharField(max_length=100)
     location = models.CharField(max_length=150, blank=True)
@@ -545,3 +789,18 @@ class LocaleConfig(OrganizationScopedModel):
 
     def __str__(self) -> str:
         return f"{self.organization} - {self.locale_code}"
+
+
+class TaxRegime(OrganizationScopedModel):
+    name = models.CharField(max_length=150)
+    country = models.CharField(max_length=50, blank=True)
+    region = models.CharField(max_length=50, blank=True)
+    e_invoice_format = models.CharField(max_length=100, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self) -> str:
+        return self.name

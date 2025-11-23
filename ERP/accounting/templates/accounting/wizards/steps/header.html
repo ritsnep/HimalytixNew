@@ -4,7 +4,7 @@
 
 {% block extra_css %}
 {{ block.super }}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pristinejs/dist/pristine.min.css">
+<link rel="stylesheet" href="{% static 'libs/pristinejs/dist/pristine.min.css' %}">
 {% endblock %}
 
 {% block wizard_content %}
@@ -49,9 +49,10 @@
 
 {% block extra_js %}
 {{ block.super }}
-<script src="https://cdn.jsdelivr.net/npm/pristinejs/dist/pristine.min.js"></script>
+<script src="{% static 'libs/pristinejs/dist/pristine.min.js' %}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        if (typeof Pristine === 'undefined') return;
         const form = document.getElementById('voucher-header-form');
         if (form) {
             const pristine = new Pristine(form);

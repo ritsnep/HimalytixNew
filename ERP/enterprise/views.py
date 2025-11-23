@@ -1,9 +1,14 @@
 from django.contrib import messages
 from django.urls import reverse, reverse_lazy
-from django.views.generic import CreateView, ListView, UpdateView
+from django.views.generic import CreateView, ListView, UpdateView, TemplateView
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
+import csv
+from io import StringIO
 
 from accounting.mixins import PermissionRequiredMixin, UserOrganizationMixin
 from accounting.views.base_views import BaseListView
+from accounting.services.report_export_service import ReportExportService
+from accounting.models import IntegrationEvent
 from . import forms
 from .models import (
     Department,
@@ -21,15 +26,27 @@ from .models import (
     BillOfMaterialItem,
     WorkOrder,
     WorkOrderMaterial,
+    WorkCenter,
+    Routing,
+    WorkOrderOperation,
     CRMLead,
     Opportunity,
     Campaign,
     Budget,
     BudgetLine,
     IntegrationEndpoint,
+    IntegrationCredential,
+    WebhookSubscription,
     POSDevice,
     LocaleConfig,
+    TaxRegime,
+    PayComponent,
+    PayrollRun,
+    PayrollRunLine,
 )
+from .services import FixedAssetService, PayrollService
+from .services import BudgetVarianceService, MRPService
+from .services import PayrollService
 
 
 class EnterpriseListView(PermissionRequiredMixin, BaseListView):
@@ -212,6 +229,84 @@ class PayrollEntryUpdateView(EnterpriseUpdateView):
     success_url_name = "enterprise:payroll_entry_list"
     back_url_name = "enterprise:payroll_entry_list"
     permission_required = ("enterprise", "payrollentry", "change")
+
+
+class PayComponentListView(EnterpriseListView):
+    model = PayComponent
+    list_display = ("code", "name", "component_type", "amount_type", "amount_value", "is_active")
+    create_url_name = "enterprise:paycomponent_create"
+    update_url_name = "enterprise:paycomponent_update"
+    permission_required = ("enterprise", "paycomponent", "view")
+
+
+class PayComponentCreateView(EnterpriseCreateView):
+    model = PayComponent
+    form_class = forms.PayComponentForm
+    form_title = "Create Pay Component"
+    success_url_name = "enterprise:paycomponent_list"
+    back_url_name = "enterprise:paycomponent_list"
+    permission_required = ("enterprise", "paycomponent", "add")
+
+
+class PayComponentUpdateView(EnterpriseUpdateView):
+    model = PayComponent
+    form_class = forms.PayComponentForm
+    form_title = "Edit Pay Component"
+    success_url_name = "enterprise:paycomponent_list"
+    back_url_name = "enterprise:paycomponent_list"
+    permission_required = ("enterprise", "paycomponent", "change")
+
+
+class PayrollRunListView(EnterpriseListView):
+    model = PayrollRun
+    list_display = ("payroll_cycle", "period_start", "period_end", "status")
+    create_url_name = "enterprise:payroll_run_create"
+    update_url_name = "enterprise:payroll_run_update"
+    permission_required = ("enterprise", "payrollrun", "view")
+
+
+class PayrollRunCreateView(EnterpriseCreateView):
+    model = PayrollRun
+    form_class = forms.PayrollRunForm
+    form_title = "Create Payroll Run"
+    success_url_name = "enterprise:payroll_run_list"
+    back_url_name = "enterprise:payroll_run_list"
+    permission_required = ("enterprise", "payrollrun", "add")
+
+
+class PayrollRunUpdateView(EnterpriseUpdateView):
+    model = PayrollRun
+    form_class = forms.PayrollRunForm
+    form_title = "Edit Payroll Run"
+    success_url_name = "enterprise:payroll_run_list"
+    back_url_name = "enterprise:payroll_run_list"
+    permission_required = ("enterprise", "payrollrun", "change")
+
+
+class PayrollRunLineListView(EnterpriseListView):
+    model = PayrollRunLine
+    list_display = ("payroll_run", "employee", "component", "amount")
+    create_url_name = "enterprise:payroll_run_line_create"
+    update_url_name = "enterprise:payroll_run_line_update"
+    permission_required = ("enterprise", "payrollrunline", "view")
+
+
+class PayrollRunLineCreateView(EnterpriseCreateView):
+    model = PayrollRunLine
+    form_class = forms.PayrollRunLineForm
+    form_title = "Add Payroll Line"
+    success_url_name = "enterprise:payroll_run_line_list"
+    back_url_name = "enterprise:payroll_run_line_list"
+    permission_required = ("enterprise", "payrollrunline", "add")
+
+
+class PayrollRunLineUpdateView(EnterpriseUpdateView):
+    model = PayrollRunLine
+    form_class = forms.PayrollRunLineForm
+    form_title = "Edit Payroll Line"
+    success_url_name = "enterprise:payroll_run_line_list"
+    back_url_name = "enterprise:payroll_run_line_list"
+    permission_required = ("enterprise", "payrollrunline", "change")
 
 
 class LeaveRequestListView(EnterpriseListView):
@@ -480,6 +575,105 @@ class WorkOrderMaterialUpdateView(EnterpriseUpdateView):
     permission_required = ("enterprise", "workordermaterial", "change")
 
 
+class WorkCenterListView(EnterpriseListView):
+    model = WorkCenter
+    list_display = ("name", "code", "capacity_per_day", "is_active")
+    create_url_name = "enterprise:workcenter_create"
+    update_url_name = "enterprise:workcenter_update"
+    permission_required = ("enterprise", "workcenter", "view")
+
+
+class WorkCenterCreateView(EnterpriseCreateView):
+    model = WorkCenter
+    form_class = forms.WorkCenterForm
+    form_title = "Create Work Center"
+    success_url_name = "enterprise:workcenter_list"
+    back_url_name = "enterprise:workcenter_list"
+    permission_required = ("enterprise", "workcenter", "add")
+
+
+class WorkCenterUpdateView(EnterpriseUpdateView):
+    model = WorkCenter
+    form_class = forms.WorkCenterForm
+    form_title = "Edit Work Center"
+    success_url_name = "enterprise:workcenter_list"
+    back_url_name = "enterprise:workcenter_list"
+    permission_required = ("enterprise", "workcenter", "change")
+
+
+class RoutingListView(EnterpriseListView):
+    model = Routing
+    list_display = ("name", "work_center", "standard_duration_hours", "is_active")
+    create_url_name = "enterprise:routing_create"
+    update_url_name = "enterprise:routing_update"
+    permission_required = ("enterprise", "routing", "view")
+
+
+class RoutingCreateView(EnterpriseCreateView):
+    model = Routing
+    form_class = forms.RoutingForm
+    form_title = "Create Routing"
+    success_url_name = "enterprise:routing_list"
+    back_url_name = "enterprise:routing_list"
+    permission_required = ("enterprise", "routing", "add")
+
+
+class RoutingUpdateView(EnterpriseUpdateView):
+    model = Routing
+    form_class = forms.RoutingForm
+    form_title = "Edit Routing"
+    success_url_name = "enterprise:routing_list"
+    back_url_name = "enterprise:routing_list"
+    permission_required = ("enterprise", "routing", "change")
+
+
+class WorkOrderOperationListView(EnterpriseListView):
+    model = WorkOrderOperation
+    list_display = ("work_order", "routing", "sequence", "planned_start", "planned_end", "status")
+    create_url_name = "enterprise:workorder_operation_create"
+    update_url_name = "enterprise:workorder_operation_update"
+    permission_required = ("enterprise", "workorderoperation", "view")
+
+
+class WorkOrderOperationCreateView(EnterpriseCreateView):
+    model = WorkOrderOperation
+    form_class = forms.WorkOrderOperationForm
+    form_title = "Create Work Order Operation"
+    success_url_name = "enterprise:workorder_operation_list"
+    back_url_name = "enterprise:workorder_operation_list"
+    permission_required = ("enterprise", "workorderoperation", "add")
+
+
+class WorkOrderOperationUpdateView(EnterpriseUpdateView):
+    model = WorkOrderOperation
+    form_class = forms.WorkOrderOperationForm
+    form_title = "Edit Work Order Operation"
+    success_url_name = "enterprise:workorder_operation_list"
+    back_url_name = "enterprise:workorder_operation_list"
+    permission_required = ("enterprise", "workorderoperation", "change")
+
+
+class MRPSuggestionsView(PermissionRequiredMixin, UserOrganizationMixin, TemplateView):
+    template_name = "enterprise/mrp_suggestions.html"
+    permission_required = ("enterprise", "workorder", "view")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        work_order_id = self.request.GET.get("work_order")
+        wo = None
+        suggestions = []
+        if work_order_id:
+            wo = WorkOrder.objects.filter(pk=work_order_id, organization=self.get_organization()).first()
+        if wo:
+            service = MRPService(self.get_organization())
+            suggestions = service.suggest_for_workorder(wo)
+        ctx["work_order"] = wo
+        ctx["work_orders"] = WorkOrder.objects.filter(organization=self.get_organization())
+        ctx["suggestions"] = suggestions
+        ctx["page_title"] = "MRP Suggestions"
+        return ctx
+
+
 # -----------------------
 # CRM
 # -----------------------
@@ -616,6 +810,29 @@ class BudgetLineUpdateView(EnterpriseUpdateView):
     permission_required = ("enterprise", "budgetline", "change")
 
 
+class BudgetVarianceView(PermissionRequiredMixin, UserOrganizationMixin, TemplateView):
+    template_name = "enterprise/budget_variance.html"
+    permission_required = ("enterprise", "budget", "view")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        budget_id = self.request.GET.get("budget")
+        start = self.request.GET.get("start")
+        end = self.request.GET.get("end")
+        rows = []
+        budget = None
+        if budget_id:
+            budget = Budget.objects.filter(pk=budget_id, organization=self.get_organization()).first()
+        if budget:
+            service = BudgetVarianceService(self.get_organization())
+            rows = service.variances(budget, start_date=start, end_date=end)
+        ctx["budget"] = budget
+        ctx["budgets"] = Budget.objects.filter(organization=self.get_organization())
+        ctx["rows"] = rows
+        ctx["page_title"] = "Budget Variance"
+        return ctx
+
+
 # -----------------------
 # Integrations
 # -----------------------
@@ -698,3 +915,219 @@ class LocaleConfigUpdateView(EnterpriseUpdateView):
     success_url_name = "enterprise:localeconfig_list"
     back_url_name = "enterprise:localeconfig_list"
     permission_required = ("enterprise", "localeconfig", "change")
+
+
+class TaxRegimeListView(EnterpriseListView):
+    model = TaxRegime
+    list_display = ("name", "country", "region", "e_invoice_format", "is_active")
+    create_url_name = "enterprise:taxregime_create"
+    update_url_name = "enterprise:taxregime_update"
+    permission_required = ("enterprise", "taxregime", "view")
+
+
+class TaxRegimeCreateView(EnterpriseCreateView):
+    model = TaxRegime
+    form_class = forms.TaxRegimeForm
+    form_title = "Create Tax Regime"
+    success_url_name = "enterprise:taxregime_list"
+    back_url_name = "enterprise:taxregime_list"
+    permission_required = ("enterprise", "taxregime", "add")
+
+
+class TaxRegimeUpdateView(EnterpriseUpdateView):
+    model = TaxRegime
+    form_class = forms.TaxRegimeForm
+    form_title = "Edit Tax Regime"
+    success_url_name = "enterprise:taxregime_list"
+    back_url_name = "enterprise:taxregime_list"
+    permission_required = ("enterprise", "taxregime", "change")
+
+
+# -----------------------
+# Reports
+# -----------------------
+class DepreciationReportView(PermissionRequiredMixin, UserOrganizationMixin, TemplateView):
+    template_name = "enterprise/depreciation_report.html"
+    permission_required = ("enterprise", "fixedasset", "view")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        org = self.get_organization()
+        assets = FixedAsset.objects.filter(organization=org).select_related("category")
+        rows = []
+        for asset in assets:
+            rows.append(
+                {
+                    "asset": asset,
+                    "category": asset.category,
+                    "acquisition_cost": asset.acquisition_cost,
+                    "salvage_value": asset.salvage_value,
+                    "accumulated": asset.accumulated_depreciation,
+                    "book_value": asset.book_value,
+                    "status": asset.status,
+                }
+            )
+        ctx["rows"] = rows
+        ctx["page_title"] = "Depreciation Report"
+        return ctx
+
+
+# -----------------------
+# Payroll exports/actions
+# -----------------------
+def export_payroll_run(request, pk):
+    run = PayrollRun.objects.select_related("organization").get(pk=pk)
+    org = run.organization
+    if request.user.get_active_organization() != org and not request.user.is_superuser:
+        return HttpResponse(status=403)
+
+    service = PayrollService(request.user, org)
+    service.generate_entries(run)
+
+    fmt = request.GET.get("format", "csv")
+    entries = run.entries.select_related("employee")
+    if fmt in ["csv", "xls"]:
+        output = StringIO()
+        writer = csv.writer(output)
+        writer.writerow(
+            ["Employee", "Gross Pay", "Deductions", "Net Pay", "Currency", "Payroll Run"]
+        )
+        for entry in entries:
+            writer.writerow(
+                [
+                    str(entry.employee),
+                    entry.gross_pay,
+                    entry.deductions,
+                    entry.net_pay,
+                    entry.currency,
+                    run.period_end,
+                ]
+            )
+        content_type = "text/csv" if fmt == "csv" else "application/vnd.ms-excel"
+        response = HttpResponse(output.getvalue(), content_type=content_type)
+        response["Content-Disposition"] = f'attachment; filename="payroll_run_{pk}.{fmt}"'
+        return response
+    if fmt == "pdf":
+        rows = []
+        for entry in entries:
+            rows.append(
+                {
+                    "employee": str(entry.employee),
+                    "gross_pay": entry.gross_pay,
+                    "deductions": entry.deductions,
+                    "net_pay": entry.net_pay,
+                    "currency": entry.currency,
+                }
+            )
+        report_data = {
+            "report_type": "payroll_run",
+            "name": f"Payroll Run {run.pk}",
+            "generated_at": timezone.now(),
+            "headers": ["Employee", "Gross Pay", "Deductions", "Net Pay", "Currency"],
+            "rows": rows,
+        }
+        file_buffer, filename = ReportExportService.to_pdf(report_data)
+        response = HttpResponse(file_buffer.getvalue(), content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="payroll_run_{run.pk}.pdf"'
+        return response
+
+    return HttpResponse(status=400)
+
+
+def post_payroll_run(request, pk):
+    if request.method != "POST":
+        return HttpResponse(status=405)
+    run = PayrollRun.objects.select_related("organization").get(pk=pk)
+    org = run.organization
+    if request.user.get_active_organization() != org and not request.user.is_superuser:
+        return HttpResponse(status=403)
+    service = PayrollService(request.user, org)
+    service.post_run(run)
+    messages.success(request, "Payroll run posted.")
+    return HttpResponseRedirect(reverse("enterprise:payroll_run_list"))
+
+
+# -----------------------
+# Integrations / Webhooks / Observability
+# -----------------------
+class IntegrationCredentialListView(EnterpriseListView):
+    model = IntegrationCredential
+    list_display = ("name", "connector_type", "masked_display", "is_active")
+    create_url_name = "enterprise:integrationcredential_create"
+    update_url_name = "enterprise:integrationcredential_update"
+    permission_required = ("enterprise", "integrationcredential", "view")
+
+
+class IntegrationCredentialCreateView(EnterpriseCreateView):
+    model = IntegrationCredential
+    form_class = forms.IntegrationCredentialForm
+    form_title = "Create Integration Credential"
+    success_url_name = "enterprise:integrationcredential_list"
+    back_url_name = "enterprise:integrationcredential_list"
+    permission_required = ("enterprise", "integrationcredential", "add")
+
+
+class IntegrationCredentialUpdateView(EnterpriseUpdateView):
+    model = IntegrationCredential
+    form_class = forms.IntegrationCredentialForm
+    form_title = "Edit Integration Credential"
+    success_url_name = "enterprise:integrationcredential_list"
+    back_url_name = "enterprise:integrationcredential_list"
+    permission_required = ("enterprise", "integrationcredential", "change")
+
+
+class WebhookSubscriptionListView(EnterpriseListView):
+    model = WebhookSubscription
+    list_display = ("name", "token", "source", "is_active")
+    create_url_name = "enterprise:webhooksubscription_create"
+    update_url_name = "enterprise:webhooksubscription_update"
+    permission_required = ("enterprise", "webhooksubscription", "view")
+
+
+class WebhookSubscriptionCreateView(EnterpriseCreateView):
+    model = WebhookSubscription
+    form_class = forms.WebhookSubscriptionForm
+    form_title = "Create Webhook Subscription"
+    success_url_name = "enterprise:webhooksubscription_list"
+    back_url_name = "enterprise:webhooksubscription_list"
+    permission_required = ("enterprise", "webhooksubscription", "add")
+
+
+class WebhookSubscriptionUpdateView(EnterpriseUpdateView):
+    model = WebhookSubscription
+    form_class = forms.WebhookSubscriptionForm
+    form_title = "Edit Webhook Subscription"
+    success_url_name = "enterprise:webhooksubscription_list"
+    back_url_name = "enterprise:webhooksubscription_list"
+    permission_required = ("enterprise", "webhooksubscription", "change")
+
+
+def webhook_receiver(request, token):
+    if request.method != "POST":
+        return HttpResponse(status=405)
+    sub = WebhookSubscription.objects.filter(token=token, is_active=True).first()
+    if not sub:
+        return HttpResponse(status=404)
+    payload = request.body.decode("utf-8")
+    IntegrationEvent.objects.create(
+        event_type="webhook.received",
+        payload={"raw": payload},
+        source_object="WebhookSubscription",
+        source_id=str(sub.pk),
+    )
+    return JsonResponse({"status": "ok"})
+
+
+class ObservabilityView(PermissionRequiredMixin, UserOrganizationMixin, TemplateView):
+    template_name = "enterprise/observability.html"
+    permission_required = ("enterprise", "integrationendpoint", "view")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        org = self.get_organization()
+        ctx["endpoints"] = IntegrationEndpoint.objects.filter(organization=org)
+        ctx["credentials"] = IntegrationCredential.objects.filter(organization=org)
+        ctx["webhooks"] = WebhookSubscription.objects.filter(organization=org)
+        ctx["recent_events"] = IntegrationEvent.objects.order_by("-created_at")[:20]
+        ctx["page_title"] = "Observability"
+        return ctx

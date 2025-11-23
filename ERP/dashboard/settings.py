@@ -205,28 +205,36 @@ else:
     }
 
 # =============================================================================
-# REDIS CACHE CONFIGURATION
+# CACHE CONFIGURATION (Redis in prod, LocMem optional for tests/dev)
 # =============================================================================
-CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': os.environ.get('REDIS_URL', 'redis://localhost:6379/0'),
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            # Use default parser instead of HiredisParser for compatibility
-            'CONNECTION_POOL_CLASS_KWARGS': {
-                'max_connections': 50,
-                'retry_on_timeout': True,
-            },
-            'SOCKET_CONNECT_TIMEOUT': 5,
-            'SOCKET_TIMEOUT': 5,
-            'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
-            'IGNORE_EXCEPTIONS': True,  # Don't break if Redis is down
-        },
-        'KEY_PREFIX': 'himalytix',
-        'TIMEOUT': 300,  # Default 5 minute cache timeout
+if os.environ.get('USE_LOC_MEM_CACHE', '0') == '1':
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'himalytix-tests',
+        }
     }
-}
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': os.environ.get('REDIS_URL', 'redis://localhost:6379/0'),
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                # Use default parser instead of HiredisParser for compatibility
+                'CONNECTION_POOL_CLASS_KWARGS': {
+                    'max_connections': 50,
+                    'retry_on_timeout': True,
+                },
+                'SOCKET_CONNECT_TIMEOUT': 5,
+                'SOCKET_TIMEOUT': 5,
+                'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
+                'IGNORE_EXCEPTIONS': True,  # Don't break if Redis is down
+            },
+            'KEY_PREFIX': 'himalytix',
+            'TIMEOUT': 300,  # Default 5 minute cache timeout
+        }
+    }
 
 # Cache time to live (TTL) settings
 CACHE_TTL = {

@@ -2186,6 +2186,163 @@ class PaymentApproval(models.Model):
 
 
 
+class SalesOrder(models.Model):
+    """Pre-invoice customer commitments with configurable fulfillment states."""
+
+    STATUS_CHOICES = [
+        ("draft", "Draft"),
+        ("confirmed", "Confirmed"),
+        ("fulfilled", "Fulfilled"),
+        ("invoiced", "Invoiced"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    order_id = models.BigAutoField(primary_key=True)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.PROTECT,
+        related_name="sales_orders",
+    )
+    customer = models.ForeignKey(
+        "Customer",
+        on_delete=models.PROTECT,
+        related_name="sales_orders",
+    )
+    customer_display_name = models.CharField(max_length=255)
+    order_number = models.CharField(max_length=50, blank=True, default="")
+    order_date = models.DateField(default=timezone.now)
+    expected_ship_date = models.DateField(null=True, blank=True)
+    currency = models.ForeignKey(
+        "Currency",
+        on_delete=models.PROTECT,
+        related_name="sales_order_currency",
+    )
+    exchange_rate = models.DecimalField(max_digits=19, decimal_places=6, default=1)
+    subtotal = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    tax_total = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    total = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
+    reference_number = models.CharField(max_length=100, blank=True)
+    notes = models.TextField(blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    linked_invoice = models.ForeignKey(
+        "SalesInvoice",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="source_orders",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_sales_orders",
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="updated_sales_orders",
+    )
+
+    class Meta:
+        db_table = "sales_order"
+        unique_together = ("organization", "order_number")
+        ordering = ("-order_date", "-order_id")
+        indexes = [
+            models.Index(fields=["organization", "status"]),
+        ]
+
+    def __str__(self):
+        return f"{self.order_number or 'SO?'} - {self.customer_display_name}"
+
+    def recompute_totals(self, *, save=True):
+        aggregates = self.lines.aggregate(
+            subtotal=Sum("line_total"),
+            tax_total=Sum("tax_amount"),
+        )
+        self.subtotal = aggregates.get("subtotal") or Decimal("0")
+        self.tax_total = aggregates.get("tax_total") or Decimal("0")
+        self.total = (self.subtotal or Decimal("0")) + (self.tax_total or Decimal("0"))
+        if save:
+            super().save(update_fields=["subtotal", "tax_total", "total", "updated_at"])
+
+    def save(self, *args, **kwargs):
+        if self.customer_id and not self.organization_id:
+            self.organization_id = self.customer.organization_id
+        if self.customer_id and not self.customer_display_name:
+            self.customer_display_name = self.customer.display_name
+        if not self.order_number and self.organization_id:
+            document_date = self.order_date or timezone.now().date()
+            self.order_number = DocumentSequenceConfig.get_next_number(
+                organization=self.organization,
+                document_type="sales_order",
+                document_date=document_date,
+            )
+        super().save(*args, **kwargs)
+
+
+class SalesOrderLine(models.Model):
+    """Line level detail for sales orders."""
+
+    order_line_id = models.BigAutoField(primary_key=True)
+    order = models.ForeignKey(
+        SalesOrder,
+        on_delete=models.CASCADE,
+        related_name="lines",
+    )
+    line_number = models.PositiveIntegerField()
+    description = models.TextField()
+    product_code = models.CharField(max_length=100, blank=True)
+    quantity = models.DecimalField(max_digits=19, decimal_places=4, default=1)
+    unit_price = models.DecimalField(max_digits=19, decimal_places=6, default=0)
+    discount_amount = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    line_total = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    revenue_account = models.ForeignKey(
+        ChartOfAccount,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sales_order_lines",
+    )
+    tax_code = models.ForeignKey(
+        "TaxCode",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sales_order_lines",
+    )
+    tax_amount = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "sales_order_line"
+        unique_together = ("order", "line_number")
+        ordering = ("order", "line_number")
+
+    def __str__(self):
+        return f"{self.order.order_number or 'SO?'} - line {self.line_number}"
+
+    def clean(self):
+        if self.quantity <= 0:
+            raise ValidationError("Quantity must be greater than zero.")
+        if self.unit_price < 0:
+            raise ValidationError("Unit price cannot be negative.")
+        super().clean()
+
+    def save(self, *args, **kwargs):
+        self.line_total = (self.quantity * self.unit_price) - (self.discount_amount or Decimal("0"))
+        super().save(*args, **kwargs)
+        if self.order_id:
+            self.order.recompute_totals(save=True)
+
+
 class SalesInvoice(models.Model):
     """Customer sales invoice header."""
 
@@ -2916,6 +3073,7 @@ class DocumentSequenceConfig(models.Model):
     """Configurable sequential numbering for business documents (invoices, notes)."""
 
     DOCUMENT_TYPES = [
+        ('sales_order', 'Sales Order'),
         ('sales_invoice', 'Sales Invoice'),
         ('purchase_invoice', 'Purchase Invoice'),
         ('sales_credit_note', 'Sales Credit Note'),
@@ -2926,6 +3084,7 @@ class DocumentSequenceConfig(models.Model):
         ('never', 'Never'),
     ]
     DEFAULT_PREFIXES = {
+        'sales_order': 'SO-',
         'sales_invoice': 'SI-',
         'purchase_invoice': 'PI-',
         'sales_credit_note': 'SCN-',

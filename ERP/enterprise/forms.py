@@ -1,6 +1,9 @@
 from django import forms
 
 from .models import (
+    PayComponent,
+    PayrollRun,
+    PayrollRunLine,
     Department,
     Position,
     Employee,
@@ -16,14 +19,20 @@ from .models import (
     BillOfMaterialItem,
     WorkOrder,
     WorkOrderMaterial,
+    WorkCenter,
+    Routing,
+    WorkOrderOperation,
     CRMLead,
     Opportunity,
     Campaign,
     Budget,
     BudgetLine,
     IntegrationEndpoint,
+    IntegrationCredential,
+    WebhookSubscription,
     POSDevice,
     LocaleConfig,
+    TaxRegime,
 )
 
 
@@ -88,7 +97,41 @@ class PayrollCycleForm(BaseOrgModelForm):
 class PayrollEntryForm(BaseOrgModelForm):
     class Meta:
         model = PayrollEntry
-        fields = ["payroll_cycle", "employee", "gross_pay", "deductions", "net_pay", "currency"]
+        fields = ["payroll_run", "payroll_cycle", "employee", "gross_pay", "deductions", "net_pay", "currency"]
+
+
+class PayComponentForm(BaseOrgModelForm):
+    class Meta:
+        model = PayComponent
+        fields = [
+            "code",
+            "name",
+            "component_type",
+            "amount_type",
+            "amount_value",
+            "account",
+            "is_taxable",
+            "is_active",
+        ]
+
+
+class PayrollRunForm(BaseOrgModelForm):
+    class Meta:
+        model = PayrollRun
+        fields = [
+            "payroll_cycle",
+            "period_start",
+            "period_end",
+            "status",
+            "expense_account",
+            "liability_account",
+        ]
+
+
+class PayrollRunLineForm(BaseOrgModelForm):
+    class Meta:
+        model = PayrollRunLine
+        fields = ["payroll_run", "employee", "component", "amount", "notes"]
 
 
 class LeaveRequestForm(BaseOrgModelForm):
@@ -112,7 +155,17 @@ class BenefitEnrollmentForm(BaseOrgModelForm):
 class FixedAssetCategoryForm(BaseOrgModelForm):
     class Meta:
         model = FixedAssetCategory
-        fields = ["name", "depreciation_method", "useful_life_months", "salvage_value_rate"]
+        fields = [
+            "name",
+            "depreciation_method",
+            "useful_life_months",
+            "salvage_value_rate",
+            "asset_account",
+            "depreciation_expense_account",
+            "accumulated_depreciation_account",
+            "disposal_gain_account",
+            "disposal_loss_account",
+        ]
 
 
 class FixedAssetForm(BaseOrgModelForm):
@@ -174,6 +227,23 @@ class WorkOrderMaterialForm(BaseOrgModelForm):
             "uom",
         ]
 
+class WorkCenterForm(BaseOrgModelForm):
+    class Meta:
+        model = WorkCenter
+        fields = ["name", "code", "capacity_per_day", "is_active"]
+
+
+class RoutingForm(BaseOrgModelForm):
+    class Meta:
+        model = Routing
+        fields = ["name", "work_center", "standard_duration_hours", "is_active"]
+
+
+class WorkOrderOperationForm(BaseOrgModelForm):
+    class Meta:
+        model = WorkOrderOperation
+        fields = ["work_order", "routing", "sequence", "planned_start", "planned_end", "status"]
+
 
 class CRMLeadForm(BaseOrgModelForm):
     class Meta:
@@ -204,7 +274,7 @@ class CampaignForm(BaseOrgModelForm):
 class BudgetForm(BaseOrgModelForm):
     class Meta:
         model = Budget
-        fields = ["name", "fiscal_year", "status"]
+        fields = ["name", "fiscal_year", "revision_label", "revision_of", "status"]
 
 
 class BudgetLineForm(BaseOrgModelForm):
@@ -219,6 +289,18 @@ class IntegrationEndpointForm(BaseOrgModelForm):
         fields = ["name", "connector_type", "base_url", "is_active", "metadata"]
 
 
+class IntegrationCredentialForm(BaseOrgModelForm):
+    class Meta:
+        model = IntegrationCredential
+        fields = ["name", "connector_type", "credential_blob", "masked_display", "is_active"]
+
+
+class WebhookSubscriptionForm(BaseOrgModelForm):
+    class Meta:
+        model = WebhookSubscription
+        fields = ["name", "token", "source", "is_active"]
+
+
 class POSDeviceForm(BaseOrgModelForm):
     class Meta:
         model = POSDevice
@@ -229,3 +311,9 @@ class LocaleConfigForm(BaseOrgModelForm):
     class Meta:
         model = LocaleConfig
         fields = ["locale_code", "timezone", "default_currency", "tax_region", "enable_e_invoicing"]
+
+
+class TaxRegimeForm(BaseOrgModelForm):
+    class Meta:
+        model = TaxRegime
+        fields = ["name", "country", "region", "e_invoice_format", "metadata", "is_active"]

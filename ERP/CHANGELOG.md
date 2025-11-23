@@ -8,6 +8,9 @@
 
 -   Journal line inline formset now auto-assigns sequential `line_number` values and re-enforces balanced debit/credit validation, preventing null constraint failures during voucher creation/editing.
 -   Phase 2 voucher view tests were updated to include required `fx_rate`/`journal_line_id` fields and improved diagnostics, eliminating `NoneType` access errors when responses redirect.
+-   Billing invoices now refresh totals automatically via `InvoiceHeader.refresh_totals_from_lines()` and `InvoiceLine.save()`, ensuring aggregates stay accurate without violating immutability.
+-   `InvoiceHeaderSerializer` accepts an `actor` context so nested invoice creation (and `InvoiceViewSet.perform_create`) no longer saves immutable headers twice, fixing API test regressions.
+-   OCR service gracefully falls back to mocked responses when `pytesseract`, `opencv-python`, `pillow`, or `numpy` are not installed, logging a warning instead of crashing import-time.
 
 ## [1.0.0] - 2023-10-27
 

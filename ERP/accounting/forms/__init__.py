@@ -38,3 +38,4 @@ from .commerce_forms import (
     CustomerForm,
     VendorForm,
 )
+from .sales_order_form import SalesOrderForm, SalesOrderLineForm

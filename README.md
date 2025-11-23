@@ -28,6 +28,14 @@ See the high-level architecture (`Docs/architecture.png`) for module boundaries 
 - PostgreSQL 14+ (or set `USE_SQLITE=1` for quick local work)
 - Redis (optional but recommended for cache/rate limiting)
 
+Optional OCR helpers (for the mocked receipt workflow) live behind standard Python packages. If you want the logs to stop warning about missing OCR modules or plan to wire in real OCR results, install:
+
+```
+pip install pytesseract opencv-python pillow numpy
+```
+
+Without them the service stays in mock mode and emits a single warning during startup/tests.
+
 ### 2. Clone & Bootstrap
 
 ```bash

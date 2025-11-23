@@ -18,6 +18,7 @@ from .exchange_rate_service import ExchangeRateService
 from .year_end_closing import YearEndClosingService
 from .purchase_invoice_service import PurchaseInvoiceService
 from .sales_invoice_service import SalesInvoiceService
+from .sales_order_service import SalesOrderService
 from .app_payment_service import APPaymentService
 from .ap_aging_service import APAgingService
 from .bank_reconciliation_service import BankReconciliationService
@@ -49,6 +50,7 @@ __all__ = [
     'YearEndClosingService',
     'PurchaseInvoiceService',
     'SalesInvoiceService',
+    'SalesOrderService',
     'APPaymentService',
     'BankReconciliationService',
     'APAgingService',

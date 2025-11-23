@@ -18,6 +18,15 @@ urlpatterns = [
     path("payroll-cycles/", views.PayrollCycleListView.as_view(), name="payroll_cycle_list"),
     path("payroll-cycles/new/", views.PayrollCycleCreateView.as_view(), name="payroll_cycle_create"),
     path("payroll-cycles/<int:pk>/", views.PayrollCycleUpdateView.as_view(), name="payroll_cycle_update"),
+    path("pay-components/", views.PayComponentListView.as_view(), name="paycomponent_list"),
+    path("pay-components/new/", views.PayComponentCreateView.as_view(), name="paycomponent_create"),
+    path("pay-components/<int:pk>/", views.PayComponentUpdateView.as_view(), name="paycomponent_update"),
+    path("payroll-runs/", views.PayrollRunListView.as_view(), name="payroll_run_list"),
+    path("payroll-runs/new/", views.PayrollRunCreateView.as_view(), name="payroll_run_create"),
+    path("payroll-runs/<int:pk>/", views.PayrollRunUpdateView.as_view(), name="payroll_run_update"),
+    path("payroll-run-lines/", views.PayrollRunLineListView.as_view(), name="payroll_run_line_list"),
+    path("payroll-run-lines/new/", views.PayrollRunLineCreateView.as_view(), name="payroll_run_line_create"),
+    path("payroll-run-lines/<int:pk>/", views.PayrollRunLineUpdateView.as_view(), name="payroll_run_line_update"),
     path("payroll-entries/", views.PayrollEntryListView.as_view(), name="payroll_entry_list"),
     path("payroll-entries/new/", views.PayrollEntryCreateView.as_view(), name="payroll_entry_create"),
     path("payroll-entries/<int:pk>/", views.PayrollEntryUpdateView.as_view(), name="payroll_entry_update"),
@@ -52,6 +61,11 @@ urlpatterns = [
         views.AssetDepreciationScheduleUpdateView.as_view(),
         name="depreciation_schedule_update",
     ),
+    path(
+        "assets/depreciation-report/",
+        views.DepreciationReportView.as_view(),
+        name="depreciation_report",
+    ),
     # Manufacturing
     path("manufacturing/boms/", views.BillOfMaterialListView.as_view(), name="bom_list"),
     path("manufacturing/boms/new/", views.BillOfMaterialCreateView.as_view(), name="bom_create"),
@@ -62,6 +76,12 @@ urlpatterns = [
     path("manufacturing/work-orders/", views.WorkOrderListView.as_view(), name="workorder_list"),
     path("manufacturing/work-orders/new/", views.WorkOrderCreateView.as_view(), name="workorder_create"),
     path("manufacturing/work-orders/<int:pk>/", views.WorkOrderUpdateView.as_view(), name="workorder_update"),
+    path("manufacturing/work-centers/", views.WorkCenterListView.as_view(), name="workcenter_list"),
+    path("manufacturing/work-centers/new/", views.WorkCenterCreateView.as_view(), name="workcenter_create"),
+    path("manufacturing/work-centers/<int:pk>/", views.WorkCenterUpdateView.as_view(), name="workcenter_update"),
+    path("manufacturing/routings/", views.RoutingListView.as_view(), name="routing_list"),
+    path("manufacturing/routings/new/", views.RoutingCreateView.as_view(), name="routing_create"),
+    path("manufacturing/routings/<int:pk>/", views.RoutingUpdateView.as_view(), name="routing_update"),
     path(
         "manufacturing/work-order-materials/",
         views.WorkOrderMaterialListView.as_view(),
@@ -77,6 +97,22 @@ urlpatterns = [
         views.WorkOrderMaterialUpdateView.as_view(),
         name="womaterial_update",
     ),
+    path(
+        "manufacturing/work-order-operations/",
+        views.WorkOrderOperationListView.as_view(),
+        name="workorder_operation_list",
+    ),
+    path(
+        "manufacturing/work-order-operations/new/",
+        views.WorkOrderOperationCreateView.as_view(),
+        name="workorder_operation_create",
+    ),
+    path(
+        "manufacturing/work-order-operations/<int:pk>/",
+        views.WorkOrderOperationUpdateView.as_view(),
+        name="workorder_operation_update",
+    ),
+    path("manufacturing/mrp-suggestions/", views.MRPSuggestionsView.as_view(), name="mrp_suggestions"),
     # CRM
     path("crm/leads/", views.CRMLeadListView.as_view(), name="crmlead_list"),
     path("crm/leads/new/", views.CRMLeadCreateView.as_view(), name="crmlead_create"),
@@ -94,6 +130,7 @@ urlpatterns = [
     path("budgeting/lines/", views.BudgetLineListView.as_view(), name="budgetline_list"),
     path("budgeting/lines/new/", views.BudgetLineCreateView.as_view(), name="budgetline_create"),
     path("budgeting/lines/<int:pk>/", views.BudgetLineUpdateView.as_view(), name="budgetline_update"),
+    path("budgeting/variance/", views.BudgetVarianceView.as_view(), name="budget_variance"),
     # Integrations
     path(
         "integrations/endpoints/",
@@ -110,6 +147,42 @@ urlpatterns = [
         views.IntegrationEndpointUpdateView.as_view(),
         name="integrationendpoint_update",
     ),
+    path(
+        "integrations/credentials/",
+        views.IntegrationCredentialListView.as_view(),
+        name="integrationcredential_list",
+    ),
+    path(
+        "integrations/credentials/new/",
+        views.IntegrationCredentialCreateView.as_view(),
+        name="integrationcredential_create",
+    ),
+    path(
+        "integrations/credentials/<int:pk>/",
+        views.IntegrationCredentialUpdateView.as_view(),
+        name="integrationcredential_update",
+    ),
+    path(
+        "integrations/webhooks/",
+        views.WebhookSubscriptionListView.as_view(),
+        name="webhooksubscription_list",
+    ),
+    path(
+        "integrations/webhooks/new/",
+        views.WebhookSubscriptionCreateView.as_view(),
+        name="webhooksubscription_create",
+    ),
+    path(
+        "integrations/webhooks/<int:pk>/",
+        views.WebhookSubscriptionUpdateView.as_view(),
+        name="webhooksubscription_update",
+    ),
+    path(
+        "integrations/webhook/<uuid:token>/",
+        views.webhook_receiver,
+        name="webhook_receiver",
+    ),
+    path("observability/", views.ObservabilityView.as_view(), name="observability"),
     path("integrations/pos-devices/", views.POSDeviceListView.as_view(), name="posdevice_list"),
     path("integrations/pos-devices/new/", views.POSDeviceCreateView.as_view(), name="posdevice_create"),
     path("integrations/pos-devices/<int:pk>/", views.POSDeviceUpdateView.as_view(), name="posdevice_update"),
@@ -117,4 +190,14 @@ urlpatterns = [
     path("localization/", views.LocaleConfigListView.as_view(), name="localeconfig_list"),
     path("localization/new/", views.LocaleConfigCreateView.as_view(), name="localeconfig_create"),
     path("localization/<int:pk>/", views.LocaleConfigUpdateView.as_view(), name="localeconfig_update"),
+    path(
+        "payroll-runs/<int:pk>/export/",
+        views.export_payroll_run,
+        name="payroll_run_export",
+    ),
+    path(
+        "payroll-runs/<int:pk>/post/",
+        views.post_payroll_run,
+        name="payroll_run_post",
+    ),
 ]

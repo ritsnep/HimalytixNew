@@ -76,8 +76,8 @@ from ..views import views_api
 from ..views import recurring_journal_views
 from ..views import views_htmx
 from ..views import wizard
-from ..views import purchase_invoice_views, payment_scheduler_views, vendor_statement_views, customer_statement_views, sales_invoice_views, ar_receipt_views, commerce_views
-from ..views import sales_invoice_views, ar_receipt_views, commerce_views
+from ..views import purchase_invoice_views, payment_scheduler_views, vendor_statement_views, customer_statement_views, sales_invoice_views, ar_receipt_views, commerce_views, sales_order_views
+from ..views import sales_invoice_views, ar_receipt_views, commerce_views, sales_order_views
 
 app_name = "accounting"
 
@@ -289,6 +289,8 @@ urlpatterns = [
     path('customer-payments/statement/', customer_statement_views.CustomerStatementView.as_view(), name='customer_statement'),
     path('sales-invoices/', sales_invoice_views.SalesInvoiceListView.as_view(), name='sales_invoice_list'),
     path('sales-invoices/new/', sales_invoice_views.SalesInvoiceCreateView.as_view(), name='sales_invoice_create'),
+    path('sales-orders/', sales_order_views.SalesOrderListView.as_view(), name='sales_order_list'),
+    path('sales-orders/new/', sales_order_views.SalesOrderCreateView.as_view(), name='sales_order_create'),
     path('ar-receipts/', ar_receipt_views.ARReceiptListView.as_view(), name='ar_receipt_list'),
     path('ar-receipts/new/', ar_receipt_views.ARReceiptCreateView.as_view(), name='ar_receipt_create'),
     path('ap-payments/', commerce_views.APPaymentListView.as_view(), name='ap_payment_list'),

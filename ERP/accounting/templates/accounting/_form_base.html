@@ -7,7 +7,7 @@
     {{ block.super }}
     <link rel="stylesheet" href="{% static 'libs/flatpickr/dist/flatpickr.min.css' %}">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/pristinejs/1.1.0/pristine.min.css" rel="stylesheet">
+    <link href="{% static 'libs/pristinejs/dist/pristine.min.css' %}" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
@@ -53,7 +53,7 @@
     {{ block.super }}
     <script src="{% static 'libs/flatpickr/dist/flatpickr.min.js' %}"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pristinejs/1.1.0/pristine.min.js"></script>
+    <script src="{% static 'libs/pristinejs/dist/pristine.min.js' %}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize datepickers
@@ -63,27 +63,27 @@
                 todayHighlight: true
             });
 
-            // Initialize Pristine.js for all forms
-            var forms = document.querySelectorAll('form[novalidate]');
-            forms.forEach(function(form) {
-                var pristine = new Pristine(form, {
-                    classTo: 'form-group',
-                    errorClass: 'has-danger',
-                    successClass: 'has-success',
-                    errorTextParent: 'form-group',
-                    errorTextTag: 'div',
-                    errorTextClass: 'text-danger'
-                });
+            if (typeof Pristine !== 'undefined') {
+                // Initialize Pristine.js for all forms
+                var forms = document.querySelectorAll('form[novalidate]');
+                forms.forEach(function(form) {
+                    var pristine = new Pristine(form, {
+                        classTo: 'form-group',
+                        errorClass: 'has-danger',
+                        successClass: 'has-success',
+                        errorTextParent: 'form-group',
+                        errorTextTag: 'div',
+                        errorTextClass: 'text-danger'
+                    });
 
-                form.addEventListener('submit', function(e) {
-                    if (!pristine.validate()) {
-                        e.preventDefault();
-                    }
+                    form.addEventListener('submit', function(e) {
+                        if (!pristine.validate()) {
+                            e.preventDefault();
+                        }
+                    });
                 });
-            });
+            }
         });
     </script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-</body>
-</html>
 {% endblock %}

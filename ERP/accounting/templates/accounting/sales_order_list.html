@@ -1,0 +1,35 @@
+{% extends 'accounting/_list_base.html' %}
+
+{% block title %}Sales Orders{% endblock %}
+
+{% block table_head %}
+<thead>
+    <tr>
+        <th>#</th>
+        <th>Customer</th>
+        <th>Order Date</th>
+        <th>Expected Ship</th>
+        <th>Status</th>
+        <th class="text-end">Total</th>
+    </tr>
+</thead>
+{% endblock table_head %}
+
+{% block table_body %}
+<tbody>
+    {% for order in orders %}
+    <tr>
+        <td>{{ order.order_number }}</td>
+        <td>{{ order.customer_display_name }}</td>
+        <td>{{ order.order_date }}</td>
+        <td>{{ order.expected_ship_date|default:'-' }}</td>
+        <td><span class="badge bg-info text-dark text-capitalize">{{ order.status }}</span></td>
+        <td class="text-end">{{ order.total }}</td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="6" class="text-center text-muted">No sales orders yet.</td>
+    </tr>
+    {% endfor %}
+</tbody>
+{% endblock table_body %}
