@@ -1,14 +1,33 @@
 from typing import Dict, Any
-import pytesseract
-from PIL import Image
-import cv2
-import numpy as np
 from decimal import Decimal
-import re
 from datetime import datetime
 import logging
+import re
+
+try:
+    import pytesseract  # type: ignore
+except ImportError:  # pragma: no cover - optional dependency
+    pytesseract = None  # type: ignore
+
+try:
+    from PIL import Image  # type: ignore
+except ImportError:  # pragma: no cover - optional dependency
+    Image = None  # type: ignore
+
+try:
+    import cv2  # type: ignore
+except ImportError:  # pragma: no cover - optional dependency
+    cv2 = None  # type: ignore
+
+try:
+    import numpy as np  # type: ignore
+except ImportError:  # pragma: no cover - optional dependency
+    np = None  # type: ignore
 
 logger = logging.getLogger(__name__)
+
+if pytesseract is None or cv2 is None or Image is None:
+    logger.warning("OCR optional dependencies missing; using mock OCR responses.")
 
 
 def process_receipt_with_ocr(image_file):

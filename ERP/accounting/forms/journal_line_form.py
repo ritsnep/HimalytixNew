@@ -25,7 +25,7 @@ from typing import Any, Dict, Optional
 
 from django import forms
 from django.core.exceptions import ValidationError
-from django.forms import inlineformset_factory
+from django.forms import inlineformset_factory, BaseInlineFormSet
 from django.utils.translation import gettext_lazy as _
 
 from accounting.models import Journal, JournalLine, ChartOfAccount, Currency, Department
@@ -374,11 +374,86 @@ class JournalLineForm(UDFFormMixin, BootstrapFormMixin, forms.ModelForm):
             instance.save(update_fields=['udf_data'])
 
 
+class _JournalLineFormSet(BaseInlineFormSet):
+    """Inline formset that automatically assigns line numbers for new entries."""
+
+    def _assign_line_numbers(self):
+        next_number = 10
+        for form in self.forms:
+            cleaned = getattr(form, 'cleaned_data', {}) or {}
+            if cleaned.get('DELETE'):
+                continue
+
+            instance = form.instance
+            if instance.pk and instance.line_number:
+                continue
+
+            if not instance.line_number:
+                instance.line_number = next_number
+            next_number += 10
+
+    def save(self, commit=True):
+        self._assign_line_numbers()
+        return super().save(commit)
+
+    def clean(self):
+        super().clean()
+
+        total_debit = Decimal('0.00')
+        total_credit = Decimal('0.00')
+        line_numbers = set()
+        active_forms = 0
+
+        for form in self.forms:
+            cleaned = getattr(form, 'cleaned_data', None)
+            if not cleaned or cleaned.get('DELETE'):
+                continue
+
+            active_forms += 1
+
+            line_number = cleaned.get('line_number') or getattr(form.instance, 'line_number', None)
+            if line_number:
+                if line_number in line_numbers:
+                    form.add_error('line_number', _('Duplicate line number.'))
+                else:
+                    line_numbers.add(line_number)
+
+            total_debit += Decimal(str(cleaned.get('debit_amount') or 0))
+            total_credit += Decimal(str(cleaned.get('credit_amount') or 0))
+
+        if active_forms < 1:
+            raise ValidationError(
+                _('At least one journal line is required.'),
+                code='no_lines'
+            )
+
+        if total_debit != total_credit:
+            balance_diff = abs(total_debit - total_credit)
+            raise ValidationError(
+                _('Journal must be balanced. '
+                  'Total Debit: %(debit)s, Total Credit: %(credit)s. '
+                  'Difference: %(diff)s') % {
+                    'debit': total_debit,
+                    'credit': total_credit,
+                    'diff': balance_diff
+                },
+                code='unbalanced_journal'
+            )
+
+        logger.debug(
+            "Formset validation: %s active forms, debit=%s, credit=%s",
+            active_forms,
+            total_debit,
+            total_credit,
+        )
+
+
 # Create inline formset for JournalLine
 JournalLineFormSet = inlineformset_factory(
     parent_model=Journal,
     model=JournalLine,
     form=JournalLineForm,
+    formset=_JournalLineFormSet,
     extra=1,  # One blank line for new entries
     can_delete=True,  # Allow deletion of lines
     min_num=1,  # At least one line required

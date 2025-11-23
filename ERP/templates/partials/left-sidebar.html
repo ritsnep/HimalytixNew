@@ -344,6 +344,30 @@
                     </ul>
                 </li>
 
+                <!-- Enterprise Section -->
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="briefcase"></i>
+                        <span data-key="t-enterprise">Enterprise</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="{% url 'enterprise:department_list' %}">Departments</a></li>
+                        <li><a href="{% url 'enterprise:position_list' %}">Positions</a></li>
+                        <li><a href="{% url 'enterprise:employee_list' %}">Employees</a></li>
+                        <li><a href="{% url 'enterprise:payroll_cycle_list' %}">Payroll Cycles</a></li>
+                        <li><a href="{% url 'enterprise:payroll_entry_list' %}">Payroll Entries</a></li>
+                        <li><a href="{% url 'enterprise:fixedasset_list' %}">Fixed Assets</a></li>
+                        <li><a href="{% url 'enterprise:depreciation_schedule_list' %}">Depreciation Schedules</a></li>
+                        <li><a href="{% url 'enterprise:bom_list' %}">Bills of Material</a></li>
+                        <li><a href="{% url 'enterprise:workorder_list' %}">Work Orders</a></li>
+                        <li><a href="{% url 'enterprise:crmlead_list' %}">Leads</a></li>
+                        <li><a href="{% url 'enterprise:opportunity_list' %}">Opportunities</a></li>
+                        <li><a href="{% url 'enterprise:budget_list' %}">Budgets</a></li>
+                        <li><a href="{% url 'enterprise:integrationendpoint_list' %}">Integrations</a></li>
+                        <li><a href="{% url 'enterprise:localeconfig_list' %}">Localization &amp; Tax</a></li>
+                    </ul>
+                </li>
+
                 <li class="menu-title" data-key="t-apps">Apps</li>
 
                 <li>

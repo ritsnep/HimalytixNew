@@ -40,3 +40,5 @@ def log_line_delete(sender, instance: InvoiceLine, **kwargs):
         action="export",
         description=f"Line deleted from {instance.invoice.invoice_number}: {instance.description}",
     )
+    if instance.invoice_id and InvoiceHeader.objects.filter(pk=instance.invoice_id).exists():
+        instance.invoice.refresh_totals_from_lines()

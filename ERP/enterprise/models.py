@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from accounting.models import ChartOfAccount
 
 
 class TimeStampedModel(models.Model):
@@ -232,6 +233,40 @@ class FixedAssetCategory(OrganizationScopedModel):
     )
     useful_life_months = models.PositiveIntegerField(default=60)
     salvage_value_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    asset_account = models.ForeignKey(
+        ChartOfAccount,
+        on_delete=models.PROTECT,
+        related_name="enterprise_asset_accounts",
+        help_text="Balance sheet account to hold the asset cost.",
+    )
+    depreciation_expense_account = models.ForeignKey(
+        ChartOfAccount,
+        on_delete=models.PROTECT,
+        related_name="enterprise_depreciation_expense_accounts",
+        help_text="Income statement account for depreciation expense.",
+    )
+    accumulated_depreciation_account = models.ForeignKey(
+        ChartOfAccount,
+        on_delete=models.PROTECT,
+        related_name="enterprise_accumulated_depreciation_accounts",
+        help_text="Balance sheet contra-asset for accumulated depreciation.",
+    )
+    disposal_gain_account = models.ForeignKey(
+        ChartOfAccount,
+        on_delete=models.PROTECT,
+        related_name="enterprise_disposal_gain_accounts",
+        null=True,
+        blank=True,
+        help_text="Optional account for gains on disposal.",
+    )
+    disposal_loss_account = models.ForeignKey(
+        ChartOfAccount,
+        on_delete=models.PROTECT,
+        related_name="enterprise_disposal_loss_accounts",
+        null=True,
+        blank=True,
+        help_text="Optional account for losses on disposal.",
+    )
 
     class Meta:
         ordering = ["name"]
@@ -241,6 +276,10 @@ class FixedAssetCategory(OrganizationScopedModel):
 
 
 class FixedAsset(OrganizationScopedModel):
+    class Status(models.TextChoices):
+        ACTIVE = "active", _("Active")
+        DISPOSED = "disposed", _("Disposed")
+
     name = models.CharField(max_length=150)
     asset_code = models.CharField(max_length=50)
     category = models.ForeignKey(
@@ -260,6 +299,12 @@ class FixedAsset(OrganizationScopedModel):
         blank=True,
         related_name="assigned_assets",
     )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+    )
+    disposed_at = models.DateField(null=True, blank=True)
 
     class Meta:
         unique_together = ("organization", "asset_code")

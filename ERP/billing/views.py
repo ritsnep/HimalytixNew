@@ -18,10 +18,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, CanCreateInvoice]
 
     def perform_create(self, serializer):
-        invoice = serializer.save()
-        # Attach actor for signals
-        invoice._actor = self.request.user
-        invoice.save(update_fields=["updated_at"])
+        serializer.save(actor=self.request.user)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated, CanCancelInvoice])
     def cancel(self, request, pk=None):

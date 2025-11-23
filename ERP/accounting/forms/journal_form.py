@@ -207,22 +207,28 @@ class JournalForm(UDFFormMixin, BootstrapFormMixin, forms.ModelForm):
         Returns:
             str: The cleaned currency_code
         """
-        currency_code = self.cleaned_data.get('currency_code')
+        currency_value = self.cleaned_data.get('currency_code')
 
-        if not currency_code:
-            return currency_code
+        if not currency_value:
+            return currency_value
 
-        try:
-            currency = Currency.objects.get(code=currency_code)
-            if not currency.is_active:
+        if isinstance(currency_value, Currency):
+            currency = currency_value
+            currency_code = currency.currency_code
+        else:
+            currency_code = currency_value
+            try:
+                currency = Currency.objects.get(currency_code=currency_code)
+            except Currency.DoesNotExist:
                 raise ValidationError(
-                    _('The selected currency is not active.'),
-                    code='currency_inactive'
+                    _('The selected currency does not exist.'),
+                    code='currency_not_found'
                 )
-        except Currency.DoesNotExist:
+
+        if not currency.is_active:
             raise ValidationError(
-                _('The selected currency does not exist.'),
-                code='currency_not_found'
+                _('The selected currency is not active.'),
+                code='currency_inactive'
             )
 
         return currency_code

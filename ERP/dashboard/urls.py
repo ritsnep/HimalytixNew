@@ -37,11 +37,6 @@ urlpatterns = [
     # ==========================================================================
     # SILK QUERY PROFILER (Development only - protect in production!)
     # ==========================================================================
-    path('silk/', include('silk.urls', namespace='silk')),
-    
-    # ==========================================================================
-    # API DOCUMENTATION (OpenAPI/Swagger)
-    # ==========================================================================
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
@@ -91,11 +86,15 @@ urlpatterns = [
 
     # Streamlit V2 login bootstrap
     path("V2/login", views.v2_login_redirect, name="v2_login"),
+    path("enterprise/", include("enterprise.urls")),
     
     # i18n / region
     path('i18n/set-language/', views.set_language, name='set_language'),
     path('i18n/set-region/', views.set_region, name='set_region'),
 ]
+
+if settings.ENABLE_SILK:
+    urlpatterns.append(path('silk/', include('silk.urls', namespace='silk')))
 
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

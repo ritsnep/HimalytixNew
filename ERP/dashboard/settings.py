@@ -1,4 +1,5 @@
 import os
+import importlib.util
 from pathlib import Path
 from django.conf import settings
 from django.contrib.messages import constants as messages
@@ -18,6 +19,12 @@ except ImportError:
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
+
+# Toggle silk profiling only when explicitly enabled *and* installed.
+ENABLE_SILK = (
+    os.getenv("ENABLE_SILK", "0") == "1"
+    and importlib.util.find_spec("silk") is not None
+)
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-^-d#gtg)d41-e2#c%n40_&e)fg_ps9aptfq3_r%*zjjhu!-*-f'
@@ -60,7 +67,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'drf_spectacular',  # <-- OpenAPI schema generation
-    'silk',  # <-- Database query profiling
     'metadata',
     'voucher_schema',
     'mptt', # Ensure django-mptt is installed and added BEFORE Inventory
@@ -73,9 +79,11 @@ INSTALLED_APPS = [
     'enterprise',
 ]
 
+if ENABLE_SILK:
+    INSTALLED_APPS.append('silk')
+
 MIDDLEWARE = [
     'django_prometheus.middleware.PrometheusBeforeMiddleware',  # <-- Add first
-    # 'silk.middleware.SilkyMiddleware',  # <-- DISABLED: Query profiling adds overhead (re-enable only when debugging SQL)
     'django.middleware.security.SecurityMiddleware',
     'django.middleware.gzip.GZipMiddleware',  # <-- Response compression
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -96,6 +104,10 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_prometheus.middleware.PrometheusAfterMiddleware',  # <-- Add last
 ]
+
+if ENABLE_SILK:
+    # Insert after the metrics middleware so profiling remains optional.
+    MIDDLEWARE.insert(1, 'silk.middleware.SilkyMiddleware')
 
 ROOT_URLCONF = 'dashboard.urls'
 

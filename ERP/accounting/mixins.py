@@ -32,13 +32,15 @@ class UserOrganizationMixin:
 
     def form_valid(self, form):
         organization = self.get_organization()
-        if hasattr(form.instance, "organization") and not form.instance.organization:
-            form.instance.organization = organization
+        instance = getattr(form, "instance", None)
+        if instance is not None:
+            if hasattr(instance, "organization") and not instance.organization:
+                instance.organization = organization
 
-        if not getattr(form.instance, "pk", None) and hasattr(form.instance, "created_by"):
-            form.instance.created_by = self.request.user
-        elif getattr(form.instance, "pk", None) and hasattr(form.instance, "updated_by"):
-            form.instance.updated_by = self.request.user
+            if not getattr(instance, "pk", None) and hasattr(instance, "created_by"):
+                instance.created_by = self.request.user
+            elif getattr(instance, "pk", None) and hasattr(instance, "updated_by"):
+                instance.updated_by = self.request.user
 
         return super().form_valid(form)
 

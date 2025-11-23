@@ -1,26 +1,25 @@
-# ERP Module Gap and Production Readiness Assessment
+# ERP Gap Assessment – Remaining Work
 
-The current schema concentrates on finance, sales, purchasing, inventory, projects, and basic CRM. To reach parity with established ERP suites, the following modules and operational concerns should be planned and prioritized.
+Use this as the running backlog of what still needs to be delivered to close ERP gaps and reach production readiness.
 
-## Missing or Underrepresented Modules
-- **Human Resources & Payroll**: Employee master data, positions/grades, compensation structures, timesheets/attendance, leave and benefits management, payroll runs with tax/benefit withholdings, and statutory reporting.
-- **Fixed Asset Management**: Asset master and categories, acquisition/disposal flows, location and custodian tracking, depreciation methods/schedules, asset movements/transfers, and amortization journals.
-- **Manufacturing & Supply Chain**: Bills of material, routings, work/production orders, material requirements planning (MRP/MPS), shop-floor progress, procurement RFQs/vendor scorecards, and maintenance scheduling.
-- **CRM & Sales Pipeline**: Leads, opportunities, activities/interactions, campaigns, marketing lists, pipeline stages, probability/forecasting, and simple marketing automation hooks.
-- **Budgeting & Forecasting**: Budget headers/lines by department/project/account, revisions/versions, commitment vs. actual tracking, variance analysis, and workflow around budget approvals.
-- **Localization & Tax Compliance**: Locale tables, tax jurisdictions/regimes, region-specific tax rules or e-invoicing formats, and configuration for multi-language UI labels.
-- **Workflow & Approvals**: Configurable approval chains, routing rules (amount/role-based), delegation/escalation, and audit history for approval decisions on vouchers/requisitions/journals.
-- **Integrations, POS, and External Connectors**: POS endpoints/terminals, bank feed/payment gateway connectors, e-commerce/EDI hooks, and webhook-style integration surfaces for marketplaces or logistics providers.
+## Functional modules to build next
+- [x] **HR & Payroll**: Department/position/employee/payroll-cycle models exist (`enterprise.models`); still need leave/benefits, attendance, payroll runs, and statutory filings.
+- [~] **Fixed Assets**: Asset register/categories/depreciation schedules now have CRUD UI; still need acquisition/disposal postings and depreciation run automation.
+- [x] **Manufacturing & Supply Chain**: BOMs, work orders, and material issues exist with CRUD UI; add routings, MRP/MPS, vendor RFQs/scorecards, and maintenance scheduling.
+- [x] **CRM & Sales Pipeline**: Leads/opportunities with basic fields are in place; add activities, campaigns/lists, forecasting, and marketing automation hooks.
+- [x] **Budgeting & Forecasting**: Budget headers/lines exist in accounting + enterprise; add forecasting, revisions/versions, commitment tracking, and variance analysis UX.
+- [x] **Localization & Tax**: Tax authorities/types/codes/rules exist; still need locale tables, region-specific e-invoicing formats, and multi-language label support.
+- [x] **Workflow & Approvals**: Approval workflows/steps/tasks exist in accounting; wire into all vouchers/requisitions/journals with delegation/escalation.
+- [x] **Integrations & Connectors**: Integration events/endpoints exist; build concrete POS, bank feed/payment gateway, e-commerce/EDI/webhook connectors.
 
-## Production-Readiness Considerations
-- **Testing & Performance**: Expand end-to-end coverage, performance/load testing on large ledgers or bulk journal imports, and CI/CD gates that enforce coverage and performance budgets.
-- **Data Migration & Import/Export**: CSV/Excel importers with validation, migration scripts for legacy balances/customers/inventory, scheduled exports/backups, and BI-friendly data feeds.
-- **Security & Compliance**: Enforce MFA and secure auth flows, encrypt sensitive fields at rest, ensure GDPR-aligned retention/deletion, and harden secrets management and auditability.
-- **User Experience & Documentation**: HTMX/Streamlit UI polish, onboarding helpers, inline help text/tooltips, configuration wizards, and step-by-step tutorials for non-technical users.
-- **Monitoring & Alerting**: Prometheus/Grafana dashboards for app/background jobs, error budgets/alerts for failed postings or integrations, and anomaly flags on financial discrepancies.
-- **Continuous Enhancement**: Finish multi-currency, bank reconciliation, budgeting services, and custom-field extensibility; keep aligning features with major ERP vendors for competitive parity.
+## Production readiness still pending
+- [ ] **Data migration/import/export**: CSV/Excel importers with validation, migration scripts for balances/customers/inventory, scheduled exports/backups, BI-friendly feeds.
+- [x] **Security & compliance**: Hardened auth/rate limiting and security middleware exist; add MFA enforcement, field-level encryption, GDPR-aligned retention/deletion, and stronger secrets management.
+- [ ] **Observability**: Prometheus instrumentation is enabled; add dashboards/alerts for postings, background jobs, integrations, and anomaly flags on financial discrepancies.
+- [ ] **Performance & testing**: Core unit/API tests exist; add end-to-end coverage on major flows, load tests on large ledgers/bulk imports, and CI/CD gates for coverage/perf budgets.
+- [ ] **User experience**: Base HTMX/Streamlit UI exists; add onboarding helpers, inline guidance, configuration wizards, and tutorials for non-technical users.
 
-## Suggested Next Steps
-- Prioritize module backlogs based on target industries (e.g., manufacturing vs. services) and sequence data model design, API contracts, UI flows, and seed data accordingly.
-- Pair each module with acceptance tests and migration/import stories so new tenants can onboard without manual data wrangling.
-- Incorporate approval workflows and integration connectors into early milestones to unblock real-world deployments that depend on compliance and external system connectivity.
+## Sequencing suggestions
+- Lock target industries and prioritize module order accordingly (e.g., manufacturing vs. services).
+- For each module: define data model → API contracts → UI flows → seed data → acceptance tests → migration/import stories.
+- Pull approval workflows and external integrations earlier in the roadmap to unblock regulated deployments.

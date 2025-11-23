@@ -63,13 +63,17 @@ class InvoiceHeaderSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         lines_data = validated_data.pop("lines", [])
+        actor = validated_data.pop("actor", None)
         with transaction.atomic():
-            invoice = InvoiceHeader.objects.create(**validated_data)
+            invoice = InvoiceHeader(**validated_data)
+            if actor:
+                invoice._actor = actor
+            invoice.save()
             for line_data in lines_data:
                 InvoiceLine.objects.create(invoice=invoice, **line_data)
-            invoice._allow_update = True  # recompute totals after line creation
-            invoice._compute_totals()
-            invoice.save(update_fields=["taxable_amount", "vat_amount", "total_amount", "updated_at"])
+            if actor:
+                invoice._actor = actor
+            invoice.refresh_totals_from_lines()
         return invoice
 
 

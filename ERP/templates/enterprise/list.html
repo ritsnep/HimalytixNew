@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load static enterprise_extras %}
+
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block page_header %}
+<div class="row mb-3">
+    <div class="col-12 d-flex align-items-center justify-content-between">
+        <h4 class="mb-0">{{ page_title }}</h4>
+        {% if create_url %}
+            <a class="btn btn-primary" href="{{ create_url }}">Add</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock page_header %}
+
+{% block page_content %}
+<div class="card">
+    <div class="card-body table-responsive">
+        <table class="table table-striped align-middle mb-0">
+            <thead>
+                <tr>
+                    {% for col in list_display %}
+                        <th>{{ col|capfirst }}</th>
+                    {% endfor %}
+                    {% if update_url_name %}<th style="width: 1%"></th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for obj in object_list %}
+                    <tr>
+                        {% for col in list_display %}
+                            <td>{{ obj|attr:col }}</td>
+                        {% endfor %}
+                        {% if update_url_name %}
+                            <td>
+                                <a class="btn btn-sm btn-outline-secondary" href="{% url update_url_name obj.pk %}">Edit</a>
+                            </td>
+                        {% endif %}
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="{{ list_display|length|add:'1' }}">No records found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock page_content %}

@@ -1368,15 +1368,18 @@ class JournalEntryView(LoginRequiredMixin, UserOrganizationMixin, View):
     
     def get(self, request, pk=None):
         organization = self.get_organization()
-        
+        journal = None
+
         if pk:
             journal = get_object_or_404(Journal, pk=pk, organization=organization)
             form = JournalForm(instance=journal, organization=organization)
-            formset = JournalLineFormSet(instance=journal, prefix='lines')
+            line_form_kwargs = {'organization': organization, 'journal': journal}
+            formset = JournalLineFormSet(instance=journal, prefix='lines', form_kwargs=line_form_kwargs)
             page_title = f'Edit Journal Entry #{journal.journal_number}'
         else:
             form = JournalForm(organization=organization)
-            formset = JournalLineFormSet(prefix='lines')
+            line_form_kwargs = {'organization': organization}
+            formset = JournalLineFormSet(prefix='lines', form_kwargs=line_form_kwargs)
             page_title = 'New Journal Entry'
 
         voucher_configs = VoucherModeConfig.objects.filter(organization=organization, is_active=True)
@@ -1394,14 +1397,17 @@ class JournalEntryView(LoginRequiredMixin, UserOrganizationMixin, View):
 
     def post(self, request, pk=None):
         organization = self.get_organization()
+        journal = None
         
         if pk:
             journal = get_object_or_404(Journal, pk=pk, organization=organization)
             form = JournalForm(request.POST, instance=journal, organization=organization)
-            formset = JournalLineFormSet(request.POST, instance=journal, prefix='lines')
+            line_form_kwargs = {'organization': organization, 'journal': journal}
+            formset = JournalLineFormSet(request.POST, instance=journal, prefix='lines', form_kwargs=line_form_kwargs)
         else:
             form = JournalForm(request.POST, organization=organization)
-            formset = JournalLineFormSet(request.POST, prefix='lines')
+            line_form_kwargs = {'organization': organization}
+            formset = JournalLineFormSet(request.POST, prefix='lines', form_kwargs=line_form_kwargs)
 
         if form.is_valid() and formset.is_valid():
             with transaction.atomic():

@@ -90,6 +90,16 @@ class InvoiceHeader(models.Model):
             self.vat_amount = quantize_amount(self.vat_amount)
             self.total_amount = quantize_amount(self.total_amount or (self.taxable_amount + self.vat_amount))
 
+    def refresh_totals_from_lines(self) -> None:
+        """Recalculate aggregate amounts without breaking immutability safeguards."""
+        if not self.pk:
+            return
+        actor = getattr(self, "_actor", None)
+        self._allow_update = True
+        if actor:
+            self._actor = actor
+        self.save(update_fields=["taxable_amount", "vat_amount", "total_amount", "updated_at"])
+
     def save(self, *args, **kwargs):
         if self.pk and not getattr(self, "_allow_update", False):
             raise ValidationError("InvoiceHeader is immutable; use credit/debit notes for changes.")
@@ -145,6 +155,9 @@ class InvoiceLine(models.Model):
         self.line_total = quantize_amount(self.taxable_amount + self.vat_amount)
 
         super().save(*args, **kwargs)
+        if self.invoice_id:
+            # Propagate totals to the parent invoice after every change to a line item.
+            self.invoice.refresh_totals_from_lines()
         if getattr(self, "_allow_update", False):
             self._allow_update = False
 

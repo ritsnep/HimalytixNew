@@ -162,6 +162,8 @@ All voucher CRUD functionality has been implemented and is ready for testing.
 
 ### Test Invalid Data:
 - [ ] Try to save unbalanced voucher → Should prevent
+- [ ] Omit `fx_rate` on a line → Form should raise "Exchange rate must be greater than zero" (defaults to 1.0 when provided)
+- [ ] Attempt to create duplicate/blank line numbers → Backend should reject with "Duplicate line number" or "At least one journal line is required" per case
 - [ ] Try to edit posted voucher → Should redirect
 - [ ] Try to delete posted voucher → Should show error
 - [ ] Try to post with missing required fields → Should show errors

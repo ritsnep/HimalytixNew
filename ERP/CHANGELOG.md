@@ -1,5 +1,14 @@
 # Changelog
 
+# Changelog
+
+## [Unreleased] - 2025-11-23
+
+### Fixed
+
+-   Journal line inline formset now auto-assigns sequential `line_number` values and re-enforces balanced debit/credit validation, preventing null constraint failures during voucher creation/editing.
+-   Phase 2 voucher view tests were updated to include required `fx_rate`/`journal_line_id` fields and improved diagnostics, eliminating `NoneType` access errors when responses redirect.
+
 ## [1.0.0] - 2023-10-27
 
 ### Added

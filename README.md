@@ -72,7 +72,10 @@ To pick an active organization after login, visit `/manage/select-organization/`
 - **REST API:** All public endpoints are namespaced under `/api/v1/`.
 - **Docs & Explorer:** OpenAPI schema at `/api/schema/` and interactive Swagger UI at `/api/docs/`.
 - **Authentication:** DRF token auth and session auth; see `api/authentication.py`.
-- **Testing:** `python manage.py test` (set `PG*` variables or `USE_SQLITE=1`).
+- **Testing:**
+	- Full suite: `python manage.py test` (set `PG*` variables or `USE_SQLITE=1`).
+	- Phase 2 accounting smoke: `python manage.py test accounting.tests.test_phase2_views accounting.tests.test_models --noinput`.
+	- Use `USE_SQLITE=1` for fastest local runs; Postgres-backed runs require the same extensions as production (uuid-ossp, pgcrypto).
 - **Linting:** `ruff`, `black`, `isort`, and `flake8` are configured via `pyproject.toml` / `setup.cfg`.
 
 ## Developing Features

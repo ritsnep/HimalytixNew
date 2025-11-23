@@ -264,6 +264,11 @@ class JournalDeleteView(PermissionRequiredMixin, LoginRequiredMixin, DeleteView)
     success_url = reverse_lazy('accounting:journal_list')
     permission_required = ('accounting', 'journal', 'delete')
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs.pop('organization', None)
+        return kwargs
+
     def get_queryset(self):
         return Journal.objects.filter(organization_id=self.request.user.organization.id)
 

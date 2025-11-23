@@ -21,4 +21,6 @@ This app provides Nepal IRD-compliant billing with immutable invoices, sequentia
 - `ENABLE_STRICT_SECURITY=1` — turn on SSL/HSTS/cookie hardening in production.
 
 ## Testing
-- Unit/API tests live in `billing/tests/` (sequence generation, immutability, cancel flow). Mock CBMS when running integration tests.
+- Unit/API tests live in `billing/tests/` (sequence generation, immutability, cancel flow). Run the focused suite with `python manage.py test billing.tests --noinput`.
+- Integration tests that hit the CBMS client expect the `CBMS_API_*` settings plus a mocked HTTP layer (e.g., `responses` or `pytest-httpx`). Export `CBMS_API_URL=http://localhost:8999/mock` and inject a fake API key before running.
+- For manual QA, enable Django's `CACHES['default']` in-memory backend to avoid Redis, and seed one `InvoiceSeries` plus at least one `ChartOfAccount` so generated invoices reconcile correctly.

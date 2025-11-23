@@ -71,8 +71,8 @@ class JournalTests(TestCase):
     def test_journal_type_sequence(self):
         num1 = self.jt.get_next_journal_number(self.period)
         num2 = self.jt.get_next_journal_number(self.period)
-        self.assertEqual(num1, "GJ1")
-        self.assertEqual(num2, "GJ2")
+        self.assertEqual(num1, "GJ001")
+        self.assertEqual(num2, "GJ002")
 
     def test_post_journal_creates_gl(self):
         journal = Journal.objects.create(

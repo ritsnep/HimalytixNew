@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block page_title %}{{ module.title }}{% endblock page_title %}
+
+{% block page_header %}
+<div class="row mb-3">
+    <div class="col-12 d-flex align-items-center justify-content-between">
+        <div>
+            <h4 class="mb-1">{{ module.title }}</h4>
+            <p class="text-muted mb-0">{{ module.summary }}</p>
+        </div>
+        <span class="badge bg-warning text-dark">Placeholder</span>
+    </div>
+</div>
+{% endblock page_header %}
+
+{% block page_content %}
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title mb-3">Next steps</h5>
+        <ul class="mb-0">
+            {% for step in module.next_steps %}
+                <li>{{ step }}</li>
+            {% empty %}
+                <li>Implementation details coming soon.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock page_content %}

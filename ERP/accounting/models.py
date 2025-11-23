@@ -415,7 +415,7 @@ class Department(models.Model):
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
-        related_name='departments',
+        related_name='accounting_departments',
         db_column='organization_id',
     )
     code = models.CharField(max_length=20, unique=True)
@@ -1683,7 +1683,7 @@ class Budget(models.Model):
     organization = models.ForeignKey(
         Organization,
         on_delete=models.PROTECT,
-        related_name='budgets',
+        related_name='accounting_budgets',
     )
     name = models.CharField(max_length=255)
     fiscal_year = models.ForeignKey(
