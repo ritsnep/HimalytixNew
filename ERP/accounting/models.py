@@ -48,25 +48,72 @@ def generate_fiscal_year_id():
             return id
 # Example: Fix for AutoIncrementCodeGenerator
 class AutoIncrementCodeGenerator:
-    def __init__(self, model, field, prefix='', suffix=''):
+    def __init__(self, model, field, *, organization=None, prefix='', suffix='', padding=2):
         self.model = model
         self.field = field
+        self.organization = organization
         self.prefix = prefix
         self.suffix = suffix
+        self.padding = padding
 
     def generate_code(self):
-        from django.db.models import Max
-        import re
+        """Generate the next sequential code without scanning the target table."""
+        from django.db import transaction
 
-        # Find all codes matching the pattern
-        pattern = rf'^{re.escape(self.prefix)}(\d+){re.escape(self.suffix)}$'
-        codes = self.model.objects.values_list(self.field, flat=True)
-        numbers = [
-            int(re.match(pattern, code).group(1))
-            for code in codes if re.match(pattern, code)
+        model_label = self.model._meta.label_lower
+        with transaction.atomic():
+            sequence, _ = AutoIncrementSequence.objects.select_for_update().get_or_create(
+                organization=self.organization,
+                model_label=model_label,
+                field_name=self.field,
+                defaults={'next_value': 1},
+            )
+
+            next_value = sequence.next_value
+            sequence.next_value = next_value + 1
+            sequence.save(update_fields=['next_value'])
+
+        number = str(next_value).zfill(self.padding)
+        return f"{self.prefix}{number}{self.suffix}"
+
+
+class AutoIncrementSequence(models.Model):
+    """Persistence layer for AutoIncrementCodeGenerator using row-level locks."""
+
+    sequence_id = models.BigAutoField(primary_key=True)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name='auto_increment_sequences',
+        null=True,
+        blank=True,
+    )
+    model_label = models.CharField(max_length=255)
+    field_name = models.CharField(max_length=255)
+    next_value = models.BigIntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'auto_increment_sequence'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['organization', 'model_label', 'field_name'],
+                name='unique_sequence_per_org_and_model_field',
+            ),
+            models.UniqueConstraint(
+                fields=['model_label', 'field_name'],
+                condition=Q(organization__isnull=True),
+                name='unique_global_sequence_per_model_field',
+            ),
         ]
-        next_number = max(numbers, default=0) + 1
-        return f"{self.prefix}{str(next_number).zfill(2)}{self.suffix}"
+        indexes = [
+            models.Index(fields=['organization', 'model_label', 'field_name']),
+        ]
+
+    def __str__(self):
+        org_part = self.organization.code if self.organization else 'global'
+        return f"{org_part}::{self.model_label}.{self.field_name} -> {self.next_value}"
     
 class FiscalYear(models.Model):
     """
@@ -210,7 +257,13 @@ class FiscalYear(models.Model):
     def save(self, *args, **kwargs):
         logger.info(f"Saving FiscalYear: {self.code}")
         if not self.code:
-            code_generator = AutoIncrementCodeGenerator(FiscalYear, 'code', prefix='FY', suffix='')
+            code_generator = AutoIncrementCodeGenerator(
+                FiscalYear,
+                'code',
+                organization=self.organization,
+                prefix='FY',
+                suffix='',
+            )
             self.code = code_generator.generate_code()
         # Enforce only one is_current per org
         if self.is_current:
@@ -420,7 +473,13 @@ class Project(models.Model):
         return f"{self.code} - {self.name}"
     def save(self, *args, **kwargs):
         if not self.code:
-            code_generator = AutoIncrementCodeGenerator(Project, 'code', prefix='PRJ', suffix='')
+            code_generator = AutoIncrementCodeGenerator(
+                Project,
+                'code',
+                organization=self.organization,
+                prefix='PRJ',
+                suffix='',
+            )
             self.code = code_generator.generate_code()
         super(Project, self).save(*args, **kwargs)
 class CostCenter(models.Model):
@@ -3252,6 +3311,34 @@ class JournalLineDimension(models.Model):
     def __str__(self):
         return f"{self.journal_line_id} -> {self.dimension_value}"
 
+
+class MonthlyJournalLineSummary(models.Model):
+    """Pre-aggregated monthly journal line balances for faster reporting."""
+
+    month_start = models.DateField()
+    account = models.ForeignKey(
+        ChartOfAccount,
+        on_delete=models.DO_NOTHING,
+        related_name='monthly_summaries',
+    )
+    total_debit = models.DecimalField(max_digits=19, decimal_places=4)
+    total_credit = models.DecimalField(max_digits=19, decimal_places=4)
+
+    class Meta:
+        managed = False
+        db_table = 'accounting_monthly_journalline_mv'
+        ordering = ['-month_start', 'account']
+        indexes = [
+            models.Index(fields=['month_start', 'account']),
+        ]
+
+    @property
+    def net_balance(self):
+        return (self.total_debit or 0) - (self.total_credit or 0)
+
+    def __str__(self):
+        return f"{self.month_start} - {self.account}"
+
 class TaxAuthority(models.Model):
     authority_id = models.BigAutoField(primary_key=True)
     organization = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name='tax_authorities', db_column='organization_id')
@@ -3282,7 +3369,13 @@ class TaxAuthority(models.Model):
         return f"{self.code} - {self.name}"
     def save(self, *args, **kwargs):
         if not self.code:
-            code_generator = AutoIncrementCodeGenerator(TaxAuthority, 'code', prefix='TA', suffix='')
+            code_generator = AutoIncrementCodeGenerator(
+                TaxAuthority,
+                'code',
+                organization=self.organization,
+                prefix='TA',
+                suffix='',
+            )
             self.code = code_generator.generate_code()
         super(TaxAuthority, self).save(*args, **kwargs)
 
@@ -3319,7 +3412,13 @@ class TaxType(models.Model):
         return f"{self.code} - {self.name}"
     def save(self, *args, **kwargs):
         if not self.code:
-            code_generator = AutoIncrementCodeGenerator(TaxType, 'code', prefix='TT', suffix='')
+            code_generator = AutoIncrementCodeGenerator(
+                TaxType,
+                'code',
+                organization=self.organization,
+                prefix='TT',
+                suffix='',
+            )
             self.code = code_generator.generate_code()
         super(TaxType, self).save(*args, **kwargs)
 
@@ -3357,7 +3456,13 @@ class TaxCode(models.Model):
         return f"{self.code} - {self.name}"
     def save(self, *args, **kwargs):
         if not self.code:
-            code_generator = AutoIncrementCodeGenerator(TaxCode, 'code', prefix='TC', suffix='')
+            code_generator = AutoIncrementCodeGenerator(
+                TaxCode,
+                'code',
+                organization=self.organization,
+                prefix='TC',
+                suffix='',
+            )
             self.code = code_generator.generate_code()
         super(TaxCode, self).save(*args, **kwargs)
 
@@ -3716,7 +3821,13 @@ class VoucherModeConfig(models.Model):
         return f"{self.code} - {self.name}"
     def save(self, *args, **kwargs):
         if not self.code:
-            code_generator = AutoIncrementCodeGenerator(VoucherModeConfig, 'code', prefix='VM', suffix='')
+            code_generator = AutoIncrementCodeGenerator(
+                VoucherModeConfig,
+                'code',
+                organization=self.organization,
+                prefix='VM',
+                suffix='',
+            )
             self.code = code_generator.generate_code()
         super(VoucherModeConfig, self).save(*args, **kwargs)
 

@@ -102,7 +102,13 @@ class FiscalYearForm(BootstrapFormMixin, forms.ModelForm):
         # Generate code for new instances
         if not self.instance.pk:
             from .models import AutoIncrementCodeGenerator
-            code_generator = AutoIncrementCodeGenerator(FiscalYear, 'code', prefix='FY', suffix='')
+            code_generator = AutoIncrementCodeGenerator(
+                FiscalYear,
+                'code',
+                organization=self.organization,
+                prefix='FY',
+                suffix='',
+            )
             generated_code = code_generator.generate_code()
             self.initial['code'] = generated_code
             self.fields['code'].initial = generated_code
@@ -154,7 +160,13 @@ class DepartmentForm(BootstrapFormMixin, forms.ModelForm):
         if self.organization:
             self.instance.organization = self.organization
         if not self.instance.pk and not self.initial.get('code'):
-            code_generator = AutoIncrementCodeGenerator(Department, 'code', prefix='DEP', suffix='')
+            code_generator = AutoIncrementCodeGenerator(
+                Department,
+                'code',
+                organization=self.organization,
+                prefix='DEP',
+                suffix='',
+            )
             generated_code = code_generator.generate_code()
             self.initial['code'] = generated_code
             self.fields['code'].initial = generated_code
@@ -164,7 +176,13 @@ class DepartmentForm(BootstrapFormMixin, forms.ModelForm):
         if self.organization:
             instance.organization = self.organization
         if not instance.code:
-            code_generator = AutoIncrementCodeGenerator(Department, 'code', prefix='DEP', suffix='')
+            code_generator = AutoIncrementCodeGenerator(
+                Department,
+                'code',
+                organization=self.organization,
+                prefix='DEP',
+                suffix='',
+            )
             instance.code = code_generator.generate_code()
         if commit:
             instance.save()
@@ -196,7 +214,13 @@ class ProjectForm(BootstrapFormMixin, forms.ModelForm):
         # Generate code for new instances
         if not self.instance.pk:
             from .models import AutoIncrementCodeGenerator
-            code_generator = AutoIncrementCodeGenerator(Project, 'code', prefix='PRJ', suffix='')
+            code_generator = AutoIncrementCodeGenerator(
+                Project,
+                'code',
+                organization=self.organization,
+                prefix='PRJ',
+                suffix='',
+            )
             generated_code = code_generator.generate_code()
             self.initial['code'] = generated_code
             self.fields['code'].initial = generated_code
@@ -235,7 +259,13 @@ class CostCenterForm(BootstrapFormMixin, forms.ModelForm):
         # Generate code for new instances
         if not self.instance.pk:
             from .models import AutoIncrementCodeGenerator
-            code_generator = AutoIncrementCodeGenerator(CostCenter, 'code', prefix='CC', suffix='')
+            code_generator = AutoIncrementCodeGenerator(
+                CostCenter,
+                'code',
+                organization=self.organization,
+                prefix='CC',
+                suffix='',
+            )
             generated_code = code_generator.generate_code()
             self.initial['code'] = generated_code
             self.fields['code'].initial = generated_code

@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     'widget_tweaks',
     'formtools',
     'billing',
+    'enterprise',
 ]
 
 MIDDLEWARE = [

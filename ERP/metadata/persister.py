@@ -109,6 +109,7 @@ def upsert_entity_properties(entity_name: str, fields: List['EntityField']) -> N
         # Clear cache
         cache.delete(f'entity_schema_{entity_name}')
         cache.delete(f'entity_form_{entity_name}')
+        cache.delete(f'entity_metadata_{entity_name}')
         
         logger.info(f"Successfully updated properties for entity: {entity_name}")
         
@@ -145,7 +146,7 @@ def upsert_entity_metadata(metadata: dict) -> None:
         
         # Clear cache
         cache.delete(f'entity_metadata_{metadata["name"]}')
-        
+
         logger.info(f"Successfully updated metadata for entity: {metadata['name']}")
         
     except Exception as e:

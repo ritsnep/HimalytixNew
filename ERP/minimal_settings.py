@@ -10,6 +10,7 @@ INSTALLED_APPS = [
     'tenancy',
     'accounting',
     'usermanagement',
+    'enterprise',
 ]
 MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',

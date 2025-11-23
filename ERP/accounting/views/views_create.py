@@ -36,7 +36,14 @@ class FiscalYearCreateView(PermissionRequiredMixin, LoginRequiredMixin, CreateVi
     def get_initial(self):
         initial = super().get_initial()
         from accounting.models import AutoIncrementCodeGenerator
-        code_generator = AutoIncrementCodeGenerator(FiscalYear, 'code', prefix='FY', suffix='')
+        organization = self.request.user.get_active_organization()
+        code_generator = AutoIncrementCodeGenerator(
+            FiscalYear,
+            'code',
+            organization=organization,
+            prefix='FY',
+            suffix='',
+        )
         initial['code'] = code_generator.generate_code()
         return initial
 

@@ -1,7 +1,7 @@
 import logging
 from django.db import transaction
 from django.utils import timezone
-from django.db.models import F
+from django.db.models import F, DecimalField, Value, Case, When, ExpressionWrapper
 from .models import StockLedger, InventoryItem, Batch, Product, Warehouse, Location
 from accounting import services as accounting_services # Assuming accounting app has services
 
@@ -21,30 +21,33 @@ class InventoryService:
         qty_in=0,
         qty_out=0,
         unit_cost=0,
-        txn_date=None
+        txn_date=None,
+        async_ledger=True,
     ):
-        """Creates a StockLedger entry and updates InventoryItem."""
+        """Creates a StockLedger entry and updates InventoryItem.
+
+        When ``async_ledger`` is True the StockLedger row is queued for creation
+        after the surrounding transaction commits, reducing lock contention on
+        "hot" inventory rows during heavy checkout traffic.
+        """
         if not txn_date:
             txn_date = timezone.now()
 
-        # Create ledger entry
-        ledger_entry = StockLedger.objects.create(
-            organization=organization,
-            product=product,
-            warehouse=warehouse,
-            location=location,
-            batch=batch,
-            txn_type=txn_type,
-            reference_id=reference_id,
-            txn_date=txn_date,
-            qty_in=qty_in,
-            qty_out=qty_out,
-            unit_cost=unit_cost,
-        )
+        ledger_kwargs = {
+            "organization": organization,
+            "product": product,
+            "warehouse": warehouse,
+            "location": location,
+            "batch": batch,
+            "txn_type": txn_type,
+            "reference_id": reference_id,
+            "txn_date": txn_date,
+            "qty_in": qty_in,
+            "qty_out": qty_out,
+            "unit_cost": unit_cost,
+        }
 
-        # Update InventoryItem snapshot
-        # Use select_for_update to prevent race conditions
-        inventory_item, created = InventoryItem.objects.select_for_update().get_or_create(
+        inventory_item, created = InventoryItem.objects.get_or_create(
             organization=organization,
             product=product,
             warehouse=warehouse,
@@ -53,27 +56,35 @@ class InventoryService:
             defaults={'quantity_on_hand': 0, 'unit_cost': unit_cost}
         )
 
-        # Update quantity
-        inventory_item.quantity_on_hand = F('quantity_on_hand') + qty_in - qty_out
+        quantity_delta = qty_in - qty_out
+        update_kwargs = {
+            "quantity_on_hand": F('quantity_on_hand') + quantity_delta
+        }
 
-        # Update unit cost (simple moving average example - needs refinement for real ERP)
-        # This is a simplified example. Real moving average is more complex.
-        # A common approach is to update cost only on 'qty_in' transactions.
         if qty_in > 0:
-             # Avoid division by zero if initial quantity is 0
-            total_value_before = inventory_item.quantity_on_hand * inventory_item.unit_cost
-            total_qty_before = inventory_item.quantity_on_hand
-            total_value_after = total_value_before + (qty_in * unit_cost)
-            total_qty_after = total_qty_before + qty_in
+            moving_average = ExpressionWrapper(
+                (F('quantity_on_hand') * F('unit_cost') + Value(qty_in) * Value(unit_cost)) /
+                (F('quantity_on_hand') + Value(qty_in)),
+                output_field=DecimalField(max_digits=19, decimal_places=4),
+            )
 
-            if total_qty_after > 0:
-                 inventory_item.unit_cost = total_value_after / total_qty_after
-            else:
-                 # Should not happen if qty_in > 0, but handle defensively
-                 inventory_item.unit_cost = unit_cost # Or keep old cost?
+            update_kwargs["unit_cost"] = Case(
+                When(quantity_on_hand__gt=0, then=moving_average),
+                default=Value(unit_cost),
+                output_field=DecimalField(max_digits=19, decimal_places=4),
+            )
 
-        inventory_item.save()
+        InventoryItem.objects.filter(pk=inventory_item.pk).update(**update_kwargs)
         inventory_item.refresh_from_db() # Get updated values after F() expression
+
+        def _create_ledger_entry():
+            StockLedger.objects.create(**ledger_kwargs)
+
+        if async_ledger:
+            transaction.on_commit(_create_ledger_entry)
+            ledger_entry = None
+        else:
+            ledger_entry = StockLedger.objects.create(**ledger_kwargs)
 
         logger.info(
             f"Inventory update: Txn={txn_type}, Ref={reference_id}, "

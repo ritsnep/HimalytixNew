@@ -25,7 +25,13 @@ class FiscalYearForm(BootstrapFormMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         if not self.instance.pk:
             from accounting.models import AutoIncrementCodeGenerator
-            code_generator = AutoIncrementCodeGenerator(FiscalYear, 'code', prefix='FY', suffix='')
+            code_generator = AutoIncrementCodeGenerator(
+                FiscalYear,
+                'code',
+                organization=self.organization,
+                prefix='FY',
+                suffix='',
+            )
             generated_code = code_generator.generate_code()
             self.initial['code'] = generated_code
             self.fields['code'].initial = generated_code
