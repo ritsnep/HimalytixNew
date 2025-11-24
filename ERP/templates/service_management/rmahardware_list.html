@@ -1,0 +1,33 @@
+{% extends 'service_management/_list_base.html' %}
+{% load i18n %}
+
+{% block page_title %}{% trans "RMA Hardware" %}{% endblock %}
+
+{% block list_title %}{% trans "RMA Hardware List" %}{% endblock %}
+
+{% block create_url %}{% url 'service_management:rmahardware_create' %}{% endblock %}
+
+{% block table_headers %}
+    <th>{% trans "RMA #" %}</th>
+    <th>{% trans "Device" %}</th>
+    <th>{% trans "Customer" %}</th>
+    <th>{% trans "Status" %}</th>
+    <th>{% trans "Failure Type" %}</th>
+    <th>{% trans "Requested Date" %}</th>
+    <th>{% trans "Under Warranty" %}</th>
+{% endblock %}
+
+{% block table_columns %}
+    { data: 'rma_number' },
+    { data: 'device__serial_number' },
+    { data: 'customer_id' },
+    { data: 'status' },
+    { data: 'failure_type' },
+    { data: 'requested_date' },
+    { 
+        data: 'is_under_warranty',
+        render: function(data) {
+            return data ? '<span class="badge bg-success">{% trans "Yes" %}</span>' : '<span class="badge bg-secondary">{% trans "No" %}</span>';
+        }
+    }
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends 'billing/_list_base.html' %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Subscription Usage" %}{% endblock %}
+
+{% block list_title %}{% trans "Subscription Usage List" %}{% endblock %}
+
+{% block create_url %}{% url 'billing:subscriptionusage_create' %}{% endblock %}
+
+{% block table_headers %}
+    <th>{% trans "Subscription" %}</th>
+    <th>{% trans "Metric" %}</th>
+    <th>{% trans "Quantity" %}</th>
+    <th>{% trans "Usage Date" %}</th>
+    <th>{% trans "Billed" %}</th>
+{% endblock %}
+
+{% block table_columns %}
+    { data: 'subscription__subscription_number' },
+    { data: 'usage_metric' },
+    { data: 'quantity', render: $.fn.dataTable.render.number(',', '.', 2) },
+    { data: 'usage_date' },
+    { 
+        data: 'is_billed',
+        render: function(data) {
+            return data ? '<span class="badge bg-success">{% trans "Billed" %}</span>' : '<span class="badge bg-warning">{% trans "Pending" %}</span>';
+        }
+    }
+{% endblock %}

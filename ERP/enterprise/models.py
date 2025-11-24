@@ -804,3 +804,309 @@ class TaxRegime(OrganizationScopedModel):
 
     def __str__(self) -> str:
         return self.name
+
+
+# ---------- Manufacturing Enhancements ----------
+class BOMRevision(OrganizationScopedModel):
+    """BOM revision control for engineer-to-order and change management"""
+    bill_of_material = models.ForeignKey(
+        BillOfMaterial,
+        on_delete=models.CASCADE,
+        related_name="revisions",
+    )
+    revision_number = models.CharField(max_length=20)
+    effective_date = models.DateField()
+    obsolete_date = models.DateField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    change_reason = models.TextField(blank=True)
+    changed_by = models.IntegerField(null=True, blank=True)  # User ID
+    approved_by = models.IntegerField(null=True, blank=True)  # User ID
+    approved_date = models.DateTimeField(null=True, blank=True)
+    eco_number = models.CharField(max_length=50, blank=True)  # Engineering Change Order
+    notes = models.TextField(blank=True)
+    
+    class Meta:
+        unique_together = ("bill_of_material", "revision_number")
+        ordering = ["-effective_date"]
+    
+    def __str__(self) -> str:
+        return f"{self.bill_of_material.product_name} - Rev {self.revision_number}"
+
+
+class QCCheckpoint(OrganizationScopedModel):
+    """Quality control checkpoints in routing"""
+    CHECKPOINT_TYPES = [
+        ('incoming', 'Incoming Material Inspection'),
+        ('in_process', 'In-Process Inspection'),
+        ('final', 'Final Inspection'),
+        ('sampling', 'Statistical Sampling'),
+    ]
+    
+    TEST_METHODS = [
+        ('visual', 'Visual Inspection'),
+        ('dimensional', 'Dimensional Measurement'),
+        ('functional', 'Functional Test'),
+        ('destructive', 'Destructive Test'),
+        ('non_destructive', 'Non-Destructive Test'),
+    ]
+    
+    name = models.CharField(max_length=150)
+    code = models.CharField(max_length=50)
+    checkpoint_type = models.CharField(max_length=20, choices=CHECKPOINT_TYPES)
+    test_method = models.CharField(max_length=30, choices=TEST_METHODS)
+    specification = models.TextField()  # Acceptance criteria
+    sample_size = models.IntegerField(default=1)
+    work_center = models.ForeignKey(
+        WorkCenter,
+        on_delete=models.PROTECT,
+        related_name="qc_checkpoints",
+        null=True,
+        blank=True,
+    )
+    routing = models.ForeignKey(
+        Routing,
+        on_delete=models.CASCADE,
+        related_name="qc_checkpoints",
+        null=True,
+        blank=True,
+    )
+    is_mandatory = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        unique_together = ("organization", "code")
+        ordering = ["name"]
+    
+    def __str__(self) -> str:
+        return f"{self.code} - {self.name}"
+
+
+class QCInspectionRecord(OrganizationScopedModel):
+    """Record of quality inspections"""
+    RESULT_CHOICES = [
+        ('pass', 'Pass'),
+        ('fail', 'Fail'),
+        ('conditional', 'Conditional Pass'),
+    ]
+    
+    inspection_number = models.CharField(max_length=50, unique=True)
+    qc_checkpoint = models.ForeignKey(
+        QCCheckpoint,
+        on_delete=models.PROTECT,
+        related_name="inspections",
+    )
+    work_order = models.ForeignKey(
+        WorkOrder,
+        on_delete=models.PROTECT,
+        related_name="qc_inspections",
+        null=True,
+        blank=True,
+    )
+    batch_number = models.CharField(max_length=100, blank=True)
+    inspector_id = models.IntegerField()  # User ID
+    inspection_date = models.DateTimeField()
+    result = models.CharField(max_length=20, choices=RESULT_CHOICES)
+    quantity_inspected = models.DecimalField(max_digits=12, decimal_places=4)
+    quantity_passed = models.DecimalField(max_digits=12, decimal_places=4)
+    quantity_failed = models.DecimalField(max_digits=12, decimal_places=4)
+    measurements = models.JSONField(default=dict, blank=True)  # Actual measurements
+    notes = models.TextField(blank=True)
+    
+    class Meta:
+        ordering = ["-inspection_date"]
+    
+    def __str__(self) -> str:
+        return f"{self.inspection_number} - {self.result}"
+
+
+class NCR(OrganizationScopedModel):
+    """Non-Conformance Report"""
+    STATUS_CHOICES = [
+        ('open', 'Open'),
+        ('investigating', 'Under Investigation'),
+        ('corrective_action', 'Corrective Action'),
+        ('closed', 'Closed'),
+        ('rejected', 'Rejected'),
+    ]
+    
+    SEVERITY_CHOICES = [
+        ('critical', 'Critical'),
+        ('major', 'Major'),
+        ('minor', 'Minor'),
+    ]
+    
+    ncr_number = models.CharField(max_length=50, unique=True)
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES)
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='open')
+    work_order = models.ForeignKey(
+        WorkOrder,
+        on_delete=models.PROTECT,
+        related_name="ncrs",
+        null=True,
+        blank=True,
+    )
+    qc_inspection = models.ForeignKey(
+        QCInspectionRecord,
+        on_delete=models.SET_NULL,
+        related_name="ncrs",
+        null=True,
+        blank=True,
+    )
+    reported_by = models.IntegerField()  # User ID
+    reported_date = models.DateTimeField()
+    assigned_to = models.IntegerField(null=True, blank=True)  # User ID
+    root_cause = models.TextField(blank=True)
+    corrective_action = models.TextField(blank=True)
+    preventive_action = models.TextField(blank=True)
+    closed_by = models.IntegerField(null=True, blank=True)  # User ID
+    closed_date = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ["-reported_date"]
+    
+    def __str__(self) -> str:
+        return f"{self.ncr_number} - {self.title} ({self.severity})"
+
+
+class ProductionCalendar(OrganizationScopedModel):
+    """Production calendar with shift schedules and holidays"""
+    name = models.CharField(max_length=150)
+    code = models.CharField(max_length=50)
+    work_center = models.ForeignKey(
+        WorkCenter,
+        on_delete=models.CASCADE,
+        related_name="calendars",
+        null=True,
+        blank=True,
+    )
+    is_default = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        unique_together = ("organization", "code")
+        ordering = ["name"]
+    
+    def __str__(self) -> str:
+        return f"{self.code} - {self.name}"
+
+
+class Shift(models.Model):
+    """Shift definition for production calendar"""
+    DAYS_OF_WEEK = [
+        (0, 'Monday'),
+        (1, 'Tuesday'),
+        (2, 'Wednesday'),
+        (3, 'Thursday'),
+        (4, 'Friday'),
+        (5, 'Saturday'),
+        (6, 'Sunday'),
+    ]
+    
+    calendar = models.ForeignKey(
+        ProductionCalendar,
+        on_delete=models.CASCADE,
+        related_name="shifts",
+    )
+    name = models.CharField(max_length=100)
+    day_of_week = models.IntegerField(choices=DAYS_OF_WEEK)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    capacity_hours = models.DecimalField(max_digits=6, decimal_places=2)
+    
+    class Meta:
+        ordering = ["day_of_week", "start_time"]
+    
+    def __str__(self) -> str:
+        return f"{self.calendar.name} - {self.name} ({self.get_day_of_week_display()})"
+
+
+class ProductionHoliday(models.Model):
+    """Holiday/shutdown dates for production calendar"""
+    calendar = models.ForeignKey(
+        ProductionCalendar,
+        on_delete=models.CASCADE,
+        related_name="holidays",
+    )
+    name = models.CharField(max_length=150)
+    holiday_date = models.DateField()
+    is_recurring = models.BooleanField(default=False)
+    
+    class Meta:
+        ordering = ["holiday_date"]
+    
+    def __str__(self) -> str:
+        return f"{self.calendar.name} - {self.name} ({self.holiday_date})"
+
+
+class YieldTracking(OrganizationScopedModel):
+    """Track actual vs planned yield for work orders"""
+    work_order = models.ForeignKey(
+        WorkOrder,
+        on_delete=models.CASCADE,
+        related_name="yield_tracking",
+    )
+    operation = models.ForeignKey(
+        WorkOrderOperation,
+        on_delete=models.CASCADE,
+        related_name="yields",
+        null=True,
+        blank=True,
+    )
+    planned_quantity = models.DecimalField(max_digits=12, decimal_places=4)
+    actual_quantity = models.DecimalField(max_digits=12, decimal_places=4)
+    scrap_quantity = models.DecimalField(max_digits=12, decimal_places=4, default=0)
+    rework_quantity = models.DecimalField(max_digits=12, decimal_places=4, default=0)
+    yield_percentage = models.DecimalField(max_digits=5, decimal_places=2)  # Auto-calculated
+    scrap_cost = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    recorded_by = models.IntegerField()  # User ID
+    recorded_date = models.DateTimeField()
+    notes = models.TextField(blank=True)
+    
+    class Meta:
+        ordering = ["-recorded_date"]
+    
+    def save(self, *args, **kwargs):
+        # Auto-calculate yield percentage
+        if self.planned_quantity > 0:
+            self.yield_percentage = (self.actual_quantity / self.planned_quantity) * 100
+        super().save(*args, **kwargs)
+    
+    def __str__(self) -> str:
+        return f"{self.work_order.work_order_number} - Yield: {self.yield_percentage}%"
+
+
+class WorkOrderCosting(OrganizationScopedModel):
+    """Track actual costs vs standard costs for work orders"""
+    work_order = models.OneToOneField(
+        WorkOrder,
+        on_delete=models.CASCADE,
+        related_name="costing",
+    )
+    standard_material_cost = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    actual_material_cost = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    standard_labor_cost = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    actual_labor_cost = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    standard_overhead_cost = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    actual_overhead_cost = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    variance_material = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    variance_labor = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    variance_overhead = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    updated_date = models.DateTimeField(auto_now=True)
+    
+    @property
+    def total_standard_cost(self):
+        return self.standard_material_cost + self.standard_labor_cost + self.standard_overhead_cost
+    
+    @property
+    def total_actual_cost(self):
+        return self.actual_material_cost + self.actual_labor_cost + self.actual_overhead_cost
+    
+    @property
+    def total_variance(self):
+        return self.variance_material + self.variance_labor + self.variance_overhead
+    
+    def __str__(self) -> str:
+        return f"{self.work_order.work_order_number} - Costing"
+

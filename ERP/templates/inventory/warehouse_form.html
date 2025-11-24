@@ -1,0 +1,20 @@
+{% extends 'Inventory/_form_base.html' %}
+{% load i18n %}
+
+{% block page_title %}
+    {% if form.instance.pk %}
+        {% trans "Edit Warehouse" %}
+    {% else %}
+        {% trans "New Warehouse" %}
+    {% endif %}
+{% endblock %}
+
+{% block form_title %}
+    {% if form.instance.pk %}
+        {% trans "Edit Warehouse" %}: {{ form.instance.name }}
+    {% else %}
+        {% trans "Create New Warehouse" %}
+    {% endif %}
+{% endblock %}
+
+{% block cancel_url %}{% url 'inventory:warehouse_list' %}{% endblock %}

@@ -1,0 +1,20 @@
+{% extends 'billing/_form_base.html' %}
+{% load i18n %}
+
+{% block page_title %}
+    {% if form.instance.pk %}
+        {% trans "Edit Subscription Invoice" %}
+    {% else %}
+        {% trans "New Subscription Invoice" %}
+    {% endif %}
+{% endblock %}
+
+{% block form_title %}
+    {% if form.instance.pk %}
+        {% trans "Edit Subscription Invoice" %}: {{ form.instance.invoice_number }}
+    {% else %}
+        {% trans "Create New Subscription Invoice" %}
+    {% endif %}
+{% endblock %}
+
+{% block cancel_url %}{% url 'billing:subscriptioninvoice_list' %}{% endblock %}

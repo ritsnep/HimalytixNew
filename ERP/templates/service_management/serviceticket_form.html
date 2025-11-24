@@ -1,0 +1,20 @@
+{% extends 'service_management/_form_base.html' %}
+{% load i18n %}
+
+{% block page_title %}
+    {% if form.instance.pk %}
+        {% trans "Edit Service Ticket" %}
+    {% else %}
+        {% trans "New Service Ticket" %}
+    {% endif %}
+{% endblock %}
+
+{% block form_title %}
+    {% if form.instance.pk %}
+        {% trans "Edit Service Ticket" %}: {{ form.instance.ticket_number }}
+    {% else %}
+        {% trans "Create New Service Ticket" %}
+    {% endif %}
+{% endblock %}
+
+{% block cancel_url %}{% url 'service_management:serviceticket_list' %}{% endblock %}

@@ -1,0 +1,20 @@
+{% extends 'Inventory/_form_base.html' %}
+{% load i18n %}
+
+{% block page_title %}
+    {% if form.instance.pk %}
+        {% trans "Edit Bill of Material" %}
+    {% else %}
+        {% trans "New Bill of Material" %}
+    {% endif %}
+{% endblock %}
+
+{% block form_title %}
+    {% if form.instance.pk %}
+        {% trans "Edit Bill of Material" %}: {{ form.instance.name }}
+    {% else %}
+        {% trans "Create New Bill of Material" %}
+    {% endif %}
+{% endblock %}
+
+{% block cancel_url %}{% url 'inventory:billofmaterial_list' %}{% endblock %}

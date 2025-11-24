@@ -1,0 +1,29 @@
+{% extends 'Inventory/_list_base.html' %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Locations" %}{% endblock %}
+
+{% block list_title %}{% trans "Location List" %}{% endblock %}
+
+{% block create_url %}{% url 'inventory:location_create' %}{% endblock %}
+
+{% block table_headers %}
+    <th>{% trans "Code" %}</th>
+    <th>{% trans "Name" %}</th>
+    <th>{% trans "Warehouse" %}</th>
+    <th>{% trans "Type" %}</th>
+    <th>{% trans "Active" %}</th>
+{% endblock %}
+
+{% block table_columns %}
+    { data: 'code' },
+    { data: 'name' },
+    { data: 'warehouse__name' },
+    { data: 'location_type' },
+    { 
+        data: 'is_active',
+        render: function(data) {
+            return data ? '<span class="badge bg-success">{% trans "Active" %}</span>' : '<span class="badge bg-secondary">{% trans "Inactive" %}</span>';
+        }
+    }
+{% endblock %}

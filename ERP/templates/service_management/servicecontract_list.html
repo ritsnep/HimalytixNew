@@ -1,0 +1,28 @@
+{% extends 'service_management/_list_base.html' %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Service Contracts" %}{% endblock %}
+
+{% block list_title %}{% trans "Service Contract List" %}{% endblock %}
+
+{% block create_url %}{% url 'service_management:servicecontract_create' %}{% endblock %}
+
+{% block table_headers %}
+    <th>{% trans "Contract #" %}</th>
+    <th>{% trans "Customer" %}</th>
+    <th>{% trans "Type" %}</th>
+    <th>{% trans "Status" %}</th>
+    <th>{% trans "Start Date" %}</th>
+    <th>{% trans "End Date" %}</th>
+    <th>{% trans "Annual Value" %}</th>
+{% endblock %}
+
+{% block table_columns %}
+    { data: 'contract_number' },
+    { data: 'customer_id' },
+    { data: 'contract_type' },
+    { data: 'status' },
+    { data: 'start_date' },
+    { data: 'end_date' },
+    { data: 'annual_value', render: $.fn.dataTable.render.number(',', '.', 2) }
+{% endblock %}

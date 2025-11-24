@@ -1,0 +1,26 @@
+{% extends 'billing/_list_base.html' %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Subscriptions" %}{% endblock %}
+
+{% block list_title %}{% trans "Subscription List" %}{% endblock %}
+
+{% block create_url %}{% url 'billing:subscription_create' %}{% endblock %}
+
+{% block table_headers %}
+    <th>{% trans "Number" %}</th>
+    <th>{% trans "Customer" %}</th>
+    <th>{% trans "Plan" %}</th>
+    <th>{% trans "Status" %}</th>
+    <th>{% trans "Start Date" %}</th>
+    <th>{% trans "End Date" %}</th>
+{% endblock %}
+
+{% block table_columns %}
+    { data: 'subscription_number' },
+    { data: 'customer_id' },
+    { data: 'plan__plan_name' },
+    { data: 'status' },
+    { data: 'start_date' },
+    { data: 'end_date', defaultContent: '-' }
+{% endblock %}

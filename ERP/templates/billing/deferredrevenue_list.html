@@ -1,0 +1,28 @@
+{% extends 'billing/_list_base.html' %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Deferred Revenue" %}{% endblock %}
+
+{% block list_title %}{% trans "Deferred Revenue List" %}{% endblock %}
+
+{% block create_url %}{% url 'billing:deferredrevenue_create' %}{% endblock %}
+
+{% block table_headers %}
+    <th>{% trans "Contract Number" %}</th>
+    <th>{% trans "Customer" %}</th>
+    <th>{% trans "Total Amount" %}</th>
+    <th>{% trans "Recognized Amount" %}</th>
+    <th>{% trans "Remaining Amount" %}</th>
+    <th>{% trans "Start Date" %}</th>
+    <th>{% trans "End Date" %}</th>
+{% endblock %}
+
+{% block table_columns %}
+    { data: 'contract_number' },
+    { data: 'customer_id' },
+    { data: 'total_amount', render: $.fn.dataTable.render.number(',', '.', 2) },
+    { data: 'recognized_amount', render: $.fn.dataTable.render.number(',', '.', 2) },
+    { data: 'remaining_amount', render: $.fn.dataTable.render.number(',', '.', 2) },
+    { data: 'start_date' },
+    { data: 'end_date' }
+{% endblock %}

@@ -1,0 +1,8 @@
+# service_management/apps.py
+from django.apps import AppConfig
+
+
+class ServiceManagementConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'service_management'
+    verbose_name = 'Service Management'

@@ -1,0 +1,20 @@
+{% extends 'billing/_form_base.html' %}
+{% load i18n %}
+
+{% block page_title %}
+    {% if form.instance.pk %}
+        {% trans "Edit Milestone Revenue" %}
+    {% else %}
+        {% trans "New Milestone Revenue" %}
+    {% endif %}
+{% endblock %}
+
+{% block form_title %}
+    {% if form.instance.pk %}
+        {% trans "Edit Milestone Revenue" %}: {{ form.instance.milestone_number }}
+    {% else %}
+        {% trans "Create New Milestone Revenue" %}
+    {% endif %}
+{% endblock %}
+
+{% block cancel_url %}{% url 'billing:milestonerevenue_list' %}{% endblock %}

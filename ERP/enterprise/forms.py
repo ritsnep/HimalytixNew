@@ -34,43 +34,26 @@ from .models import (
     LocaleConfig,
     TaxRegime,
 )
+from accounting.forms_mixin import BootstrapFormMixin
 
 
-class BaseOrgModelForm(forms.ModelForm):
-    """Base ModelForm that filters org-scoped FK querysets."""
-
-    def __init__(self, *args, organization=None, **kwargs):
-        self.organization = organization
-        super().__init__(*args, **kwargs)
-        if organization:
-            for field in self.fields.values():
-                if isinstance(field, forms.ModelChoiceField):
-                    qs = field.queryset
-                    if qs is not None and hasattr(qs.model, "organization_id"):
-                        field.queryset = qs.filter(organization=organization)
-
-    def save(self, commit=True):
-        obj = super().save(commit=False)
-        if hasattr(obj, "organization") and obj.organization_id is None:
-            obj.organization = self.organization
-        if commit:
-            obj.save()
-        return obj
-
-
-class DepartmentForm(BaseOrgModelForm):
+class DepartmentForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Department
         fields = ["name", "code"]
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'code': forms.TextInput(attrs={'class': 'form-control'}),
+        }
 
 
-class PositionForm(BaseOrgModelForm):
+class PositionForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Position
         fields = ["title", "department", "grade"]
 
 
-class EmployeeForm(BaseOrgModelForm):
+class EmployeeForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Employee
         fields = [
@@ -88,19 +71,19 @@ class EmployeeForm(BaseOrgModelForm):
         ]
 
 
-class PayrollCycleForm(BaseOrgModelForm):
+class PayrollCycleForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = PayrollCycle
         fields = ["name", "period_start", "period_end", "status"]
 
 
-class PayrollEntryForm(BaseOrgModelForm):
+class PayrollEntryForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = PayrollEntry
         fields = ["payroll_run", "payroll_cycle", "employee", "gross_pay", "deductions", "net_pay", "currency"]
 
 
-class PayComponentForm(BaseOrgModelForm):
+class PayComponentForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = PayComponent
         fields = [
@@ -115,7 +98,7 @@ class PayComponentForm(BaseOrgModelForm):
         ]
 
 
-class PayrollRunForm(BaseOrgModelForm):
+class PayrollRunForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = PayrollRun
         fields = [
@@ -128,31 +111,31 @@ class PayrollRunForm(BaseOrgModelForm):
         ]
 
 
-class PayrollRunLineForm(BaseOrgModelForm):
+class PayrollRunLineForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = PayrollRunLine
         fields = ["payroll_run", "employee", "component", "amount", "notes"]
 
 
-class LeaveRequestForm(BaseOrgModelForm):
+class LeaveRequestForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = LeaveRequest
         fields = ["employee", "leave_type", "start_date", "end_date", "status"]
 
 
-class AttendanceRecordForm(BaseOrgModelForm):
+class AttendanceRecordForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = AttendanceRecord
         fields = ["employee", "work_date", "hours_worked", "status"]
 
 
-class BenefitEnrollmentForm(BaseOrgModelForm):
+class BenefitEnrollmentForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = BenefitEnrollment
         fields = ["employee", "benefit_name", "contribution", "employer_contribution"]
 
 
-class FixedAssetCategoryForm(BaseOrgModelForm):
+class FixedAssetCategoryForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = FixedAssetCategory
         fields = [
@@ -168,7 +151,7 @@ class FixedAssetCategoryForm(BaseOrgModelForm):
         ]
 
 
-class FixedAssetForm(BaseOrgModelForm):
+class FixedAssetForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = FixedAsset
         fields = [
@@ -184,25 +167,25 @@ class FixedAssetForm(BaseOrgModelForm):
         ]
 
 
-class AssetDepreciationScheduleForm(BaseOrgModelForm):
+class AssetDepreciationScheduleForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = AssetDepreciationSchedule
         fields = ["asset", "period_start", "period_end", "depreciation_amount", "posted_journal"]
 
 
-class BillOfMaterialForm(BaseOrgModelForm):
+class BillOfMaterialForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = BillOfMaterial
         fields = ["name", "product_name", "revision"]
 
 
-class BillOfMaterialItemForm(BaseOrgModelForm):
+class BillOfMaterialItemForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = BillOfMaterialItem
         fields = ["bill_of_material", "component_name", "quantity", "uom"]
 
 
-class WorkOrderForm(BaseOrgModelForm):
+class WorkOrderForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = WorkOrder
         fields = [
@@ -216,7 +199,7 @@ class WorkOrderForm(BaseOrgModelForm):
         ]
 
 
-class WorkOrderMaterialForm(BaseOrgModelForm):
+class WorkOrderMaterialForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = WorkOrderMaterial
         fields = [
@@ -227,31 +210,31 @@ class WorkOrderMaterialForm(BaseOrgModelForm):
             "uom",
         ]
 
-class WorkCenterForm(BaseOrgModelForm):
+class WorkCenterForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = WorkCenter
         fields = ["name", "code", "capacity_per_day", "is_active"]
 
 
-class RoutingForm(BaseOrgModelForm):
+class RoutingForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Routing
         fields = ["name", "work_center", "standard_duration_hours", "is_active"]
 
 
-class WorkOrderOperationForm(BaseOrgModelForm):
+class WorkOrderOperationForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = WorkOrderOperation
         fields = ["work_order", "routing", "sequence", "planned_start", "planned_end", "status"]
 
 
-class CRMLeadForm(BaseOrgModelForm):
+class CRMLeadForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = CRMLead
         fields = ["name", "source", "status", "probability", "contact_email", "contact_phone"]
 
 
-class OpportunityForm(BaseOrgModelForm):
+class OpportunityForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Opportunity
         fields = [
@@ -265,55 +248,55 @@ class OpportunityForm(BaseOrgModelForm):
         ]
 
 
-class CampaignForm(BaseOrgModelForm):
+class CampaignForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Campaign
         fields = ["name", "channel", "budget_amount", "start_date", "end_date"]
 
 
-class BudgetForm(BaseOrgModelForm):
+class BudgetForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Budget
         fields = ["name", "fiscal_year", "revision_label", "revision_of", "status"]
 
 
-class BudgetLineForm(BaseOrgModelForm):
+class BudgetLineForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = BudgetLine
         fields = ["budget", "department", "project_name", "account_code", "amount"]
 
 
-class IntegrationEndpointForm(BaseOrgModelForm):
+class IntegrationEndpointForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = IntegrationEndpoint
         fields = ["name", "connector_type", "base_url", "is_active", "metadata"]
 
 
-class IntegrationCredentialForm(BaseOrgModelForm):
+class IntegrationCredentialForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = IntegrationCredential
         fields = ["name", "connector_type", "credential_blob", "masked_display", "is_active"]
 
 
-class WebhookSubscriptionForm(BaseOrgModelForm):
+class WebhookSubscriptionForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = WebhookSubscription
         fields = ["name", "token", "source", "is_active"]
 
 
-class POSDeviceForm(BaseOrgModelForm):
+class POSDeviceForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = POSDevice
         fields = ["identifier", "location", "status"]
 
 
-class LocaleConfigForm(BaseOrgModelForm):
+class LocaleConfigForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = LocaleConfig
         fields = ["locale_code", "timezone", "default_currency", "tax_region", "enable_e_invoicing"]
 
 
-class TaxRegimeForm(BaseOrgModelForm):
+class TaxRegimeForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = TaxRegime
         fields = ["name", "country", "region", "e_invoice_format", "metadata", "is_active"]

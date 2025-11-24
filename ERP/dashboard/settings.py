@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     'formtools',
     'billing',
     'enterprise',
+    'service_management',
 ]
 
 if ENABLE_SILK:

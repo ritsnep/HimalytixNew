@@ -1,0 +1,28 @@
+{% extends 'service_management/_list_base.html' %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Service Tickets" %}{% endblock %}
+
+{% block list_title %}{% trans "Service Ticket List" %}{% endblock %}
+
+{% block create_url %}{% url 'service_management:serviceticket_create' %}{% endblock %}
+
+{% block table_headers %}
+    <th>{% trans "Ticket #" %}</th>
+    <th>{% trans "Subject" %}</th>
+    <th>{% trans "Customer" %}</th>
+    <th>{% trans "Priority" %}</th>
+    <th>{% trans "Status" %}</th>
+    <th>{% trans "Assigned To" %}</th>
+    <th>{% trans "Created Date" %}</th>
+{% endblock %}
+
+{% block table_columns %}
+    { data: 'ticket_number' },
+    { data: 'subject' },
+    { data: 'customer_id' },
+    { data: 'priority' },
+    { data: 'status' },
+    { data: 'assigned_to', defaultContent: '-' },
+    { data: 'created_date' }
+{% endblock %}

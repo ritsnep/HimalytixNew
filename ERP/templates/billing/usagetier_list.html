@@ -1,0 +1,24 @@
+{% extends 'billing/_list_base.html' %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Usage Tiers" %}{% endblock %}
+
+{% block list_title %}{% trans "Usage Tier List" %}{% endblock %}
+
+{% block create_url %}{% url 'billing:usagetier_create' %}{% endblock %}
+
+{% block table_headers %}
+    <th>{% trans "Plan" %}</th>
+    <th>{% trans "Metric" %}</th>
+    <th>{% trans "From Quantity" %}</th>
+    <th>{% trans "To Quantity" %}</th>
+    <th>{% trans "Rate" %}</th>
+{% endblock %}
+
+{% block table_columns %}
+    { data: 'plan__plan_name' },
+    { data: 'usage_metric' },
+    { data: 'from_quantity', render: $.fn.dataTable.render.number(',', '.', 0) },
+    { data: 'to_quantity', render: $.fn.dataTable.render.number(',', '.', 0) },
+    { data: 'rate_per_unit', render: $.fn.dataTable.render.number(',', '.', 4) }
+{% endblock %}

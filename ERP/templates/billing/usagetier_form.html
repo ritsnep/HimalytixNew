@@ -1,0 +1,20 @@
+{% extends 'billing/_form_base.html' %}
+{% load i18n %}
+
+{% block page_title %}
+    {% if form.instance.pk %}
+        {% trans "Edit Usage Tier" %}
+    {% else %}
+        {% trans "New Usage Tier" %}
+    {% endif %}
+{% endblock %}
+
+{% block form_title %}
+    {% if form.instance.pk %}
+        {% trans "Edit Usage Tier" %}
+    {% else %}
+        {% trans "Create New Usage Tier" %}
+    {% endif %}
+{% endblock %}
+
+{% block cancel_url %}{% url 'billing:usagetier_list' %}{% endblock %}

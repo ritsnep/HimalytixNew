@@ -1,0 +1,26 @@
+{% extends 'service_management/_list_base.html' %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Device Lifecycle" %}{% endblock %}
+
+{% block list_title %}{% trans "Device Lifecycle List" %}{% endblock %}
+
+{% block create_url %}{% url 'service_management:devicelifecycle_create' %}{% endblock %}
+
+{% block table_headers %}
+    <th>{% trans "Serial Number" %}</th>
+    <th>{% trans "Device Model" %}</th>
+    <th>{% trans "State" %}</th>
+    <th>{% trans "Customer" %}</th>
+    <th>{% trans "Deployed Date" %}</th>
+    <th>{% trans "Location" %}</th>
+{% endblock %}
+
+{% block table_columns %}
+    { data: 'serial_number' },
+    { data: 'device_model__name' },
+    { data: 'state' },
+    { data: 'customer_id', defaultContent: '-' },
+    { data: 'deployed_date', defaultContent: '-' },
+    { data: 'deployment_location', defaultContent: '-' }
+{% endblock %}

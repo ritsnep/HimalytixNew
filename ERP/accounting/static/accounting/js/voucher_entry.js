@@ -341,6 +341,13 @@ const moneyFmt = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, ma
 const asNum = (v, d = 0) => { if (v === null || v === undefined) return d; const x = parseFloat(String(v).replace(/,/g, '')); return Number.isNaN(x) ? d : x; };
 const uid = () => Math.random().toString(36).slice(2, 10);
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+const debounce = (fn, delay = 200) => {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+};
 const loadPresets = () => { try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { return {}; } };
 const savePresets = (obj) => localStorage.setItem(LS_KEY, JSON.stringify(obj));
 
@@ -373,6 +380,143 @@ function normalizeChoiceList(raw) {
   }
   return [];
 }
+
+const AccountSuggest = (() => {
+  let container;
+  let listEl;
+  let anchor = null;
+  let activeIndex = 0;
+  let items = [];
+  let termText = '';
+  let onSelect = null;
+  let onAddNew = null;
+  let outsideHandler = null;
+
+  const ensure = () => {
+    if (container) return;
+    container = document.createElement('div');
+    container.className = 've-suggest';
+    container.innerHTML = '<div class="ve-suggest-list"></div>';
+    listEl = container.querySelector('.ve-suggest-list');
+    document.body.appendChild(container);
+  };
+
+  const position = () => {
+    if (!container || !anchor) return;
+    const rect = anchor.getBoundingClientRect();
+    container.style.minWidth = Math.max(260, rect.width) + 'px';
+    container.style.left = `${window.scrollX + rect.left}px`;
+    container.style.top = `${window.scrollY + rect.bottom + 6}px`;
+  };
+
+  const close = () => {
+    if (!container) return;
+    container.classList.remove('open');
+    items = [];
+    anchor = null;
+    termText = '';
+    activeIndex = 0;
+    if (outsideHandler) {
+      document.removeEventListener('click', outsideHandler, true);
+      outsideHandler = null;
+    }
+    window.removeEventListener('resize', position);
+    window.removeEventListener('scroll', position, true);
+  };
+
+  const highlight = (idx) => {
+    activeIndex = idx;
+    render();
+  };
+
+  const select = (idx) => {
+    if (idx === items.length) {
+      close();
+      if (typeof onAddNew === 'function') onAddNew();
+      return;
+    }
+    const choice = items[idx];
+    if (choice && typeof onSelect === 'function') {
+      onSelect(choice);
+    }
+    close();
+  };
+
+  const render = () => {
+    if (!container || !listEl) return;
+    listEl.innerHTML = '';
+    if (!items.length) {
+      const empty = document.createElement('div');
+      empty.className = 've-suggest-empty';
+      empty.textContent = termText ? `No matches for "${termText}"` : 'No matches found';
+      listEl.appendChild(empty);
+    }
+    items.forEach((item, idx) => {
+      const row = document.createElement('div');
+      row.className = `ve-suggest-item${idx === activeIndex ? ' active' : ''}`;
+      row.dataset.index = idx;
+      row.innerHTML = `
+        <div>
+          <div class="ve-suggest-label">${escapeHtml([item.code, item.name].filter(Boolean).join(' - ') || item.label || '')}</div>
+          <div class="ve-suggest-meta">${escapeHtml(item.name || item.code || '')}</div>
+        </div>
+        ${item.badge ? `<span class="ve-suggest-chip">${escapeHtml(item.badge)}</span>` : ''}
+      `;
+      row.onmouseenter = () => highlight(idx);
+      row.onmousedown = (ev) => { ev.preventDefault(); select(idx); };
+      listEl.appendChild(row);
+    });
+    const addIdx = items.length;
+    const addRow = document.createElement('div');
+    addRow.className = `ve-suggest-item add-new${activeIndex === addIdx ? ' active' : ''}`;
+    addRow.dataset.index = addIdx;
+    addRow.innerHTML = `
+      <div>
+        <div class="ve-suggest-label">+ Add New Account</div>
+        <div class="ve-suggest-meta">Opens Chart of Accounts in a new tab</div>
+      </div>
+    `;
+    addRow.onmouseenter = () => highlight(addIdx);
+    addRow.onmousedown = (ev) => { ev.preventDefault(); select(addIdx); };
+    listEl.appendChild(addRow);
+    position();
+  };
+
+  return {
+    open(target, suggestions = [], handlers = {}) {
+      close();
+      ensure();
+      anchor = target;
+      items = Array.isArray(suggestions) ? suggestions : [];
+      onSelect = handlers.onSelect || null;
+      onAddNew = handlers.onAddNew || null;
+      termText = handlers.term || '';
+      activeIndex = items.length ? 0 : 0;
+      container.classList.add('open');
+      render();
+      outsideHandler = (ev) => {
+        if (!container.contains(ev.target) && ev.target !== anchor) {
+          close();
+        }
+      };
+      document.addEventListener('click', outsideHandler, true);
+      window.addEventListener('resize', position);
+      window.addEventListener('scroll', position, true);
+    },
+    close,
+    move(delta) {
+      if (!container || !container.classList.contains('open')) return;
+      const total = items.length + 1; // +1 for Add New
+      activeIndex = (activeIndex + delta + total) % total;
+      render();
+    },
+    selectCurrent() { select(activeIndex); },
+    isOpenFor(target) {
+      return !!container && container.classList.contains('open') && anchor === target;
+    },
+    highlight,
+  };
+})();
 
 /** Base columns for item & journal modes */
 const BASE_ITEM_COLS = [
@@ -700,6 +844,68 @@ const App = {
         row.costCenter = match.code;
       }
     });
+  },
+
+  queueAccountSuggestions(inputEl, ri, ci) {
+    if (!inputEl || !inputEl.classList.contains('cell-input')) return;
+    this.state.rows[ri].account = inputEl.value;
+    this.state.rows[ri].accountId = null;
+    this.state.focus = { r: ri, c: ci };
+
+    const term = (inputEl.value || '').trim();
+    if (!term) {
+      AccountSuggest.close();
+      return;
+    }
+
+    if (!this._debouncedAccountLookup) {
+      this._debouncedAccountLookup = debounce((value, anchor, rowIdx, colIdx) => {
+        this.fetchAccountSuggestions(value, anchor, rowIdx, colIdx);
+      }, 180);
+    }
+    this._debouncedAccountLookup(term, inputEl, ri, ci);
+  },
+
+  async fetchAccountSuggestions(term, inputEl, ri, ci) {
+    if (!LOOKUPS.account || !inputEl) return;
+    const queryToken = `${term}:${ri}:${Date.now()}`;
+    this._latestAccountQuery = queryToken;
+    try {
+      const { data } = await fetchJSON(`${LOOKUPS.account}?q=${encodeURIComponent(term)}`, {}, { action: `Search Account ${term}` });
+      if (this._latestAccountQuery !== queryToken) return;
+      const results = Array.isArray(data?.results) ? data.results : [];
+      const suggestions = results.map((r, idx) => ({
+        id: r.id,
+        code: r.code || '',
+        name: r.name || '',
+        badge: idx === 0 ? 'AI' : '',
+      }));
+      AccountSuggest.open(inputEl, suggestions, {
+        term,
+        onSelect: (choice) => this.applyAccountSelection(choice, ri, ci),
+        onAddNew: () => this.handleAddNewAccount(),
+      });
+    } catch (err) {
+      console.error('Account lookup failed', err);
+    }
+  },
+
+  applyAccountSelection(choice, ri, ci) {
+    if (!choice || !this.state.rows[ri]) return;
+    const row = this.state.rows[ri];
+    row.accountId = choice.id ?? null;
+    row.accountCode = choice.code || '';
+    row.accountName = choice.name || '';
+    row.account = [choice.code, choice.name].filter(Boolean).join(' - ');
+    this.state.focus = { r: ri, c: ci };
+    AccountSuggest.close();
+    this.render();
+  },
+
+  handleAddNewAccount() {
+    AccountSuggest.close();
+    const url = '/accounting/chart-of-accounts/create/';
+    window.open(url, '_blank');
   },
 
   availableVoucherTypes() {
@@ -1109,6 +1315,7 @@ const App = {
   /** UI */
   render() {
     const el = document.getElementById('app');
+    AccountSuggest.close();
     const { voucherType, status, header, udfHeaderDefs, udfLineDefs, rows, collapsed, notes, charges } = this.state;
     const cols = this.getColumns();
     const visibleCols = cols.filter(c => c.visible !== false);
@@ -1360,7 +1567,19 @@ const App = {
     el.onchange = (ev) => this.handleChange(ev);
     el.onkeydown = (ev) => this.handleKeydown(ev);
     el.onfocusin = (ev) => this.handleFocusIn(ev);
-    el.oninput = (ev) => { if (ev.target && ev.target.getAttribute('data-action') === 'bindNotes') { this.state.notes = ev.target.value; this.persistPresets(); } };
+    el.oninput = (ev) => {
+      const target = ev.target;
+      if (target && target.getAttribute('data-action') === 'bindNotes') {
+        this.state.notes = target.value;
+        this.persistPresets();
+        return;
+      }
+      if (target && target.classList.contains('cell-input') && target.getAttribute('data-colid') === 'account') {
+        const ri = +target.getAttribute('data-ri');
+        const ci = +target.getAttribute('data-ci');
+        this.queueAccountSuggestions(target, ri, ci);
+      }
+    };
   },
 
   /** Column resizing handlers */
@@ -1724,6 +1943,7 @@ if (action === 'addRow') { this.state.rows.push(this.blankRow()); this.render();
         if (colId === 'account') {
           row.accountCode = (t.value || '').split(/\s+/)[0] || '';
           row.accountId = null;
+          AccountSuggest.close();
           this.resolveAccount(row, t.value).finally(() => this.render());
           return;
         }
@@ -1781,7 +2001,22 @@ if (action === 'addRow') { this.state.rows.push(this.blankRow()); this.render();
         return;
       }
     }
-    
+
+    const target = e.target;
+    if (AccountSuggest.isOpenFor(target)) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); AccountSuggest.move(1); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); AccountSuggest.move(-1); return; }
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        AccountSuggest.selectCurrent();
+        return;
+      }
+      if (e.key === 'Escape') {
+        AccountSuggest.close();
+        return;
+      }
+    }
+
     // Global keyboard shortcuts - directly trigger actions (don't use button.click())
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
       const normalizedStatus = (this.state.status || '').toLowerCase();

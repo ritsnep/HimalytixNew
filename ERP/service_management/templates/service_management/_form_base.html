@@ -1,0 +1,22 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'libs/flatpickr/dist/flatpickr.min.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <h4 class="mb-3">{{ page_title|default:"Form" }}</h4>
+            {% block form_content %}{% endblock %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'libs/flatpickr/dist/flatpickr.min.js' %}"></script>
+<script>document.addEventListener('DOMContentLoaded', function() { flatpickr('.datepicker', { dateFormat: 'Y-m-d' }); });</script>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'libs/flatpickr/dist/flatpickr.min.css' %}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                        <h4 class="mb-sm-0 font-size-18">{{ page_title|default:"Form" }}</h4>
+                        <div class="page-title-right">
+                            <ol class="breadcrumb m-0">
+                                {% if breadcrumbs %}
+                                    {% for name, url in breadcrumbs %}
+                                        {% if not forloop.last %}
+                                            <li class="breadcrumb-item"><a href="{{ url }}">{{ name }}</a></li>
+                                        {% else %}
+                                            <li class="breadcrumb-item active">{{ name }}</li>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    <li class="breadcrumb-item active">{{ page_title|default:"Form" }}</li>
+                                {% endif %}
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-lg-12">
+                    {% block form_content %}{% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'libs/flatpickr/dist/flatpickr.min.js' %}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            $('.datepicker').datepicker({
+                format: 'yyyy-mm-dd',
+                autoclose: true,
+                todayHighlight: true
+            });
+        });
+    </script>
+{% endblock %}

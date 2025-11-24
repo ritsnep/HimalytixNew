@@ -1,0 +1,33 @@
+{% extends 'service_management/_list_base.html' %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Warranty Pool" %}{% endblock %}
+
+{% block list_title %}{% trans "Warranty Pool List" %}{% endblock %}
+
+{% block create_url %}{% url 'service_management:warrantypool_create' %}{% endblock %}
+
+{% block table_headers %}
+    <th>{% trans "Pool Name" %}</th>
+    <th>{% trans "Device Model" %}</th>
+    <th>{% trans "Location" %}</th>
+    <th>{% trans "Available" %}</th>
+    <th>{% trans "Allocated" %}</th>
+    <th>{% trans "Minimum" %}</th>
+    <th>{% trans "Active" %}</th>
+{% endblock %}
+
+{% block table_columns %}
+    { data: 'pool_name' },
+    { data: 'device_model__name' },
+    { data: 'location' },
+    { data: 'available_quantity', render: $.fn.dataTable.render.number(',', '.', 0) },
+    { data: 'allocated_quantity', render: $.fn.dataTable.render.number(',', '.', 0) },
+    { data: 'minimum_quantity', render: $.fn.dataTable.render.number(',', '.', 0) },
+    { 
+        data: 'is_active',
+        render: function(data) {
+            return data ? '<span class="badge bg-success">{% trans "Active" %}</span>' : '<span class="badge bg-secondary">{% trans "Inactive" %}</span>';
+        }
+    }
+{% endblock %}

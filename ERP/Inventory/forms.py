@@ -1,93 +1,265 @@
+# Inventory/forms.py
+"""
+Forms for Inventory vertical models
+Following the same pattern as accounting forms with BootstrapFormMixin
+"""
 from django import forms
-from django.forms import ModelForm
-from .models import ProductCategory, Product, Warehouse, Location
+from .models import (
+    Product, ProductCategory, Warehouse, Location,
+    PriceList, PriceListItem, CustomerPriceList, PromotionRule,
+    PickList, PickListLine, PackingSlip, Shipment, Backorder, RMA,
+    TransitWarehouse,InventoryItem, StockLedger
+)
+from enterprise.models import BillOfMaterial, BillOfMaterialItem
+from accounting.forms_mixin import BootstrapFormMixin
 from accounting.models import ChartOfAccount
 
-class ProductCategoryForm(ModelForm):
+
+class ProductCategoryForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = ProductCategory
-        fields = ['code', 'name', 'parent', 'is_active']
+        fields = ('code', 'name', 'parent', 'is_active')
+        widgets = {
+            'code': forms.TextInput(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'parent': forms.Select(attrs={'class': 'form-select'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
 
-    def __init__(self, *args, **kwargs):
-        organization = kwargs.pop('organization', None)
-        super().__init__(*args, **kwargs)
-        # Limit parent choices to categories within the same organization
-        if organization:
-            self.fields['parent'].queryset = ProductCategory.objects.filter(organization=organization)
-        # Add Tailwind classes
-        for field_name, field in self.fields.items():
-            field.widget.attrs['class'] = 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm'
 
-class ProductForm(ModelForm):
+class ProductForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Product
-        fields = [
+        fields = (
             'category', 'code', 'name', 'description', 'uom', 'sale_price',
             'cost_price', 'currency_code', 'income_account', 'expense_account',
             'inventory_account', 'is_inventory_item', 'min_order_quantity',
             'reorder_level', 'preferred_vendor_id', 'barcode', 'sku'
-        ]
+        )
+        widgets = {
+            'category': forms.Select(attrs={'class': 'form-select'}),
+            'code': forms.TextInput(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'uom': forms.TextInput(attrs={'class': 'form-control'}),
+            'sale_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'cost_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'currency_code': forms.TextInput(attrs={'class': 'form-control'}),
+            'income_account': forms.Select(attrs={'class': 'form-select'}),
+            'expense_account': forms.Select(attrs={'class': 'form-select'}),
+            'inventory_account': forms.Select(attrs={'class': 'form-select'}),
+            'is_inventory_item': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'min_order_quantity': forms.NumberInput(attrs={'class': 'form-control', 'step': '1'}),
+            'reorder_level': forms.NumberInput(attrs={'class': 'form-control', 'step': '1'}),
+            'preferred_vendor_id': forms.TextInput(attrs={'class': 'form-control'}),
+            'barcode': forms.TextInput(attrs={'class': 'form-control'}),
+            'sku': forms.TextInput(attrs={'class': 'form-control'}),
+        }
 
-    def __init__(self, *args, **kwargs):
-        organization = kwargs.pop('organization', None)
-        super().__init__(*args, **kwargs)
-        # Limit FK choices to objects within the same organization
-        if organization:
-            self.fields['category'].queryset = ProductCategory.objects.filter(organization=organization)
-            self.fields['income_account'].queryset = ChartOfAccount.objects.filter(organization=organization)
-            self.fields['expense_account'].queryset = ChartOfAccount.objects.filter(organization=organization)
-            self.fields['inventory_account'].queryset = ChartOfAccount.objects.filter(organization=organization)
 
-        # Add Tailwind classes
-        for field_name, field in self.fields.items():
-            if isinstance(field.widget, forms.CheckboxInput):
-                 field.widget.attrs['class'] = 'h-4 w-4 text-indigo-600 border-gray-300 rounded'
-            else:
-                field.widget.attrs['class'] = 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm'
-
-class WarehouseForm(ModelForm):
+class WarehouseForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Warehouse
-        fields = [
+        fields = (
             'code', 'name', 'address_line1', 'city', 'country_code',
             'inventory_account', 'is_active'
-        ]
+        )
+        widgets = {
+            'code': forms.TextInput(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'address_line1': forms.TextInput(attrs={'class': 'form-control'}),
+            'city': forms.TextInput(attrs={'class': 'form-control'}),
+            'country_code': forms.TextInput(attrs={'class': 'form-control'}),
+            'inventory_account': forms.Select(attrs={'class': 'form-select'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
 
-    def __init__(self, *args, **kwargs):
-        organization = kwargs.pop('organization', None)
-        super().__init__(*args, **kwargs)
-        # Limit FK choices to objects within the same organization
-        if organization:
-            self.fields['inventory_account'].queryset = ChartOfAccount.objects.filter(organization=organization)
 
-        # Add Tailwind classes
-        for field_name, field in self.fields.items():
-            if isinstance(field.widget, forms.CheckboxInput):
-                 field.widget.attrs['class'] = 'h-4 w-4 text-indigo-600 border-gray-300 rounded'
-            else:
-                field.widget.attrs['class'] = 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm'
-
-class LocationForm(ModelForm):
+class LocationForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Location
-        fields = ['warehouse', 'code', 'name', 'location_type', 'is_active']
-
-    def __init__(self, *args, **kwargs):
-        organization = kwargs.pop('organization', None)
-        super().__init__(*args, **kwargs)
-        # Limit warehouse choices to warehouses within the same organization
-        if organization:
-            self.fields['warehouse'].queryset = Warehouse.objects.filter(organization=organization)
-
-        # Add Tailwind classes
-        for field_name, field in self.fields.items():
-            if isinstance(field.widget, forms.CheckboxInput):
-                 field.widget.attrs['class'] = 'h-4 w-4 text-indigo-600 border-gray-300 rounded'
-            else:
-                field.widget.attrs['class'] = 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm'
+        fields = ('warehouse', 'code', 'name', 'location_type', 'is_active')
+        widgets = {
+            'warehouse': forms.Select(attrs={'class': 'form-select'}),
+            'code': forms.TextInput(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'location_type': forms.Select(attrs={'class': 'form-select'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
 
 
-class BaseStockTransactionForm(forms.Form):
+class PriceListForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = PriceList
+        fields = (
+            'code', 'name', 'description', 'currency_code',
+            'valid_from', 'valid_to', 'is_active'
+        )
+        widgets = {
+            'code': forms.TextInput(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'currency_code': forms.TextInput(attrs={'class': 'form-control'}),
+            'valid_from': forms.DateInput(attrs={'class': 'form-control datepicker'}),
+            'valid_to': forms.DateInput(attrs={'class': 'form-control datepicker'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
+class PriceListItemForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = PriceListItem
+        fields = ('product', 'unit_price', 'min_quantity', 'max_quantity', 'discount_percent')
+        widgets = {
+            'product': forms.Select(attrs={'class': 'form-select'}),
+            'unit_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'min_quantity': forms.NumberInput(attrs={'class': 'form-control', 'step': '1'}),
+            'max_quantity': forms.NumberInput(attrs={'class': 'form-control', 'step': '1'}),
+            'discount_percent': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+        }
+
+
+class PromotionRuleForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = PromotionRule
+        fields = (
+            'code', 'name', 'description', 'promo_type',
+            'discount_value', 'min_purchase_amount', 'valid_from', 'valid_to',
+            'is_active', 'max_uses'
+        )
+        widgets = {
+            'code': forms.TextInput(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'promo_type': forms.Select(attrs={'class': 'form-select'}),
+            'discount_value': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'min_purchase_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'valid_from': forms.DateTimeInput(attrs={'class': 'form-control datepicker'}),
+            'valid_to': forms.DateTimeInput(attrs={'class': 'form-control datepicker'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'max_uses': forms.NumberInput(attrs={'class': 'form-control'}),
+        }
+
+
+class PickListForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = PickList
+        fields = (
+            'pick_number', 'warehouse', 'order_reference',
+            'assigned_to', 'pick_date', 'status', 'priority', 'notes'
+        )
+        widgets = {
+            'pick_number': forms.TextInput(attrs={'class': 'form-control', 'readonly': True}),
+            'warehouse': forms.Select(attrs={'class': 'form-select'}),
+            'order_reference': forms.TextInput(attrs={'class': 'form-control'}),
+            'assigned_to': forms.NumberInput(attrs={'class': 'form-control'}),
+            'pick_date': forms.DateTimeInput(attrs={'class': 'form-control datepicker'}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'priority': forms.NumberInput(attrs={'class': 'form-control'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+
+class PickListLineForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = PickListLine
+        fields = ('product', 'location', 'batch', 'quantity_ordered', 'quantity_picked', 'line_number')
+        widgets = {
+            'product': forms.Select(attrs={'class': 'form-select'}),
+            'location': forms.Select(attrs={'class': 'form-select'}),
+            'batch': forms.Select(attrs={'class': 'form-select'}),
+            'quantity_ordered': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'quantity_picked': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'line_number': forms.NumberInput(attrs={'class': 'form-control'}),
+        }
+
+
+class ShipmentForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = Shipment
+        fields = (
+            'shipment_number', 'order_reference', 'ship_from_warehouse', 'ship_to_address',
+            'carrier_name', 'tracking_number', 'service_type', 'estimated_delivery',
+            'actual_delivery', 'shipping_cost', 'status', 'notes'
+        )
+        widgets = {
+            'shipment_number': forms.TextInput(attrs={'class': 'form-control', 'readonly': True}),
+            'order_reference': forms.TextInput(attrs={'class': 'form-control'}),
+            'ship_from_warehouse': forms.Select(attrs={'class': 'form-select'}),
+            'ship_to_address': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'carrier_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'tracking_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'service_type': forms.TextInput(attrs={'class': 'form-control'}),
+            'estimated_delivery': forms.DateInput(attrs={'class': 'form-control datepicker'}),
+            'actual_delivery': forms.DateInput(attrs={'class': 'form-control datepicker'}),
+            'shipping_cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+
+class RMAForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = RMA
+        fields = (
+            'rma_number', 'customer_id', 'original_order', 'original_invoice',
+            'reason', 'description', 'status', 'resolution',
+            'refund_amount', 'restocking_fee', 'notes'
+        )
+        widgets = {
+            'rma_number': forms.TextInput(attrs={'class': 'form-control', 'readonly': True}),
+            'customer_id': forms.NumberInput(attrs={'class': 'form-control'}),
+            'original_order': forms.TextInput(attrs={'class': 'form-control'}),
+            'original_invoice': forms.TextInput(attrs={'class': 'form-control'}),
+            'reason': forms.Select(attrs={'class': 'form-select'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'resolution': forms.TextInput(attrs={'class': 'form-control'}),
+            'refund_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'restocking_fee': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+
+class BillOfMaterialForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = BillOfMaterial
+        fields = ('name', 'product_name', 'revision')
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'product_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'revision': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+
+class BOMLineForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = BillOfMaterialItem
+        fields = ('component_name', 'quantity', 'uom')
+        widgets = {
+            'component_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.0001'}),
+            'uom': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+
+# Inline formsets
+PickListLineFormSet = forms.inlineformset_factory(
+    PickList, PickListLine,
+    form=PickListLineForm,
+    extra=1,
+    can_delete=True
+)
+
+BOMLineFormSet = forms.inlineformset_factory(
+    BillOfMaterial, BillOfMaterialItem,
+    form=BOMLineForm,
+    extra=1,
+    can_delete=True
+)
+
+
+class BaseStockTransactionForm(BootstrapFormMixin, forms.Form):
     product = forms.ModelChoiceField(queryset=Product.objects.none(), label="Product")
     warehouse = forms.ModelChoiceField(queryset=Warehouse.objects.none(), label="Warehouse")
     location = forms.ModelChoiceField(
@@ -128,7 +300,7 @@ class BaseStockTransactionForm(forms.Form):
             ).order_by('warehouse__name', 'code')
 
         self.fields['location'].empty_label = "Optional"
-        self._apply_tailwind_styles()
+        self.fields['quantity'].widget.attrs['step'] = '0.0001'
 
     def clean(self):
         cleaned_data = super().clean()
@@ -142,32 +314,15 @@ class BaseStockTransactionForm(forms.Form):
             self.add_error('location', 'Select a location that belongs to the chosen warehouse.')
         return cleaned_data
 
-    def _apply_tailwind_styles(self):
-        for field in self.fields.values():
-            widget = field.widget
-            if isinstance(widget, forms.CheckboxInput):
-                widget.attrs['class'] = 'h-4 w-4 text-indigo-600 border-gray-300 rounded'
-            else:
-                base_class = widget.attrs.get('class', '')
-                widget.attrs['class'] = (
-                    base_class + ' mt-1 block w-full rounded-md border-gray-300 '
-                    'shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm'
-                ).strip()
-        # Fine tune numeric inputs for quicker entry
-        self.fields['quantity'].widget.attrs['step'] = '0.0001'
-
 
 class StockReceiptForm(BaseStockTransactionForm):
     unit_cost = forms.DecimalField(
         max_digits=19,
         decimal_places=4,
         min_value=0,
-        label="Unit Cost"
+        label="Unit Cost",
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.0001'})
     )
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['unit_cost'].widget.attrs.setdefault('step', '0.0001')
 
 
 class StockIssueForm(BaseStockTransactionForm):

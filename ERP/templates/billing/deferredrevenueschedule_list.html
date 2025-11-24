@@ -1,0 +1,24 @@
+{% extends 'billing/_list_base.html' %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Deferred Revenue Schedule" %}{% endblock %}
+
+{% block list_title %}{% trans "Deferred Revenue Schedule List" %}{% endblock %}
+
+{% block create_url %}{% url 'billing:deferredrevenueschedule_create' %}{% endblock %}
+
+{% block table_headers %}
+    <th>{% trans "Deferred Revenue" %}</th>
+    <th>{% trans "Period Start" %}</th>
+    <th>{% trans "Period End" %}</th>
+    <th>{% trans "Amount" %}</th>
+    <th>{% trans "Status" %}</th>
+{% endblock %}
+
+{% block table_columns %}
+    { data: 'deferred_revenue__contract_number' },
+    { data: 'period_start' },
+    { data: 'period_end' },
+    { data: 'amount', render: $.fn.dataTable.render.number(',', '.', 2) },
+    { data: 'status' }
+{% endblock %}

@@ -49,6 +49,7 @@ urlpatterns = [
     path('account/', include('account.urls')),
     path('inventory/', include('Inventory.urls')),
     path('billing/', include('billing.urls', namespace='billing')),
+    path('service-management/', include('service_management.urls', namespace='service_management')),
     
     # Include accounting app - namespace comes from app_name in accounting.urls
     path('accounting/', include('accounting.urls')),
@@ -83,6 +84,17 @@ urlpatterns = [
     
     # API v1 (versioned endpoints)
     path("api/v1/", include("api.v1.urls")),
+    
+    # Vertical-specific API endpoints
+    path("api/inventory/", include("Inventory.api.urls")),
+    path("api/billing/", include("billing.api.urls")),
+    path("api/service-management/", include("service_management.api.urls")),
+    
+    # Vertical Dashboard endpoints (API)
+    path("api/dashboards/", include("dashboard.api.dashboard_urls")),
+    
+    # Vertical Dashboard HTML page (accessible from sidebar)
+    path("dashboards/vertical/", include("dashboard.views_vertical.urls")),
 
     # Streamlit V2 login bootstrap
     path("V2/login", views.v2_login_redirect, name="v2_login"),

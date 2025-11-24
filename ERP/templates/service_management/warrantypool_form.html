@@ -1,0 +1,20 @@
+{% extends 'service_management/_form_base.html' %}
+{% load i18n %}
+
+{% block page_title %}
+    {% if form.instance.pk %}
+        {% trans "Edit Warranty Pool" %}
+    {% else %}
+        {% trans "New Warranty Pool" %}
+    {% endif %}
+{% endblock %}
+
+{% block form_title %}
+    {% if form.instance.pk %}
+        {% trans "Edit Warranty Pool" %}: {{ form.instance.pool_name }}
+    {% else %}
+        {% trans "Create New Warranty Pool" %}
+    {% endif %}
+{% endblock %}
+
+{% block cancel_url %}{% url 'service_management:warrantypool_list' %}{% endblock %}

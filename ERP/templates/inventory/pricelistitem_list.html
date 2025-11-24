@@ -1,0 +1,24 @@
+{% extends 'Inventory/_list_base.html' %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Price List Items" %}{% endblock %}
+
+{% block list_title %}{% trans "Price List Item List" %}{% endblock %}
+
+{% block create_url %}{% url 'inventory:pricelistitem_create' %}{% endblock %}
+
+{% block table_headers %}
+    <th>{% trans "Price List" %}</th>
+    <th>{% trans "Product" %}</th>
+    <th>{% trans "Unit Price" %}</th>
+    <th>{% trans "Min Quantity" %}</th>
+    <th>{% trans "Discount %" %}</th>
+{% endblock %}
+
+{% block table_columns %}
+    { data: 'price_list__name' },
+    { data: 'product__name' },
+    { data: 'unit_price', render: $.fn.dataTable.render.number(',', '.', 2) },
+    { data: 'min_quantity', render: $.fn.dataTable.render.number(',', '.', 0) },
+    { data: 'discount_percent', render: $.fn.dataTable.render.number(',', '.', 2) }
+{% endblock %}

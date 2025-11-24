@@ -1,0 +1,26 @@
+{% extends 'billing/_list_base.html' %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Milestone Revenue" %}{% endblock %}
+
+{% block list_title %}{% trans "Milestone Revenue List" %}{% endblock %}
+
+{% block create_url %}{% url 'billing:milestonerevenue_create' %}{% endblock %}
+
+{% block table_headers %}
+    <th>{% trans "Milestone Number" %}</th>
+    <th>{% trans "Customer" %}</th>
+    <th>{% trans "Description" %}</th>
+    <th>{% trans "Amount" %}</th>
+    <th>{% trans "Status" %}</th>
+    <th>{% trans "Completion Date" %}</th>
+{% endblock %}
+
+{% block table_columns %}
+    { data: 'milestone_number' },
+    { data: 'customer_id' },
+    { data: 'description' },
+    { data: 'amount', render: $.fn.dataTable.render.number(',', '.', 2) },
+    { data: 'status' },
+    { data: 'completion_date', defaultContent: '-' }
+{% endblock %}

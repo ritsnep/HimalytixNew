@@ -1,0 +1,26 @@
+{% extends 'billing/_list_base.html' %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Subscription Invoices" %}{% endblock %}
+
+{% block list_title %}{% trans "Subscription Invoice List" %}{% endblock %}
+
+{% block create_url %}{% url 'billing:subscriptioninvoice_create' %}{% endblock %}
+
+{% block table_headers %}
+    <th>{% trans "Invoice Number" %}</th>
+    <th>{% trans "Subscription" %}</th>
+    <th>{% trans "Period Start" %}</th>
+    <th>{% trans "Period End" %}</th>
+    <th>{% trans "Amount" %}</th>
+    <th>{% trans "Status" %}</th>
+{% endblock %}
+
+{% block table_columns %}
+    { data: 'invoice_number' },
+    { data: 'subscription__subscription_number' },
+    { data: 'period_start' },
+    { data: 'period_end' },
+    { data: 'invoice_amount', render: $.fn.dataTable.render.number(',', '.', 2) },
+    { data: 'status' }
+{% endblock %}

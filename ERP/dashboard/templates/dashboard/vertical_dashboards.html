@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vertical Dashboards - ERP System</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            background: #ecf0f1;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .tab:hover {
+            background: #d5dbdb;
+        }
+        
+        .tab.active {
+            background: #3498db;
+            color: white;
+        }
+        
+        .dashboard {
+            display: none;
+        }
+        
+        .dashboard.active {
+            display: block;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .metric-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .metric-card h3 {
+            color: #7f8c8d;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        
+        .metric-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        
+        .metric-value.good {
+            color: #27ae60;
+        }
+        
+        .metric-value.warning {
+            color: #f39c12;
+        }
+        
+        .metric-value.bad {
+            color: #e74c3c;
+        }
+        
+        .metric-subtitle {
+            font-size: 12px;
+            color: #95a5a6;
+        }
+        
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .chart-container h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+        
+        .date-selector {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+        }
+        
+        .date-selector label {
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+        
+        .date-selector input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .refresh-btn {
+            padding: 8px 16px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: auto;
+        }
+        
+        .refresh-btn:hover {
+            background: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Vertical Dashboards</h1>
+            <p>Real-time KPIs for your industry vertical</p>
+            
+            <div class="date-selector">
+                <label>Start Date:</label>
+                <input type="date" id="startDate">
+                
+                <label>End Date:</label>
+                <input type="date" id="endDate">
+                
+                <button class="refresh-btn" onclick="refreshDashboard()">🔄 Refresh</button>
+            </div>
+            
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('distributor')">📦 Distributor</button>
+                <button class="tab" onclick="switchTab('retailer')">🛍️ Retailer</button>
+                <button class="tab" onclick="switchTab('manufacturer')">🏭 Manufacturer</button>
+                <button class="tab" onclick="switchTab('saas')">☁️ SaaS</button>
+                <button class="tab" onclick="switchTab('service')">🔧 Service</button>
+                <button class="tab" onclick="switchTab('unified')">🌐 Unified</button>
+            </div>
+        </header>
+        
+        <!-- DISTRIBUTOR DASHBOARD -->
+        <div id="distributor" class="dashboard active">
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h3>DIFOT</h3>
+                    <div class="metric-value good" id="difot-value">--</div>
+                    <div class="metric-subtitle" id="difot-subtitle">--</div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3>Inventory Turnover</h3>
+                    <div class="metric-value" id="turnover-value">--</div>
+                    <div class="metric-subtitle" id="turnover-subtitle">--</div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3>Order Fill Rate</h3>
+                    <div class="metric-value good" id="fillrate-value">--</div>
+                    <div class="metric-subtitle" id="fillrate-subtitle">--</div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3>Days Inventory</h3>
+                    <div class="metric-value" id="days-inventory-value">--</div>
+                    <div class="metric-subtitle">Average days to sell</div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <h3>DIFOT Trend (12 Weeks)</h3>
+                <canvas id="difotTrendChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- RETAILER DASHBOARD -->
+        <div id="retailer" class="dashboard">
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h3>GMROI</h3>
+                    <div class="metric-value good" id="gmroi-value">--</div>
+                    <div class="metric-subtitle">Target: 2.5 - 4.0</div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3>Sell-Through Rate</h3>
+                    <div class="metric-value" id="sellthrough-value">--</div>
+                    <div class="metric-subtitle" id="sellthrough-subtitle">--</div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3>Gross Margin</h3>
+                    <div class="metric-value" id="margin-value">--</div>
+                    <div class="metric-subtitle">Total profit</div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <h3>Top Selling Products</h3>
+                <canvas id="topProductsChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- MANUFACTURER DASHBOARD -->
+        <div id="manufacturer" class="dashboard">
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h3>OEE</h3>
+                    <div class="metric-value" id="oee-value">--</div>
+                    <div class="metric-subtitle">Target: 85%+</div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3>Availability</h3>
+                    <div class="metric-value good" id="availability-value">--</div>
+                    <div class="metric-subtitle">Uptime %</div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3>Performance</h3>
+                    <div class="metric-value good" id="performance-value">--</div>
+                    <div class="metric-subtitle">Output vs ideal</div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3>Quality (Yield)</h3>
+                    <div class="metric-value" id="quality-value">--</div>
+                    <div class="metric-subtitle" id="quality-subtitle">--</div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <h3>OEE Trend (30 Days)</h3>
+                <canvas id="oeeTrendChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- SAAS DASHBOARD -->
+        <div id="saas" class="dashboard">
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h3>MRR</h3>
+                    <div class="metric-value good" id="mrr-value">--</div>
+                    <div class="metric-subtitle" id="mrr-subtitle">--</div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3>ARR</h3>
+                    <div class="metric-value good" id="arr-value">--</div>
+                    <div class="metric-subtitle">Annual recurring</div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3>Churn Rate</h3>
+                    <div class="metric-value" id="churn-value">--</div>
+                    <div class="metric-subtitle" id="churn-subtitle">--</div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3>LTV:CAC</h3>
+                    <div class="metric-value" id="ltvcac-value">--</div>
+                    <div class="metric-subtitle">Target: 3:1+</div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <h3>MRR Trend (12 Months)</h3>
+                <canvas id="mrrTrendChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- SERVICE DASHBOARD -->
+        <div id="service" class="dashboard">
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h3>SLA Compliance</h3>
+                    <div class="metric-value" id="sla-value">--</div>
+                    <div class="metric-subtitle" id="sla-subtitle">--</div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3>MTTR</h3>
+                    <div class="metric-value" id="mttr-value">--</div>
+                    <div class="metric-subtitle">Mean time to resolution</div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3>Total Tickets</h3>
+                    <div class="metric-value" id="tickets-value">--</div>
+                    <div class="metric-subtitle" id="tickets-subtitle">--</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- UNIFIED DASHBOARD -->
+        <div id="unified" class="dashboard">
+            <div class="loading">Loading all vertical metrics...</div>
+        </div>
+    </div>
+    
+    <script>
+        // Configuration
+        const API_BASE = '/api/dashboards';
+        let charts = {};
+        let currentVertical = 'distributor';
+        
+        // Initialize date inputs
+        const today = new Date();
+        const thirtyDaysAgo = new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000));
+        
+        document.getElementById('endDate').valueAsDate = today;
+        document.getElementById('startDate').valueAsDate = thirtyDaysAgo;
+        
+        // Switch tabs
+        function switchTab(vertical) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update dashboard sections
+            document.querySelectorAll('.dashboard').forEach(dash => {
+                dash.classList.remove('active');
+            });
+            document.getElementById(vertical).classList.add('active');
+            
+            currentVertical = vertical;
+            loadDashboard(vertical);
+        }
+        
+        // Refresh current dashboard
+        function refreshDashboard() {
+            loadDashboard(currentVertical);
+        }
+        
+        // Format currency
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(value);
+        }
+        
+        // Load dashboard data
+        async function loadDashboard(vertical) {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            try {
+                const response = await fetch(`${API_BASE}/${vertical}/?start_date=${startDate}&end_date=${endDate}`);
+                const data = await response.json();
+                
+                // Render based on vertical
+                switch(vertical) {
+                    case 'distributor':
+                        renderDistributorDashboard(data);
+                        break;
+                    case 'retailer':
+                        renderRetailerDashboard(data);
+                        break;
+                    case 'manufacturer':
+                        renderManufacturerDashboard(data);
+                        break;
+                    case 'saas':
+                        renderSaaSDashboard(data);
+                        break;
+                    case 'service':
+                        renderServiceDashboard(data);
+                        break;
+                    case 'unified':
+                        renderUnifiedDashboard(data);
+                        break;
+                }
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+            }
+        }
+        
+        // Render distributor dashboard
+        function renderDistributorDashboard(data) {
+            const difot = data.difot.difot_percentage;
+            document.getElementById('difot-value').textContent = difot.toFixed(1) + '%';
+            document.getElementById('difot-value').className = 'metric-value ' + 
+                (difot >= 95 ? 'good' : difot >= 90 ? 'warning' : 'bad');
+            document.getElementById('difot-subtitle').textContent = 
+                `${data.difot.on_time_in_full} of ${data.difot.total_orders} orders`;
+            
+            document.getElementById('turnover-value').textContent = 
+                data.inventory_turnover.turnover_ratio.toFixed(1) + 'x';
+            document.getElementById('turnover-subtitle').textContent = 
+                `COGS: ${formatCurrency(data.inventory_turnover.cogs)}`;
+            
+            const fillRate = data.order_fill_rate.fill_rate_percentage;
+            document.getElementById('fillrate-value').textContent = fillRate.toFixed(1) + '%';
+            document.getElementById('fillrate-subtitle').textContent = 
+                `${data.order_fill_rate.filled_lines} of ${data.order_fill_rate.total_lines} lines`;
+            
+            document.getElementById('days-inventory-value').textContent = 
+                data.inventory_turnover.days_inventory.toFixed(0) + ' days';
+            
+            // Load DIFOT trend chart
+            loadDIFOTTrend();
+        }
+        
+        // Render retailer dashboard
+        function renderRetailerDashboard(data) {
+            const gmroi = data.gmroi.gmroi;
+            document.getElementById('gmroi-value').textContent = gmroi.toFixed(2);
+            document.getElementById('gmroi-value').className = 'metric-value ' + 
+                (gmroi >= 2.5 ? 'good' : gmroi >= 2.0 ? 'warning' : 'bad');
+            
+            const sellThrough = data.sell_through.sell_through_percentage;
+            document.getElementById('sellthrough-value').textContent = sellThrough.toFixed(1) + '%';
+            document.getElementById('sellthrough-subtitle').textContent = 
+                `${data.sell_through.units_sold} of ${data.sell_through.units_received} units`;
+            
+            document.getElementById('margin-value').textContent = 
+                formatCurrency(data.gmroi.gross_margin);
+            
+            // Render top products chart
+            renderTopProductsChart(data.top_products);
+        }
+        
+        // Render manufacturer dashboard
+        function renderManufacturerDashboard(data) {
+            const oee = data.oee.oee_percentage;
+            document.getElementById('oee-value').textContent = oee.toFixed(1) + '%';
+            document.getElementById('oee-value').className = 'metric-value ' + 
+                (oee >= 85 ? 'good' : oee >= 60 ? 'warning' : 'bad');
+            
+            document.getElementById('availability-value').textContent = 
+                data.oee.availability.toFixed(1) + '%';
+            document.getElementById('performance-value').textContent = 
+                data.oee.performance.toFixed(1) + '%';
+            document.getElementById('quality-value').textContent = 
+                data.oee.quality.toFixed(1) + '%';
+            document.getElementById('quality-subtitle').textContent = 
+                `Yield: ${data.yield.yield_percentage.toFixed(1)}%`;
+            
+            // Load OEE trend chart
+            loadOEETrend();
+        }
+        
+        // Render SaaS dashboard
+        function renderSaaSDashboard(data) {
+            document.getElementById('mrr-value').textContent = 
+                formatCurrency(data.mrr_arr.mrr);
+            document.getElementById('mrr-subtitle').textContent = 
+                `${data.mrr_arr.total_subscriptions} subscriptions`;
+            
+            document.getElementById('arr-value').textContent = 
+                formatCurrency(data.mrr_arr.arr);
+            
+            const churn = data.churn.customer_churn_rate;
+            document.getElementById('churn-value').textContent = churn.toFixed(1) + '%';
+            document.getElementById('churn-value').className = 'metric-value ' + 
+                (churn <= 5 ? 'good' : churn <= 10 ? 'warning' : 'bad');
+            document.getElementById('churn-subtitle').textContent = 
+                `${data.churn.customers_lost} customers lost`;
+            
+            const ltvCac = data.ltv_cac.ltv_cac_ratio;
+            document.getElementById('ltvcac-value').textContent = ltvCac.toFixed(1) + ':1';
+            document.getElementById('ltvcac-value').className = 'metric-value ' + 
+                (ltvCac >= 3 ? 'good' : ltvCac >= 2 ? 'warning' : 'bad');
+            
+            // Load MRR trend chart
+            loadMRRTrend();
+        }
+        
+        // Render service dashboard
+        function renderServiceDashboard(data) {
+            const sla = data.sla_compliance.sla_compliance_rate;
+            document.getElementById('sla-value').textContent = sla.toFixed(1) + '%';
+            document.getElementById('sla-value').className = 'metric-value ' + 
+                (sla >= 95 ? 'good' : sla >= 90 ? 'warning' : 'bad');
+            document.getElementById('sla-subtitle').textContent = 
+                `${data.sla_compliance.within_sla} of ${data.sla_compliance.total_tickets} tickets`;
+            
+            document.getElementById('mttr-value').textContent = 
+                data.mttr.mttr_hours.toFixed(1) + ' hrs';
+            
+            document.getElementById('tickets-value').textContent = 
+                data.sla_compliance.total_tickets;
+            document.getElementById('tickets-subtitle').textContent = 
+                `${data.mttr.total_resolved} resolved`;
+        }
+        
+        // Load trend charts
+        async function loadDIFOTTrend() {
+            const response = await fetch(`${API_BASE}/distributor/difot-trend/`);
+            const data = await response.json();
+            
+            if (charts.difotTrend) charts.difotTrend.destroy();
+            
+            const ctx = document.getElementById('difotTrendChart').getContext('2d');
+            charts.difotTrend = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.trend.map(d => d.week),
+                    datasets: [{
+                        label: 'DIFOT %',
+                        data: data.trend.map(d => d.difot_percentage),
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 80,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderTopProductsChart(products) {
+            if (charts.topProducts) charts.topProducts.destroy();
+            
+            const ctx = document.getElementById('topProductsChart').getContext('2d');
+            charts.topProducts = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: products.map(p => p.product_name),
+                    datasets: [{
+                        label: 'Revenue',
+                        data: products.map(p => p.revenue),
+                        backgroundColor: '#27ae60'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    indexAxis: 'y'
+                }
+            });
+        }
+        
+        async function loadOEETrend() {
+            const response = await fetch(`${API_BASE}/manufacturer/oee-trend/`);
+            const data = await response.json();
+            
+            if (charts.oeeTrend) charts.oeeTrend.destroy();
+            
+            const ctx = document.getElementById('oeeTrendChart').getContext('2d');
+            charts.oeeTrend = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.trend.map(d => d.date),
+                    datasets: [{
+                        label: 'OEE %',
+                        data: data.trend.map(d => d.oee_percentage),
+                        borderColor: '#e74c3c',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true
+                }
+            });
+        }
+        
+        async function loadMRRTrend() {
+            const response = await fetch(`${API_BASE}/saas/mrr-trend/`);
+            const data = await response.json();
+            
+            if (charts.mrrTrend) charts.mrrTrend.destroy();
+            
+            const ctx = document.getElementById('mrrTrendChart').getContext('2d');
+            charts.mrrTrend = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.trend.map(d => d.month),
+                    datasets: [{
+                        label: 'MRR',
+                        data: data.trend.map(d => d.mrr),
+                        borderColor: '#9b59b6',
+                        backgroundColor: 'rgba(155, 89, 182, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Load initial dashboard
+        loadDashboard('distributor');
+    </script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+{% extends 'Inventory/_list_base.html' %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Pick Lists" %}{% endblock %}
+
+{% block list_title %}{% trans "Pick List" %}{% endblock %}
+
+{% block create_url %}{% url 'inventory:picklist_create' %}{% endblock %}
+
+{% block table_headers %}
+    <th>{% trans "Number" %}</th>
+    <th>{% trans "Warehouse" %}</th>
+    <th>{% trans "Status" %}</th>
+    <th>{% trans "Created Date" %}</th>
+    <th>{% trans "Assigned To" %}</th>
+{% endblock %}
+
+{% block table_columns %}
+    { data: 'pick_number' },
+    { data: 'warehouse__name' },
+    { data: 'status' },
+    { data: 'created_date' },
+    { data: 'assigned_to', defaultContent: '-' }
+{% endblock %}

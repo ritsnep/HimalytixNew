@@ -1,0 +1,20 @@
+{% extends 'Inventory/_form_base.html' %}
+{% load i18n %}
+
+{% block page_title %}
+    {% if form.instance.pk %}
+        {% trans "Edit Promotion Rule" %}
+    {% else %}
+        {% trans "New Promotion Rule" %}
+    {% endif %}
+{% endblock %}
+
+{% block form_title %}
+    {% if form.instance.pk %}
+        {% trans "Edit Promotion Rule" %}: {{ form.instance.name }}
+    {% else %}
+        {% trans "Create New Promotion Rule" %}
+    {% endif %}
+{% endblock %}
+
+{% block cancel_url %}{% url 'inventory:promotionrule_list' %}{% endblock %}

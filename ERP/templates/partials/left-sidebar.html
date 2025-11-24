@@ -336,13 +336,14 @@
                         <span data-key="t-inventory">Inventory</span>
                     </a>
                     <ul class="sub-menu" aria-expanded="false">
-                        <li><a href="{% url 'inventory:dashboard' %}">Dashboard</a></li>
-                        <li><a href="{% url 'inventory:products' %}">Products</a></li>
-                        <li><a href="{% url 'inventory:categories' %}">Categories</a></li>
-                        <li><a href="{% url 'inventory:warehouses' %}">Warehouses</a></li>
-                        <li><a href="{% url 'inventory:stock_movements' %}">Stock Movements</a></li>
-                        <li><a href="{% url 'inventory:stock_receipt_create' %}">Record Stock Receipt</a></li>
-                        <li><a href="{% url 'inventory:stock_issue_create' %}">Record Stock Issue</a></li>
+                        <li><a href="{% url 'inventory:product_list' %}">Products</a></li>
+                        <li><a href="{% url 'inventory:product_category_list' %}">Categories</a></li>
+                        <li><a href="{% url 'inventory:warehouse_list' %}">Warehouses</a></li>
+                        <li><a href="{% url 'inventory:location_list' %}">Locations</a></li>
+                        <li><a href="{% url 'inventory:pricelist_list' %}">Price Lists</a></li>
+                        <li><a href="{% url 'inventory:picklist_list' %}">Pick Lists</a></li>
+                        <li><a href="{% url 'inventory:shipment_list' %}">Shipments</a></li>
+                        <li><a href="{% url 'inventory:rma_list' %}">RMAs</a></li>
                     </ul>
                 </li>
 
@@ -379,6 +380,37 @@
                         <li><a href="{% url 'enterprise:webhooksubscription_list' %}">Webhooks</a></li>
                         <li><a href="{% url 'enterprise:observability' %}">Observability</a></li>
                         <li><a href="{% url 'enterprise:localeconfig_list' %}">Localization &amp; Tax</a></li>
+                    </ul>
+                </li>
+
+                <!-- Billing Section -->
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="credit-card"></i>
+                        <span data-key="t-billing">Billing</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="{% url 'billing:subscriptionplan_list' %}">Subscription Plans</a></li>
+                        <li><a href="{% url 'billing:subscription_list' %}">Subscriptions</a></li>
+                        <li><a href="{% url 'billing:subscriptioninvoice_list' %}">Invoices</a></li>
+                        <li><a href="{% url 'billing:deferredrevenue_list' %}">Deferred Revenue</a></li>
+                        <li><a href="{% url 'billing:milestonerevenue_list' %}">Milestone Revenue</a></li>
+                        <li><a href="{% url 'billing:subscriptionusage_list' %}">Usage Tracking</a></li>
+                    </ul>
+                </li>
+
+                <!-- Service Management Section -->
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="tool"></i>
+                        <span data-key="t-service">Service Management</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="{% url 'service_management:serviceticket_list' %}">Service Tickets</a></li>
+                        <li><a href="{% url 'service_management:servicecontract_list' %}">Service Contracts</a></li>
+                        <li><a href="{% url 'service_management:devicelifecycle_list' %}">Device Lifecycle</a></li>
+                        <li><a href="{% url 'service_management:warrantypool_list' %}">Warranty Pool</a></li>
+                        <li><a href="{% url 'service_management:rmahardware_list' %}">RMA Hardware</a></li>
                     </ul>
                 </li>
 

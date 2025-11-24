@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leo Gas Udhyog - Management System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --light-color: #ecf0f1;
+            --success-color: #27ae60;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+        }
+        
+        .sidebar {
+            background-color: var(--primary-color);
+            color: white;
+            height: 100vh;
+            position: fixed;
+            padding-top: 20px;
+            overflow-y: auto;
+        }
+        
+        .sidebar a {
+            color: var(--light-color);
+            display: block;
+            padding: 12px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 5px 10px;
+            transition: all 0.3s;
+        }
+        
+        .sidebar a:hover, .sidebar a.active {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+        }
+        
+        .dashboard-card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s;
+            margin-bottom: 20px;
+        }
+        
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card-header {
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 10px 10px 0 0 !important;
+        }
+        
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+        }
+        
+        .stat-card.primary {
+            background-color: var(--primary-color);
+        }
+        
+        .stat-card.success {
+            background-color: var(--success-color);
+        }
+        
+        .stat-card.warning {
+            background-color: #f39c12;
+        }
+        
+        .stat-card.danger {
+            background-color: var(--accent-color);
+        }
+        
+        .table-responsive {
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .nav-tabs .nav-link.active {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+        }
+        
+        .nav-tabs .nav-link {
+            color: var(--primary-color);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border: none;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+        }
+        
+        .logo {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .logo h3 {
+            font-weight: bold;
+            margin: 0;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 20px;
+        }
+        
+        .data-entry-form {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .form-section {
+            border-left: 4px solid var(--secondary-color);
+            padding-left: 15px;
+            margin: 20px 0;
+        }
+        
+        .transaction-table {
+            font-size: 0.9rem;
+        }
+        
+        .transaction-table th {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+            .main-content {
+                margin-left: 0;
+            }
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-2 sidebar d-none d-md-block">
+                <div class="logo">
+                    <h3>Leo Gas Udhyog</h3>
+                    <p class="mb-0">Birgunj, Nepal</p>
+                </div>
+                <a href="#" class="active" onclick="showSection('dashboard')">Dashboard</a>
+                <a href="#" onclick="showSection('data-entry')">Data Entry</a>
+                <a href="#" onclick="showSection('accounting')">Accounting</a>
+                <a href="#" onclick="showSection('inventory')">Inventory Management</a>
+                <a href="#" onclick="showSection('dealers')">Dealer Management</a>
+                <a href="#" onclick="showSection('purchases')">Purchases (NOC)</a>
+                <a href="#" onclick="showSection('logistics')">Logistics</a>
+                <a href="#" onclick="showSection('reports')">Financial Reports</a>
+                <a href="#" onclick="showSection('settings')">Settings</a>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-md-10 main-content">
+                <!-- Dashboard Section -->
+                <div id="dashboard" class="content-section">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2>Dashboard</h2>
+                        <div class="btn-group">
+                            <button class="btn btn-outline-primary" onclick="setDateRange('today')">Today</button>
+                            <button class="btn btn-outline-primary" onclick="setDateRange('week')">This Week</button>
+                            <button class="btn btn-outline-primary active" onclick="setDateRange('month')">This Month</button>
+                            <button class="btn btn-outline-primary" onclick="setDateRange('year')">This Year</button>
+                        </div>
+                    </div>
+
+                    <!-- Stats Cards -->
+                    <div class="row mb-4" id="stats-container">
+                        <!-- Stats will be dynamically loaded here -->
+                    </div>
+
+                    <!-- Charts Row -->
+                    <div class="row mb-4">
+                        <div class="col-md-8">
+                            <div class="dashboard-card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Revenue & Expenses Trend</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="revenueExpenseChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="dashboard-card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Inventory Status</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="inventoryChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Transactions & Top Dealers -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="dashboard-card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Recent Transactions</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover" id="recent-transactions">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Dealer</th>
+                                                    <th>Amount</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <!-- Transactions will be loaded here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="dashboard-card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Top Performing Dealers</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="topDealersChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Entry Section -->
+                <div id="data-entry" class="content-section hidden">
+                    <h2 class="mb-4">Data Entry</h2>
+                    
+                    <ul class="nav nav-tabs mb-4" id="dataEntryTabs">
+                        <li class="nav-item">
+                            <a class="nav-link active" onclick="showDataEntryTab('sales')">Sales</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" onclick="showDataEntryTab('purchases')">Purchases</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" onclick="showDataEntryTab('receipts')">Receipts</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" onclick="showDataEntryTab('payments')">Payments</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" onclick="showDataEntryTab('debit-notes')">Debit Notes</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" onclick="showDataEntryTab('credit-notes')">Credit Notes</a>
+                        </li>
+                    </ul>
+                    
+                    <div id="data-entry-content">
+                        <!-- Content will be dynamically loaded here -->
+                    </div>
+                </div>
+
+                <!-- Accounting Section -->
+                <div id="accounting" class="content-section hidden">
+                    <h2 class="mb-4">Accounting</h2>
+                    
+                    <ul class="nav nav-tabs mb-4">
+                        <li class="nav-item">
+                            <a class="nav-link active" onclick="showAccountingTab('general-ledger')">General Ledger</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" onclick="showAccountingTab('accounts-payable')">Accounts Payable</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" onclick="showAccountingTab('accounts-receivable')">Accounts Receivable</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" onclick="showAccountingTab('cash-flow')">Cash Flow</a>
+                        </li>
+                    </ul>
+                    
+                    <div id="accounting-content">
+                        <!-- Accounting content will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Other sections -->
+                <div id="inventory" class="content-section hidden">
+                    <h2>Inventory Management</h2>
+                    <p>This section will manage filled and empty cylinders.</p>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="data-entry-form">
+                                <h4>Inventory Update</h4>
+                                <form id="inventoryForm">
+                                    <div class="mb-3">
+                                        <label class="form-label">Cylinder Type</label>
+                                        <select class="form-select" required>
+                                            <option value="">Select Type</option>
+                                            <option>14.2 kg Filled</option>
+                                            <option>14.2 kg Empty</option>
+                                            <option>5 kg Filled</option>
+                                            <option>5 kg Empty</option>
+                                            <option>19 kg Filled</option>
+                                            <option>19 kg Empty</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Quantity Change</label>
+                                        <input type="number" class="form-control" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Transaction Type</label>
+                                        <select class="form-select" required>
+                                            <option value="">Select Type</option>
+                                            <option>Purchase from NOC</option>
+                                            <option>Sale to Dealer</option>
+                                            <option>Empty Cylinder Collection</option>
+                                            <option>Cylinder Refill</option>
+                                            <option>Damage/Loss</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Reference Number</label>
+                                        <input type="text" class="form-control">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Update Inventory</button>
+                                </form>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="dashboard-card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Current Inventory Status</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="inventoryStatusChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="dealers" class="content-section hidden">
+                    <h2>Dealer Management</h2>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="data-entry-form">
+                                <h4>Add/Edit Dealer</h4>
+                                <form id="dealerForm">
+                                    <div class="mb-3">
+                                        <label class="form-label">Dealer Name</label>
+                                        <input type="text" class="form-control" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Contact Person</label>
+                                        <input type="text" class="form-control" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Phone</label>
+                                        <input type="tel" class="form-control" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Address</label>
+                                        <textarea class="form-control" rows="3"></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Credit Limit (₹)</label>
+                                        <input type="number" class="form-control" step="0.01">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Save Dealer</button>
+                                </form>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="dashboard-card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Dealer List</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>Name</th>
+                                                    <th>Contact</th>
+                                                    <th>Phone</th>
+                                                    <th>Credit Limit</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="dealer-list">
+                                                <!-- Dealers will be loaded here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="purchases" class="content-section hidden">
+                    <h2>Purchases from NOC</h2>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="data-entry-form">
+                                <h4>New NOC Purchase</h4>
+                                <form id="nocPurchaseForm">
+                                    <div class="mb-3">
+                                        <label class="form-label">Purchase Date</label>
+                                        <input type="date" class="form-control" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">NOC Bill Number</label>
+                                        <input type="text" class="form-control" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">LPG Quantity (MT)</label>
+                                        <input type="number" class="form-control" step="0.01" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Rate per MT (₹)</label>
+                                        <input type="number" class="form-control" step="0.01" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Transport Cost (₹)</label>
+                                        <input type="number" class="form-control" step="0.01">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Tax Amount (₹)</label>
+                                        <input type="number" class="form-control" step="0.01">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Save Purchase</button>
+                                </form>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="dashboard-card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Recent NOC Purchases</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Bill No</th>
+                                                    <th>Quantity</th>
+                                                    <th>Amount</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="noc-purchases-list">
+                                                <!-- Purchases will be loaded here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="logistics" class="content-section hidden">
+                    <h2>Logistics Management</h2>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="data-entry-form">
+                                <h4>Add Logistics Entry</h4>
+                                <form id="logisticsForm">
+                                    <div class="mb-3">
+                                        <label class="form-label">Date</label>
+                                        <input type="date" class="form-control" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Transport Provider</label>
+                                        <input type="text" class="form-control" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Vehicle Number</label>
+                                        <input type="text" class="form-control" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">From/To</label>
+                                        <input type="text" class="form-control" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Cylinders (Count)</label>
+                                        <input type="number" class="form-control" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Cost (₹)</label>
+                                        <input type="number" class="form-control" step="0.01" required>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Save Logistics</button>
+                                </form>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="dashboard-card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Recent Logistics</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Provider</th>
+                                                    <th>Vehicle</th>
+                                                    <th>Cylinders</th>
+                                                    <th>Cost</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="logistics-list">
+                                                <!-- Logistics will be loaded here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="reports" class="content-section hidden">
+                    <h2>Financial Reports</h2>
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="dashboard-card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Profit & Loss Statement</h5>
+                                </div>
+                                <div class="card-body">
+                                    <button class="btn btn-primary w-100" onclick="generateReport('profit-loss')">Generate P&L</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="dashboard-card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Balance Sheet</h5>
+                                </div>
+                                <div class="card-body">
+                                    <button class="btn btn-primary w-100" onclick="generateReport('balance-sheet')">Generate Balance Sheet</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="dashboard-card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Cash Flow Statement</h5>
+                                </div>
+                                <div class="card-body">
+                                    <button class="btn btn-primary w-100" onclick="generateReport('cash-flow')">Generate Cash Flow</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="report-results">
+                        <!-- Report results will be displayed here -->
+                    </div>
+                </div>
+
+                <div id="settings" class="content-section hidden">
+                    <h2>Settings</h2>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="data-entry-form">
+                                <h4>Company Information</h4>
+                                <form id="companyForm">
+                                    <div class="mb-3">
+                                        <label class="form-label">Company Name</label>
+                                        <input type="text" class="form-control" value="Leo Gas Udhyog" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Address</label>
+                                        <textarea class="form-control" rows="3">Birgunj, Nepal</textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Phone</label>
+                                        <input type="tel" class="form-control">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Tax ID</label>
+                                        <input type="text" class="form-control">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Save Settings</button>
+                                </form>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="data-entry-form">
+                                <h4>User Management</h4>
+                                <form id="userForm">
+                                    <div class="mb-3">
+                                        <label class="form-label">Username</label>
+                                        <input type="text" class="form-control" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Password</label>
+                                        <input type="password" class="form-control" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Role</label>
+                                        <select class="form-select" required>
+                                            <option value="">Select Role</option>
+                                            <option>Admin</option>
+                                            <option>Manager</option>
+                                            <option>Accountant</option>
+                                            <option>Data Entry</option>
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Add User</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Application State
+        const appState = {
+            currentSection: 'dashboard',
+            currentDateRange: 'month',
+            data: {
+                sales: [],
+                purchases: [],
+                receipts: [],
+                payments: [],
+                debitNotes: [],
+                creditNotes: [],
+                inventory: [],
+                dealers: [],
+                logistics: []
+            }
+        };
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+        });
+
+        function initializeApp() {
+            loadSampleData();
+            initializeDashboard();
+            setupEventListeners();
+        }
+
+        function loadSampleData() {
+            // Sample data for demonstration
+            appState.data.sales = [
+                { id: 1, date: '2023-04-15', dealer: 'Bharat Gas Agency', amount: 45200, status: 'paid' },
+                { id: 2, date: '2023-04-14', dealer: 'Shiva Gas Service', amount: 32150, status: 'pending' },
+                { id: 3, date: '2023-04-13', dealer: 'Gorkha Gas Center', amount: 28750, status: 'paid' }
+            ];
+
+            appState.data.dealers = [
+                { id: 1, name: 'Bharat Gas Agency', contact: 'Ramesh Kumar', phone: '9841000001', creditLimit: 50000 },
+                { id: 2, name: 'Shiva Gas Service', contact: 'Sita Sharma', phone: '9841000002', creditLimit: 75000 },
+                { id: 3, name: 'Gorkha Gas Center', contact: 'Hari Bahadur', phone: '9841000003', creditLimit: 60000 }
+            ];
+
+            appState.data.purchases = [
+                { id: 1, date: '2023-04-14', billNo: 'NOC-04562', quantity: 12.5, amount: 185000 },
+                { id: 2, date: '2023-04-07', billNo: 'NOC-04558', quantity: 13.2, amount: 192500 }
+            ];
+
+            appState.data.logistics = [
+                { id: 1, date: '2023-04-15', provider: 'Shree Transport', vehicle: 'Ba 1 Ka 1234', cylinders: 150, cost: 12500 },
+                { id: 2, date: '2023-04-14', provider: 'Maa Kali Logistics', vehicle: 'Ba 1 Kha 5678', cylinders: 200, cost: 15250 }
+            ];
+        }
+
+        function setupEventListeners() {
+            // Form submissions
+            document.getElementById('inventoryForm')?.addEventListener('submit', handleInventorySubmit);
+            document.getElementById('dealerForm')?.addEventListener('submit', handleDealerSubmit);
+            document.getElementById('nocPurchaseForm')?.addEventListener('submit', handleNocPurchaseSubmit);
+            document.getElementById('logisticsForm')?.addEventListener('submit', handleLogisticsSubmit);
+            document.getElementById('companyForm')?.addEventListener('submit', handleCompanySubmit);
+            document.getElementById('userForm')?.addEventListener('submit', handleUserSubmit);
+        }
+
+        // Navigation functions
+        function showSection(sectionId) {
+            // Hide all sections
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.add('hidden');
+            });
+            
+            // Show selected section
+            document.getElementById(sectionId).classList.remove('hidden');
+            
+            // Update active link in sidebar
+            document.querySelectorAll('.sidebar a').forEach(link => {
+                link.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Initialize section if needed
+            if (sectionId === 'dashboard') {
+                initializeDashboard();
+            } else if (sectionId === 'data-entry') {
+                showDataEntryTab('sales');
+            } else if (sectionId === 'accounting') {
+                showAccountingTab('general-ledger');
+            } else if (sectionId === 'inventory') {
+                loadInventoryData();
+            } else if (sectionId === 'dealers') {
+                loadDealersData();
+            } else if (sectionId === 'purchases') {
+                loadPurchasesData();
+            } else if (sectionId === 'logistics') {
+                loadLogisticsData();
+            }
+            
+            appState.currentSection = sectionId;
+        }
+
+        function showDataEntryTab(tabId) {
+            // Update active tab
+            document.querySelectorAll('#dataEntryTabs .nav-link').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Load tab content
+            let content = '';
+            if (tabId === 'sales') {
+                content = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="data-entry-form">
+                                <h4>New Sales Invoice</h4>
+                                <form id="salesForm">
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Invoice Date</label>
+                                            <input type="date" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Invoice Number</label>
+                                            <input type="text" class="form-control" value="INV-2023-00125" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Dealer</label>
+                                        <select class="form-select" required>
+                                            <option value="">Select Dealer</option>
+                                            ${appState.data.dealers.map(dealer => `<option>${dealer.name}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                    <div class="form-section">
+                                        <h5>Product Details</h5>
+                                        <div class="mb-3">
+                                            <label class="form-label">Product</label>
+                                            <select class="form-select" required>
+                                                <option value="">Select Product</option>
+                                                <option>LPG Cylinder 14.2 kg</option>
+                                                <option>LPG Cylinder 5 kg</option>
+                                                <option>LPG Cylinder 19 kg</option>
+                                            </select>
+                                        </div>
+                                        <div class="row mb-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label">Quantity</label>
+                                                <input type="number" class="form-control" required min="1">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">Rate (₹)</label>
+                                                <input type="number" class="form-control" step="0.01" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Empty Cylinders Collected</label>
+                                        <input type="number" class="form-control" min="0">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Save Sales Invoice</button>
+                                </form>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="dashboard-card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Recent Sales</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Dealer</th>
+                                                    <th>Amount</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${appState.data.sales.map(sale => `
+                                                    <tr>
+                                                        <td>${sale.date}</td>
+                                                        <td>${sale.dealer}</td>
+                                                        <td>₹ ${sale.amount.toLocaleString()}</td>
+                                                        <td><span class="badge bg-${sale.status === 'paid' ? 'success' : 'warning'}">${sale.status}</span></td>
+                                                    </tr>
+                                                `).join('')}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            // Add similar content for other tabs...
+            
+            document.getElementById('data-entry-content').innerHTML = content;
+            
+            // Add form submission handler
+            document.getElementById('salesForm')?.addEventListener('submit', function(e) {
+                e.preventDefault();
+                alert('Sales invoice saved successfully!');
+                // In a real app, you would save to appState.data.sales
+            });
+        }
+
+        function showAccountingTab(tabId) {
+            // Similar implementation to showDataEntryTab but for accounting tabs
+            let content = '';
+            if (tabId === 'general-ledger') {
+                content = `
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="dashboard-card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">General Ledger</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Account</th>
+                                                    <th>Debit</th>
+                                                    <th>Credit</th>
+                                                    <th>Balance</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>2023-04-15</td>
+                                                    <td>Cash Account</td>
+                                                    <td>₹ 45,200</td>
+                                                    <td>-</td>
+                                                    <td>₹ 2,45,680</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>2023-04-15</td>
+                                                    <td>Sales Revenue</td>
+                                                    <td>-</td>
+                                                    <td>₹ 45,200</td>
+                                                    <td>₹ 12,45,200</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="dashboard-card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Account Summary</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="accountSummaryChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('accounting-content').innerHTML = content;
+            
+            // Initialize chart if needed
+            if (tabId === 'general-ledger') {
+                initializeAccountSummaryChart();
+            }
+        }
+
+        // Dashboard functions
+        function initializeDashboard() {
+            loadDashboardStats();
+            initializeCharts();
+            loadRecentTransactions();
+        }
+
+        function setDateRange(range) {
+            appState.currentDateRange = range;
+            document.querySelectorAll('.btn-group .btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            loadDashboardStats();
+        }
+
+        function loadDashboardStats() {
+            const stats = {
+                today: { revenue: 245680, cylindersSold: 1245, emptyCollected: 892, pendingDeliveries: 15 },
+                week: { revenue: 1567890, cylindersSold: 8456, emptyCollected: 6234, pendingDeliveries: 45 },
+                month: { revenue: 6452300, cylindersSold: 32456, emptyCollected: 28901, pendingDeliveries: 123 },
+                year: { revenue: 78245600, cylindersSold: 389456, emptyCollected: 345678, pendingDeliveries: 456 }
+            };
+
+            const currentStats = stats[appState.currentDateRange];
+            
+            document.getElementById('stats-container').innerHTML = `
+                <div class="col-md-3">
+                    <div class="stat-card primary">
+                        <h4>₹ ${currentStats.revenue.toLocaleString()}</h4>
+                        <p>${appState.currentDateRange === 'today' ? "Today's" : "This " + appState.currentDateRange.charAt(0).toUpperCase() + appState.currentDateRange.slice(1)} Revenue</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card success">
+                        <h4>${currentStats.cylindersSold.toLocaleString()}</h4>
+                        <p>Filled Cylinders Sold</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card warning">
+                        <h4>${currentStats.emptyCollected.toLocaleString()}</h4>
+                        <p>Empty Cylinders Collected</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card danger">
+                        <h4>${currentStats.pendingDeliveries}</h4>
+                        <p>Pending Deliveries</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function initializeCharts() {
+            // Revenue & Expense Chart
+            new Chart(document.getElementById('revenueExpenseChart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                    datasets: [{
+                        label: 'Revenue',
+                        data: [1200000, 1350000, 1400000, 1550000, 1600000, 1750000, 1800000, 1900000, 1850000, 1950000, 2100000, 2200000],
+                        borderColor: '#27ae60',
+                        backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }, {
+                        label: 'Expenses',
+                        data: [800000, 850000, 900000, 950000, 1000000, 1050000, 1100000, 1150000, 1200000, 1250000, 1300000, 1350000],
+                        borderColor: '#e74c3c',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top' } },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: value => '₹ ' + value.toLocaleString()
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Inventory Chart
+            new Chart(document.getElementById('inventoryChart').getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Filled Cylinders', 'Empty Cylinders', 'In Transit'],
+                    datasets: [{
+                        data: [2450, 1560, 320],
+                        backgroundColor: ['#3498db', '#e74c3c', '#f39c12'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+
+            // Top Dealers Chart
+            new Chart(document.getElementById('topDealersChart').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: ['Bharat Gas', 'Shiva Gas', 'Gorkha Gas', 'Maha Laxmi', 'Annapurna'],
+                    datasets: [{
+                        label: 'Sales (in ₹)',
+                        data: [452000, 321500, 287500, 256000, 224500],
+                        backgroundColor: '#2c3e50'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: value => '₹ ' + value.toLocaleString()
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function loadRecentTransactions() {
+            const transactions = appState.data.sales;
+            const tbody = document.querySelector('#recent-transactions tbody');
+            tbody.innerHTML = transactions.map(transaction => `
+                <tr>
+                    <td>${transaction.date}</td>
+                    <td>${transaction.dealer}</td>
+                    <td>₹ ${transaction.amount.toLocaleString()}</td>
+                    <td><span class="badge bg-${transaction.status === 'paid' ? 'success' : 'warning'}">${transaction.status}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        // Data loading functions for different sections
+        function loadInventoryData() {
+            // Initialize inventory chart
+            new Chart(document.getElementById('inventoryStatusChart').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: ['14.2kg Filled', '14.2kg Empty', '5kg Filled', '5kg Empty', '19kg Filled', '19kg Empty'],
+                    datasets: [{
+                        label: 'Cylinder Count',
+                        data: [1560, 890, 420, 210, 320, 150],
+                        backgroundColor: '#3498db'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+
+        function loadDealersData() {
+            const dealerList = document.getElementById('dealer-list');
+            dealerList.innerHTML = appState.data.dealers.map(dealer => `
+                <tr>
+                    <td>${dealer.name}</td>
+                    <td>${dealer.contact}</td>
+                    <td>${dealer.phone}</td>
+                    <td>₹ ${dealer.creditLimit.toLocaleString()}</td>
+                </tr>
+            `).join('');
+        }
+
+        function loadPurchasesData() {
+            const purchasesList = document.getElementById('noc-purchases-list');
+            purchasesList.innerHTML = appState.data.purchases.map(purchase => `
+                <tr>
+                    <td>${purchase.date}</td>
+                    <td>${purchase.billNo}</td>
+                    <td>${purchase.quantity} MT</td>
+                    <td>₹ ${purchase.amount.toLocaleString()}</td>
+                </tr>
+            `).join('');
+        }
+
+        function loadLogisticsData() {
+            const logisticsList = document.getElementById('logistics-list');
+            logisticsList.innerHTML = appState.data.logistics.map(logistic => `
+                <tr>
+                    <td>${logistic.date}</td>
+                    <td>${logistic.provider}</td>
+                    <td>${logistic.vehicle}</td>
+                    <td>${logistic.cylinders}</td>
+                    <td>₹ ${logistic.cost.toLocaleString()}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Form handlers
+        function handleInventorySubmit(e) {
+            e.preventDefault();
+            alert('Inventory updated successfully!');
+            // In a real app, you would update appState.data.inventory
+        }
+
+        function handleDealerSubmit(e) {
+            e.preventDefault();
+            alert('Dealer information saved successfully!');
+            // In a real app, you would update appState.data.dealers
+        }
+
+        function handleNocPurchaseSubmit(e) {
+            e.preventDefault();
+            alert('NOC purchase recorded successfully!');
+            // In a real app, you would update appState.data.purchases
+        }
+
+        function handleLogisticsSubmit(e) {
+            e.preventDefault();
+            alert('Logistics entry saved successfully!');
+            // In a real app, you would update appState.data.logistics
+        }
+
+        function handleCompanySubmit(e) {
+            e.preventDefault();
+            alert('Company settings saved successfully!');
+        }
+
+        function handleUserSubmit(e) {
+            e.preventDefault();
+            alert('User added successfully!');
+        }
+
+        // Report generation
+        function generateReport(type) {
+            let content = '';
+            if (type === 'profit-loss') {
+                content = `
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Profit & Loss Statement (April 2023)</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Description</th>
+                                            <th>Amount (₹)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>Revenue</strong></td>
+                                            <td></td>
+                                        </tr>
+                                        <tr>
+                                            <td>&nbsp;&nbsp;Sales</td>
+                                            <td>6,452,300</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Total Revenue</strong></td>
+                                            <td><strong>6,452,300</strong></td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Expenses</strong></td>
+                                            <td></td>
+                                        </tr>
+                                        <tr>
+                                            <td>&nbsp;&nbsp;NOC Purchases</td>
+                                            <td>3,785,000</td>
+                                        </tr>
+                                        <tr>
+                                            <td>&nbsp;&nbsp;Logistics</td>
+                                            <td>452,500</td>
+                                        </tr>
+                                        <tr>
+                                            <td>&nbsp;&nbsp;Salaries</td>
+                                            <td>350,000</td>
+                                        </tr>
+                                        <tr>
+                                            <td>&nbsp;&nbsp;Other Expenses</td>
+                                            <td>125,300</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Total Expenses</strong></td>
+                                            <td><strong>4,712,800</strong></td>
+                                        </tr>
+                                        <tr class="table-success">
+                                            <td><strong>Net Profit</strong></td>
+                                            <td><strong>1,739,500</strong></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('report-results').innerHTML = content;
+        }
+
+        function initializeAccountSummaryChart() {
+            new Chart(document.getElementById('accountSummaryChart').getContext('2d'), {
+                type: 'pie',
+                data: {
+                    labels: ['Assets', 'Liabilities', 'Equity', 'Revenue', 'Expenses'],
+                    datasets: [{
+                        data: [4500000, 2200000, 2300000, 1200000, 800000],
+                        backgroundColor: ['#3498db', '#e74c3c', '#2c3e50', '#27ae60', '#f39c12']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

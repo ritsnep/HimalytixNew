@@ -1,0 +1,36 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+    <link href="{% static 'libs/datatables.net-bs4/css/dataTables.bootstrap4.min.css' %}" rel="stylesheet" />
+    <link href="{% static 'libs/datatables.net-buttons-bs4/css/buttons.bootstrap4.min.css' %}" rel="stylesheet" />
+{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <h4 class="card-title">{{ page_title|default:"List" }}</h4>
+                        {% if can_add and create_url %}
+                        <a href="{{ create_url }}" class="btn btn-success btn-sm"><i class="mdi mdi-plus"></i> Add</a>
+                        {% endif %}
+                    </div>
+                    <table id="datatable-buttons" class="table table-bordered dt-responsive nowrap w-100">
+                        {% block table_head %}{% endblock %}
+                        {% block table_body %}{% endblock %}
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'libs/datatables.net/js/jquery.dataTables.min.js' %}"></script>
+<script src="{% static 'libs/datatables.net-bs4/js/dataTables.bootstrap4.min.js' %}"></script>
+<script>$(document).ready(function() { $('#datatable-buttons').DataTable({ pageLength: 20, order: [[0, 'desc']] }); });</script>
+{% endblock %}

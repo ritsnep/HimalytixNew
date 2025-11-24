@@ -1,0 +1,20 @@
+{% extends 'billing/_form_base.html' %}
+{% load i18n %}
+
+{% block page_title %}
+    {% if form.instance.pk %}
+        {% trans "Edit Subscription Plan" %}
+    {% else %}
+        {% trans "New Subscription Plan" %}
+    {% endif %}
+{% endblock %}
+
+{% block form_title %}
+    {% if form.instance.pk %}
+        {% trans "Edit Subscription Plan" %}: {{ form.instance.plan_name }}
+    {% else %}
+        {% trans "Create New Subscription Plan" %}
+    {% endif %}
+{% endblock %}
+
+{% block cancel_url %}{% url 'billing:subscriptionplan_list' %}{% endblock %}

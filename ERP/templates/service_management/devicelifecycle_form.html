@@ -1,0 +1,20 @@
+{% extends 'service_management/_form_base.html' %}
+{% load i18n %}
+
+{% block page_title %}
+    {% if form.instance.pk %}
+        {% trans "Edit Device Lifecycle" %}
+    {% else %}
+        {% trans "New Device Lifecycle" %}
+    {% endif %}
+{% endblock %}
+
+{% block form_title %}
+    {% if form.instance.pk %}
+        {% trans "Edit Device Lifecycle" %}: {{ form.instance.serial_number }}
+    {% else %}
+        {% trans "Create New Device Lifecycle" %}
+    {% endif %}
+{% endblock %}
+
+{% block cancel_url %}{% url 'service_management:devicelifecycle_list' %}{% endblock %}
