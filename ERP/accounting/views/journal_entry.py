@@ -24,10 +24,12 @@ from accounting.models import (
     JournalDebugPreference,
     JournalLine,
     JournalType,
+    PaymentTerm,
     Project,
     TaxCode,
     VoucherModeConfig,
     VoucherUDFConfig,
+    VoucherUIPreference,
     default_ui_schema,
 )
 from accounting.services.journal_entry_service import JournalEntryService
@@ -1119,6 +1121,22 @@ def journal_entry(request):
         # level NoReverseMatch while we investigate why the named URL may not
         # be present at runtime (possible duplicate modules / import mismatch).
         config_endpoint = '/accounting/journal-entry/config/'
+    try:
+        prefs_endpoint = reverse('accounting:journal_ui_preferences')
+        prefs_save_endpoint = reverse('accounting:journal_ui_preferences_save')
+    except Exception:
+        prefs_endpoint = '/accounting/journal-entry/prefs/'
+        prefs_save_endpoint = '/accounting/journal-entry/prefs/'
+    try:
+        attachment_upload_endpoint = reverse('accounting:journal_attachment_upload')
+        attachment_delete_endpoint = reverse('accounting:journal_attachment_delete')
+    except Exception:
+        attachment_upload_endpoint = '/accounting/journal-entry/attachments/upload/'
+        attachment_delete_endpoint = '/accounting/journal-entry/attachments/delete/'
+    try:
+        payment_terms_endpoint = reverse('accounting:journal_payment_terms')
+    except Exception:
+        payment_terms_endpoint = '/accounting/journal-entry/payment-terms/'
 
     context = {
         "voucher_entry_page": True,
@@ -1130,6 +1148,11 @@ def journal_entry(request):
         "lookup_urls": lookup_urls,
         "active_organization": organization,
         "config_endpoint": config_endpoint,
+        "prefs_endpoint": prefs_endpoint,
+        "prefs_save_endpoint": prefs_save_endpoint,
+        "attachment_upload_endpoint": attachment_upload_endpoint,
+        "attachment_delete_endpoint": attachment_delete_endpoint,
+        "payment_terms_endpoint": payment_terms_endpoint,
         "show_config_selector": False,
         "journal_debug_enabled": _is_journal_debug_enabled(organization),
     }
@@ -1401,3 +1424,130 @@ def journal_cost_center_lookup(request):
         for cc in qs
     ]
     return JsonResponse({"ok": True, "results": results})
+
+
+@login_required
+@require_GET
+def journal_payment_terms(request):
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+    ref_date = None
+    if request.GET.get("date"):
+        ref_date = parse_date(request.GET.get("date"))
+    qs = PaymentTerm.objects.filter(organization=organization, is_active=True).order_by("name")
+    results = []
+    for term in qs:
+        entry = {
+            "id": term.pk,
+            "code": term.code,
+            "name": term.name,
+            "netDueDays": term.net_due_days,
+            "discountPercent": float(term.discount_percent or 0),
+            "discountDays": term.discount_days,
+            "description": term.description or "",
+        }
+        if ref_date:
+            try:
+                entry["dueDate"] = term.calculate_due_date(ref_date).isoformat()
+                discount_due = term.calculate_discount_due_date(ref_date)
+                if discount_due:
+                    entry["discountDueDate"] = discount_due.isoformat()
+            except Exception:
+                entry["dueDate"] = None
+        results.append(entry)
+    return JsonResponse({"ok": True, "results": results})
+
+
+@login_required
+@require_GET
+def journal_ui_preferences(request):
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+    prefs = VoucherUIPreference.objects.filter(
+        user=request.user,
+        organization=organization,
+        scope="voucher_entry",
+    ).first()
+    data = prefs.data if prefs else {}
+    updated_at = prefs.updated_at.isoformat() if prefs and prefs.updated_at else None
+    return JsonResponse({"ok": True, "preferences": data, "updatedAt": updated_at})
+
+
+@login_required
+@require_POST
+def journal_ui_preferences_save(request):
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+    try:
+        payload = _parse_request_json(request)
+    except ValueError as exc:
+        return _json_error(str(exc), status=400)
+    preferences = payload.get("preferences") if isinstance(payload, dict) else None
+    if not isinstance(preferences, dict):
+        preferences = {}
+    prefs, _ = VoucherUIPreference.objects.get_or_create(
+        user=request.user,
+        organization=organization,
+        scope="voucher_entry",
+    )
+    prefs.data = preferences
+    prefs.save(update_fields=["data", "updated_at"])
+    return JsonResponse({"ok": True})
+
+
+@login_required
+@require_POST
+def journal_attachment_upload(request):
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+    journal_id = request.POST.get("journal_id") or request.POST.get("journalId")
+    if not journal_id:
+        return _json_error("journal_id is required to upload attachments.", status=400)
+    try:
+        journal = Journal.objects.get(pk=int(journal_id), organization=organization)
+    except (Journal.DoesNotExist, ValueError, TypeError):
+        return _json_error("Journal not found.", status=404)
+
+    files = request.FILES.getlist("files") or request.FILES.getlist("attachments") or []
+    single = request.FILES.get("file")
+    if single and not files:
+        files = [single]
+    if not files:
+        return _json_error("No files uploaded.", status=400)
+
+    created = []
+    for f in files:
+        att = Attachment.objects.create(journal=journal, file=f, uploaded_by=request.user)
+        created.append(
+            {
+                "id": att.pk,
+                "name": att.file.name.split("/")[-1],
+                "uploadedAt": att.uploaded_at.isoformat() if att.uploaded_at else None,
+                "uploadedBy": att.uploaded_by_id,
+            }
+        )
+    return JsonResponse({"ok": True, "attachments": created})
+
+
+@login_required
+@require_POST
+def journal_attachment_delete(request):
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+    att_id = request.POST.get("attachment_id") or request.POST.get("id")
+    if not att_id:
+        return _json_error("attachment_id is required.", status=400)
+    try:
+        attachment = Attachment.objects.select_related("journal").get(
+            pk=int(att_id),
+            journal__organization=organization,
+        )
+    except (Attachment.DoesNotExist, ValueError, TypeError):
+        return _json_error("Attachment not found.", status=404)
+    attachment.delete()
+    return JsonResponse({"ok": True})

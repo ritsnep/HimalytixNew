@@ -983,6 +983,34 @@ class JournalDebugPreference(models.Model):
         return cls.objects.filter(organization=organization, enabled=True).exists()
 
 
+class VoucherUIPreference(models.Model):
+    """Persist user-specific UI preferences for voucher entry (columns, layout, etc.)."""
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="voucher_ui_preferences",
+    )
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="voucher_ui_preferences",
+    )
+    scope = models.CharField(max_length=50, default="voucher_entry")
+    data = JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "voucher_ui_preference"
+        unique_together = ("user", "organization", "scope")
+        verbose_name = "Voucher UI Preference"
+        verbose_name_plural = "Voucher UI Preferences"
+
+    def __str__(self):
+        return f"{self.user} / {self.organization} / {self.scope}"
+
+
 class PaymentTerm(models.Model):
     """Stores payables/receivables payment terms per organization."""
 

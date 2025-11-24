@@ -28,6 +28,11 @@ const LOOKUPS = {
   costCenter: __root?.dataset?.lookupCostCenter || null,
 };
 const SUPPORTED_CURRENCIES = (__root?.dataset?.supportedCurrencies || '').split(',').filter(Boolean);
+const PREFS_ENDPOINT = __root?.dataset?.prefsUrl || null;
+const PREFS_SAVE_ENDPOINT = __root?.dataset?.prefsSaveUrl || __root?.dataset?.prefsUrl || null;
+const ATTACH_UPLOAD_ENDPOINT = __root?.dataset?.attachUpload || null;
+const ATTACH_DELETE_ENDPOINT = __root?.dataset?.attachDelete || null;
+const PAYMENT_TERMS_ENDPOINT = __root?.dataset?.paymentTerms || null;
 const PERMISSIONS = {
   submit: __root?.dataset?.canSubmit === 'true',
   approve: __root?.dataset?.canApprove === 'true',
@@ -618,6 +623,16 @@ const App = {
     serverTotals: null,
     attachments: [],
     metadata: {},
+    density: 'normal',
+    frozenColumns: 0,
+    showFilters: false,
+    columnFilters: {},
+    quickSearch: '',
+    showAttachmentsModal: false,
+    showPaymentTermsModal: false,
+    paymentTerms: { termId: null, termCode: '', dueDate: '', discountDueDate: '', discountPercent: 0, netDueDays: 0 },
+    paymentTermOptions: [],
+    showCoaModal: false,
     headerDefaults: {},
     lineDefaults: {},
     choiceMaps: { header: {}, line: {} },
@@ -629,12 +644,9 @@ const App = {
   },
   lastConfigRequest: { code: null, id: null },
 
-  init() {
+  async init() {
     const presets = loadPresets();
-    this.state.colPrefsByType = presets.colPrefsByType || {};
-    // Don't load UDF presets - use config from server
-    this.state.collapsed = presets.collapsed || this.state.collapsed;
-    this.state.numbering = presets.numbering || this.state.numbering;
+    this.applyPreferencesFromStore(presets);
 
     if (!Array.isArray(this.state.rows) || !this.state.rows.length) {
       this.resetRows();
@@ -665,6 +677,8 @@ const App = {
       window.addEventListener('mouseup', this._onMouseUp);
       this._resizeBound = true;
     }
+
+    this.loadRemotePreferences();
   },
 
   getColumns() {
@@ -844,6 +858,214 @@ const App = {
         row.costCenter = match.code;
       }
     });
+  },
+
+  queueCostCenterSuggestions(inputEl, ri, ci) {
+    if (!inputEl || !inputEl.classList.contains('cell-input')) return;
+    this.state.rows[ri].costCenter = inputEl.value;
+    this.state.rows[ri].costCenterId = null;
+    const term = (inputEl.value || '').trim();
+    if (!term) {
+      AccountSuggest.close();
+      return;
+    }
+    if (!this._debouncedCostCenterLookup) {
+      this._debouncedCostCenterLookup = debounce((value, anchor, rowIdx, colIdx) => {
+        this.fetchCostCenterSuggestions(value, anchor, rowIdx, colIdx);
+      }, 180);
+    }
+    this._debouncedCostCenterLookup(term, inputEl, ri, ci);
+  },
+
+  async fetchCostCenterSuggestions(term, inputEl, ri, ci) {
+    if (!LOOKUPS.costCenter || !inputEl) return;
+    const queryToken = `${term}:${ri}:${Date.now()}`;
+    this._latestCostCenterQuery = queryToken;
+    try {
+      const { data } = await fetchJSON(`${LOOKUPS.costCenter}?q=${encodeURIComponent(term)}`, {}, { action: `Search Cost Center ${term}` });
+      if (this._latestCostCenterQuery !== queryToken) return;
+      const results = Array.isArray(data?.results) ? data.results : [];
+      const suggestions = results.map((r) => ({ id: r.id, code: r.code || '', name: r.name || '' }));
+      AccountSuggest.open(inputEl, suggestions, {
+        term,
+        onSelect: (choice) => this.applyCostCenterSelection(choice, ri, ci),
+      });
+    } catch (err) {
+      console.error('Cost center lookup failed', err);
+    }
+  },
+
+  applyCostCenterSelection(choice, ri, ci) {
+    if (!choice || !this.state.rows[ri]) return;
+    const row = this.state.rows[ri];
+    row.costCenterId = choice.id ?? null;
+    row.costCenter = choice.code || '';
+    this.state.focus = { r: ri, c: ci };
+    AccountSuggest.close();
+    this.render();
+  },
+
+  async fetchPaymentTerms() {
+    if (!PAYMENT_TERMS_ENDPOINT) return;
+    const date = this.state.header?.date;
+    const url = date ? `${PAYMENT_TERMS_ENDPOINT}?date=${encodeURIComponent(date)}` : PAYMENT_TERMS_ENDPOINT;
+    try {
+      const { ok, data } = await fetchJSON(url, {}, { action: 'Load Payment Terms' });
+      if (ok && Array.isArray(data?.results)) {
+        this.state.paymentTermOptions = data.results;
+      }
+    } catch (err) {
+      console.warn('Unable to load payment terms', err);
+    }
+  },
+
+  updatePaymentTerm(term) {
+    if (!term) {
+      this.state.paymentTerms = { termId: null, termCode: '', dueDate: '', discountDueDate: '', discountPercent: 0, netDueDays: 0 };
+      this.render();
+      return;
+    }
+    const net = Number(term.netDueDays || term.net_due_days || 0);
+    const dueDate = this.computeDueDate(this.state.header?.date, net);
+    const discountDue = term.discountDays ? this.computeDueDate(this.state.header?.date, Number(term.discountDays)) : '';
+    this.state.paymentTerms = {
+      termId: term.id ?? null,
+      termCode: term.code || term.name || '',
+      netDueDays: net,
+      dueDate,
+      discountDueDate: discountDue,
+      discountPercent: term.discountPercent ?? 0,
+    };
+    this.render();
+  },
+
+  applyPaymentTerms() {
+    const pt = this.state.paymentTerms || {};
+    if (pt.netDueDays !== undefined) {
+      this.state.header.creditDays = pt.netDueDays;
+    }
+    if (pt.dueDate) {
+      this.state.header.dueDate = pt.dueDate;
+    }
+    if (pt.termId) {
+      this.state.header.paymentTermId = pt.termId;
+      this.state.header.paymentTermCode = pt.termCode || '';
+    }
+    this.state.showPaymentTermsModal = false;
+    this.persistPresets();
+    this.render();
+  },
+
+  async ensureJournalId() {
+    if (this.state.journalId) return this.state.journalId;
+    if (!Endpoints.save) {
+      notify('Configure the draft save endpoint before uploading attachments.', 'error');
+      return null;
+    }
+    const okDate = await this._preflightDate();
+    if (!okDate) return null;
+    this.state.isSaving = true;
+    this.render();
+    try {
+      const payload = this.buildPayload();
+      const res = await postJSON(Endpoints.save, payload, { action: 'Auto-save for attachments' });
+      if (res.ok && res.data?.journal) {
+        this.hydrateFromApi(res.data.journal);
+        this.state.status = res.data?.journal?.status || 'draft';
+        return this.state.journalId;
+      }
+      this.handleServerErrors(res);
+    } catch (err) {
+      console.error('Auto-save failed', err);
+      notify('Could not save draft before uploading attachments.', 'error');
+    } finally {
+      this.state.isSaving = false;
+      this.render();
+    }
+    return null;
+  },
+
+  async uploadAttachments(fileList) {
+    if (!ATTACH_UPLOAD_ENDPOINT) {
+      notify('Attachment upload endpoint is not configured.', 'error');
+      return;
+    }
+    const files = Array.from(fileList || []).filter(Boolean);
+    if (!files.length) return;
+    const journalId = await this.ensureJournalId();
+    if (!journalId) return;
+    const form = new FormData();
+    form.append('journal_id', journalId);
+    files.forEach((f) => form.append('files', f));
+    const startedAt = new Date().toISOString();
+    try {
+      const res = await fetch(ATTACH_UPLOAD_ENDPOINT, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'X-CSRFToken': CSRFTOKEN || '' },
+        body: form,
+      });
+      const text = await res.text();
+      let data = null;
+      try { data = JSON.parse(text); } catch { data = null; }
+      DebugPanel.record({
+        action: 'Upload Attachments',
+        url: ATTACH_UPLOAD_ENDPOINT,
+        status: res.status,
+        ok: res.ok,
+        startedAt,
+        finishedAt: new Date().toISOString(),
+        request: { journalId, files: files.map((f) => f.name) },
+        response: cloneForDebug(data ?? text),
+      });
+      if (!res.ok || !data?.ok) {
+        notify(data?.error || 'Attachment upload failed.', 'error');
+        return;
+      }
+      if (Array.isArray(data.attachments)) {
+        const merged = [...(this.state.attachments || []), ...data.attachments];
+        const seen = new Set();
+        this.state.attachments = merged.filter((att) => {
+          if (!att?.id) return true;
+          if (seen.has(att.id)) return false;
+          seen.add(att.id);
+          return true;
+        });
+        notify('Attachment uploaded.', 'success');
+        this.render();
+      }
+    } catch (err) {
+      console.error('Attachment upload failed', err);
+      notify('Attachment upload failed.', 'error');
+    }
+  },
+
+  deleteAttachment(attId) {
+    if (!attId) {
+      this.render();
+      return;
+    }
+    this.state.attachments = (this.state.attachments || []).filter((att) => String(att.id) !== String(attId));
+    if (!ATTACH_DELETE_ENDPOINT) {
+      this.render();
+      return;
+    }
+    const form = new FormData();
+    form.append('attachment_id', attId);
+    fetch(ATTACH_DELETE_ENDPOINT, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'X-CSRFToken': CSRFTOKEN || '' },
+      body: form,
+    })
+      .then((res) => res.json().catch(() => ({})).then((data) => ({ res, data })))
+      .then(({ res, data }) => {
+        if (!res.ok || !data?.ok) {
+          notify(data?.error || 'Failed to delete attachment.', 'error');
+        }
+      })
+      .catch((err) => console.warn('Attachment delete failed', err));
+    this.render();
   },
 
   queueAccountSuggestions(inputEl, ri, ci) {
@@ -1039,6 +1261,18 @@ const App = {
     }
     if (journal.metadata && typeof journal.metadata === 'object') {
       this.state.metadata = journal.metadata;
+      const extras = journal.metadata.headerExtras || {};
+      if (extras.dueDate) {
+        this.state.paymentTerms = { ...(this.state.paymentTerms || {}), dueDate: extras.dueDate };
+        this.state.header.dueDate = extras.dueDate;
+      }
+      if (extras.paymentTermId) {
+        this.state.paymentTerms = { ...(this.state.paymentTerms || {}), termId: extras.paymentTermId, termCode: extras.paymentTermCode || extras.paymentTerm || this.state.paymentTerms.termCode };
+      }
+      if (extras.creditDays !== undefined) {
+        this.state.header.creditDays = extras.creditDays;
+        this.state.paymentTerms = { ...(this.state.paymentTerms || {}), netDueDays: extras.creditDays, dueDate: this.state.paymentTerms?.dueDate || this.computeDueDate(this.state.header?.date, extras.creditDays) };
+      }
     }
   },
 
@@ -1300,8 +1534,47 @@ const App = {
     return { dr, cr, diff: +(dr - cr).toFixed(2) };
   },
 
+  filteredRows() {
+    const visibleCols = this.getColumns().filter((c) => c.visible !== false);
+    const filters = this.state.columnFilters || {};
+    const quick = (this.state.quickSearch || '').toLowerCase();
+    return this.state.rows
+      .map((row, index) => ({ row, index }))
+      .filter(({ row }) => {
+        if (quick) {
+          const haystack = visibleCols.map((c) => (row[c.id] ?? '')).join(' ').toLowerCase();
+          if (!haystack.includes(quick)) return false;
+        }
+        for (const [colId, value] of Object.entries(filters)) {
+          if (!value && value !== 0) continue;
+          const term = String(value ?? '').toLowerCase();
+          if (!term) continue;
+          const cell = row[colId];
+          const hay = String(cell ?? '').toLowerCase();
+          if (!hay.includes(term)) return false;
+        }
+        return true;
+      });
+  },
+
+  visibleRowOrder() {
+    if (Array.isArray(this._visibleRowOrder) && this._visibleRowOrder.length) return this._visibleRowOrder;
+    return this.state.rows.map((_, idx) => idx);
+  },
+
   persistPresets() {
-    const { colPrefsByType, udfHeaderDefs, udfLineDefs, collapsed, charges, numbering } = this.state;
+    const {
+      colPrefsByType,
+      udfHeaderDefs,
+      udfLineDefs,
+      collapsed,
+      charges,
+      numbering,
+      density,
+      frozenColumns,
+      showFilters,
+      columnFilters,
+    } = this.state;
     const current = loadPresets();
     current.colPrefsByType = colPrefsByType;
     current.udfHeaderDefs = udfHeaderDefs;
@@ -1309,16 +1582,88 @@ const App = {
     current.collapsed = collapsed;
     current.charges = charges;
     current.numbering = numbering;
+    current.density = density;
+    current.frozenColumns = frozenColumns;
+    current.showFilters = showFilters;
+    current.columnFilters = columnFilters;
     savePresets(current);
+    this.persistRemotePrefs({
+      colPrefsByType,
+      collapsed,
+      numbering,
+      density,
+      frozenColumns,
+      showFilters,
+      columnFilters,
+    });
+  },
+
+  applyPreferences(preferences = {}) {
+    if (!preferences || typeof preferences !== 'object') return;
+    if (preferences.colPrefsByType) {
+      this.state.colPrefsByType = preferences.colPrefsByType;
+    }
+    if (preferences.collapsed) {
+      this.state.collapsed = { ...this.state.collapsed, ...preferences.collapsed };
+    }
+    if (preferences.numbering) {
+      this.state.numbering = { ...this.state.numbering, ...preferences.numbering };
+    }
+    if (preferences.density) {
+      this.state.density = preferences.density;
+    }
+    if (preferences.frozenColumns !== undefined) {
+      this.state.frozenColumns = Number(preferences.frozenColumns) || 0;
+    }
+    if (preferences.showFilters !== undefined) {
+      this.state.showFilters = !!preferences.showFilters;
+    }
+    if (preferences.columnFilters) {
+      this.state.columnFilters = preferences.columnFilters;
+    }
+  },
+
+  applyPreferencesFromStore(presets = {}) {
+    this.applyPreferences(presets);
+    if (presets.udfHeaderDefs) this.state.udfHeaderDefs = presets.udfHeaderDefs;
+    if (presets.udfLineDefs) this.state.udfLineDefs = presets.udfLineDefs;
+    if (presets.charges) this.state.charges = presets.charges;
+  },
+
+  persistRemotePrefs(preferences) {
+    if (!PREFS_SAVE_ENDPOINT) return;
+    if (!this._debouncedSavePrefs) {
+      this._debouncedSavePrefs = debounce((prefsPayload) => {
+        postJSON(PREFS_SAVE_ENDPOINT, { preferences: prefsPayload }, { action: 'Save UI Preferences' }).catch((err) => {
+          console.warn('Failed to save remote preferences', err);
+        });
+      }, 400);
+    }
+    this._debouncedSavePrefs(preferences);
+  },
+
+  async loadRemotePreferences() {
+    if (!PREFS_ENDPOINT) return;
+    try {
+      const { ok, data } = await fetchJSON(PREFS_ENDPOINT, {}, { action: 'Load UI Preferences' });
+      if (ok && data?.preferences) {
+        this.applyPreferences(data.preferences);
+        this.render();
+      }
+    } catch (err) {
+      console.warn('Unable to load remote preferences', err);
+    }
   },
 
   /** UI */
   render() {
     const el = document.getElementById('app');
     AccountSuggest.close();
-    const { voucherType, status, header, udfHeaderDefs, udfLineDefs, rows, collapsed, notes, charges } = this.state;
+    const { voucherType, status, header, udfHeaderDefs, udfLineDefs, collapsed, notes, charges } = this.state;
     const cols = this.getColumns();
     const visibleCols = cols.filter(c => c.visible !== false);
+    const visibleRows = this.filteredRows();
+    this._visibleRowOrder = visibleRows.map((entry) => entry.index);
     const totals = this.computeTotals();
     const voucherTypes = this.availableVoucherTypes();
     const statusBadge = this.statusBadgeClass();
@@ -1327,18 +1672,32 @@ const App = {
     const isWaitingApproval = normalizedStatus === 'awaiting_approval' || normalizedStatus === 'submitted';
     const isSaving = !!this.state.isSaving;
     const readOnly = !this.state.isEditable;
-    const wrapperClasses = `ve-wrapper${readOnly ? ' ve-readonly' : ''}`;
+    const densityClass = this.state.density === 'compact' ? ' ve-density-compact' : '';
+    const wrapperClasses = `ve-wrapper${readOnly ? ' ve-readonly' : ''}${densityClass}`;
     const canSaveDraft = !isSaving && this.state.isEditable;
     const canSubmit = PERMISSIONS.submit && normalizedStatus === 'draft' && !isSaving && this.state.isEditable;
     const canApprove = PERMISSIONS.approve && isWaitingApproval && !isSaving;
     const canReject = PERMISSIONS.reject && isWaitingApproval && !isSaving;
     const canPost = PERMISSIONS.post && normalizedStatus === 'approved' && !isSaving;
     const attachmentsCount = Array.isArray(this.state.attachments) ? this.state.attachments.length : 0;
+    const paymentTermBadge = this.state.paymentTerms?.termCode ? ` (${escapeHtml(this.state.paymentTerms.termCode)})` : '';
+    const dueDateBadge = this.state.paymentTerms?.dueDate ? `<span class="badge bg-light text-dark">Due ${escapeHtml(this.state.paymentTerms.dueDate)}</span>` : '';
     const postedBadge = this.state.postedAt
       ? `<span class="ve-pill px-2 py-1 rounded-lg text-xs bg-blue-100 text-blue-700">Posted ${escapeHtml(this.state.postedAt.slice(0, 10))}${this.state.postedByName ? ` · ${escapeHtml(this.state.postedByName)}` : ''}</span>`
       : '';
     const lockBadge = readOnly ? '<span class="ve-pill px-2 py-1 rounded-lg text-xs bg-slate-100 text-slate-600">Read only</span>' : '';
     const reversalBadge = this.state.isReversal ? '<span class="ve-pill px-2 py-1 rounded-lg text-xs bg-purple-100 text-purple-700">Reversal</span>' : '';
+    const frozenCount = Math.max(0, Math.min(this.state.frozenColumns || 0, visibleCols.length));
+    const frozenOffsets = [];
+    if (frozenCount) {
+      let offset = 40; // initial index col width
+      visibleCols.forEach((c, idx) => {
+        if (idx < frozenCount) {
+          frozenOffsets[idx] = offset;
+          offset += (c.width || 140);
+        }
+      });
+    }
 
     el.innerHTML = `
       <div class="${wrapperClasses}">
@@ -1368,7 +1727,11 @@ const App = {
               ${PERMISSIONS.approve ? `<button data-action="approve" class="btn btn-sm btn-success btn-icon" ${canApprove ? '' : 'disabled'}><i class="mdi mdi-check-circle-outline"></i>Approve</button>` : ''}
               ${PERMISSIONS.reject ? `<button data-action="reject" class="btn btn-sm btn-danger btn-icon" ${canReject ? '' : 'disabled'}><i class="mdi mdi-close-circle-outline"></i>Reject</button>` : ''}
               ${PERMISSIONS.post ? `<button data-action="post" class="btn btn-sm btn-success btn-icon" ${canPost ? '' : 'disabled'}><i class="mdi mdi-publish"></i>Post</button>` : ''}
-              <button data-action="attach" class="btn btn-sm btn-secondary btn-icon">
+              <button data-action="openPaymentTerms" class="btn btn-sm btn-outline-secondary btn-icon">
+                <i class="mdi mdi-calendar-range"></i>Payment Terms${paymentTermBadge}
+              </button>
+              ${dueDateBadge}
+              <button data-action="openAttachments" class="btn btn-sm btn-secondary btn-icon">
                 <i class="mdi mdi-paperclip"></i>Attachments${attachmentsCount ? ` (${attachmentsCount})` : ''}
               </button>
               <button data-action="openKeyboardHelp" class="btn btn-sm btn-outline-secondary" title="Keyboard Shortcuts (Ctrl+/)">
@@ -1409,7 +1772,7 @@ const App = {
               </div>
             </div>
             <div class="card-body">
-              ${collapsed.actions ? actionsSummary(rows, cols) : `
+              ${collapsed.actions ? actionsSummary(this.state.rows, cols) : `
               <div class="d-flex flex-wrap gap-2">
                 <button data-action="addRow" class="btn btn-sm btn-primary btn-icon"><i class="mdi mdi-plus"></i>Add Row</button>
                 <button data-action="add10" class="btn btn-sm btn-outline-primary">+10 Rows</button>
@@ -1430,9 +1793,26 @@ const App = {
 
       <div class="card mb-3">
         <div class="card-header">
-          <div class="d-flex justify-content-between align-items-center">
-            <h5 class="card-title mb-0">Journal Lines</h5>
-            <div class="d-flex gap-2">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2">
+              <h5 class="card-title mb-0">Journal Lines</h5>
+              <span class="badge bg-light text-dark">${visibleRows.length}/${this.state.rows.length} shown</span>
+            </div>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+              <div class="input-group input-group-sm" style="min-width:220px">
+                <span class="input-group-text bg-light border-end-0"><i class="mdi mdi-magnify"></i></span>
+                <input type="search" class="form-control border-start-0" placeholder="Quick search" value="${escapeHtml(this.state.quickSearch)}" data-action="setQuickSearch">
+              </div>
+              <button data-action="toggleFilters" class="btn btn-sm ${this.state.showFilters ? 'btn-primary' : 'btn-outline-secondary'}">
+                <i class="mdi mdi-filter-menu"></i>${this.state.showFilters ? 'Filters On' : 'Filters'}
+              </button>
+              <button data-action="toggleDensity" class="btn btn-sm btn-outline-secondary">
+                <i class="mdi mdi-format-line-spacing"></i>${this.state.density === 'compact' ? 'Compact' : 'Comfort'}
+              </button>
+              <div class="btn-group btn-group-sm" role="group">
+                <button data-action="setFrozen" data-count="0" class="btn ${frozenCount ? 'btn-outline-secondary' : 'btn-secondary'}" title="Unfreeze columns">Unfreeze</button>
+                <button data-action="setFrozen" data-count="2" class="btn ${frozenCount === 2 ? 'btn-secondary' : 'btn-outline-secondary'}" title="Freeze first 2 columns">Freeze 2</button>
+              </div>
               <button data-action="openUdf" data-scope="Line" class="btn btn-sm btn-outline-secondary btn-icon">
                 <i class="mdi mdi-plus"></i>UDF (Line)
               </button>
@@ -1451,19 +1831,31 @@ const App = {
               <thead class="table-light">
                 <tr>
                   <th class="text-center">#</th>
-                  ${visibleCols.map(c => `
-                    <th class="th-resizable" data-colid="${c.id}">
+                  ${visibleCols.map((c, idx) => `
+                    <th class="th-resizable${frozenCount && frozenOffsets[idx] !== undefined && idx < frozenCount ? ' ve-frozen' : ''}" data-colid="${c.id}" ${frozenCount && frozenOffsets[idx] !== undefined && idx < frozenCount ? `style="left:${frozenOffsets[idx]}px"` : ''}>
                       <div class="position-relative">${escapeHtml(c.label)}<span class="resize-handle" data-colid="${c.id}"></span></div>
                     </th>`).join('')}
                   <th></th>
                 </tr>
+                ${this.state.showFilters ? `
+                <tr class="ve-filter-row">
+                  <th></th>
+                  ${visibleCols.map((c, idx) => `
+                    <th class="${idx < frozenCount ? 've-frozen' : ''}" ${idx < frozenCount ? `style="left:${frozenOffsets[idx]}px"` : ''}>
+                      <input class="form-control form-control-sm" data-action="setColumnFilter" data-colid="${c.id}" value="${escapeHtml(this.state.columnFilters?.[c.id] || '')}" placeholder="Filter ${escapeHtml(c.label)}">
+                    </th>`).join('')}
+                  <th></th>
+                </tr>` : ''}
               </thead>
               <tbody>
-                ${rows.map((row, ri) => `
-                  <tr>
-                    <td class="text-center text-muted small">${ri + 1}</td>
+                ${visibleRows.map(({ row, index: ri }, displayIdx) => `
+                  <tr class="ve-row" draggable="true" data-ri="${ri}">
+                    <td class="text-center text-muted small">
+                      <span class="ve-drag-handle" title="Drag to reorder" data-ri="${ri}"><i class="mdi mdi-drag"></i></span>
+                      <span>${displayIdx + 1}</span>
+                    </td>
                     ${visibleCols.map((col, vi) => `
-                      <td title="${cellTitle(row[col.id], col)}">
+                      <td title="${cellTitle(row[col.id], col)}" class="${vi < frozenCount ? 've-frozen' : ''}" ${vi < frozenCount ? `style="left:${frozenOffsets[vi]}px"` : ''}>
                         ${col.type === 'calc'
         ? `<div class="text-end fw-medium" title="${moneyFmt.format(row[col.id] || 0)}">${moneyFmt.format(row[col.id] || 0)}</div>`
         : gridCell(row[col.id], col, ri, vi)}
@@ -1548,17 +1940,19 @@ const App = {
       </div>
 
       <div class="text-center text-muted small mt-3">
-        <p class="mb-0">Data syncs with server on save. Column widths remain stored locally for a personalised layout.</p>
+        <p class="mb-0">Data syncs with server on save. Layout tweaks (columns, density, collapses) are saved to your profile.</p>
       </div>
 
       </div>
       ${this.state.showUdfModal ? udfModalHtml(this.state) : ''}
       ${this.state.showColManager ? colManagerHtml(this.getColumns(), this.state.colManagerDraft) : ''}
       ${this.state.showCharges ? chargesModalHtml(charges) : ''}
+      ${this.state.showAttachmentsModal ? attachmentsModalHtml(this.state) : ''}
+      ${this.state.showPaymentTermsModal ? paymentTermsModalHtml(this.state) : ''}
       ${this.state.showKeyboardHelp ? keyboardHelpModalHtml() : ''}
     `;
 
-    setTimeout(() => { this.focusCurrent(); this.bindResizeHandles(); this.bindCsv(); }, 0);
+    setTimeout(() => { this.focusCurrent(); this.bindResizeHandles(); this.bindCsv(); this.bindRowDrag(); }, 0);
     const grid = document.querySelector('.voucher-grid-wrapper');
     if (grid) {
       grid.addEventListener('paste', (e) => this.handlePaste(e));
@@ -1569,6 +1963,18 @@ const App = {
     el.onfocusin = (ev) => this.handleFocusIn(ev);
     el.oninput = (ev) => {
       const target = ev.target;
+      if (target && target.getAttribute('data-action') === 'setQuickSearch') {
+        this.state.quickSearch = target.value;
+        this.render();
+        return;
+      }
+      if (target && target.getAttribute('data-action') === 'setColumnFilter') {
+        const colId = target.getAttribute('data-colid');
+        this.state.columnFilters = { ...(this.state.columnFilters || {}), [colId]: target.value };
+        this.persistPresets();
+        this.render();
+        return;
+      }
       if (target && target.getAttribute('data-action') === 'bindNotes') {
         this.state.notes = target.value;
         this.persistPresets();
@@ -1578,6 +1984,11 @@ const App = {
         const ri = +target.getAttribute('data-ri');
         const ci = +target.getAttribute('data-ci');
         this.queueAccountSuggestions(target, ri, ci);
+      }
+      if (target && target.classList.contains('cell-input') && target.getAttribute('data-colid') === 'costCenter') {
+        const ri = +target.getAttribute('data-ri');
+        const ci = +target.getAttribute('data-ci');
+        this.queueCostCenterSuggestions(target, ri, ci);
       }
     };
   },
@@ -1615,6 +2026,52 @@ const App = {
     this.state.colPrefsByType[vt] = nextPrefs;
     this.persistPresets();
     this._resizing = null;
+  },
+
+  /** Row drag/drop */
+  bindRowDrag() {
+    const rows = document.querySelectorAll('.ve-row');
+    rows.forEach((row) => {
+      row.ondragstart = (e) => {
+        if (!e.target.closest('.ve-drag-handle')) {
+          e.preventDefault();
+          return;
+        }
+        this._dragIndex = Number(row.getAttribute('data-ri'));
+        row.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      };
+      row.ondragend = () => {
+        row.classList.remove('dragging');
+        this._dragIndex = null;
+        document.querySelectorAll('.ve-row.drag-over').forEach((r) => r.classList.remove('drag-over'));
+      };
+      row.ondragover = (e) => {
+        e.preventDefault();
+        row.classList.add('drag-over');
+      };
+      row.ondragleave = () => row.classList.remove('drag-over');
+      row.ondrop = (e) => {
+        e.preventDefault();
+        row.classList.remove('drag-over');
+        const targetIdx = Number(row.getAttribute('data-ri'));
+        if (Number.isInteger(this._dragIndex)) {
+          this.reorderRows(this._dragIndex, targetIdx);
+        }
+      };
+    });
+  },
+
+  reorderRows(fromIdx, toIdx) {
+    if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0) return;
+    const rows = [...this.state.rows];
+    if (!rows[fromIdx] || !rows[toIdx]) return;
+    const [moved] = rows.splice(fromIdx, 1);
+    rows.splice(toIdx, 0, moved);
+    this.state.rows = rows;
+    this.state.focus = { r: toIdx, c: 0 };
+    this.persistPresets();
+    this.render();
   },
 
   /** CSV/Excel I/O */
@@ -1824,10 +2281,25 @@ const App = {
       return;
     }
 
-        if (action === 'attach') {
-      notify('Attachment management is coming soon.');
+    if (action === 'openAttachments') { this.state.showAttachmentsModal = true; this.render(); return; }
+    if (action === 'closeAttachments') { this.state.showAttachmentsModal = false; this.render(); return; }
+    if (action === 'removeAttachment') {
+      const attId = t.getAttribute('data-id');
+      this.deleteAttachment(attId);
       return;
     }
+    if (action === 'openPaymentTerms') {
+      if (!this.state.paymentTerms?.netDueDays && this.state.header?.creditDays !== undefined) {
+        const days = asNum(this.state.header.creditDays, 0);
+        this.state.paymentTerms = { ...(this.state.paymentTerms || {}), netDueDays: days, dueDate: this.computeDueDate(this.state.header?.date, days) };
+      }
+      this.state.showPaymentTermsModal = true;
+      this.fetchPaymentTerms();
+      this.render();
+      return;
+    }
+    if (action === 'closePaymentTerms') { this.state.showPaymentTermsModal = false; this.render(); return; }
+    if (action === 'applyPaymentTerms') { this.applyPaymentTerms(); return; }
 
 if (action === 'addRow') { this.state.rows.push(this.blankRow()); this.render(); }
     if (action === 'add10') { for (let i = 0; i < 10; i++) this.state.rows.push(this.blankRow()); this.render(); }
@@ -1856,14 +2328,15 @@ if (action === 'addRow') { this.state.rows.push(this.blankRow()); this.render();
     if (action === 'cmApply') { const vt = this.state.voucherType; this.state.colPrefsByType[vt] = this.state.colManagerDraft.map(({ id, visible, width, order }) => ({ id, visible: visible !== false, width, order })); this.state.showColManager = false; this.persistPresets(); this.render(); }
     if (action === 'saveCols') { const vt = this.state.voucherType; const cols = this.getColumns(); this.state.colPrefsByType[vt] = cols.map(({ id, visible, width, order }) => ({ id, visible: visible !== false, width, order })); this.persistPresets(); alert('Column prefs saved.'); }
     if (action === 'resetCols') { const vt = this.state.voucherType; delete this.state.colPrefsByType[vt]; this.persistPresets(); this.render(); }
+    if (action === 'toggleFilters') { this.state.showFilters = !this.state.showFilters; this.persistPresets(); this.render(); }
+    if (action === 'toggleDensity') { this.state.density = this.state.density === 'compact' ? 'normal' : 'compact'; this.persistPresets(); this.render(); }
+    if (action === 'setFrozen') { const count = Number(t.getAttribute('data-count')) || 0; this.state.frozenColumns = count; this.persistPresets(); this.render(); }
 
     if (action === 'importCsv') { const el = document.getElementById('csvFile'); if (el) el.click(); }
     if (action === 'exportCsv') { this.exportCsv(); }
     if (action === 'sampleXlsx') { this.sampleXlsx(); }
     if (action === 'exportXlsx') { this.exportXlsx(); }
 
-    if (action === 'attach') { alert('Attach files: wire this to your uploader'); }
-    if (action === 'paymentTerms') { alert('Wire Payment Terms & Due Date calc to your backend'); }
     if (action === 'toggleCharges') { this.state.showCharges = true; this.render(); }
     if (action === 'chgClose') { this.state.showCharges = false; this.render(); }
     if (action === 'chgAdd') { this.state.charges.push({ id: uid(), label: 'New Charge', mode: 'amount', value: 0, sign: 1 }); this.persistPresets(); this.render(); }
@@ -1874,6 +2347,30 @@ if (action === 'addRow') { this.state.rows.push(this.blankRow()); this.render();
 
   handleChange(e) {
     const t = e.target;
+    const actionAttr = t.getAttribute('data-action');
+    if (actionAttr === 'attachFiles') {
+      const files = t.files || [];
+      this.uploadAttachments(files);
+      t.value = '';
+      return;
+    }
+    if (actionAttr === 'setPaymentTerm') {
+      const termId = t.value;
+      const selected = (this.state.paymentTermOptions || []).find((opt) => String(opt.id) === String(termId));
+      this.updatePaymentTerm(selected || { id: null, code: '', netDueDays: this.state.paymentTerms?.netDueDays || 0 });
+      return;
+    }
+    if (actionAttr === 'setPaymentCreditDays') {
+      const days = asNum(t.value, 0);
+      this.state.paymentTerms = { ...(this.state.paymentTerms || {}), netDueDays: days, dueDate: this.computeDueDate(this.state.header?.date, days) };
+      this.render();
+      return;
+    }
+    if (actionAttr === 'setPaymentDueDate') {
+      this.state.paymentTerms = { ...(this.state.paymentTerms || {}), dueDate: t.value };
+      this.render();
+      return;
+    }
     const hkey = t.getAttribute('data-hkey');
     if (hkey) {
       if (hkey === 'priceInclusiveTax') {
@@ -1884,6 +2381,14 @@ if (action === 'addRow') { this.state.rows.push(this.blankRow()); this.render();
         this.state.header[hkey] = !!t.checked;
       } else {
         this.state.header[hkey] = t.value;
+      }
+      if (hkey === 'creditDays') {
+        const daysVal = asNum(t.value, 0);
+        this.state.paymentTerms = { ...(this.state.paymentTerms || {}), netDueDays: daysVal, dueDate: this.computeDueDate(this.state.header?.date, daysVal) };
+      }
+      if (hkey === 'date' && this.state.paymentTerms && this.state.paymentTerms.netDueDays !== undefined) {
+        const daysVal = this.state.paymentTerms.netDueDays || 0;
+        this.state.paymentTerms = { ...(this.state.paymentTerms || {}), dueDate: this.computeDueDate(t.value, daysVal) };
       }
       if (!STANDARD_HEADER_KEYS.has(hkey)) {
         const extras = { ...(this.state.metadata.headerExtras || {}) };
@@ -1997,6 +2502,18 @@ if (action === 'addRow') { this.state.rows.push(this.blankRow()); this.render();
       if (this.state.showCoaModal) {
         e.preventDefault();
         this.state.showCoaModal = false;
+        this.render();
+        return;
+      }
+      if (this.state.showAttachmentsModal) {
+        e.preventDefault();
+        this.state.showAttachmentsModal = false;
+        this.render();
+        return;
+      }
+      if (this.state.showPaymentTermsModal) {
+        e.preventDefault();
+        this.state.showPaymentTermsModal = false;
         this.render();
         return;
       }
@@ -2160,13 +2677,17 @@ if (action === 'addRow') { this.state.rows.push(this.blankRow()); this.render();
     const ri = +t.getAttribute('data-ri');
     const ci = +t.getAttribute('data-ci');
     const editableCols = this.getColumns().filter(c => c.visible !== false && c.type !== 'calc');
-    const maxR = this.state.rows.length - 1; const maxC = editableCols.length - 1;
-    if (e.key === 'ArrowDown') { e.preventDefault(); this.state.focus = { r: clamp(ri + 1, 0, maxR), c: ci }; this.focusCurrent(); }
-    if (e.key === 'ArrowUp') { e.preventDefault(); this.state.focus = { r: clamp(ri - 1, 0, maxR), c: ci }; this.focusCurrent(); }
+    const visibleOrder = this.visibleRowOrder();
+    const pos = visibleOrder.indexOf(ri);
+    const currentPos = pos >= 0 ? pos : 0;
+    const maxR = visibleOrder.length - 1; const maxC = editableCols.length - 1;
+    const rowAt = (idx) => visibleOrder[clamp(idx, 0, maxR)] ?? ri;
+    if (e.key === 'ArrowDown') { e.preventDefault(); this.state.focus = { r: rowAt(currentPos + 1), c: ci }; this.focusCurrent(); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); this.state.focus = { r: rowAt(currentPos - 1), c: ci }; this.focusCurrent(); }
     if (e.key === 'ArrowRight' || (e.key === 'Tab' && !e.shiftKey)) { e.preventDefault(); this.state.focus = { r: ri, c: clamp(ci + 1, 0, maxC) }; this.focusCurrent(); }
     if (e.key === 'ArrowLeft' || (e.key === 'Tab' && e.shiftKey)) { e.preventDefault(); this.state.focus = { r: ri, c: clamp(ci - 1, 0, maxC) }; this.focusCurrent(); }
     if (e.key === 'Enter') { e.preventDefault(); this.state.rows.splice(ri + 1, 0, this.blankRow()); this.state.focus = { r: ri + 1, c: 0 }; this.render(); }
-    if (e.key === 'Delete' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); this.state.rows.splice(ri, 1); this.state.focus = { r: clamp(ri, 0, Math.max(0, this.state.rows.length - 1)), c: 0 }; this.render(); }
+    if (e.key === 'Delete' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); this.state.rows.splice(ri, 1); this.state.focus = { r: clamp(rowAt(currentPos), 0, Math.max(0, this.state.rows.length - 1)), c: 0 }; this.render(); }
   },
 
   handleFocusIn(e) {
@@ -2281,6 +2802,9 @@ if (action === 'addRow') { this.state.rows.push(this.blankRow()); this.render();
       description: header.description || notes || '',
       branch: header.branch || '',
     };
+    if (header.dueDate) headerPayload.dueDate = header.dueDate;
+    if (header.paymentTermId) headerPayload.paymentTermId = header.paymentTermId;
+    if (header.paymentTermCode) headerPayload.paymentTermCode = header.paymentTermCode;
     this.state.headerFieldDefs.forEach((field) => {
       const key = field.stateKey;
       if (!(key in headerPayload)) {
@@ -2561,6 +3085,65 @@ function chargesModalHtml(charges) {
       <div class="flex justify-between items-center mt-4">
         <button data-action="chgAdd" class="px-3 py-2 rounded-xl border">+ Add Charge</button>
         <button data-action="chgClose" class="px-3 py-2 rounded-xl bg-emerald-600 text-white">Done</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function attachmentsModalHtml(state) {
+  const attachments = Array.isArray(state.attachments) ? state.attachments : [];
+  return `
+  <div class="modal-backdrop" data-action="closeAttachments">
+    <div class="bg-white rounded-2xl shadow-xl w-[640px] max-w-[96vw] p-4" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-semibold mb-0">Attachments</h3>
+        <button class="text-slate-500 hover:text-black" data-action="closeAttachments">&times;</button>
+      </div>
+      <div class="mb-3">
+        <label class="btn btn-sm btn-outline-secondary mb-2">
+          <i class="mdi mdi-upload"></i> Upload files
+          <input type="file" class="d-none" data-action="attachFiles" multiple>
+        </label>
+        <p class="text-muted small mb-0">Files are uploaded to this journal. A draft will be auto-saved if needed.</p>
+      </div>
+      <div class="border rounded p-2 bg-light-subtle max-h-[45vh] overflow-auto">
+        ${attachments.length ? attachments.map(att => `
+          <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+            <div>
+              <div class="fw-semibold">${escapeHtml(att.name || 'Attachment')}</div>
+              <div class="text-muted small">${att.uploadedAt ? `Uploaded ${escapeHtml(att.uploadedAt.slice(0, 10))}` : ''}</div>
+            </div>
+            <button data-action="removeAttachment" data-id="${att.id}" class="btn btn-link text-danger btn-sm">Remove</button>
+          </div>
+        `).join('') : '<div class="text-muted small">No attachments yet.</div>'}
+      </div>
+      <div class="d-flex justify-content-end gap-2 mt-3">
+        <button data-action="closeAttachments" class="btn btn-secondary">Close</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function paymentTermsModalHtml(state) {
+  const pt = state.paymentTerms || {};
+  const options = Array.isArray(state.paymentTermOptions) ? state.paymentTermOptions : [];
+  const optionHtml = ['<option value="">Select a term</option>', ...options.map(opt => `<option value="${opt.id}" ${String(pt.termId) === String(opt.id) ? 'selected' : ''}>${escapeHtml(opt.code || opt.name || '')}</option>`)].join('');
+  return `
+  <div class="modal-backdrop" data-action="closePaymentTerms">
+    <div class="bg-white rounded-2xl shadow-xl w-[720px] max-w-[96vw] p-4" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-semibold mb-0">Payment Terms</h3>
+        <button class="text-slate-500 hover:text-black" data-action="closePaymentTerms">&times;</button>
+      </div>
+      <div class="row g-3">
+        ${Labeled('Term', `<select class="h-10 px-3 py-2 rounded-xl border border-slate-300 bg-white" data-action="setPaymentTerm">${optionHtml}</select>`)}
+        ${Labeled('Credit Days', `<input type="number" class="h-10 px-3 py-2 rounded-xl border border-slate-300 bg-white" data-action="setPaymentCreditDays" value="${pt.netDueDays ?? ''}">`)}
+        ${Labeled('Due Date', `<input type="date" class="h-10 px-3 py-2 rounded-xl border border-slate-300 bg-white" data-action="setPaymentDueDate" value="${escapeHtml(pt.dueDate || '')}">`)}
+        ${Labeled('Discount', `<input class="h-10 px-3 py-2 rounded-xl border border-slate-300 bg-white" disabled value="${pt.discountPercent ? `${pt.discountPercent}%${pt.discountDueDate ? ` until ${pt.discountDueDate}` : ''}` : 'N/A'}">`)}
+      </div>
+      <div class="d-flex justify-content-end gap-2 mt-4">
+        <button data-action="closePaymentTerms" class="btn btn-outline-secondary">Cancel</button>
+        <button data-action="applyPaymentTerms" class="btn btn-primary">Apply</button>
       </div>
     </div>
   </div>`;
