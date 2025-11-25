@@ -1,0 +1,22 @@
+{% include "lpg_vertical/partials/layout_cards.html" %}
+
+<div class="card mt-3">
+  <div class="card-header"><h5 class="mb-0">Revenue vs Expense Trend (last 6 months)</h5></div>
+  <div class="card-body">
+    <table class="table table-sm">
+      <thead><tr><th>Month</th><th>Revenue</th><th>Expenses</th><th>Net Profit</th></tr></thead>
+      <tbody>
+        {% for row in trend %}
+          <tr>
+            <td>{{ row.month }}</td>
+            <td>{{ row.revenue }}</td>
+            <td>{{ row.expenses }}</td>
+            <td>{{ row.net_profit }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" class="text-muted">No data yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>

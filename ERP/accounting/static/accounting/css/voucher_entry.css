@@ -121,6 +121,75 @@
   font-size: 13px;
 }
 
+/* Modal helpers for voucher entry overlays */
+.ve-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 2100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.ve-modal {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+  width: 640px;
+  max-width: 96vw;
+  padding: 16px;
+  max-height: 90vh;
+  overflow: auto;
+}
+.ve-modal.ve-modal-lg {
+  width: 720px;
+}
+.ve-key {
+  display: inline-block;
+  min-width: 28px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-family: var(--bs-font-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* Compact layout tweaks */
+.ve-wrapper.ve-density-compact .card-header,
+.ve-wrapper.ve-density-compact .card-body {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.ve-wrapper .voucher-actions .btn {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+:root {
+  --ve-sticky-offset: 0px;
+}
+.ve-sticky-bar {
+  position: sticky;
+  top: var(--ve-sticky-offset);
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: #fff;
+  margin-top: 0;
+  margin-bottom: 10px;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+}
+.ve-sticky-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 12;
+  background: #fff;
+  border-top: 1px solid #e2e8f0;
+  box-shadow: 0 -6px 24px rgba(15, 23, 42, 0.08);
+}
+
 .ve-filter-row th {
   background: #f8fafc;
   z-index: 4;
@@ -153,5 +222,10 @@
 .ve-density-compact .voucher-grid th {
   padding-top: 4px;
   padding-bottom: 4px;
+}
+
+/* Prevent sticky bar overlap when sections scroll into view */
+.ve-wrapper .card {
+  scroll-margin-top: 96px;
 }
 

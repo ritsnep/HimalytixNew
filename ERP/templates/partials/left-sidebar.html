@@ -20,6 +20,19 @@
                         <span data-key="t-dashboard">Dashboard</span>
                     </a>
                 </li>
+
+                <li class="menu-title" data-key="t-lpg">LPG / PFG</li>
+                <li>
+                    <a href="{% url 'lpg_vertical:spa' %}"
+                       hx-get="{% url 'lpg_vertical:spa' %}"
+                       hx-target="#main-container"
+                       hx-swap="innerHTML"
+                       hx-push-url="true"
+                       class="nav-link">
+                        <i data-feather="droplet"></i>
+                        <span data-key="t-lpg-module">LPG Vertical</span>
+                    </a>
+                </li>
   <!-- Accounting Section -->
   <li>
     <a href="javascript: void(0);" class="has-arrow">

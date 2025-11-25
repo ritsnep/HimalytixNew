@@ -9,6 +9,10 @@ class RequestMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        # Respect organization already resolved by upstream middleware
+        if getattr(request, "organization", None):
+            return self.get_response(request)
+
         if hasattr(request, 'tenant') and request.tenant:
             try:
                 organization = Organization.objects.get(tenant=request.tenant)

@@ -25,7 +25,12 @@ from accounting.models import (
 from accounting.forms_factory import build_form, build_formset
 from accounting.schema_loader import load_voucher_schema
 from accounting.services.create_voucher import create_voucher
-from accounting.services.post_journal import post_journal, JournalError, JournalValidationError
+from accounting.services.post_journal import (
+    post_journal,
+    JournalError,
+    JournalValidationError,
+    JournalPostingError,
+)
 from accounting.validation import JournalValidationService
 from accounting.views.views_mixins import UserOrganizationMixin, PermissionRequiredMixin, VoucherConfigMixin
 from usermanagement.utils import PermissionUtils
@@ -645,7 +650,7 @@ class VoucherPostView(PermissionRequiredMixin, UserOrganizationMixin, View):
         try:
             post_journal(voucher, request.user)
             messages.success(request, f"Voucher {voucher.journal_number} has been posted successfully.")
-        except (JournalError, JournalValidationError) as e:
+        except (JournalError, JournalValidationError, JournalPostingError) as e:
             logger.error(f"Error posting voucher: {e}", exc_info=True)
             messages.error(request, f"Error posting voucher: {str(e)}")
         except Exception as e:

@@ -158,6 +158,7 @@ class Settings(LoginRequiredMixin, View):
 class CustomLoginView(LoginView):
     template_name = "account/login.html"
     authentication_form = DasonLoginForm
+    success_url = reverse_lazy("dashboard")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -165,6 +166,10 @@ class CustomLoginView(LoginView):
         print(f"[DEBUG] LoginView next_url: {next_url}")  # Debug print
         context['next'] = next_url
         return context
+
+    def get_success_url(self):
+        """Always return the main dashboard as the post-login destination."""
+        return str(self.success_url)
 
 
 def set_language(request):

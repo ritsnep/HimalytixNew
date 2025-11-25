@@ -1,0 +1,18 @@
+{% extends "spa/htmx_page.html" %}
+{% load static %}
+
+{% block title %}LPG Vertical{% endblock title %}
+
+{% block spa_content %}
+  <div class="card">
+    <div class="card-body">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <h4 class="mb-0">LPG / PFG Vertical</h4>
+          <p class="text-muted mb-0">Masters, purchases, sales, logistics (HTMX SPA)</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% include "lpg_vertical/spa_body.html" %}
+{% endblock spa_content %}

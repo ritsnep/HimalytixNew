@@ -75,6 +75,14 @@ python manage.py runserver
 
 To pick an active organization after login, visit `/manage/select-organization/`.
 
+## LPG / NOC distribution vertical
+
+- Feature toggles per company via `CompanyConfig` (seeded on Organization create).
+- Masters: cylinder types/SKUs, dealers, transport providers/vehicles, LPG products, conversion rules.
+- Posting flows: NOC purchase allocation + GL, sales with dealer credit enforcement + stock movements, logistics trips with optional transfer/expense posting.
+- APIs exposed under `/api/lpg/` with DRF schema coverage; see `ERP/docs/verticals/lpg_pfg.md` for endpoints and setup.
+- Basic PWA assets live at `static/pwa/manifest.json` and `static/pwa/service-worker.js`.
+
 ## API & Tooling
 
 - **REST API:** All public endpoints are namespaced under `/api/v1/`.

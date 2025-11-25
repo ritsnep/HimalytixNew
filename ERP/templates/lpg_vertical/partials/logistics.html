@@ -1,0 +1,64 @@
+{% if messages %}
+  <div class="mb-2">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} mb-1">{{ message }}</div>
+    {% endfor %}
+  </div>
+{% endif %}
+<div class="row">
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header"><h5 class="mb-0">Logistics Trip</h5></div>
+      <div class="card-body">
+        <form hx-post="{% url 'lpg_vertical:spa_logistics' %}" hx-target="#lpg-spa-body" hx-swap="innerHTML transition:true" class="row g-2">
+          <input type="hidden" name="form_name" value="logistics">
+          {% csrf_token %}
+          {{ form.non_field_errors }}
+          <div class="col-md-6">{{ form.date.label_tag }} {{ form.date }}</div>
+          <div class="col-md-6">{{ form.provider.label_tag }} {{ form.provider }}</div>
+          <div class="col-md-6">{{ form.vehicle.label_tag }} {{ form.vehicle }}</div>
+          <div class="col-md-6">{{ form.cylinder_sku.label_tag }} {{ form.cylinder_sku }}</div>
+          <div class="col-md-6">{{ form.from_location.label_tag }} {{ form.from_location }}</div>
+          <div class="col-md-6">{{ form.to_location.label_tag }} {{ form.to_location }}</div>
+          <div class="col-md-6">{{ form.cylinder_count.label_tag }} {{ form.cylinder_count }}</div>
+          <div class="col-md-6">{{ form.cost.label_tag }} {{ form.cost }}</div>
+          <div class="col-md-6">{{ form.ref_doc_type.label_tag }} {{ form.ref_doc_type }}</div>
+          <div class="col-md-6">{{ form.ref_doc_id.label_tag }} {{ form.ref_doc_id }}</div>
+          <div class="col-12">{{ form.notes.label_tag }} {{ form.notes }}</div>
+          <div class="col-12">
+            <button type="submit" class="btn btn-primary">Save Trip</button>
+            <span class="text-muted small">Posting/stock transfer via API (/logistics-trips/{id}/post_trip/).</span>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Recent Trips</h5>
+      </div>
+      <div class="card-body">
+        <table class="table table-sm">
+          <thead>
+            <tr><th>Date</th><th>Vehicle</th><th>From</th><th>To</th><th>Cyl</th><th>Cost</th></tr>
+          </thead>
+          <tbody>
+            {% for t in trips %}
+              <tr>
+                <td>{{ t.date }}</td>
+                <td>{{ t.vehicle.number }}</td>
+                <td>{{ t.from_location }}</td>
+                <td>{{ t.to_location }}</td>
+                <td>{{ t.cylinder_count }}</td>
+                <td>{{ t.cost }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="6" class="text-muted">No trips yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

@@ -41,11 +41,16 @@ class AuditLog(models.Model):
             models.Index(fields=['timestamp']),
         ]
 
+def generate_numeric_id():
+    """Generate a random numeric identifier for non-PK helper fields."""
+    return get_random_string(10, '0123456789')
+
+
 def generate_fiscal_year_id():
     while True:
-        id = get_random_string(10, '0123456789')
-        if not FiscalYear.objects.filter(fiscal_year_id=id).exists():
-            return id
+        candidate = get_random_string(10, '0123456789')
+        if not FiscalYear.objects.filter(fiscal_year_id=candidate).exists():
+            return candidate
 # Example: Fix for AutoIncrementCodeGenerator
 class AutoIncrementCodeGenerator:
     def __init__(self, model, field, *, organization=None, prefix='', suffix='', padding=2):
@@ -126,7 +131,7 @@ class FiscalYear(models.Model):
         ('closed', 'Closed'),
         ('archived', 'Archived'),
     ]
-    id = models.CharField(default=get_random_string(10, '0123456789'), max_length=10, unique=True, editable=False)
+    id = models.CharField(default=generate_numeric_id, max_length=10, unique=True, editable=False)
     fiscal_year_id = models.CharField(max_length=10,primary_key=True, unique=True, default=generate_fiscal_year_id)
     organization = models.ForeignKey(
         Organization,
@@ -300,6 +305,7 @@ class AccountingPeriod(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
+    is_closed = models.BooleanField(default=False, help_text="Legacy flag mirrored from status == 'closed'.")
     is_adjustment_period = models.BooleanField(default=False)
     closed_at = models.DateTimeField(null=True, blank=True)
     closed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='closed_periods')
@@ -317,6 +323,10 @@ class AccountingPeriod(models.Model):
         ordering = ['fiscal_year', 'period_number']
         constraints = [
             CheckConstraint(check=Q(start_date__lt=F('end_date')), name='period_start_before_end'),
+        ]
+        indexes = [
+            models.Index(fields=['organization', 'status']),
+            models.Index(fields=['organization', 'is_closed']),
         ]
         # For DBA: UNIQUE (fiscal_year_id, period_number)
         # For DBA: FILTERED INDEX WHERE status='open'
@@ -366,6 +376,8 @@ class AccountingPeriod(models.Model):
                         "Only one accounting period can be current per fiscal year."
                     )
     def save(self, *args, **kwargs):
+        # Keep legacy boolean in sync with status
+        self.is_closed = self.status == 'closed'
         if self.fiscal_year_id:
             fy_org_id = self.fiscal_year.organization_id
             if fy_org_id is None:
@@ -2496,6 +2508,84 @@ class SalesInvoice(models.Model):
                 document_date=document_date,
             )
         super().save(*args, **kwargs)
+
+
+class IRDSubmissionTask(models.Model):
+    """Queued IRD submission job for an individual sales invoice."""
+
+    STATUS_PENDING = 'pending'
+    STATUS_PROCESSING = 'processing'
+    STATUS_SUCCEEDED = 'succeeded'
+    STATUS_FAILED = 'failed'
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Pending'),
+        (STATUS_PROCESSING, 'Processing'),
+        (STATUS_SUCCEEDED, 'Succeeded'),
+        (STATUS_FAILED, 'Failed'),
+    ]
+
+    PRIORITY_LOW = 'low'
+    PRIORITY_NORMAL = 'normal'
+    PRIORITY_HIGH = 'high'
+
+    PRIORITY_CHOICES = [
+        (PRIORITY_LOW, 'Low'),
+        (PRIORITY_NORMAL, 'Normal'),
+        (PRIORITY_HIGH, 'High'),
+    ]
+
+    submission_id = models.BigAutoField(primary_key=True)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name='ird_submission_tasks',
+    )
+    invoice = models.ForeignKey(
+        SalesInvoice,
+        on_delete=models.CASCADE,
+        related_name='ird_submission_tasks',
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default=PRIORITY_NORMAL)
+    attempts = models.PositiveIntegerField(default=0)
+    max_attempts = models.PositiveIntegerField(default=6)
+    next_attempt_at = models.DateTimeField(null=True, blank=True)
+    last_attempt_at = models.DateTimeField(null=True, blank=True)
+    celery_task_id = models.CharField(max_length=64, blank=True, default='')
+    last_error = models.TextField(blank=True, default='')
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+    )
+
+    class Meta:
+        db_table = 'ird_submission_task'
+        ordering = ('-created_at',)
+        indexes = [
+            models.Index(fields=('organization', 'status')),
+            models.Index(fields=('status', 'next_attempt_at')),
+        ]
+
+    def __str__(self):
+        return f"IRD submission #{self.pk} for {self.invoice_id}"
+
+    @property
+    def is_terminal(self) -> bool:
+        return self.status in {self.STATUS_SUCCEEDED, self.STATUS_FAILED}
 
 
 class SalesInvoiceLine(models.Model):

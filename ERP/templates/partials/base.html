@@ -62,8 +62,8 @@
         {% endblock left_sidebar %}
 
 
-        <main class="flex-grow-1">
-            {% block content %}
+        <main class="flex-grow-1" id="main-container">
+        {% block content %}
             {# Django messages block #}
             {% if messages %}
               <div class="container mt-2">
@@ -76,7 +76,7 @@
             {% endif %}
             {% block footer %}
             {% endblock footer %}
-            {% endblock content %}
+        {% endblock content %}
         </main>
     </div>
     <!-- END layout-wrapper -->
@@ -105,6 +105,22 @@
     <script src="{% static 'libs/pristinejs/dist/pristine.min.js' %}"></script>
     <!-- Toastr -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script>
+      // Ensure HTMX sends the Django CSRF token for POST/PUT/DELETE.
+      (function() {
+        function getCookie(name) {
+          const value = `; ${document.cookie}`;
+          const parts = value.split(`; ${name}=`);
+          if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+        document.body.addEventListener('htmx:configRequest', function (evt) {
+          const token = getCookie('csrftoken');
+          if (token) {
+            evt.detail.headers['X-CSRFToken'] = token;
+          }
+        });
+      })();
+    </script>
     {% block extra_js %}
     {% endblock extra_js %}
     {# Expose i18n to JS safely #}

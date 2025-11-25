@@ -1,0 +1,59 @@
+<div class="card">
+  <div class="card-body">
+    <ul class="nav nav-pills mb-3" id="lpg-spa-tabs">
+      <li class="nav-item">
+        <a class="nav-link active"
+           hx-get="{% url 'lpg_vertical:spa_dashboard' %}"
+           hx-target="#lpg-spa-body"
+           hx-swap="innerHTML"
+           data-tab="dashboard">Dashboard</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link"
+           hx-get="{% url 'lpg_vertical:spa_masters' %}"
+           hx-target="#lpg-spa-body"
+           hx-swap="innerHTML"
+           data-tab="masters">Masters</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link"
+           hx-get="{% url 'lpg_vertical:spa_noc' %}"
+           hx-target="#lpg-spa-body"
+           hx-swap="innerHTML"
+           data-tab="noc">NOC Purchases</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link"
+           hx-get="{% url 'lpg_vertical:spa_sales' %}"
+           hx-target="#lpg-spa-body"
+           hx-swap="innerHTML"
+           data-tab="sales">Sales</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link"
+           hx-get="{% url 'lpg_vertical:spa_logistics' %}"
+           hx-target="#lpg-spa-body"
+           hx-swap="innerHTML"
+           data-tab="logistics">Logistics</a>
+      </li>
+    </ul>
+    <div id="lpg-spa-body"
+         hx-get="{% url 'lpg_vertical:spa_dashboard' %}"
+         hx-trigger="load delay:50ms"
+         hx-swap="innerHTML"
+         class="mt-2">
+      <!-- HTMX will inject section content here -->
+    </div>
+  </div>
+</div>
+
+<script>
+  // Toggle active state on tabs after htmx swaps
+  document.body.addEventListener('htmx:afterOnLoad', function (evt) {
+    const tab = evt.detail.elt && evt.detail.elt.dataset ? evt.detail.elt.dataset.tab : null;
+    if (!tab) return;
+    document.querySelectorAll('#lpg-spa-tabs .nav-link').forEach(link => {
+      link.classList.toggle('active', link.dataset.tab === tab);
+    });
+  });
+</script>

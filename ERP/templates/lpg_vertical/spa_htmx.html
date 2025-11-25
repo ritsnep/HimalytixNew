@@ -1,0 +1,20 @@
+{% extends "spa/htmx_base.html" %}
+
+{% block spa_content %}
+  {# HTMX fragment that still keeps the standard page padding/container to avoid overlay with sidebar/topbar #}
+  <div class="page-content">
+    <div class="container-fluid">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <h4 class="mb-0">LPG / PFG Vertical</h4>
+              <p class="text-muted mb-0">Masters, purchases, sales, logistics (HTMX SPA)</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% include "lpg_vertical/spa_body.html" %}
+    </div>
+  </div>
+{% endblock spa_content %}

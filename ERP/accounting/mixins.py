@@ -8,6 +8,10 @@ from usermanagement.utils import PermissionUtils
 class UserOrganizationMixin:
     """Inject the active organization into queryset and form helpers."""
 
+    def get_user_organization(self):
+        """Backward-compatible helper used across older views."""
+        return self.get_organization()
+
     def get_organization(self):
         user = getattr(self.request, "user", None)
         if user and hasattr(user, "get_active_organization"):

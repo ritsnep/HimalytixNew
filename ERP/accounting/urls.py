@@ -27,6 +27,7 @@ from .views.views_list import (
 # Import from views.py (for reports, general views, and most list/detail views)
 from .views import views
 from .views import dashboard_views
+from accounting.api import dashboard_views as api_dashboard_views
 from .views.views import (
     ReportsListView, TrialBalanceView, IncomeStatementView, BalanceSheetView,
     GeneralLedgerDetailView, VoucherTypeConfigurationView, VoucherEntryView,
@@ -356,6 +357,8 @@ path('journal-entry/upload-receipt/', journal_entry_view.UploadReceiptView.as_vi
 
 urlpatterns += [
     path('api/', include('accounting.api.urls')),
+    path('api/compliance/vat-summary/', api_dashboard_views.vat_summary, name='compliance_vat_summary'),
+    path('api/compliance/nfrs-schedule/', api_dashboard_views.nfrs_schedule, name='compliance_nfrs_schedule'),
     path('dashboard/', dashboard_views.DashboardView.as_view(), name='dashboard'),
     path('compliance/', dashboard_views.ComplianceView.as_view(), name='compliance'),
 ]

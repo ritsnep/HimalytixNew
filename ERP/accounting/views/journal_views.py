@@ -483,28 +483,27 @@ def upload_attachment(request, journal_id):
     return HttpResponse('<div class="list-group-item small text-danger">Upload failed.</div>', status=400)
 
 def post_journal(request, journal_id):
-    """HTMX endpoint to post a journal entry."""
+    """HTMX endpoint to post a journal entry using the central posting service."""
     try:
-        journal = Journal.objects.get(pk=journal_id)
-        
-        # Add validation logic here before posting
-        # For example, check if the journal is balanced
-        total_debit = sum(line.debit for line in journal.lines.all())
-        total_credit = sum(line.credit for line in journal.lines.all())
-
-        if abs(total_debit - total_credit) > 0.005:
-            # Return an error message if not balanced
-            return HttpResponse('<div class="alert alert-danger">Journal is not balanced.</div>', status=400)
-
-        journal.status = 'posted'
-        journal.save()
-        
-        # Add logic here to create ledger entries from journal lines
-        # This is a critical step in a real accounting system
-        
-        return HttpResponse(f'<button class="btn btn-sm btn-success d-flex align-items-center gap-1" disabled><i class="fas fa-check-circle"></i><span>Posted</span></button>')
+        journal = Journal.objects.get(pk=journal_id, organization=request.user.get_active_organization())
     except Journal.DoesNotExist:
-        return HttpResponse(f'<span class="badge bg-danger-subtle text-danger-emphasis">Not Found</span>', status=404)
+        return HttpResponse('<span class="badge bg-danger-subtle text-danger-emphasis">Not Found</span>', status=404)
+
+    if journal.status != 'draft':
+        return HttpResponse('<div class="alert alert-warning">Only draft journals can be posted.</div>', status=400)
+
+    try:
+        from accounting.services.post_journal import post_journal as service_post_journal, JournalPostingError, JournalValidationError
+
+        service_post_journal(journal, user=request.user)
+        return HttpResponse(
+            '<button class="btn btn-sm btn-success d-flex align-items-center gap-1" disabled>'
+            '<i class="fas fa-check-circle"></i><span>Posted</span></button>'
+        )
+    except (JournalPostingError, JournalValidationError) as exc:
+        return HttpResponse(f'<div class="alert alert-danger">{exc}</div>', status=400)
+    except Exception:
+        return HttpResponse('<div class="alert alert-danger">Unexpected error while posting.</div>', status=500)
 
 def search_accounts(request):
     """HTMX endpoint to search for accounts."""

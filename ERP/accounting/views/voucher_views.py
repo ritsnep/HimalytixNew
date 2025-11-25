@@ -215,11 +215,13 @@ class VoucherPostView(PermissionRequiredMixin, UserOrganizationMixin, DetailView
             return redirect('accounting:voucher_detail', pk=voucher.pk)
         
         try:
-            from accounting.services.post_journal import post_journal
+            from accounting.services.post_journal import post_journal, JournalPostingError, JournalValidationError
             post_journal(voucher, request.user)
             messages.success(request, f"Voucher {voucher.journal_number} has been posted successfully.")
-        except Exception as e:
+        except (JournalPostingError, JournalValidationError) as e:
             messages.error(request, f"Error posting voucher: {str(e)}")
+        except Exception:
+            messages.error(request, "Unexpected error while posting voucher.")
         
         return redirect('accounting:voucher_detail', pk=voucher.pk)
 

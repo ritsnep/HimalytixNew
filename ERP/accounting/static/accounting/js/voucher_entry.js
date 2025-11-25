@@ -623,7 +623,7 @@ const App = {
     serverTotals: null,
     attachments: [],
     metadata: {},
-    density: 'normal',
+    density: 'compact',
     frozenColumns: 0,
     showFilters: false,
     columnFilters: {},
@@ -1701,7 +1701,7 @@ const App = {
 
     el.innerHTML = `
       <div class="${wrapperClasses}">
-      <div class="card mb-3">
+      <div class="card mb-3 ve-sticky-bar">
         <div class="card-body">
           <div class="d-sm-flex align-items-center justify-content-between">
             <div class="d-flex align-items-center flex-wrap gap-2 mb-2 mb-sm-0">
@@ -1899,7 +1899,7 @@ const App = {
         </div>
 
         <div class="col-lg-4">
-          <div class="card mb-3">
+          <div class="card mb-3 ve-sticky-footer">
             <div class="card-header">
               <div class="d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">Totals</h5>
@@ -3093,8 +3093,8 @@ function chargesModalHtml(charges) {
 function attachmentsModalHtml(state) {
   const attachments = Array.isArray(state.attachments) ? state.attachments : [];
   return `
-  <div class="modal-backdrop" data-action="closeAttachments">
-    <div class="bg-white rounded-2xl shadow-xl w-[640px] max-w-[96vw] p-4" onclick="event.stopPropagation()">
+  <div class="ve-modal-backdrop" data-action="closeAttachments">
+    <div class="ve-modal" onclick="event.stopPropagation()">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-lg font-semibold mb-0">Attachments</h3>
         <button class="text-slate-500 hover:text-black" data-action="closeAttachments">&times;</button>
@@ -3129,8 +3129,8 @@ function paymentTermsModalHtml(state) {
   const options = Array.isArray(state.paymentTermOptions) ? state.paymentTermOptions : [];
   const optionHtml = ['<option value="">Select a term</option>', ...options.map(opt => `<option value="${opt.id}" ${String(pt.termId) === String(opt.id) ? 'selected' : ''}>${escapeHtml(opt.code || opt.name || '')}</option>`)].join('');
   return `
-  <div class="modal-backdrop" data-action="closePaymentTerms">
-    <div class="bg-white rounded-2xl shadow-xl w-[720px] max-w-[96vw] p-4" onclick="event.stopPropagation()">
+  <div class="ve-modal-backdrop" data-action="closePaymentTerms">
+    <div class="ve-modal ve-modal-lg" onclick="event.stopPropagation()">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-lg font-semibold mb-0">Payment Terms</h3>
         <button class="text-slate-500 hover:text-black" data-action="closePaymentTerms">&times;</button>
@@ -3149,94 +3149,43 @@ function paymentTermsModalHtml(state) {
   </div>`;
 }
 
+
 function keyboardHelpModalHtml() {
+  const key = (label) => `<span class="ve-key">${label}</span>`;
+  const row = (combo, desc) => `<div class="d-flex align-items-center justify-content-between py-1"><div class="d-flex align-items-center gap-2 flex-wrap">${combo}</div><div>${desc}</div></div>`;
   return `
-  <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);" data-action="closeKeyboardHelp">
-    <div class="modal-dialog modal-lg modal-dialog-centered" onclick="event.stopPropagation()">
-      <div class="modal-content">
-        <div class="modal-header border-bottom">
-          <h5 class="modal-title">
-            <i class="mdi mdi-keyboard-outline me-2"></i>Keyboard Shortcuts
-          </h5>
-          <button type="button" class="btn-close" data-action="closeKeyboardHelp"></button>
+  <div class="ve-modal-backdrop" data-action="closeKeyboardHelp">
+    <div class="ve-modal ve-modal-lg" onclick="event.stopPropagation()">
+      <div class="d-flex align-items-start justify-content-between mb-3">
+        <h5 class="mb-0"><i class="mdi mdi-keyboard-outline me-2"></i>Keyboard Shortcuts</h5>
+        <button type="button" class="btn-close" data-action="closeKeyboardHelp"></button>
+      </div>
+      <div class="row g-4">
+        <div class="col-md-6">
+          <h6 class="text-primary fw-bold mb-2"><i class="mdi mdi-cog-outline me-1"></i>Global Actions</h6>
+          ${row(`${key('Ctrl')} + ${key('S')}`, 'Save Draft')}
+          ${row(`${key('Ctrl')} + ${key('Enter')}`, 'Submit Voucher')}
+          ${row(`${key('Ctrl')} + ${key('A')}`, 'Approve Voucher')}
+          ${row(`${key('Ctrl')} + ${key('P')}`, 'Post Voucher')}
+          ${row(key('Esc'), 'Close Modals')}
+          ${row(`${key('Ctrl')} + ${key('/')}`, 'Show This Help')}
         </div>
-        <div class="modal-body">
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <h6 class="text-primary fw-bold mb-3">
-                <i class="mdi mdi-cog-outline me-1"></i>Global Actions
-              </h6>
-              <table class="table table-sm table-borderless">
-                <tbody>
-                  <tr>
-                    <td class="text-muted"><kbd class="bg-light border px-2 py-1 rounded">Ctrl</kbd> + <kbd class="bg-light border px-2 py-1 rounded">S</kbd></td>
-                    <td>Save Draft</td>
-                  </tr>
-                  <tr>
-                    <td class="text-muted"><kbd class="bg-light border px-2 py-1 rounded">Ctrl</kbd> + <kbd class="bg-light border px-2 py-1 rounded">Enter</kbd></td>
-                    <td>Submit Voucher</td>
-                  </tr>
-                  <tr>
-                    <td class="text-muted"><kbd class="bg-light border px-2 py-1 rounded">Ctrl</kbd> + <kbd class="bg-light border px-2 py-1 rounded">A</kbd></td>
-                    <td>Approve Voucher</td>
-                  </tr>
-                  <tr>
-                    <td class="text-muted"><kbd class="bg-light border px-2 py-1 rounded">Ctrl</kbd> + <kbd class="bg-light border px-2 py-1 rounded">P</kbd></td>
-                    <td>Post Voucher</td>
-                  </tr>
-                  <tr>
-                    <td class="text-muted"><kbd class="bg-light border px-2 py-1 rounded">Esc</kbd></td>
-                    <td>Close Modals</td>
-                  </tr>
-                  <tr>
-                    <td class="text-muted"><kbd class="bg-light border px-2 py-1 rounded">Ctrl</kbd> + <kbd class="bg-light border px-2 py-1 rounded">/</kbd></td>
-                    <td>Show This Help</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="col-md-6 mb-3">
-              <h6 class="text-success fw-bold mb-3">
-                <i class="mdi mdi-table-edit me-1"></i>Grid Navigation
-              </h6>
-              <table class="table table-sm table-borderless">
-                <tbody>
-                  <tr>
-                    <td class="text-muted"><kbd class="bg-light border px-2 py-1 rounded">↑</kbd> <kbd class="bg-light border px-2 py-1 rounded">↓</kbd></td>
-                    <td>Navigate Rows</td>
-                  </tr>
-                  <tr>
-                    <td class="text-muted"><kbd class="bg-light border px-2 py-1 rounded">←</kbd> <kbd class="bg-light border px-2 py-1 rounded">→</kbd></td>
-                    <td>Navigate Columns</td>
-                  </tr>
-                  <tr>
-                    <td class="text-muted"><kbd class="bg-light border px-2 py-1 rounded">Tab</kbd></td>
-                    <td>Next Cell</td>
-                  </tr>
-                  <tr>
-                    <td class="text-muted"><kbd class="bg-light border px-2 py-1 rounded">Shift</kbd> + <kbd class="bg-light border px-2 py-1 rounded">Tab</kbd></td>
-                    <td>Previous Cell</td>
-                  </tr>
-                  <tr>
-                    <td class="text-muted"><kbd class="bg-light border px-2 py-1 rounded">Enter</kbd></td>
-                    <td>Insert Row Below</td>
-                  </tr>
-                  <tr>
-                    <td class="text-muted"><kbd class="bg-light border px-2 py-1 rounded">Ctrl</kbd> + <kbd class="bg-light border px-2 py-1 rounded">Del</kbd></td>
-                    <td>Delete Current Row</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div class="alert alert-info d-flex align-items-center mb-0" role="alert">
-            <i class="mdi mdi-information-outline me-2 fs-5"></i>
-            <small>Use <kbd class="bg-white border px-2 py-1 rounded">Cmd</kbd> instead of <kbd class="bg-white border px-2 py-1 rounded">Ctrl</kbd> on macOS</small>
-          </div>
+        <div class="col-md-6">
+          <h6 class="text-success fw-bold mb-2"><i class="mdi mdi-table-edit me-1"></i>Grid Navigation</h6>
+          ${row(`${key('↑')} ${key('↓')}`, 'Navigate Rows')}
+          ${row(`${key('←')} ${key('→')}`, 'Navigate Columns')}
+          ${row(key('Tab'), 'Next Cell')}
+          ${row(`${key('Shift')} + ${key('Tab')}`, 'Previous Cell')}
+          ${row(key('Enter'), 'Insert Row Below')}
+          ${row(`${key('Ctrl')} + ${key('Del')}`, 'Delete Current Row')}
         </div>
-        <div class="modal-footer border-top">
-          <button type="button" class="btn btn-secondary" data-action="closeKeyboardHelp">Close</button>
-        </div>
+      </div>
+      <div class="alert alert-info d-flex align-items-center mt-3 mb-0" role="alert">
+        <i class="mdi mdi-apple me-2"></i>
+        <div>Use <strong>Cmd</strong> instead of <strong>Ctrl</strong> on macOS.</div>
+      </div>
+      <div class="d-flex justify-content-end gap-2 mt-3">
+        <button type="button" class="btn btn-secondary" data-action="closeKeyboardHelp">Close</button>
       </div>
     </div>
   </div>`;

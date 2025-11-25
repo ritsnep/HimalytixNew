@@ -1919,9 +1919,8 @@ class JournalPostView(LoginRequiredMixin, View):
            return redirect('accounting:journal_detail', pk=pk)
 
        try:
-           # Use the service function for posting to centralize logic and error handling
-           from accounting.services import post_journal as service_post_journal
-           journal = service_post_journal(journal)
+           # Use centralized posting service
+           journal = post_journal(journal, user=request.user)
            messages.success(request, "Journal posted successfully.")
            return redirect('accounting:journal_detail', pk=pk)
        except (JournalPostingError, JournalValidationError) as e:

@@ -18,6 +18,7 @@ class UserOrganizationAdmin(admin.ModelAdmin):
     list_filter = ('is_owner', 'is_active', 'role')
     search_fields = ('user__username', 'organization__name')
     readonly_fields = ('date_joined',)
+    list_select_related = ('user', 'organization', 'role')
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
@@ -41,6 +42,7 @@ class CustomUserAdmin(UserAdmin):
         }),
     )
     readonly_fields = ('created_at', 'updated_at', 'deleted_at')
+    list_select_related = ('role', 'organization')
 
 # Organization Models
 @admin.register(Organization)
@@ -53,12 +55,14 @@ class OrganizationAdmin(admin.ModelAdmin):
 class OrganizationAddressAdmin(admin.ModelAdmin):
     list_display = ('organization', 'address_type', 'city', 'country_code', 'is_primary')
     search_fields = ('organization__name', 'city')
+    list_select_related = ('organization',)
 
 
 @admin.register(OrganizationContact)
 class OrganizationContactAdmin(admin.ModelAdmin):
     list_display = ('organization', 'name', 'email', 'contact_type', 'is_primary')
     search_fields = ('organization__name', 'name', 'email')
+    list_select_related = ('organization',)
 
 # Module and Entity
 admin.site.register(Module)
@@ -69,6 +73,7 @@ class PermissionAdmin(admin.ModelAdmin):
     list_filter = ('module', 'entity', 'action')
     search_fields = ('name', 'codename')
     readonly_fields = ('codename',)
+    list_select_related = ('module', 'entity')
 
     def get_queryset(self, request):
         # Only show permissions to superadmin
@@ -81,6 +86,7 @@ class RoleAdmin(admin.ModelAdmin):
     list_filter = ('organization', 'is_system')
     search_fields = ('name',)
     filter_horizontal = ('permissions',)
+    list_select_related = ('organization',)
 
     def get_queryset(self, request):
         # Only show roles to superadmin
@@ -92,6 +98,7 @@ class UserRoleAdmin(admin.ModelAdmin):
     list_display = ('user', 'role', 'organization', 'is_active')
     list_filter = ('organization', 'is_active')
     search_fields = ('user__username', 'role__name')
+    list_select_related = ('user', 'role', 'organization')
 
     def get_queryset(self, request):
         # Only show user roles to superadmin
@@ -103,6 +110,7 @@ class UserPermissionAdmin(admin.ModelAdmin):
     list_display = ('user', 'permission', 'organization', 'is_granted')
     list_filter = ('organization', 'is_granted')
     search_fields = ('user__username', 'permission__codename')
+    list_select_related = ('user', 'permission', 'organization')
 
 # Register the admin classes
 admin.site.register(Permission, PermissionAdmin)

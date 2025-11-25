@@ -1,5 +1,7 @@
 from django.urls import path, include
 
+from accounting.api import dashboard_views as api_dashboard_views
+from accounting.views import dashboard_views
 from accounting.views import views_import
 from ..views import journal_entry, journal_entry_view, voucher_views, voucher_crud_views
 from ..views import views_journal_grid as journal_grid_view
@@ -345,6 +347,14 @@ urlpatterns = [
     path('api/v1/journals/suggest/', api_views.suggest_journal_entries, name='suggest_journal_entries'),
     path('api/v1/journals/line-suggest/', api_views.get_line_suggestions, name='get_line_suggestions'),
 
+]
+
+urlpatterns += [
+    path('api/', include('accounting.api.urls')),
+    path('api/compliance/vat-summary/', api_dashboard_views.vat_summary, name='compliance_vat_summary'),
+    path('api/compliance/nfrs-schedule/', api_dashboard_views.nfrs_schedule, name='compliance_nfrs_schedule'),
+    path('dashboard/', dashboard_views.DashboardView.as_view(), name='dashboard'),
+    path('compliance/', dashboard_views.ComplianceView.as_view(), name='compliance'),
 ]
 
 # API URLs

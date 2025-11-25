@@ -1,0 +1,185 @@
+{% if messages %}
+  <div class="mb-2">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} mb-1">{{ message }}</div>
+    {% endfor %}
+  </div>
+{% endif %}
+<div class="row" id="lpg-masters">
+  <div class="col-lg-6">
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Cylinder Types</h5>
+      </div>
+      <div class="card-body">
+        <form hx-post="{% url 'lpg_vertical:spa_masters' %}" hx-target="#lpg-spa-body" hx-swap="innerHTML transition:true" class="row g-2 align-items-end" autocomplete="off">
+          <input type="hidden" name="form_name" value="cylinder_type">
+          {% csrf_token %}
+          {{ cylinder_type_form.non_field_errors }}
+          <div class="col-md-6">{{ cylinder_type_form.name.label_tag }} {{ cylinder_type_form.name }}</div>
+          <div class="col-md-3">{{ cylinder_type_form.kg_per_cylinder.label_tag }} {{ cylinder_type_form.kg_per_cylinder }}</div>
+          <div class="col-md-3">{{ cylinder_type_form.is_active.label_tag }} {{ cylinder_type_form.is_active }}</div>
+          <div class="col-12">
+            <button type="submit" class="btn btn-primary btn-sm">Save Type</button>
+          </div>
+        </form>
+        <table class="table table-sm mt-3">
+          <thead><tr><th>Name</th><th>KG</th><th>Status</th></tr></thead>
+          <tbody>
+          {% for ct in cylinder_types %}
+            <tr><td>{{ ct.name }}</td><td>{{ ct.kg_per_cylinder }}</td><td>{{ ct.is_active|yesno:"Active,Inactive" }}</td></tr>
+          {% empty %}
+            <tr><td colspan="3" class="text-muted">No cylinder types yet.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Cylinder SKUs</h5>
+      </div>
+      <div class="card-body">
+        <form hx-post="{% url 'lpg_vertical:spa_masters' %}" hx-target="#lpg-spa-body" hx-swap="innerHTML transition:true" class="row g-2 align-items-end" autocomplete="off">
+          <input type="hidden" name="form_name" value="cylinder_sku">
+          {% csrf_token %}
+          <div class="col-md-4">{{ cylinder_sku_form.name.label_tag }} {{ cylinder_sku_form.name }}</div>
+          <div class="col-md-4">{{ cylinder_sku_form.cylinder_type.label_tag }} {{ cylinder_sku_form.cylinder_type }}</div>
+          <div class="col-md-2">{{ cylinder_sku_form.state.label_tag }} {{ cylinder_sku_form.state }}</div>
+          <div class="col-md-2">{{ cylinder_sku_form.code.label_tag }} {{ cylinder_sku_form.code }}</div>
+          <div class="col-12">{{ cylinder_sku_form.is_active.label_tag }} {{ cylinder_sku_form.is_active }}</div>
+          <div class="col-12">
+            <button type="submit" class="btn btn-primary btn-sm">Save SKU</button>
+          </div>
+        </form>
+        <table class="table table-sm mt-3">
+          <thead><tr><th>Code</th><th>Name</th><th>Type</th><th>State</th></tr></thead>
+          <tbody>
+          {% for sku in cylinder_skus %}
+            <tr><td>{{ sku.code }}</td><td>{{ sku.name }}</td><td>{{ sku.cylinder_type }}</td><td>{{ sku.get_state_display }}</td></tr>
+          {% empty %}
+            <tr><td colspan="4" class="text-muted">No SKUs yet.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card mb-3">
+      <div class="card-header"><h5 class="mb-0">Dealers</h5></div>
+      <div class="card-body">
+        <form hx-post="{% url 'lpg_vertical:spa_masters' %}" hx-target="#lpg-spa-body" hx-swap="innerHTML transition:true" class="row g-2 align-items-end" autocomplete="off">
+          <input type="hidden" name="form_name" value="dealer">
+          {% csrf_token %}
+          <div class="col-md-3">{{ dealer_form.company_code.label_tag }} {{ dealer_form.company_code }}</div>
+          <div class="col-md-4">{{ dealer_form.name.label_tag }} {{ dealer_form.name }}</div>
+          <div class="col-md-5">{{ dealer_form.contact_person.label_tag }} {{ dealer_form.contact_person }}</div>
+          <div class="col-md-4">{{ dealer_form.phone.label_tag }} {{ dealer_form.phone }}</div>
+          <div class="col-md-4">{{ dealer_form.tax_id.label_tag }} {{ dealer_form.tax_id }}</div>
+          <div class="col-md-4">{{ dealer_form.credit_limit.label_tag }} {{ dealer_form.credit_limit }}</div>
+          <div class="col-12">{{ dealer_form.address.label_tag }} {{ dealer_form.address }}</div>
+          <div class="col-12">{{ dealer_form.active.label_tag }} {{ dealer_form.active }}</div>
+          <div class="col-12">
+            <button type="submit" class="btn btn-primary btn-sm">Save Dealer</button>
+          </div>
+        </form>
+        <table class="table table-sm mt-3">
+          <thead><tr><th>Code</th><th>Name</th><th>Credit Limit</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for d in dealers %}
+              <tr><td>{{ d.company_code }}</td><td>{{ d.name }}</td><td>{{ d.credit_limit }}</td><td>{{ d.active|yesno:"Active,Inactive" }}</td></tr>
+            {% empty %}
+              <tr><td colspan="4" class="text-muted">No dealers yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header"><h5 class="mb-0">Transport & Vehicles</h5></div>
+      <div class="card-body">
+        <form hx-post="{% url 'lpg_vertical:spa_masters' %}" hx-target="#lpg-spa-body" hx-swap="innerHTML transition:true" class="row g-2 align-items-end" autocomplete="off">
+          <input type="hidden" name="form_name" value="provider">
+          {% csrf_token %}
+          <div class="col-md-5">{{ provider_form.name.label_tag }} {{ provider_form.name }}</div>
+          <div class="col-md-5">{{ provider_form.contact.label_tag }} {{ provider_form.contact }}</div>
+          <div class="col-md-2"><button type="submit" class="btn btn-outline-primary btn-sm w-100 mt-4">Save Provider</button></div>
+        </form>
+        <form hx-post="{% url 'lpg_vertical:spa_masters' %}" hx-target="#lpg-spa-body" hx-swap="innerHTML transition:true" class="row g-2 align-items-end mt-2" autocomplete="off">
+          <input type="hidden" name="form_name" value="vehicle">
+          {% csrf_token %}
+          <div class="col-md-4">{{ vehicle_form.number.label_tag }} {{ vehicle_form.number }}</div>
+          <div class="col-md-4">{{ vehicle_form.provider.label_tag }} {{ vehicle_form.provider }}</div>
+          <div class="col-md-3">{{ vehicle_form.capacity.label_tag }} {{ vehicle_form.capacity }}</div>
+          <div class="col-md-1"><button type="submit" class="btn btn-outline-primary btn-sm mt-4">Add</button></div>
+        </form>
+        <table class="table table-sm mt-3">
+          <thead><tr><th>Number</th><th>Provider</th><th>Capacity</th></tr></thead>
+          <tbody>
+            {% for v in vehicles %}
+              <tr><td>{{ v.number }}</td><td>{{ v.provider.name }}</td><td>{{ v.capacity }}</td></tr>
+            {% empty %}
+              <tr><td colspan="3" class="text-muted">No vehicles yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header"><h5 class="mb-0">Conversion Rules</h5></div>
+      <div class="card-body">
+        <form hx-post="{% url 'lpg_vertical:spa_masters' %}" hx-target="#lpg-spa-body" hx-swap="innerHTML transition:true" class="row g-2 align-items-end" autocomplete="off">
+          <input type="hidden" name="form_name" value="conversion">
+          {% csrf_token %}
+          <div class="col-md-4">{{ conversion_form.cylinder_type.label_tag }} {{ conversion_form.cylinder_type }}</div>
+          <div class="col-md-4">{{ conversion_form.mt_fraction_per_cylinder.label_tag }} {{ conversion_form.mt_fraction_per_cylinder }}</div>
+          <div class="col-md-3">{{ conversion_form.is_default.label_tag }} {{ conversion_form.is_default }}</div>
+          <div class="col-md-1"><button type="submit" class="btn btn-outline-primary btn-sm mt-4">Save</button></div>
+        </form>
+        <table class="table table-sm mt-3">
+          <thead><tr><th>Cylinder</th><th>MT/Cyl</th><th>Default</th></tr></thead>
+          <tbody>
+            {% for c in conversion_rules %}
+              <tr><td>{{ c.cylinder_type }}</td><td>{{ c.mt_fraction_per_cylinder }}</td><td>{{ c.is_default|yesno:"Yes,No" }}</td></tr>
+            {% empty %}
+              <tr><td colspan="3" class="text-muted">No conversion rules yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header"><h5 class="mb-0">LPG Products</h5></div>
+      <div class="card-body">
+        <form hx-post="{% url 'lpg_vertical:spa_masters' %}" hx-target="#lpg-spa-body" hx-swap="innerHTML transition:true" class="row g-2 align-items-end" autocomplete="off">
+          <input type="hidden" name="form_name" value="product">
+          {% csrf_token %}
+          <div class="col-md-3">{{ product_form.code.label_tag }} {{ product_form.code }}</div>
+          <div class="col-md-5">{{ product_form.name.label_tag }} {{ product_form.name }}</div>
+          <div class="col-md-2">{{ product_form.is_bulk.label_tag }} {{ product_form.is_bulk }}</div>
+          <div class="col-md-2">{{ product_form.is_active.label_tag }} {{ product_form.is_active }}</div>
+          <div class="col-12">{{ product_form.description.label_tag }} {{ product_form.description }}</div>
+          <div class="col-12">
+            <button type="submit" class="btn btn-primary btn-sm">Save Product</button>
+          </div>
+        </form>
+        <table class="table table-sm mt-3">
+          <thead><tr><th>Code</th><th>Name</th><th>Bulk</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for p in products %}
+              <tr><td>{{ p.code }}</td><td>{{ p.name }}</td><td>{{ p.is_bulk|yesno:"Yes,No" }}</td><td>{{ p.is_active|yesno:"Active,Inactive" }}</td></tr>
+            {% empty %}
+              <tr><td colspan="4" class="text-muted">No products yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

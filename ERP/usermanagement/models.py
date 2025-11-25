@@ -1,12 +1,12 @@
 # usermanagement/models.py
 import uuid
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 from tenancy.models import Tenant
-import uuid
-from django.conf import settings
 # class CustomUser(AbstractUser):
 #     full_name = models.CharField(max_length=100)
 #     role = models.CharField(max_length=50, choices=[("superadmin", "Super Admin"), ("admin", "Admin"), ("user", "User")])
@@ -17,7 +17,14 @@ from django.conf import settings
     
 
 class Organization(models.Model):
+    VERTICAL_CHOICES = [
+        ("retailer", "Retailer"),
+        ("depot", "Depot"),
+        ("logistics", "Logistics"),
+    ]
+
     parent_organization = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL)
+    tenant = models.ForeignKey(Tenant, on_delete=models.SET_NULL, null=True, blank=True, related_name='organizations')
     name = models.CharField(max_length=200)
     code = models.CharField(max_length=50)
     type = models.CharField(max_length=50)
@@ -27,7 +34,15 @@ class Organization(models.Model):
     industry_code = models.CharField(max_length=20, null=True, blank=True)
     fiscal_year_start_month = models.SmallIntegerField(default=1)
     fiscal_year_start_day = models.SmallIntegerField(default=1)
+    fiscal_year_start = models.DateField(null=True, blank=True)
     base_currency_code = models.CharField(max_length=3, default="USD")
+    address = models.TextField(blank=True, default="")
+    vertical_type = models.CharField(
+        max_length=20,
+        choices=VERTICAL_CHOICES,
+        default="retailer",
+        help_text="Operational vertical for feature toggles.",
+    )
     status = models.CharField(max_length=20, default="active")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -35,6 +50,11 @@ class Organization(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def company_config(self):
+        """Safe accessor for the related CompanyConfig if it exists."""
+        return getattr(self, "config", None)
     
     
 class OrganizationAddress(models.Model):
@@ -65,9 +85,18 @@ class OrganizationContact(models.Model):
     updated_at = models.DateTimeField(null=True, blank=True)
 
 class CustomUser(AbstractUser):
+    ROLE_CHOICES = [
+        ("superadmin", "Super Admin"),
+        ("admin", "Admin"),
+        ("manager", "Manager"),
+        ("accountant", "Accountant"),
+        ("data_entry", "Data Entry"),
+        ("user", "User"),
+    ]
+
     user_uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     full_name = models.CharField(max_length=100)
-    role = models.CharField(max_length=50, choices=[("superadmin", "Super Admin"), ("admin", "Admin"), ("user", "User")])
+    role = models.CharField(max_length=50, choices=ROLE_CHOICES, default="user")
     organization = models.ForeignKey(Organization, on_delete=models.SET_NULL, null=True, blank=True)
 
     # New fields from schema
@@ -233,6 +262,57 @@ PERMISSION_ACTION_CHOICES = [
     ('close_fiscalyear', 'Close Fiscal Year'),
     ('reopen_fiscalyear', 'Reopen Fiscal Year'),
 ]
+
+
+class CompanyConfig(models.Model):
+    """Feature toggles per company/tenant."""
+
+    company = models.OneToOneField(Organization, on_delete=models.CASCADE, related_name="config")
+    enable_noc_purchases = models.BooleanField(default=False)
+    enable_dealer_management = models.BooleanField(default=True)
+    enable_logistics = models.BooleanField(default=False)
+    enable_advanced_inventory = models.BooleanField(default=False)
+    enforce_credit_limit = models.BooleanField(default=True)
+    credit_enforcement_mode = models.CharField(
+        max_length=10,
+        choices=[("block", "Block"), ("warn", "Warn")],
+        default="block",
+        help_text="How to handle dealer credit limit breaches.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "company_config"
+
+    def __str__(self):
+        return f"{self.company.name} config"
+
+    @classmethod
+    def defaults_for_vertical(cls, vertical: str) -> dict:
+        """Provide sensible defaults per vertical type."""
+        vertical = (vertical or "").lower()
+        if vertical == "depot":
+            return {
+                "enable_noc_purchases": True,
+                "enable_dealer_management": True,
+                "enable_logistics": True,
+                "enable_advanced_inventory": True,
+            }
+        if vertical == "logistics":
+            return {
+                "enable_noc_purchases": False,
+                "enable_dealer_management": False,
+                "enable_logistics": True,
+                "enable_advanced_inventory": False,
+            }
+        # retailer/default
+        return {
+            "enable_noc_purchases": False,
+            "enable_dealer_management": True,
+            "enable_logistics": False,
+            "enable_advanced_inventory": False,
+        }
 
 
 class Permission(models.Model):

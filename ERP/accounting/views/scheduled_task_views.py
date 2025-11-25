@@ -29,12 +29,12 @@ except ImportError:
     AsyncResult = None
 
 from accounting.models import (
-    AccountingPeriod, 
-    Organization, 
-    Journal, 
+    AccountingPeriod,
+    Organization,
+    Journal,
     RecurringJournal as RecurringEntry,
     ScheduledReport,
-    ScheduledTaskExecution
+    ScheduledTaskExecution,
 )
 from accounting.mixins import UserOrganizationMixin
 from accounting.celery_tasks import (
@@ -45,8 +45,8 @@ from accounting.celery_tasks import (
 )
 from accounting.forms import (
     AccountingPeriodCloseForm,
-    RecurringEntryForm,
-    ScheduledReportForm
+    RecurringJournalForm,
+    ScheduledReportForm,
 )
 
 logger = logging.getLogger(__name__)
@@ -125,25 +125,24 @@ class PeriodClosingDetailView(LoginRequiredMixin, UserOrganizationMixin, DetailV
         # Get journals in period
         journals = Journal.objects.filter(
             organization=org,
-            date__gte=period.start_date,
-            date__lte=period.end_date
+            period=period,
         )
         
         context['total_journals'] = journals.count()
-        context['posted_journals'] = journals.filter(status='Posted').count()
-        context['draft_journals'] = journals.filter(status='Draft').count()
-        context['submitted_journals'] = journals.filter(status='Submitted').count()
+        context['posted_journals'] = journals.filter(status='posted').count()
+        context['draft_journals'] = journals.filter(status='draft').count()
+        context['submitted_journals'] = journals.filter(status='awaiting_approval').count()
         
         # Check for unbalanced journals
         unbalanced = []
         for journal in journals:
             debit_total = sum(
-                line.debit or Decimal('0')
-                for line in journal.journalline_set.all()
+                line.debit_amount or Decimal('0')
+                for line in journal.lines.all()
             )
             credit_total = sum(
-                line.credit or Decimal('0')
-                for line in journal.journalline_set.all()
+                line.credit_amount or Decimal('0')
+                for line in journal.lines.all()
             )
             
             if debit_total != credit_total:
@@ -155,7 +154,7 @@ class PeriodClosingDetailView(LoginRequiredMixin, UserOrganizationMixin, DetailV
         context['unbalanced_journals'] = unbalanced
         context['can_close'] = (
             not period.is_closed and
-            journals.filter(status__in=['Draft', 'Submitted']).count() == 0 and
+            journals.exclude(status__in=['posted', 'reversed']).count() == 0 and
             len(unbalanced) == 0
         )
         
@@ -192,10 +191,8 @@ class PeriodClosingView(LoginRequiredMixin, UserOrganizationMixin, View):
         
         unposted = Journal.objects.filter(
             organization=org,
-            date__gte=period.start_date,
-            date__lte=period.end_date,
-            status__in=['Draft', 'Submitted']
-        ).count()
+            period=period,
+        ).exclude(status__in=['posted', 'reversed']).count()
         
         if unposted > 0:
             return JsonResponse({
@@ -252,14 +249,15 @@ class RecurringEntryListView(LoginRequiredMixin, UserOrganizationMixin, ListView
         
         all_recurring = RecurringEntry.objects.filter(organization=org)
         context['total_recurring'] = all_recurring.count()
-        context['active_recurring'] = all_recurring.filter(is_active=True).count()
-        context['inactive_recurring'] = all_recurring.filter(is_active=False).count()
+        context['active_recurring'] = all_recurring.filter(status='active').count()
+        context['inactive_recurring'] = all_recurring.filter(status='inactive').count()
+        context['expired_recurring'] = all_recurring.filter(status='expired').count()
         
         # Due today
         today = timezone.now().date()
         context['due_today'] = all_recurring.filter(
-            is_active=True,
-            next_posting_date__lte=today
+            status='active',
+            next_run_date__lte=today
         ).count()
         
         return context
@@ -277,7 +275,7 @@ class RecurringEntryCreateView(LoginRequiredMixin, UserOrganizationMixin, Create
     """
     
     model = RecurringEntry
-    form_class = RecurringEntryForm
+    form_class = RecurringJournalForm
     template_name = 'accounting/scheduled_tasks/recurring_form.html'
     success_url = reverse_lazy('accounting:recurring_list')
     
@@ -295,7 +293,7 @@ class RecurringEntryUpdateView(LoginRequiredMixin, UserOrganizationMixin, Update
     """Update recurring journal entry."""
     
     model = RecurringEntry
-    form_class = RecurringEntryForm
+    form_class = RecurringJournalForm
     template_name = 'accounting/scheduled_tasks/recurring_form.html'
     success_url = reverse_lazy('accounting:recurring_list')
     

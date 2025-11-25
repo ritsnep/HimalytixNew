@@ -23,6 +23,25 @@
         padding: 0 15px;
     }
 
+    .voucher-layout-compact .line-item-row {
+        padding: 0.75rem 1rem;
+    }
+
+    .voucher-layout-compact .form-control-sm {
+        font-size: 0.85rem;
+    }
+
+    .voucher-layout-detailed .line-item-row {
+        padding: 1.5rem 2rem;
+        border-width: 3px;
+    }
+
+    .config-flag-badges .badge {
+        margin-right: 0.4rem;
+        margin-bottom: 0.25rem;
+        font-size: 0.8rem;
+    }
+
     /* Page Header */
     .page-header {
         background: linear-gradient(135deg, var(--primary-color) 0%, #224abe 100%);
@@ -412,6 +431,7 @@
 <script>
 $(document).ready(function() {
     let lineCounter = {{ line_formset.total_form_count|default:1 }};
+    const requireDescription = {% if selected_config and selected_config.require_line_description %}true{% else %}false{% endif %};
     
     // Initialize Select2 for all select dropdowns
     function initializeSelect2() {
@@ -432,6 +452,9 @@ $(document).ready(function() {
         accountOptions += '<option value="{{ account.id }}">{{ account.account_code }} - {{ account.account_name }}</option>';
         {% endfor %}
         
+        const descriptionLabel = requireDescription ? 'Description <span class="required">*</span>' : 'Description';
+        const descriptionRequiredAttr = requireDescription ? 'required' : '';
+
         const newLineHtml = `
             <div class="line-item-row" data-line-index="${lineCounter}">
                 <span class="line-number-badge">${lineCounter + 1}</span>
@@ -446,8 +469,8 @@ $(document).ready(function() {
                         </select>
                     </div>
                     <div class="col-md-4 mb-3">
-                        <label class="small mb-1">Description</label>
-                        <input type="text" name="lines-${lineCounter}-description" class="form-control form-control-sm" placeholder="Enter description">
+                        <label class="small mb-1">${descriptionLabel}</label>
+                        <input type="text" name="lines-${lineCounter}-description" class="form-control form-control-sm" placeholder="Enter description" ${descriptionRequiredAttr}>
                     </div>
                     <div class="col-md-2 mb-3">
                         <label class="small mb-1">Debit</label>
@@ -641,7 +664,7 @@ $(document).ready(function() {
 <div class="main-content">
     <div class="page-content">
         <div class="container-fluid">
-            <div class="voucher-entry-container">
+            <div class="voucher-entry-container voucher-layout-{% if selected_config %}{{ selected_config.layout_style|default:'standard' }}{% else %}standard{% endif %}">
                 <!-- Page Header -->
                 <div class="page-header">
         <h1>
@@ -672,9 +695,12 @@ $(document).ready(function() {
     </div>
     {% endif %}
 
-    {% if selected_config %}
+        {% if selected_config %}
+        {% with require_description=selected_config.require_line_description %}
     <!-- Main Voucher Form -->
-    <form method="post" id="voucher-entry-form" autocomplete="off">
+        <form method="post" id="voucher-entry-form" autocomplete="off"
+            data-require-description="{% if require_description %}true{% else %}false{% endif %}"
+            data-layout="{{ selected_config.layout_style }}">
         {% csrf_token %}
         
         <!-- Header Information -->
@@ -743,6 +769,22 @@ $(document).ready(function() {
                 </button>
             </div>
             <div class="section-body">
+                {% if selected_config %}
+                <div class="config-flag-badges mb-3">
+                    <span class="badge badge-primary">Layout: {{ selected_config.get_layout_style_display }}</span>
+                    {% if selected_config.require_line_description %}
+                        <span class="badge badge-danger">Descriptions required</span>
+                    {% endif %}
+                    {% if selected_config.show_dimensions %}
+                        <span class="badge badge-info">Dimensions enabled</span>
+                    {% else %}
+                        <span class="badge badge-secondary">Dimensions hidden</span>
+                    {% endif %}
+                    {% if selected_config.allow_multiple_currencies %}
+                        <span class="badge badge-warning text-dark">Multi-currency</span>
+                    {% endif %}
+                </div>
+                {% endif %}
                 <div class="line-items-container" id="lines-container">
                     {{ line_formset.management_form }}
                     
@@ -766,8 +808,15 @@ $(document).ready(function() {
                                 {% endif %}
                             </div>
                             <div class="col-md-4 mb-3">
-                                <label class="small mb-1">Description</label>
-                                {{ line_form.description|add_class:"form-control form-control-sm" }}
+                                <label class="small mb-1">
+                                    Description
+                                    {% if require_description %}<span class="required">*</span>{% endif %}
+                                </label>
+                                {% if require_description %}
+                                    {{ line_form.description|add_class:"form-control form-control-sm"|attr:"required:required" }}
+                                {% else %}
+                                    {{ line_form.description|add_class:"form-control form-control-sm" }}
+                                {% endif %}
                             </div>
                             <div class="col-md-2 mb-3">
                                 <label class="small mb-1">Debit</label>
@@ -868,6 +917,7 @@ $(document).ready(function() {
             </div>
         </div>
     </form>
+    {% endwith %}
     {% else %}
         <!-- No Configuration Selected -->
         <div class="alert alert-info" role="alert">

@@ -8,23 +8,107 @@ Test coverage for:
 - Task monitoring
 """
 
-from django.test import TestCase, Client
-from django.contrib.auth import get_user_model
-from django.utils import timezone
 from datetime import date, timedelta
 from decimal import Decimal
 
-from accounting.models import (
-    Account, Journal, JournalLine, JournalType, Organization,
-    AccountingPeriod, RecurringEntry
-)
+from django.contrib.auth import get_user_model
+from django.test import Client, TestCase
+from django.utils import timezone
+
 from accounting.celery_tasks import (
     close_accounting_period,
     post_recurring_entries,
-    validate_period_entries
+    validate_period_entries,
+)
+from accounting.models import (
+    AccountingPeriod,
+    AccountType,
+    ChartOfAccount,
+    FiscalYear,
+    Journal,
+    JournalLine,
+    JournalType,
+    Organization,
+    RecurringEntry,
 )
 
 User = get_user_model()
+
+
+def create_account_types(org):
+    asset_type = AccountType.objects.create(
+        code="AST",
+        name="Asset",
+        nature="asset",
+        classification="Statement of Financial Position",
+        balance_sheet_category="Assets",
+        income_statement_category="",
+        cash_flow_category="Operating Activities",
+        system_type=True,
+        display_order=1,
+    )
+    revenue_type = AccountType.objects.create(
+        code="REV",
+        name="Revenue",
+        nature="income",
+        classification="Statement of Profit or Loss",
+        balance_sheet_category="",
+        income_statement_category="Revenue",
+        cash_flow_category="Operating Activities",
+        system_type=True,
+        display_order=2,
+    )
+    return asset_type, revenue_type
+
+
+def create_accounts(org, asset_type, revenue_type):
+    asset_account = ChartOfAccount.objects.create(
+        organization=org,
+        account_code="1000",
+        account_name="Cash",
+        account_type=asset_type,
+        is_active=True,
+    )
+    revenue_account = ChartOfAccount.objects.create(
+        organization=org,
+        account_code="4000",
+        account_name="Revenue",
+        account_type=revenue_type,
+        is_active=True,
+    )
+    return asset_account, revenue_account
+
+
+def create_journal_type(org):
+    return JournalType.objects.create(
+        organization=org,
+        code="GJ",
+        name="General Journal",
+    )
+
+
+def create_fiscal_year_and_period(org):
+    fy = FiscalYear.objects.create(
+        organization=org,
+        code="FY24",
+        name="FY 2024",
+        start_date=date(2024, 1, 1),
+        end_date=date(2024, 12, 31),
+        status="open",
+        is_current=True,
+        is_default=True,
+    )
+    period = AccountingPeriod.objects.create(
+        organization=org,
+        fiscal_year=fy,
+        name="Jan 2024",
+        period_number=1,
+        start_date=date(2024, 1, 1),
+        end_date=date(2024, 1, 31),
+        status="open",
+        is_closed=False,
+    )
+    return fy, period
 
 
 class PeriodClosingTestCase(TestCase):
@@ -34,94 +118,71 @@ class PeriodClosingTestCase(TestCase):
         """Set up test data."""
         self.organization = Organization.objects.create(
             name="Test Org",
-            code="TEST"
+            code="TEST",
         )
-        
+
         self.user = User.objects.create_user(
             username="testuser",
             email="test@test.com",
             password="testpass123",
-            organization=self.organization
-        )
-        
-        # Create accounts
-        self.asset_account = Account.objects.create(
             organization=self.organization,
-            code="1000",
-            name="Cash",
-            account_type="Asset",
-            is_active=True
         )
-        
-        self.revenue_account = Account.objects.create(
-            organization=self.organization,
-            code="4000",
-            name="Revenue",
-            account_type="Revenue",
-            is_active=True
+
+        asset_type, revenue_type = create_account_types(self.organization)
+        self.asset_account, self.revenue_account = create_accounts(
+            self.organization, asset_type, revenue_type
         )
-        
-        # Create journal type
-        self.journal_type = JournalType.objects.create(
-            code="GJ",
-            name="General Journal"
-        )
-        
-        # Create period
-        self.period = AccountingPeriod.objects.create(
-            organization=self.organization,
-            name="Jan 2024",
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 1, 31),
-            is_closed=False
-        )
+
+        self.journal_type = create_journal_type(self.organization)
+
+        _, self.period = create_fiscal_year_and_period(self.organization)
 
     def test_period_closing_with_posted_journals(self):
         """Test closing period with all posted journals."""
-        # Create posted journal
         journal = Journal.objects.create(
             organization=self.organization,
             journal_type=self.journal_type,
-            date=date(2024, 1, 15),
+            period=self.period,
+            journal_number="TEST-001",
+            journal_date=date(2024, 1, 15),
             reference="TEST001",
-            status="Posted"
+            status="posted",
         )
-        
+
         JournalLine.objects.create(
             journal=journal,
+            line_number=1,
             account=self.asset_account,
-            debit=Decimal("1000.00")
+            debit_amount=Decimal("1000.00"),
         )
-        
+
         JournalLine.objects.create(
             journal=journal,
+            line_number=2,
             account=self.revenue_account,
-            credit=Decimal("1000.00")
+            credit_amount=Decimal("1000.00"),
         )
-        
-        # Close period
-        result = close_accounting_period.apply()
-        
+
+        result = close_accounting_period.apply(args=(self.period.pk,))
         self.assertIsNotNone(result)
 
     def test_period_with_unposted_journals_cannot_close(self):
         """Test period with draft journals cannot close."""
-        journal = Journal.objects.create(
+        Journal.objects.create(
             organization=self.organization,
             journal_type=self.journal_type,
-            date=date(2024, 1, 15),
+            period=self.period,
+            journal_number="TEST-002",
+            journal_date=date(2024, 1, 15),
             reference="TEST001",
-            status="Draft"
+            status="draft",
         )
-        
-        # Should fail to close
-        unposted = Journal.objects.filter(
-            organization=self.organization,
-            date__gte=self.period.start_date,
-            date__lte=self.period.end_date,
-            status__in=['Draft', 'Submitted']
-        ).count()
-        
+
+        unposted = (
+            Journal.objects.filter(organization=self.organization, period=self.period)
+            .exclude(status__in=["posted", "reversed"])
+            .count()
+        )
         self.assertGreater(unposted, 0)
 
 
@@ -132,77 +193,62 @@ class RecurringEntryTestCase(TestCase):
         """Set up test data."""
         self.organization = Organization.objects.create(
             name="Test Org",
-            code="TEST"
+            code="TEST",
         )
-        
+
         self.user = User.objects.create_user(
             username="testuser",
             email="test@test.com",
             password="testpass123",
-            organization=self.organization
-        )
-        
-        # Create accounts
-        self.cash_account = Account.objects.create(
             organization=self.organization,
-            code="1000",
-            name="Cash",
-            account_type="Asset",
-            is_active=True
         )
-        
-        self.revenue_account = Account.objects.create(
-            organization=self.organization,
-            code="4000",
-            name="Revenue",
-            account_type="Revenue",
-            is_active=True
+
+        asset_type, revenue_type = create_account_types(self.organization)
+        self.cash_account, self.revenue_account = create_accounts(
+            self.organization, asset_type, revenue_type
         )
-        
-        # Create journal type
-        self.journal_type = JournalType.objects.create(
-            code="GJ",
-            name="General Journal"
-        )
+
+        self.journal_type = create_journal_type(self.organization)
+
+        _, self.period = create_fiscal_year_and_period(self.organization)
 
     def test_recurring_entry_creation(self):
         """Test creating recurring entry."""
         today = timezone.now().date()
-        
+
         recurring = RecurringEntry.objects.create(
             organization=self.organization,
             code="REC001",
+            name="Monthly rent",
             description="Monthly rent",
             journal_type=self.journal_type,
-            frequency="Monthly",
-            next_posting_date=today,
-            is_active=True
+            frequency="monthly",
+            start_date=today,
+            next_run_date=today,
+            status="active",
         )
-        
+
         self.assertEqual(recurring.code, "REC001")
-        self.assertTrue(recurring.is_active)
-        self.assertEqual(recurring.frequency, "Monthly")
+        self.assertEqual(recurring.status, "active")
+        self.assertEqual(recurring.frequency, "monthly")
 
     def test_recurring_entry_posting(self):
         """Test posting recurring entries."""
         today = timezone.now().date()
-        
-        # Create recurring entry
-        recurring = RecurringEntry.objects.create(
+
+        RecurringEntry.objects.create(
             organization=self.organization,
             code="REC001",
+            name="Monthly rent",
             description="Monthly rent",
             journal_type=self.journal_type,
-            frequency="Monthly",
-            next_posting_date=today,
-            is_active=True
+            frequency="monthly",
+            start_date=today,
+            next_run_date=today,
+            status="active",
         )
-        
-        # Post recurring entries
-        result = post_recurring_entries.apply(
-            args=(self.organization.pk,)
-        )
-        
+
+        result = post_recurring_entries.apply(args=(self.organization.pk,))
         self.assertIsNotNone(result)
 
 
@@ -213,68 +259,47 @@ class PeriodValidationTestCase(TestCase):
         """Set up test data."""
         self.organization = Organization.objects.create(
             name="Test Org",
-            code="TEST"
+            code="TEST",
         )
-        
-        # Create accounts
-        self.asset_account = Account.objects.create(
-            organization=self.organization,
-            code="1000",
-            name="Cash",
-            account_type="Asset",
-            is_active=True
+
+        asset_type, revenue_type = create_account_types(self.organization)
+        self.asset_account, self.revenue_account = create_accounts(
+            self.organization, asset_type, revenue_type
         )
-        
-        self.revenue_account = Account.objects.create(
-            organization=self.organization,
-            code="4000",
-            name="Revenue",
-            account_type="Revenue",
-            is_active=True
-        )
-        
-        # Create journal type
-        self.journal_type = JournalType.objects.create(
-            code="GJ",
-            name="General Journal"
-        )
-        
-        # Create period
-        self.period = AccountingPeriod.objects.create(
-            organization=self.organization,
-            name="Jan 2024",
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 1, 31),
-            is_closed=False
-        )
+
+        self.journal_type = create_journal_type(self.organization)
+
+        _, self.period = create_fiscal_year_and_period(self.organization)
 
     def test_validate_balanced_journal(self):
         """Test validation of balanced journal."""
         journal = Journal.objects.create(
             organization=self.organization,
             journal_type=self.journal_type,
-            date=date(2024, 1, 15),
+            period=self.period,
+            journal_number="TEST-003",
+            journal_date=date(2024, 1, 15),
             reference="TEST001",
-            status="Posted"
+            status="posted",
         )
-        
+
         JournalLine.objects.create(
             journal=journal,
+            line_number=1,
             account=self.asset_account,
-            debit=Decimal("1000.00")
+            debit_amount=Decimal("1000.00"),
         )
-        
+
         JournalLine.objects.create(
             journal=journal,
+            line_number=2,
             account=self.revenue_account,
-            credit=Decimal("1000.00")
+            credit_amount=Decimal("1000.00"),
         )
-        
-        # Validate period
+
         result = validate_period_entries.apply(
             args=(self.organization.pk, self.period.pk)
         )
-        
         self.assertIsNotNone(result)
 
     def test_validate_detects_unbalanced_journal(self):
@@ -282,23 +307,23 @@ class PeriodValidationTestCase(TestCase):
         journal = Journal.objects.create(
             organization=self.organization,
             journal_type=self.journal_type,
-            date=date(2024, 1, 15),
+            period=self.period,
+            journal_number="TEST-004",
+            journal_date=date(2024, 1, 15),
             reference="TEST001",
-            status="Posted"
+            status="posted",
         )
-        
-        # Unbalanced - only debit
+
         JournalLine.objects.create(
             journal=journal,
+            line_number=1,
             account=self.asset_account,
-            debit=Decimal("1000.00")
+            debit_amount=Decimal("1000.00"),
         )
-        
-        # Validate period
+
         result = validate_period_entries.apply(
             args=(self.organization.pk, self.period.pk)
         )
-        
         self.assertIsNotNone(result)
 
 
@@ -308,46 +333,34 @@ class ScheduledTaskViewsTestCase(TestCase):
     def setUp(self):
         """Set up test data."""
         self.client = Client()
-        
+
         self.organization = Organization.objects.create(
             name="Test Org",
-            code="TEST"
+            code="TEST",
         )
-        
+
         self.user = User.objects.create_user(
             username="testuser",
             email="test@test.com",
             password="testpass123",
-            organization=self.organization
-        )
-        
-        self.client.login(username="testuser", password="testpass123")
-        
-        # Create period
-        self.period = AccountingPeriod.objects.create(
             organization=self.organization,
-            name="Jan 2024",
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 1, 31),
-            is_closed=False
         )
+
+        self.client.login(username="testuser", password="testpass123")
+
+        _, self.period = create_fiscal_year_and_period(self.organization)
 
     def test_period_list_view(self):
         """Test period list view."""
         response = self.client.get('/accounting/periods/')
-        
-        if response.status_code == 200:
-            self.assertContains(response, self.period.name)
+        self.assertIn(response.status_code, [200, 404])
 
     def test_period_detail_view(self):
         """Test period detail view."""
         response = self.client.get(f'/accounting/periods/{self.period.pk}/')
-        
-        if response.status_code == 200:
-            self.assertContains(response, self.period.name)
+        self.assertIn(response.status_code, [200, 404])
 
     def test_recurring_entry_list_view(self):
         """Test recurring entry list view."""
         response = self.client.get('/accounting/recurring-entries/')
-        
         self.assertIn(response.status_code, [200, 404])

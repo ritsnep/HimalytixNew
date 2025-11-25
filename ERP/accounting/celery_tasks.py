@@ -18,13 +18,28 @@ from datetime import datetime, timedelta
 import logging
 
 from accounting.models import (
-    Organization, AccountingPeriod, Journal, JournalLine,
-    Account, JournalType, RecurringEntry
+    Organization,
+    AccountingPeriod,
+    Journal,
+    JournalLine,
+    ChartOfAccount,
+    JournalType,
+    RecurringJournal,
 )
 from accounting.services.report_service import ReportService
 from accounting.services.report_export_service import ReportExportService
 
 logger = logging.getLogger(__name__)
+
+
+def _get_closing_journal_type(organization):
+    """Fetch or create the Closing Journal type for the organization."""
+    closing_type, _ = JournalType.objects.get_or_create(
+        organization=organization,
+        code="CJ",
+        defaults={"name": "Closing Journal", "description": "System-generated closing entries"},
+    )
+    return closing_type
 
 
 @shared_task(bind=True, max_retries=3)
@@ -44,7 +59,7 @@ def close_accounting_period(self, period_id: int) -> dict:
     try:
         period = AccountingPeriod.objects.get(pk=period_id)
         
-        if period.is_closed:
+        if period.status == 'closed':
             return {
                 'status': 'already_closed',
                 'message': f'Period {period.name} already closed',
@@ -53,12 +68,14 @@ def close_accounting_period(self, period_id: int) -> dict:
         
         with transaction.atomic():
             # Validate all journals in period are posted
-            unposted = Journal.objects.filter(
-                organization=period.organization,
-                date__gte=period.start_date,
-                date__lte=period.end_date,
-                status__in=['Draft', 'Submitted']
-            ).count()
+            unposted = (
+                Journal.objects.filter(
+                    organization=period.organization,
+                    period=period,
+                )
+                .exclude(status__in=['posted', 'reversed'])
+                .count()
+            )
             
             if unposted > 0:
                 raise ValueError(f'{unposted} unposted journals in period')
@@ -67,28 +84,32 @@ def close_accounting_period(self, period_id: int) -> dict:
             closing_entries = _generate_closing_entries(period)
             
             # Create closing journal entries
+            closing_journal_type = _get_closing_journal_type(period.organization)
             closing_journal = Journal.objects.create(
                 organization=period.organization,
-                journal_type=JournalType.objects.get(code='CJ'),  # Closing Journal
-                date=period.end_date,
+                journal_type=closing_journal_type,
+                period=period,
+                journal_date=period.end_date,
                 reference=f'CLOSING-{period.name}',
                 description=f'Period Closing - {period.name}',
-                status='Posted'
+                status='posted'
             )
             
-            for entry in closing_entries:
+            for idx, entry in enumerate(closing_entries, start=1):
                 JournalLine.objects.create(
                     journal=closing_journal,
+                    line_number=idx,
                     account=entry['account'],
-                    debit=entry.get('debit', Decimal('0.00')),
-                    credit=entry.get('credit', Decimal('0.00')),
+                    debit_amount=entry.get('debit_amount', Decimal('0.00')),
+                    credit_amount=entry.get('credit_amount', Decimal('0.00')),
                     description=entry.get('description', 'Closing entry')
                 )
             
             # Mark period as closed
+            period.status = 'closed'
+            period.closed_at = timezone.now()
             period.is_closed = True
-            period.closed_date = timezone.now()
-            period.save()
+            period.save(update_fields=['status', 'closed_at', 'is_closed'])
             
             logger.info(f'Period {period.name} closed successfully')
             
@@ -123,12 +144,7 @@ def post_recurring_entries(self, organization_id: int) -> dict:
     try:
         organization = Organization.objects.get(pk=organization_id)
         today = timezone.now().date()
-        current_period = AccountingPeriod.objects.filter(
-            organization=organization,
-            start_date__lte=today,
-            end_date__gte=today,
-            is_closed=False
-        ).first()
+        current_period = AccountingPeriod.get_current_period(organization)
         
         if not current_period:
             return {
@@ -139,10 +155,10 @@ def post_recurring_entries(self, organization_id: int) -> dict:
         
         with transaction.atomic():
             # Get recurring entries due today
-            recurring_entries = RecurringEntry.objects.filter(
+            recurring_entries = RecurringJournal.objects.filter(
                 organization=organization,
-                is_active=True,
-                next_posting_date__lte=today
+                status='active',
+                next_run_date__lte=today
             )
             
             posted_count = 0
@@ -152,26 +168,32 @@ def post_recurring_entries(self, organization_id: int) -> dict:
                 journal = Journal.objects.create(
                     organization=organization,
                     journal_type=recurring.journal_type,
-                    date=today,
+                    period=current_period,
+                    journal_date=today,
                     reference=f'REC-{recurring.code}-{today.isoformat()}',
                     description=recurring.description,
-                    status='Posted'
+                    status='posted'
                 )
                 
                 # Create lines from recurring entry
-                for line in recurring.recurringly_lines.all():
+                for idx, line in enumerate(recurring.lines.all(), start=1):
                     JournalLine.objects.create(
                         journal=journal,
+                        line_number=idx,
                         account=line.account,
-                        debit=line.debit,
-                        credit=line.credit,
+                        debit_amount=line.debit_amount,
+                        credit_amount=line.credit_amount,
                         description=line.description
                     )
                 
+                journal.update_totals()
+                
                 # Update next posting date
-                next_date = _calculate_next_posting_date(recurring)
-                recurring.next_posting_date = next_date
-                recurring.save()
+                next_date = _calculate_next_run_date(recurring)
+                recurring.last_run_date = today
+                recurring.next_run_date = next_date
+                recurring.status = 'expired' if recurring.end_date and next_date and next_date > recurring.end_date else recurring.status
+                recurring.save(update_fields=['last_run_date', 'next_run_date', 'status'])
                 
                 posted_count += 1
             
@@ -273,10 +295,10 @@ def archive_old_journals(organization_id: int, days_old: int = 365) -> dict:
         # Mark old posted journals as archived
         archived_count = Journal.objects.filter(
             organization=organization,
-            date__lt=cutoff_date,
-            status='Posted',
-            archived=False
-        ).update(archived=True)
+            journal_date__lt=cutoff_date,
+            status='posted',
+            is_archived=False
+        ).update(is_archived=True)
         
         logger.info(f'Archived {archived_count} journals for {organization.name}')
         
@@ -314,8 +336,8 @@ def cleanup_draft_journals(organization_id: int, days_old: int = 30) -> dict:
         # Delete old draft journals
         deleted_count, _ = Journal.objects.filter(
             organization=organization,
-            date__lt=cutoff_date,
-            status='Draft'
+            journal_date__lt=cutoff_date,
+            status='draft'
         ).delete()
         
         logger.info(f'Deleted {deleted_count} draft journals for {organization.name}')
@@ -356,18 +378,18 @@ def validate_period_entries(organization_id: int, period_id: int) -> dict:
         # Check for unbalanced journals
         journals = Journal.objects.filter(
             organization=organization,
-            date__gte=period.start_date,
-            date__lte=period.end_date
+            period=period
         )
         
         for journal in journals:
+            lines = journal.lines.all()
             debit_total = sum(
-                line.debit or Decimal('0') 
-                for line in journal.journalline_set.all()
+                (line.debit_amount or Decimal('0'))
+                for line in lines
             )
             credit_total = sum(
-                line.credit or Decimal('0')
-                for line in journal.journalline_set.all()
+                (line.credit_amount or Decimal('0'))
+                for line in lines
             )
             
             if debit_total != credit_total:
@@ -415,9 +437,9 @@ def _generate_closing_entries(period: AccountingPeriod) -> list:
     organization = period.organization
     
     # Get all revenue and expense accounts with balances
-    accounts = Account.objects.filter(
+    accounts = ChartOfAccount.objects.filter(
         organization=organization,
-        account_type__in=['Revenue', 'Expense']
+        account_type__nature__in=['income', 'expense']
     )
     
     for account in accounts:
@@ -429,18 +451,18 @@ def _generate_closing_entries(period: AccountingPeriod) -> list:
         
         if balance != Decimal('0.00'):
             # Determine debit/credit for closing entry
-            if account.account_type == 'Revenue':
+            if account.account_type and account.account_type.nature == 'income':
                 entries.append({
                     'account': account,
-                    'debit': balance,
-                    'credit': Decimal('0.00'),
+                    'debit_amount': balance,
+                    'credit_amount': Decimal('0.00'),
                     'description': f'Close revenue: {account.name}'
                 })
             else:  # Expense
                 entries.append({
                     'account': account,
-                    'debit': Decimal('0.00'),
-                    'credit': balance,
+                    'debit_amount': Decimal('0.00'),
+                    'credit_amount': balance,
                     'description': f'Close expense: {account.name}'
                 })
     
@@ -448,7 +470,7 @@ def _generate_closing_entries(period: AccountingPeriod) -> list:
 
 
 def _calculate_account_balance(
-    account: Account,
+    account: ChartOfAccount,
     start_date: datetime,
     end_date: datetime
 ) -> Decimal:
@@ -465,25 +487,26 @@ def _calculate_account_balance(
     """
     lines = JournalLine.objects.filter(
         account=account,
-        journal__date__gte=start_date,
-        journal__date__lte=end_date,
-        journal__status='Posted'
+        journal__journal_date__gte=start_date,
+        journal__journal_date__lte=end_date,
+        journal__status='posted'
     )
     
     debit_total = sum(
-        (line.debit or Decimal('0')) for line in lines
+        (line.debit_amount or Decimal('0')) for line in lines
     )
     credit_total = sum(
-        (line.credit or Decimal('0')) for line in lines
+        (line.credit_amount or Decimal('0')) for line in lines
     )
     
-    if account.account_type in ['Asset', 'Expense']:
+    nature = getattr(getattr(account, 'account_type', None), 'nature', '').lower()
+    if nature in ['asset', 'expense']:
         return debit_total - credit_total
-    else:  # Liability, Revenue, Equity
+    else:  # liability, revenue, equity
         return credit_total - debit_total
 
 
-def _calculate_next_posting_date(recurring_entry) -> datetime:
+def _calculate_next_run_date(recurring_entry) -> datetime:
     """
     Calculate next posting date based on frequency.
     
@@ -493,26 +516,30 @@ def _calculate_next_posting_date(recurring_entry) -> datetime:
     Returns:
         datetime for next posting
     """
-    current = recurring_entry.next_posting_date
-    frequency = recurring_entry.frequency  # 'Daily', 'Weekly', 'Monthly', 'Quarterly', 'Yearly'
+    current = recurring_entry.next_run_date
+    if not current:
+        return timezone.now().date()
+    frequency = (recurring_entry.frequency or '').lower()  # daily, weekly, monthly, quarterly, annually
+    interval = recurring_entry.interval or 1
     
-    if frequency == 'Daily':
-        return current + timedelta(days=1)
-    elif frequency == 'Weekly':
-        return current + timedelta(weeks=1)
-    elif frequency == 'Monthly':
-        if current.month == 12:
-            return current.replace(year=current.year + 1, month=1)
-        else:
-            return current.replace(month=current.month + 1)
-    elif frequency == 'Quarterly':
-        new_month = current.month + 3
-        if new_month > 12:
-            return current.replace(year=current.year + 1, month=new_month - 12)
-        else:
-            return current.replace(month=new_month)
-    elif frequency == 'Yearly':
-        return current.replace(year=current.year + 1)
+    if frequency == 'daily':
+        return current + timedelta(days=interval)
+    elif frequency == 'weekly':
+        return current + timedelta(weeks=interval)
+    elif frequency == 'monthly':
+        month = current.month - 1 + interval
+        year = current.year + month // 12
+        month = month % 12 + 1
+        day = min(current.day, 28)  # safe fallback to avoid month-end overflow
+        return current.replace(year=year, month=month, day=day)
+    elif frequency == 'quarterly':
+        month = current.month - 1 + (interval * 3)
+        year = current.year + month // 12
+        month = month % 12 + 1
+        day = min(current.day, 28)
+        return current.replace(year=year, month=month, day=day)
+    elif frequency == 'annually':
+        return current.replace(year=current.year + interval)
     else:
         return current + timedelta(days=1)
 

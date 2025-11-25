@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from django.test import TestCase
 
-from accounting.models import Customer, PurchaseInvoice, SalesInvoice, Vendor
+from accounting.models import AccountingSettings, Customer, PurchaseInvoice, SalesInvoice, Vendor
 from accounting.tests import factories
 from accounting.services.tax_liability_service import TaxLiabilityService
 
@@ -51,8 +51,7 @@ class TaxLiabilityServiceTests(TestCase):
             expense_account=self.expense_account,
         )
 
-    def test_tax_service_aggregates_payable_and_receivable(self):
-        period_start = date(2025, 1, 1)
+    def _create_sample_invoices(self, period_start):
         invoice = SalesInvoice.objects.create(
             organization=self.org,
             customer=self.customer,
@@ -101,6 +100,10 @@ class TaxLiabilityServiceTests(TestCase):
             tax_code=self.tax_code,
             tax_amount=Decimal('5'),
         )
+
+    def test_tax_service_aggregates_payable_and_receivable(self):
+        period_start = date(2025, 1, 1)
+        self._create_sample_invoices(period_start)
         service = TaxLiabilityService(self.org)
         buckets = service.aggregate(period_start)
         self.assertEqual(len(buckets), 1)
@@ -108,3 +111,31 @@ class TaxLiabilityServiceTests(TestCase):
         self.assertEqual(bucket.tax_code.pk, self.tax_code.pk)
         self.assertEqual(bucket.receivable, Decimal('10'))
         self.assertEqual(bucket.payable, Decimal('5'))
+
+    def test_build_vat_summary(self):
+        period_start = date(2025, 1, 1)
+        self._create_sample_invoices(period_start)
+        service = TaxLiabilityService(self.org)
+        summary = service.build_vat_summary(period_start)
+        self.assertEqual(summary['total_input_tax'], Decimal('5'))
+        self.assertEqual(summary['total_output_tax'], Decimal('10'))
+        self.assertEqual(summary['net_balance'], Decimal('-5'))
+        self.assertEqual(len(summary['lines']), 1)
+        self.assertEqual(summary['lines'][0]['direction'], 'payable')
+
+    def test_build_nfrs_schedule_uses_framework(self):
+        period_start = date(2025, 1, 1)
+        AccountingSettings.objects.create(
+            organization=self.org,
+            retained_earnings_account=self.expense_account,
+            current_year_income_account=self.revenue_account,
+            statutory_framework=AccountingSettings.NFRS,
+        )
+        self._create_sample_invoices(period_start)
+        service = TaxLiabilityService(self.org)
+        schedule = service.build_nfrs_schedule(period_start)
+        self.assertEqual(schedule['framework'], AccountingSettings.NFRS)
+        self.assertEqual(schedule['totals']['liability_balance'], Decimal('5'))
+        self.assertEqual(schedule['totals']['asset_balance'], Decimal('0'))
+        self.assertEqual(len(schedule['liabilities']), 1)
+        self.assertEqual(schedule['liabilities'][0]['balance'], Decimal('5'))

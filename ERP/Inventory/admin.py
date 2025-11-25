@@ -11,6 +11,7 @@ class ProductCategoryAdmin(MPTTModelAdmin):
     search_fields = ('code', 'name')
     list_filter = ('organization', 'is_active')
     mptt_indent_field = "name"
+    list_select_related = ('organization', 'parent')
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
@@ -21,6 +22,7 @@ class ProductAdmin(admin.ModelAdmin):
     search_fields = ('code', 'name', 'description', 'barcode', 'sku')
     list_filter = ('organization', 'category', 'is_inventory_item', 'uom')
     raw_id_fields = ('income_account', 'expense_account', 'inventory_account')
+    list_select_related = ('organization', 'category', 'uom')
 
 @admin.register(Warehouse)
 class WarehouseAdmin(admin.ModelAdmin):
@@ -28,18 +30,21 @@ class WarehouseAdmin(admin.ModelAdmin):
     search_fields = ('code', 'name', 'city')
     list_filter = ('organization', 'is_active', 'country_code')
     raw_id_fields = ('inventory_account',)
+    list_select_related = ('organization',)
 
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
     list_display = ('warehouse', 'code', 'name', 'location_type', 'is_active')
     search_fields = ('code', 'name')
     list_filter = ('warehouse__organization', 'warehouse', 'location_type', 'is_active')
+    list_select_related = ('warehouse',)
 
 @admin.register(Batch)
 class BatchAdmin(admin.ModelAdmin):
     list_display = ('organization', 'product', 'batch_number', 'serial_number', 'manufacture_date', 'expiry_date')
     search_fields = ('batch_number', 'serial_number')
     list_filter = ('organization', 'product')
+    list_select_related = ('organization', 'product')
 
 @admin.register(InventoryItem)
 class InventoryItemAdmin(admin.ModelAdmin):
@@ -53,6 +58,7 @@ class InventoryItemAdmin(admin.ModelAdmin):
     )
     list_filter = ('organization', 'warehouse', 'product')
     readonly_fields = ('updated_at',)
+    list_select_related = ('organization', 'product', 'warehouse', 'location', 'batch')
 
 @admin.register(StockLedger)
 class StockLedgerAdmin(admin.ModelAdmin):
@@ -68,3 +74,4 @@ class StockLedgerAdmin(admin.ModelAdmin):
     list_filter = ('organization', 'warehouse', 'product', 'txn_type')
     readonly_fields = ('created_at',)
     date_hierarchy = 'txn_date'
+    list_select_related = ('organization', 'product', 'warehouse', 'location', 'batch')

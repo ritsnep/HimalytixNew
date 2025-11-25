@@ -51,13 +51,14 @@ urlpatterns = [
     path('billing/', include('billing.urls', namespace='billing')),
     path('service-management/', include('service_management.urls', namespace='service_management')),
     
-    # Include accounting app - namespace comes from app_name in accounting.urls
-    path('accounting/', include('accounting.urls')),
+    # Include accounting app with explicit namespace for reverse('accounting:*') lookups
+    path('accounting/', include(('accounting.urls', 'accounting'), namespace='accounting')),
     # path('accounting/', include('accounting.new_journal_entry_urls')),
     # path('admin/', admin.site.urls),
     path("accounts/login/", CustomLoginView.as_view(), name="account_login"),
     path('accounts/', include('allauth.urls')),  # Important!
     path('forms_designer/', include('forms_designer.urls')),
+    path('api/lpg/', include('lpg_vertical.urls')),
     path("", views.DashboardView.as_view(), name="dashboard"),
     path("settings", views.Settings.as_view(), name="settings"),
     # # Custum change password done page redirect

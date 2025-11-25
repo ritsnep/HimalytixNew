@@ -1,4 +1,11 @@
-from django.contrib import admin
+import json
+
+from django.contrib import admin, messages
+from django.utils import timezone
+
+from accounting.services.ird_submission_service import IRDSubmissionService
+from accounting.tasks import process_ird_submission
+
 from .models import (
     FiscalYear,
     AccountingPeriod,
@@ -59,6 +66,7 @@ from .models import (
     JournalDebugPreference,
     UDFDefinition,
     UDFValue,
+    IRDSubmissionTask,
 )
 
 # @admin.register(Journal)
@@ -67,22 +75,82 @@ from .models import (
 #     search_fields = ('batch_number', 'description')
 #     list_filter = ('journal_type', 'status', 'period')
 
-admin.site.register(FiscalYear)
-admin.site.register(AccountingPeriod)
-admin.site.register(Department)
-admin.site.register(Project)
-admin.site.register(CostCenter)
-admin.site.register(AccountType)
-admin.site.register(ChartOfAccount)
-admin.site.register(Currency)
+@admin.register(FiscalYear)
+class FiscalYearAdmin(admin.ModelAdmin):
+    search_fields = ('code', 'name')
+    list_display = ('code', 'name', 'organization', 'is_current', 'status')
+    list_filter = ('organization', 'is_current', 'status')
+
+
+@admin.register(AccountingPeriod)
+class AccountingPeriodAdmin(admin.ModelAdmin):
+    search_fields = ('name', 'fiscal_year__code')
+    list_display = ('name', 'fiscal_year', 'organization', 'status', 'start_date', 'end_date')
+    list_filter = ('organization', 'status')
+
+
+@admin.register(Department)
+class DepartmentAdmin(admin.ModelAdmin):
+    search_fields = ('code', 'name')
+    list_display = ('code', 'name', 'organization')
+    list_filter = ('organization',)
+
+
+@admin.register(Project)
+class ProjectAdmin(admin.ModelAdmin):
+    search_fields = ('code', 'name', 'description')
+    list_display = ('code', 'name', 'organization', 'is_active')
+    list_filter = ('organization', 'is_active')
+
+
+@admin.register(CostCenter)
+class CostCenterAdmin(admin.ModelAdmin):
+    search_fields = ('code', 'name', 'description')
+    list_display = ('code', 'name', 'organization', 'is_active')
+    list_filter = ('organization', 'is_active')
+
+
+@admin.register(AccountType)
+class AccountTypeAdmin(admin.ModelAdmin):
+    search_fields = ('code', 'name')
+    list_display = ('code', 'name', 'nature', 'is_active')
+    list_filter = ('nature', 'is_active')
+
+
+@admin.register(ChartOfAccount)
+class ChartOfAccountAdmin(admin.ModelAdmin):
+    search_fields = ('account_code', 'account_name')
+    list_display = ('account_code', 'account_name', 'account_type', 'organization', 'is_active')
+    list_filter = ('organization', 'account_type', 'is_active')
+
+
+@admin.register(Currency)
+class CurrencyAdmin(admin.ModelAdmin):
+    search_fields = ('currency_code', 'currency_name')
+    list_display = ('currency_code', 'currency_name', 'symbol', 'is_active')
+    list_filter = ('is_active',)
+
+
 admin.site.register(CurrencyExchangeRate)
 admin.site.register(JournalType)
 admin.site.register(JournalLine)
 admin.site.register(Attachment)
 admin.site.register(Approval)
-admin.site.register(TaxAuthority)
-admin.site.register(TaxType)
-admin.site.register(TaxCode)
+@admin.register(TaxAuthority)
+class TaxAuthorityAdmin(admin.ModelAdmin):
+    search_fields = ('name', 'code')
+
+
+@admin.register(TaxType)
+class TaxTypeAdmin(admin.ModelAdmin):
+    search_fields = ('name', 'code')
+
+
+@admin.register(TaxCode)
+class TaxCodeAdmin(admin.ModelAdmin):
+    search_fields = ('code', 'name', 'description')
+    list_display = ('code', 'name', 'tax_rate', 'is_active')
+    list_filter = ('is_active',)
 admin.site.register(VoucherModeConfig)
 admin.site.register(VoucherModeDefault)
 admin.site.register(GeneralLedger)
@@ -141,6 +209,7 @@ class VendorAdmin(admin.ModelAdmin):
     search_fields = ('code', 'display_name', 'legal_name', 'tax_id')
     list_filter = ('organization', 'status', 'payment_term', 'on_hold')
     inlines = [VendorAddressInline, VendorContactInline, VendorBankInline]
+    list_select_related = ('organization', 'payment_term')
 
 
 class CustomerAddressInline(admin.TabularInline):
@@ -167,6 +236,7 @@ class CustomerAdmin(admin.ModelAdmin):
     search_fields = ('code', 'display_name', 'legal_name', 'tax_id')
     list_filter = ('organization', 'status', 'payment_term', 'on_credit_hold')
     inlines = [CustomerAddressInline, CustomerContactInline, CustomerBankInline]
+    list_select_related = ('organization', 'payment_term')
 
 
 @admin.register(PaymentTerm)
@@ -206,6 +276,7 @@ class PurchaseInvoiceLineInline(admin.TabularInline):
         'receipt_reference',
     )
     readonly_fields = ('line_total',)
+    autocomplete_fields = ('account', 'tax_code')
 
 
 class PurchaseInvoiceMatchInline(admin.TabularInline):
@@ -239,6 +310,7 @@ class PurchaseInvoiceAdmin(admin.ModelAdmin):
     list_filter = ('organization', 'status', 'match_status')
     readonly_fields = ('subtotal', 'tax_total', 'total', 'base_currency_total')
     inlines = [PurchaseInvoiceLineInline, PurchaseInvoiceMatchInline]
+    list_select_related = ('vendor', 'organization')
 
 
 class SalesInvoiceLineInline(admin.TabularInline):
@@ -255,6 +327,7 @@ class SalesInvoiceLineInline(admin.TabularInline):
         'tax_amount',
     )
     readonly_fields = ('line_total',)
+    autocomplete_fields = ('revenue_account', 'tax_code')
 
 
 @admin.register(SalesInvoice)
@@ -266,17 +339,72 @@ class SalesInvoiceAdmin(admin.ModelAdmin):
         'due_date',
         'status',
         'total',
+        'ird_status',
+        'ird_ack_id',
+        'ird_last_submitted_at',
     )
-    search_fields = ('invoice_number', 'customer__display_name', 'reference_number')
-    list_filter = ('organization', 'status')
-    readonly_fields = ('subtotal', 'tax_total', 'total', 'base_currency_total')
+    search_fields = ('invoice_number', 'customer__display_name', 'reference_number', 'ird_ack_id')
+    list_filter = ('organization', 'status', 'ird_status')
+    readonly_fields = (
+        'subtotal',
+        'tax_total',
+        'total',
+        'base_currency_total',
+        'ird_status',
+        'ird_ack_id',
+        'ird_last_submitted_at',
+        'ird_signature',
+        'ird_last_response_pretty',
+    )
     inlines = [SalesInvoiceLineInline]
+    list_select_related = ('customer', 'organization')
+    actions = ['action_queue_ird_submission', 'action_reset_ird_metadata']
+
+    @admin.display(description="IRD response")
+    def ird_last_response_pretty(self, obj):
+        if not obj.ird_last_response:
+            return "—"
+        return json.dumps(obj.ird_last_response, indent=2, sort_keys=True)
+
+    @admin.action(description="Queue IRD submission")
+    def action_queue_ird_submission(self, request, queryset):
+        service = IRDSubmissionService(request.user)
+        queued = 0
+        already_pending = 0
+        for invoice in queryset:
+            has_pending = invoice.ird_submission_tasks.filter(
+                status__in=[
+                    IRDSubmissionTask.STATUS_PENDING,
+                    IRDSubmissionTask.STATUS_PROCESSING,
+                ]
+            ).exists()
+            service.enqueue_invoice(invoice)
+            if has_pending:
+                already_pending += 1
+            else:
+                queued += 1
+        if queued:
+            messages.success(request, f"Queued {queued} invoice(s) for IRD submission.")
+        if already_pending:
+            messages.warning(request, f"{already_pending} invoice(s) already had a pending IRD job.")
+
+    @admin.action(description="Reset IRD metadata (allow re-submit)")
+    def action_reset_ird_metadata(self, request, queryset):
+        updated = queryset.update(
+            ird_signature='',
+            ird_ack_id='',
+            ird_status='',
+            ird_last_response={},
+            ird_last_submitted_at=None,
+        )
+        messages.success(request, f"Cleared IRD metadata on {updated} invoice(s).")
 
 
 class ARReceiptLineInline(admin.TabularInline):
     model = ARReceiptLine
     extra = 0
     fields = ('invoice', 'applied_amount', 'discount_taken')
+    autocomplete_fields = ('invoice',)
 
 
 @admin.register(ARReceipt)
@@ -285,6 +413,7 @@ class ARReceiptAdmin(admin.ModelAdmin):
     search_fields = ('receipt_number', 'customer__display_name', 'reference')
     list_filter = ('organization', 'payment_method')
     inlines = [ARReceiptLineInline]
+    list_select_related = ('customer', 'organization')
 
 
 @admin.register(AssetCategory)
@@ -306,6 +435,7 @@ class AssetAdmin(admin.ModelAdmin):
     list_filter = ('organization', 'category', 'status')
     search_fields = ('name',)
     inlines = [AssetEventInline]
+    list_select_related = ('organization', 'category')
 
 
 class ApprovalStepInline(admin.TabularInline):
@@ -325,6 +455,7 @@ class ApprovalTaskAdmin(admin.ModelAdmin):
     list_display = ('workflow', 'content_object', 'status', 'current_step', 'updated_at')
     list_filter = ('status',)
     search_fields = ('workflow__name', 'notes')
+    list_select_related = ('workflow',)
 
 
 @admin.register(IntegrationEvent)
@@ -333,10 +464,43 @@ class IntegrationEventAdmin(admin.ModelAdmin):
     readonly_fields = ('event_type', 'payload', 'source_object', 'source_id', 'created_at')
 
 
+@admin.register(IRDSubmissionTask)
+class IRDSubmissionTaskAdmin(admin.ModelAdmin):
+    list_display = (
+        'submission_id',
+        'invoice',
+        'organization',
+        'status',
+        'priority',
+        'attempts',
+        'next_attempt_at',
+        'last_attempt_at',
+    )
+    list_filter = ('status', 'priority', 'organization')
+    search_fields = ('invoice__invoice_number', 'invoice__customer__display_name')
+    autocomplete_fields = ('invoice', 'organization')
+    readonly_fields = ('created_at', 'updated_at', 'created_by', 'updated_by')
+    actions = ['action_retry_submissions']
+
+    @admin.action(description="Retry selected submissions now")
+    def action_retry_submissions(self, request, queryset):
+        count = 0
+        now = timezone.now()
+        for task in queryset:
+            task.status = IRDSubmissionTask.STATUS_PENDING
+            task.next_attempt_at = now
+            task.last_error = ''
+            task.save(update_fields=['status', 'next_attempt_at', 'last_error', 'updated_at'])
+            process_ird_submission.delay(task.pk)
+            count += 1
+        messages.success(request, f"Queued {count} IRD submission(s) for retry.")
+
+
 class APPaymentLineInline(admin.TabularInline):
     model = APPaymentLine
     extra = 0
     fields = ('invoice', 'applied_amount', 'discount_taken')
+    autocomplete_fields = ('invoice',)
 
 
 class PaymentApprovalInline(admin.TabularInline):
@@ -352,6 +516,7 @@ class APPaymentAdmin(admin.ModelAdmin):
     search_fields = ('payment_number', 'vendor__display_name')
     list_filter = ('organization', 'status', 'payment_method')
     inlines = [APPaymentLineInline, PaymentApprovalInline]
+    list_select_related = ('vendor', 'organization')
 
 
 class APPaymentInline(admin.TabularInline):
@@ -372,6 +537,7 @@ class BudgetLineInline(admin.TabularInline):
         'total_amount',
     )
     readonly_fields = ('total_amount',)
+    autocomplete_fields = ('account', 'dimension_value', 'cost_center', 'project', 'department')
 
 @admin.register(Budget)
 class BudgetAdmin(admin.ModelAdmin):
@@ -379,9 +545,11 @@ class BudgetAdmin(admin.ModelAdmin):
     list_filter = ('status', 'organization', 'fiscal_year')
     search_fields = ('name',)
     inlines = [BudgetLineInline]
+    list_select_related = ('fiscal_year', 'organization')
 @admin.register(PaymentBatch)
 class PaymentBatchAdmin(admin.ModelAdmin):
     list_display = ('batch_number', 'scheduled_date', 'status', 'total_amount')
     search_fields = ('batch_number',)
     list_filter = ('organization', 'status')
     inlines = [APPaymentInline]
+    list_select_related = ('organization',)

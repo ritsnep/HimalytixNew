@@ -357,36 +357,13 @@ class JournalPostView(LoginRequiredMixin, View):
         if journal.status != 'draft':
             messages.error(request, 'Journal is not in draft status')
             return HttpResponseRedirect(reverse('accounting:journal_list'))
-        with transaction.atomic():
-            for line in journal.lines.all():
-                GeneralLedger.objects.create(
-                    organization_id=journal.organization,
-                    account=line.account,
-                    journal=journal,
-                    journal_line=line,
-                    period=journal.period,
-                    transaction_date=journal.journal_date,
-                    debit_amount=line.debit_amount,
-                    credit_amount=line.credit_amount,
-                    balance_after=line.account.current_balance + (line.debit_amount - line.credit_amount),
-                    currency_code=line.currency_code,
-                    exchange_rate=line.exchange_rate,
-                    functional_debit_amount=line.functional_debit_amount,
-                    functional_credit_amount=line.functional_credit_amount,
-                    department=line.department,
-                    project=line.project,
-                    cost_center=line.cost_center,
-                    description=line.description,
-                    source_module=journal.source_module,
-                    source_reference=journal.source_reference,
-                )
-                line.account.current_balance += (line.debit_amount - line.credit_amount)
-                line.account.save()
-            journal.status = 'posted'
-            journal.posted_at = timezone.now()
-            journal.posted_by = request.user
-            journal.save()
-        messages.success(request, 'Journal posted and saved successfully.')
+        try:
+            from accounting.services.post_journal import post_journal, JournalPostingError, JournalValidationError
+
+            post_journal(journal, user=request.user)
+            messages.success(request, 'Journal posted and saved successfully.')
+        except (JournalPostingError, JournalValidationError) as exc:
+            messages.error(request, str(exc))
         return HttpResponseRedirect(reverse('accounting:journal_list'))
 
 

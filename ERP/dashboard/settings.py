@@ -78,6 +78,9 @@ INSTALLED_APPS = [
     'billing',
     'enterprise',
     'service_management',
+    'lpg_vertical',
+    'django_celery_results',
+    'django_celery_beat',
 ]
 
 if ENABLE_SILK:
@@ -90,6 +93,7 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.locale.LocaleMiddleware',
     'tenancy.middleware.ActiveTenantMiddleware',
+    'usermanagement.middleware.ActiveOrganizationMiddleware',
     'accounting.middleware.RequestMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -208,6 +212,7 @@ else:
 # =============================================================================
 # CACHE CONFIGURATION (Redis in prod, LocMem optional for tests/dev)
 # =============================================================================
+DEFAULT_REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
 if os.environ.get('USE_LOC_MEM_CACHE', '0') == '1':
     CACHES = {
         'default': {
@@ -219,7 +224,7 @@ else:
     CACHES = {
         'default': {
             'BACKEND': 'django_redis.cache.RedisCache',
-            'LOCATION': os.environ.get('REDIS_URL', 'redis://localhost:6379/0'),
+            'LOCATION': DEFAULT_REDIS_URL,
             'OPTIONS': {
                 'CLIENT_CLASS': 'django_redis.client.DefaultClient',
                 # Use default parser instead of HiredisParser for compatibility
@@ -543,4 +548,35 @@ if os.environ.get("ENABLE_STRICT_SECURITY") == "1":
     SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", 31536000))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+
+# =============================================================================
+# Celery & background job configuration
+# =============================================================================
+_default_broker = os.environ.get("CELERY_BROKER_URL")
+if not _default_broker:
+    if DEFAULT_REDIS_URL.endswith("/0"):
+        _default_broker = DEFAULT_REDIS_URL[:-2] + "/1"
+    else:
+        _default_broker = DEFAULT_REDIS_URL
+
+CELERY_BROKER_URL = _default_broker
+CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", "django-db")
+CELERY_CACHE_BACKEND = 'default'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = USE_TZ
+CELERY_TASK_TRACK_STARTED = True
+CELERY_RESULT_EXTENDED = True
+CELERY_TASK_TIME_LIMIT = int(os.environ.get('CELERY_TASK_TIME_LIMIT', 60 * 10))
+CELERY_TASK_SOFT_TIME_LIMIT = int(os.environ.get('CELERY_TASK_SOFT_TIME_LIMIT', 60 * 5))
+CELERY_WORKER_SEND_TASK_EVENTS = True
+CELERY_TASK_SEND_SENT_EVENT = True
+CELERY_TASK_DEFAULT_QUEUE = os.environ.get('CELERY_DEFAULT_QUEUE', 'default')
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+CELERY_TASK_ALWAYS_EAGER = os.environ.get('CELERY_TASK_ALWAYS_EAGER', '0') == '1'
+CELERY_TASK_EAGER_PROPAGATES = True
+DJANGO_CELERY_BEAT_TZ_AWARE = True
+DJANGO_STRUCTLOG_CELERY_ENABLED = True
 

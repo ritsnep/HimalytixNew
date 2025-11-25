@@ -18,9 +18,9 @@ from accounting.models import (
     SalesInvoice,
     SalesInvoiceLine,
 )
-from accounting.ird_service import submit_invoice_to_ird
 from accounting.services.posting_service import PostingService
 from accounting.services.inventory_posting_service import InventoryPostingService
+from accounting.services.ird_submission_service import IRDSubmissionService
 from accounting.utils.event_utils import emit_integration_event
 from Inventory.models import Product, Warehouse
 
@@ -37,6 +37,7 @@ class SalesInvoiceService:
     def __init__(self, user):
         self.user = user
         self.posting_service = PostingService(user)
+        self.ird_submission_service = IRDSubmissionService(user)
         self.logger = logging.getLogger(__name__)
 
     def _calculate_due_date(self, customer, payment_term, invoice_date):
@@ -123,22 +124,12 @@ class SalesInvoiceService:
             return submit_to_ird
         return getattr(settings, "IRD_ENABLE_AUTO_SUBMIT", False)
 
-    def _submit_to_ird(self, invoice: SalesInvoice) -> None:
-        """Best-effort IRD submission; failures are logged but do not block posting."""
+    def _enqueue_ird_submission(self, invoice: SalesInvoice) -> None:
         try:
-            result = submit_invoice_to_ird(invoice)
-            emit_integration_event(
-                "sales_invoice_submitted_to_ird",
-                invoice,
-                {
-                    "invoice_number": invoice.invoice_number,
-                    "ack_id": result.ack_id,
-                    "signature": result.signature,
-                },
-            )
+            self.ird_submission_service.enqueue_invoice(invoice)
         except Exception as exc:  # noqa: BLE001
             self.logger.warning(
-                "IRD submission failed for invoice %s: %s",
+                "IRD submission queue failure for invoice %s: %s",
                 invoice.invoice_number,
                 exc,
                 exc_info=True,
@@ -265,7 +256,7 @@ class SalesInvoiceService:
         invoice.save(update_fields=['status', 'journal', 'updated_by', 'updated_at'])
 
         if self._should_submit_to_ird(submit_to_ird):
-            self._submit_to_ird(invoice)
+            self._enqueue_ird_submission(invoice)
 
         emit_integration_event(
             'sales_invoice_posted',

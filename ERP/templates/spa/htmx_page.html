@@ -1,0 +1,10 @@
+{% extends "partials/base.html" %}
+
+{% block content %}
+  {# Standard container wrapper for SPA sections #}
+  <div class="page-content">
+    <div class="container-fluid">
+      {% block spa_content %}{% endblock spa_content %}
+    </div>
+  </div>
+{% endblock content %}
