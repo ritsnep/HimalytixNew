@@ -11,6 +11,16 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # Drop entitypermission indexes before removing its fields to avoid
+        # SQLite table rebuild issues during test DB creation.
+        migrations.RemoveIndex(
+            model_name='entitypermission',
+            name='usermanagem_role_id_c9b2d0_idx',
+        ),
+        migrations.RemoveIndex(
+            model_name='entitypermission',
+            name='usermanagem_is_acti_b5cda3_idx',
+        ),
         migrations.RemoveField(
             model_name='appviewlog',
             name='created_by',

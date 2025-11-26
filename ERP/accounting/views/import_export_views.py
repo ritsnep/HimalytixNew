@@ -8,14 +8,14 @@ Views for batch import/export operations:
 - ExportView: Export journals
 """
 
-from django.shortcuts import render, redirect
-from django.views import View
-from django.views.generic import ListView, CreateView
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import HttpResponse, JsonResponse
-from django.utils.translation import gettext as _
-from django.db.models import Q
 import logging
+
+from django.core.exceptions import ValidationError
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import redirect, render
+from django.utils.translation import gettext as _
+from django.views import View
+from django.views.generic import CreateView, ListView
 
 from accounting.services.import_export_service import (
     ImportService,
@@ -25,6 +25,11 @@ from accounting.services.import_export_service import (
 )
 from accounting.models import Journal
 from usermanagement.mixins import UserOrganizationMixin
+from utils.file_uploads import (
+    ALLOWED_IMPORT_EXTENSIONS,
+    MAX_IMPORT_UPLOAD_BYTES,
+    iter_validated_files,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -93,12 +98,18 @@ class ImportCreateView(UserOrganizationMixin, View):
             
             # Create import service
             service = ImportService(self.organization, request.user)
+
+            try:
+                cleaned_file = self._prepare_import_file(file, import_type)
+            except ValidationError as exc:
+                return JsonResponse({'error': str(exc)}, status=400)
             
             # Process file based on type
             if import_type == 'excel':
-                result = service.import_excel(file, skip_duplicates)
+                cleaned_file.seek(0)
+                result = service.import_excel(cleaned_file, skip_duplicates)
             elif import_type == 'csv':
-                file_content = file.read().decode('utf-8')
+                file_content = cleaned_file.read().decode('utf-8')
                 result = service.import_csv(file_content, skip_duplicates)
             else:
                 return JsonResponse({'error': _('Invalid import type')}, status=400)
@@ -110,6 +121,29 @@ class ImportCreateView(UserOrganizationMixin, View):
         except Exception as e:
             logger.exception(f"Import error: {e}")
             return JsonResponse({'error': str(e)}, status=500)
+
+    def _prepare_import_file(self, uploaded_file, import_type: str):
+        """Validate uploaded import files (optionally zipped) and return a single file handle."""
+        if import_type not in {'excel', 'csv'}:
+            raise ValidationError(_('Invalid import type'))
+
+        allowed_extensions = ALLOWED_IMPORT_EXTENSIONS if import_type == 'excel' else {'.csv'}
+        label = str(_('Journal import file'))
+        files = list(
+            iter_validated_files(
+                uploaded_file,
+                allowed_extensions=allowed_extensions,
+                max_bytes=MAX_IMPORT_UPLOAD_BYTES,
+                allow_archive=True,
+                max_members=1,
+                label=label,
+            )
+        )
+
+        if not files:
+            raise ValidationError(_('Uploaded file is empty.'))
+
+        return files[0][1]
 
 
 class DownloadTemplateView(UserOrganizationMixin, View):

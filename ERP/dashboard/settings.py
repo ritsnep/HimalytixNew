@@ -1,8 +1,55 @@
-import os
 import importlib.util
+import os
+from datetime import datetime
 from pathlib import Path
+
 from django.conf import settings
 from django.contrib.messages import constants as messages
+
+
+def env_bool(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.lower() in {"1", "true", "yes", "on"}
+
+
+def env_list(name: str) -> list[str]:
+    raw = os.getenv(name)
+    if not raw:
+        return []
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+# Application/build metadata (also exposed to clients for cache-busting)
+APP_VERSION = os.getenv("APP_VERSION", datetime.utcnow().strftime("%Y%m%d%H%M%S"))
+STATIC_ASSET_VERSION = os.getenv("STATIC_ASSET_VERSION", APP_VERSION)
+
+# Maintenance mode defaults (overridable via Redis + management command)
+MAINTENANCE_MODE = env_bool("MAINTENANCE_MODE", default=False)
+MAINTENANCE_MESSAGE = os.getenv(
+    "MAINTENANCE_MESSAGE",
+    "We are applying updates. Your work is saved and will be available shortly.",
+)
+MAINTENANCE_STATUS_TEXT = os.getenv(
+    "MAINTENANCE_STATUS_TEXT",
+    "System upgrade in progress - est. 5 minutes.",
+)
+MAINTENANCE_RETRY_AFTER = int(os.getenv("MAINTENANCE_RETRY_AFTER", "300"))
+MAINTENANCE_CAPTURE_MAX_BYTES = int(os.getenv("MAINTENANCE_CAPTURE_MAX_BYTES", "4096"))
+MAINTENANCE_SNAPSHOT_TTL = int(os.getenv("MAINTENANCE_SNAPSHOT_TTL", str(60 * 60 * 6)))
+MAINTENANCE_ALLOW_URLS = env_list("MAINTENANCE_ALLOW_URLS") or [
+    "/health/",
+    "/health/ready/",
+    "/health/live/",
+    "/maintenance/status/",
+    "/maintenance/stream/",
+    "/metrics",
+    "/static/",
+]
+MAINTENANCE_ALLOW_IPS = env_list("MAINTENANCE_ALLOW_IPS")
+MAINTENANCE_ALLOW_SUPERUSER = env_bool("MAINTENANCE_ALLOW_SUPERUSER", default=True)
+MAINTENANCE_STREAM_MAX_MESSAGES = int(os.getenv("MAINTENANCE_STREAM_MAX_MESSAGES", "120"))
+MAINTENANCE_STREAM_INTERVAL = int(os.getenv("MAINTENANCE_STREAM_INTERVAL", "2"))
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,12 +74,21 @@ ENABLE_SILK = (
 )
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-^-d#gtg)d41-e2#c%n40_&e)fg_ps9aptfq3_r%*zjjhu!-*-f'
+SECRET_KEY = os.getenv(
+    'DJANGO_SECRET_KEY',
+    'django-insecure-^-d#gtg)d41-e2#c%n40_&e)fg_ps9aptfq3_r%*zjjhu!-*-f',
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env_bool('DJANGO_DEBUG', default=True)
 
-ALLOWED_HOSTS = []
+
+_default_hosts = ['localhost', '127.0.0.1', '[::1]']
+ALLOWED_HOSTS = env_list('DJANGO_ALLOWED_HOSTS') or _default_hosts
+CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS')
+
+
+ 
 
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
 CRISPY_ALLOWED_TEMPLATE_PACKS = [
@@ -91,6 +147,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.middleware.gzip.GZipMiddleware',  # <-- Response compression
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',  # Auth earlier for tenant checks
     'django.middleware.locale.LocaleMiddleware',
     'tenancy.middleware.ActiveTenantMiddleware',
     'usermanagement.middleware.ActiveOrganizationMiddleware',
@@ -98,10 +155,10 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django_htmx.middleware.HtmxMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
     "allauth.account.middleware.AccountMiddleware",
     'middleware.security.SecurityHeadersMiddleware',  # <-- Security headers (after auth)
     'middleware.security.RateLimitMiddleware',  # <-- Rate limiting (after auth)
+    'middleware.maintenance.MaintenanceModeMiddleware',  # <-- Maintenance kill-switch
     'middleware.logging.StructuredLoggingMiddleware',  # <-- Structured logging
     'api.versioning.APIVersionMiddleware',  # <-- API versioning
     'middleware.theme.ThemeMiddleware',
@@ -130,6 +187,7 @@ TEMPLATES = [
                 'middleware.theme.theme',
                 'utils.i18n.i18n_context',
                 'dashboard.context_processors.branding_context',
+                'dashboard.context_processors.runtime_context',
             ],
             # Enable cached template loader when not in DEBUG
             **({
@@ -303,6 +361,7 @@ STATICFILES_DIRS = [
 # This is where 'python manage.py collectstatic' will gather ALL static files for deployment.
 # It should be a DIFFERENT directory, typically outside your project source code.
 STATIC_ROOT = os.path.join(BASE_DIR.parent, 'collected_static_files') # <-- Changed this line
+STATICFILES_STORAGE = 'dashboard.storage.VersionedStaticFilesStorage'
 
 
 MESSAGE_TAGS = {
@@ -428,17 +487,30 @@ ACCOUNT_LOGOUT_REDIRECT_URL = "/accounts/login/"
 # ACCOUNT_AUTHENTICATION_METHOD = "username_email"
 # ACCOUNT_EMAIL_REQUIRED = True
 # ACCOUNT_USERNAME_REQUIRED = True
-ACCOUNT_EMAIL_VERIFICATION = "none"  # or "mandatory" if you handle emails
 ACCOUNT_FORMS = {
     'login': 'usermanagement.forms.DasonLoginForm',
 }
 
 ACCOUNT_LOGIN_METHODS = {'username', 'email'}
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
+ACCOUNT_EMAIL_VERIFICATION = 'optional' if DEBUG else 'mandatory'
+ACCOUNT_ALLOW_SIGNUP = env_bool('ACCOUNT_ALLOW_SIGNUP', default=False)
+ACCOUNT_ADAPTER = 'usermanagement.authentication.RestrictedAccountAdapter'
 
 SESSION_COOKIE_AGE = 3 * 60 * 60  # 3 hours
 # SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_SAVE_EVERY_REQUEST = True
+SESSION_COOKIE_SECURE = env_bool('SESSION_COOKIE_SECURE', default=not DEBUG)
+CSRF_COOKIE_SECURE = env_bool('CSRF_COOKIE_SECURE', default=not DEBUG)
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = os.getenv('SESSION_COOKIE_SAMESITE', 'Lax')
+CSRF_COOKIE_SAMESITE = os.getenv('CSRF_COOKIE_SAMESITE', 'Lax')
+SECURE_SSL_REDIRECT = env_bool('SECURE_SSL_REDIRECT', default=not DEBUG)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = os.getenv('SECURE_REFERRER_POLICY', 'same-origin')
+SECURE_CROSS_ORIGIN_OPENER_POLICY = os.getenv('SECURE_CROSS_ORIGIN_OPENER_POLICY', 'same-origin')
 
 # LOGGING = {
 #     'version': 1,
@@ -541,11 +613,9 @@ COA_MAX_SIBLINGS = int(os.environ.get("COA_MAX_SIBLINGS", 99))
 # =============================================================================
 # Optional production hardening (enable via ENV to avoid breaking local dev)
 # =============================================================================
-if os.environ.get("ENABLE_STRICT_SECURITY") == "1":
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", 31536000))
+ENABLE_STRICT_SECURITY = env_bool('ENABLE_STRICT_SECURITY', default=not DEBUG)
+if ENABLE_STRICT_SECURITY:
+    SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', 31536000))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
 

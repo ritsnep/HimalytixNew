@@ -1,0 +1,85 @@
+{% extends "Inventory/_form_base.html" %}
+{% load static %}
+
+{% block title %}Create Shipment{% endblock %}
+
+{% block form_content %}
+<div class="card">
+  <div class="card-body">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      <div class="row g-3">
+        <div class="col-md-6 col-lg-4">
+          <label class="form-label">Shipment Number</label>
+          {{ form.shipment_number }}
+          {{ form.shipment_number.errors }}
+        </div>
+        <div class="col-md-6 col-lg-4">
+          <label class="form-label">Packing Slip</label>
+          {{ form.packing_slip }}
+          {{ form.packing_slip.errors }}
+        </div>
+        <div class="col-md-6 col-lg-4">
+          <label class="form-label">Order Reference</label>
+          {{ form.order_reference }}
+          {{ form.order_reference.errors }}
+        </div>
+        <div class="col-md-6 col-lg-4">
+          <label class="form-label">Carrier</label>
+          {{ form.carrier_name }}
+          {{ form.carrier_name.errors }}
+        </div>
+        <div class="col-md-6 col-lg-4">
+          <label class="form-label">Tracking #</label>
+          {{ form.tracking_number }}
+          {{ form.tracking_number.errors }}
+        </div>
+        <div class="col-md-6 col-lg-4">
+          <label class="form-label">Service Type</label>
+          {{ form.service_type }}
+          {{ form.service_type.errors }}
+        </div>
+        <div class="col-md-6 col-lg-4">
+          <label class="form-label">Ship From Warehouse</label>
+          {{ form.ship_from_warehouse }}
+          {{ form.ship_from_warehouse.errors }}
+        </div>
+        <div class="col-md-6 col-lg-4">
+          <label class="form-label">Estimated Delivery</label>
+          {{ form.estimated_delivery }}
+          {{ form.estimated_delivery.errors }}
+        </div>
+        <div class="col-md-6 col-lg-4">
+          <label class="form-label">Shipping Cost</label>
+          {{ form.shipping_cost }}
+          {{ form.shipping_cost.errors }}
+        </div>
+        <div class="col-12">
+          <label class="form-label">Ship To Address</label>
+          {{ form.ship_to_address }}
+          {{ form.ship_to_address.errors }}
+        </div>
+        <div class="col-12">
+          <label class="form-label">Notes</label>
+          {{ form.notes }}
+          {{ form.notes.errors }}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Status</label>
+          {{ form.status }}
+          {{ form.status.errors }}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Actual Delivery</label>
+          {{ form.actual_delivery }}
+          {{ form.actual_delivery.errors }}
+        </div>
+      </div>
+      <div class="d-flex justify-content-end gap-2 mt-3">
+        <a href="{% url 'inventory:shipment_list' %}" class="btn btn-outline-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+{% endblock %}

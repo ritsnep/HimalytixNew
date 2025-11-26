@@ -1,21 +1,49 @@
-{% extends "Inventory/base.html" %}
+{% extends "Inventory/_list_base.html" %}
 {% load static %}
 
-{% block inventory_title %}Products{% endblock %}
+{% block title %}Products{% endblock %}
 
-{% block inventory_content %}
-<div class="sm:flex sm:items-center">
-    <div class="sm:flex-auto">
-        <h1 class="text-2xl font-semibold text-gray-900">Products</h1>
-        <p class="mt-2 text-sm text-gray-700">A list of all products in your inventory.</p>
-    </div>
-    <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-        <a href="{% url 'inventory:product_create' %}" class="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:w-auto">
-            Add Product
-        </a>
-    </div>
-</div>
+{% block table_head %}
+<thead class="table-light">
+  <tr>
+    <th>Code</th>
+    <th>Name</th>
+    <th>Category</th>
+    <th>UOM</th>
+    <th class="text-end">Sale Price</th>
+    <th class="text-end">Cost Price</th>
+    <th class="text-center">Inventory?</th>
+    <th style="width:140px;">Actions</th>
+  </tr>
+</thead>
+{% endblock %}
 
-{% include "Inventory/_list_table.html" with headers='Code,Name,Category,UOM,Sale Price,Cost Price,Is Inventory' fields='code,name,category.name|default:"N/A",uom,sale_price,cost_price,is_inventory_item' items=products show_actions=True update_url_name='inventory:product_update' delete_url_name='inventory:product_delete' %}
-
+{% block table_body %}
+<tbody>
+  {% for product in products %}
+  <tr>
+    <td class="fw-semibold">{{ product.code }}</td>
+    <td>{{ product.name }}</td>
+    <td>{{ product.category.name|default:"N/A" }}</td>
+    <td>{{ product.uom }}</td>
+    <td class="text-end">{{ product.sale_price }}</td>
+    <td class="text-end">{{ product.cost_price }}</td>
+    <td class="text-center">
+      {% if product.is_inventory_item %}
+        <span class="badge bg-success">Yes</span>
+      {% else %}
+        <span class="badge bg-secondary">No</span>
+      {% endif %}
+    </td>
+    <td>
+      <div class="btn-group btn-group-sm" role="group">
+        <a href="{% url 'inventory:product_update' product.pk %}" class="btn btn-outline-primary">Edit</a>
+        <a href="{% url 'inventory:product_delete' product.pk %}" class="btn btn-outline-danger">Delete</a>
+      </div>
+    </td>
+  </tr>
+  {% empty %}
+  <tr><td colspan="8" class="text-center py-4 text-muted">No products found.</td></tr>
+  {% endfor %}
+</tbody>
 {% endblock %}

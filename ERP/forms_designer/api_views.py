@@ -31,7 +31,32 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class VoucherUDFConfigViewSet(viewsets.ModelViewSet):
+def _get_request_organization(request):
+    """Return the active organization attached to this request."""
+    organization = getattr(request, "organization", None)
+    if organization:
+        return organization
+    user = getattr(request, "user", None)
+    org = get_user_organization(user)
+    if org and user and hasattr(user, "set_active_organization"):
+        user.set_active_organization(org)
+    return org
+
+
+class OrganizationScopedViewMixin:
+    """Common helpers for organization-aware viewsets."""
+
+    def _get_organization(self):
+        return _get_request_organization(self.request)
+
+    def _require_organization(self):
+        organization = self._get_organization()
+        if not organization:
+            raise PermissionDenied("Active organization required")
+        return organization
+
+
+class VoucherUDFConfigViewSet(OrganizationScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for UDF Configuration management
     Supports CRUD operations on User-Defined Fields
@@ -40,7 +65,14 @@ class VoucherUDFConfigViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        queryset = VoucherUDFConfig.objects.filter(archived_at__isnull=True)
+        organization = self._get_organization()
+        if not organization:
+            return VoucherUDFConfig.objects.none()
+
+        queryset = VoucherUDFConfig.objects.filter(
+            archived_at__isnull=True,
+            organization=organization,
+        )
         
         # Filter by voucher mode if provided
         voucher_mode_id = self.request.query_params.get('voucher_mode', None)
@@ -52,21 +84,25 @@ class VoucherUDFConfigViewSet(viewsets.ModelViewSet):
         if scope:
             queryset = queryset.filter(scope=scope)
         
-        # Filter by organization
-        if not self.request.user.is_superuser:
-            queryset = queryset.filter(organization=self.request.user.organization)
-        
         return queryset.order_by('scope', 'display_order', 'field_name')
     
     def perform_create(self, serializer):
         """Set organization and creator on create"""
+        organization = self._require_organization()
+        voucher_mode = serializer.validated_data.get('voucher_mode')
+        if voucher_mode and voucher_mode.organization_id != getattr(organization, 'id', None):
+            raise PermissionDenied("Voucher mode is not part of your organization")
         serializer.save(
-            organization=self.request.user.organization,
+            organization=organization,
             created_by=self.request.user
         )
     
     def perform_update(self, serializer):
         """Track who updated"""
+        organization = self._require_organization()
+        voucher_mode = serializer.validated_data.get('voucher_mode')
+        if voucher_mode and voucher_mode.organization_id != getattr(organization, 'id', None):
+            raise PermissionDenied("Voucher mode is not part of your organization")
         serializer.save(updated_by=self.request.user)
     
     def perform_destroy(self, instance):
@@ -152,7 +188,7 @@ class VoucherUDFConfigViewSet(viewsets.ModelViewSet):
             )
 
 
-class VoucherSchemaViewSet(viewsets.ModelViewSet):
+class VoucherSchemaViewSet(OrganizationScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for Voucher Schema management
     Supports versioning, approval workflow, and publishing
@@ -161,7 +197,13 @@ class VoucherSchemaViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        queryset = VoucherSchema.objects.all()
+        organization = self._get_organization()
+        if not organization:
+            return VoucherSchema.objects.none()
+
+        queryset = VoucherSchema.objects.filter(
+            voucher_mode_config__organization=organization
+        )
         
         # Filter by voucher mode config
         config_id = self.request.query_params.get('config_id', None)
@@ -188,6 +230,10 @@ class VoucherSchemaViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Create new schema version"""
         voucher_mode_config = serializer.validated_data['voucher_mode_config']
+
+        organization = self._require_organization()
+        if voucher_mode_config.organization_id != getattr(organization, 'id', None):
+            raise PermissionDenied("Config is not part of your organization")
         
         # Get next version number
         last_version = VoucherSchema.objects.filter(
@@ -204,6 +250,10 @@ class VoucherSchemaViewSet(viewsets.ModelViewSet):
     
     def perform_update(self, serializer):
         """Track updates"""
+        organization = self._require_organization()
+        new_config = serializer.validated_data.get('voucher_mode_config')
+        if new_config and new_config.organization_id != getattr(organization, 'id', None):
+            raise PermissionDenied("Config is not part of your organization")
         serializer.save(updated_by=self.request.user)
     
     @action(detail=True, methods=['post'])
@@ -434,7 +484,7 @@ class SchemaTemplateViewSet(viewsets.ModelViewSet):
         
         # Show public templates or user's organization templates
         if not self.request.user.is_superuser:
-            org = get_user_organization(self.request.user)
+            org = _get_request_organization(self.request)
             if org:
                 queryset = queryset.filter(
                     Q(is_public=True) |
@@ -447,7 +497,7 @@ class SchemaTemplateViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         """Set organization and creator on create"""
-        org = get_user_organization(self.request.user)
+        org = _get_request_organization(self.request)
         serializer.save(
             organization_id=getattr(org, 'id', None),
             created_by=self.request.user
@@ -472,7 +522,16 @@ class SchemaTemplateViewSet(viewsets.ModelViewSet):
             )
         
         try:
-            config = VoucherModeConfig.objects.get(config_id=config_id)
+            organization = _get_request_organization(request)
+            if not organization:
+                return Response(
+                    {'error': 'Active organization required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            config = VoucherModeConfig.objects.get(
+                config_id=config_id,
+                organization=organization,
+            )
             
             # Create new schema version with template
             last_version = VoucherSchema.objects.filter(

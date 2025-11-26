@@ -20,7 +20,11 @@ class Command(BaseCommand):
         for ep in endpoints:
             IntegrationEvent.objects.create(
                 event_type="bank_feed.sync",
-                payload={"endpoint": ep.name, "synced_at": timezone.now().isoformat()},
+                payload={
+                    "endpoint": ep.name,
+                    "synced_at": timezone.now().isoformat(),
+                    "organization_id": ep.organization_id,
+                },
                 source_object="IntegrationEndpoint",
                 source_id=str(ep.pk),
             )

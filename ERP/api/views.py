@@ -1,22 +1,31 @@
-from rest_framework import viewsets, renderers
 import csv
 import logging
 from io import TextIOWrapper
+
+from django.core.exceptions import ValidationError
 from django.http import Http404
-from rest_framework.views import APIView
+from rest_framework import renderers, status, viewsets
 from rest_framework.permissions import IsAuthenticated
-from accounting.models import FiscalYear, GeneralLedger
-from .serializers import FiscalYearSerializer
 from rest_framework.response import Response
-from rest_framework import status
-from accounting.models import ChartOfAccount, Journal, CurrencyExchangeRate
+from rest_framework.views import APIView
+
+from accounting.models import (
+    ChartOfAccount,
+    CurrencyExchangeRate,
+    FiscalYear,
+    GeneralLedger,
+    Journal,
+)
 from accounting.services import post_journal, close_period
+from utils.file_uploads import MAX_IMPORT_UPLOAD_BYTES, iter_validated_files
+
+from .permissions import IsOrganizationMember
 from .serializers import (
     ChartOfAccountSerializer,
-    JournalSerializer,
     CurrencyExchangeRateSerializer,
+    FiscalYearSerializer,
+    JournalSerializer,
 )
-from .permissions import IsOrganizationMember
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +69,23 @@ class JournalImportView(APIView):
         file = request.FILES.get("file")
         if not file:
             return Response({"detail": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
-        reader = csv.DictReader(TextIOWrapper(file, encoding="utf-8"))
+        try:
+            extracted = list(
+                iter_validated_files(
+                    file,
+                    allowed_extensions={".csv"},
+                    max_bytes=MAX_IMPORT_UPLOAD_BYTES,
+                    allow_archive=True,
+                    max_members=1,
+                    label="Journal import",
+                )
+            )
+        except ValidationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        _, content = extracted[0]
+        content.seek(0)
+        reader = csv.DictReader(TextIOWrapper(content, encoding="utf-8"))
         created = []
         for row in reader:
             serializer = JournalSerializer(data=row)

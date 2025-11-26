@@ -10,6 +10,11 @@ from accounting.services.posting_service import PostingService
 from accounting.utils.audit import log_audit_event
 from usermanagement.models import CustomUser, Organization
 from usermanagement.utils import PermissionUtils
+from utils.file_uploads import (
+    ALLOWED_ATTACHMENT_EXTENSIONS,
+    MAX_ATTACHMENT_UPLOAD_BYTES,
+    iter_validated_files,
+)
 
 class JournalEntryService:
     """
@@ -114,14 +119,27 @@ class JournalEntryService:
 
     def add_attachments(self, journal: Journal, attachments: List[Any]):
         """
-        Adds attachments to a journal entry.
+        Adds attachments to a journal entry after validating files and archives.
         """
+        if not attachments:
+            return
+
         for attachment_file in attachments:
-            Attachment.objects.create(
-                journal=journal,
-                file=attachment_file,
-                uploaded_by=self.user
-            )
+            try:
+                for _, content in iter_validated_files(
+                    attachment_file,
+                    allowed_extensions=ALLOWED_ATTACHMENT_EXTENSIONS,
+                    max_bytes=MAX_ATTACHMENT_UPLOAD_BYTES,
+                    allow_archive=True,
+                    label="Attachment",
+                ):
+                    Attachment.objects.create(
+                        journal=journal,
+                        file=content,
+                        uploaded_by=self.user,
+                    )
+            except ValidationError as exc:
+                raise ValidationError(str(exc)) from exc
 
     def _get_voucher_mode_config(self, journal_type: JournalType) -> VoucherModeConfig:
         """

@@ -4,46 +4,63 @@ from usermanagement.models import Organization, UserOrganization
 
 
 class ActiveOrganizationMiddleware:
-    """
-    Resolve the current company (organization) for the authenticated user.
-
-    Priority:
-      1. request.session['active_organization_id']
-      2. request.tenant (if present on request)
-      3. user.organization
-      4. first active UserOrganization mapping
-    """
+    """Resolve the current organization for the authenticated user only from memberships."""
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        request.organization = self.get_current_organization(request)
+        organization = self._resolve_organization(request)
+        request.organization = organization
+        user = getattr(request, "user", None)
+        if user and hasattr(user, "set_active_organization"):
+            user.set_active_organization(organization)
         return self.get_response(request)
 
-    def get_current_organization(self, request):
-        org_id = request.session.get("active_organization_id") if hasattr(request, "session") else None
-        if org_id:
-            organization = Organization.objects.filter(id=org_id).first()
-            if organization:
-                return organization
-
+    def _resolve_organization(self, request):
+        session = request.session if hasattr(request, "session") else None
         tenant = getattr(request, "tenant", None)
-        if tenant:
-            organization = Organization.objects.filter(tenant=tenant).first()
-            if organization:
-                return organization
-
         user = getattr(request, "user", None)
-        if user and getattr(user, "is_authenticated", False):
-            if getattr(user, "organization_id", None):
-                return user.organization
-            mapping = (
-                UserOrganization.objects.filter(user=user, is_active=True)
-                .select_related("organization")
-                .first()
-            )
-            if mapping:
-                return mapping.organization
 
-        return None
+        if not user or not getattr(user, "is_authenticated", False):
+            if session:
+                session.pop("active_organization_id", None)
+            return None
+
+        memberships = (
+            UserOrganization.objects.filter(user=user, is_active=True)
+            .select_related("organization", "organization__tenant")
+        )
+
+        def _return_mapping(mapping):
+            if not mapping:
+                return None
+            if session:
+                session["active_organization_id"] = mapping.organization_id
+            return mapping.organization
+
+        org_id = session.get("active_organization_id") if session else None
+        if org_id:
+            scoped = memberships.filter(organization_id=org_id)
+            if tenant:
+                scoped = scoped.filter(organization__tenant=tenant)
+            mapping = scoped.first()
+            if mapping:
+                return _return_mapping(mapping)
+            if user.is_superuser:
+                org_qs = Organization.objects.filter(id=org_id)
+                if tenant:
+                    org_qs = org_qs.filter(tenant=tenant)
+                organization = org_qs.first()
+                if organization:
+                    return organization
+            if session:
+                session.pop("active_organization_id", None)
+
+        if tenant:
+            mapping = memberships.filter(organization__tenant=tenant).first()
+            resolved = _return_mapping(mapping)
+            if resolved:
+                return resolved
+
+        return _return_mapping(memberships.first())

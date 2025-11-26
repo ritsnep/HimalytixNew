@@ -205,7 +205,15 @@ class AssetViewSet(OrganizationScopedMixin, viewsets.ReadOnlyModelViewSet):
     queryset = Asset.objects.select_related('category')
 
 
-class IntegrationEventViewSet(viewsets.ReadOnlyModelViewSet):
+class IntegrationEventViewSet(OrganizationScopedMixin, viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = IntegrationEventSerializer
     queryset = IntegrationEvent.objects.all()
+
+    def get_queryset(self):
+        organization = self.get_organization()
+        if not organization:
+            return IntegrationEvent.objects.none()
+        return IntegrationEvent.objects.filter(
+            payload__organization_id=getattr(organization, 'id', None)
+        )

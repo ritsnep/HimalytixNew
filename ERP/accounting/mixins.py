@@ -14,7 +14,15 @@ class UserOrganizationMixin:
 
     def get_organization(self):
         user = getattr(self.request, "user", None)
-        if user and hasattr(user, "get_active_organization"):
+        if not user:
+            return None
+
+        organization = getattr(self.request, "organization", None)
+        if organization is not None and hasattr(user, "set_active_organization"):
+            user.set_active_organization(organization)
+            return organization
+
+        if hasattr(user, "get_active_organization"):
             org = user.get_active_organization()
             if org:
                 return org

@@ -1,6 +1,7 @@
 import json
 import logging
-from django.forms import ValidationError
+
+from django.core.exceptions import ValidationError
 from django.http import HttpRequest, JsonResponse, HttpResponse
 from django.views.generic import View
 from django.shortcuts import redirect, render, get_object_or_404
@@ -25,23 +26,51 @@ from django.contrib.contenttypes.models import ContentType
 from datetime import datetime
 
 from accounting.mixins import UserOrganizationMixin
+from utils.file_uploads import (
+    ALLOWED_ATTACHMENT_EXTENSIONS,
+    MAX_ATTACHMENT_UPLOAD_BYTES,
+    iter_validated_files,
+)
 
 logger = logging.getLogger(__name__)
+
+RECEIPT_ALLOWED_EXTENSIONS = (
+    ALLOWED_ATTACHMENT_EXTENSIONS
+    & {".jpg", ".jpeg", ".png", ".pdf", ".heic"}
+)
+if not RECEIPT_ALLOWED_EXTENSIONS:
+    RECEIPT_ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf"}
+
+
+def _prepare_receipt_file(uploaded_file, *, label: str):
+    files = list(
+        iter_validated_files(
+            uploaded_file,
+            allowed_extensions=RECEIPT_ALLOWED_EXTENSIONS,
+            max_bytes=MAX_ATTACHMENT_UPLOAD_BYTES,
+            allow_archive=False,
+            label=label,
+        )
+    )
+    if not files:
+        raise ValidationError("Uploaded file is empty.")
+    return files[0][1]
 
 class JournalOCRView(UserOrganizationMixin, View):
     def post(self, request, *args, **kwargs):
         if not request.FILES.get('file'):
             return JsonResponse({'success': False, 'error': 'No file found.'}, status=400)
 
-        file = request.FILES['file']
-
         try:
-            extracted_data = process_receipt_with_ocr(file)
+            safe_file = _prepare_receipt_file(request.FILES['file'], label="Receipt OCR")
+            extracted_data = process_receipt_with_ocr(safe_file)
             return JsonResponse({'success': True, 'extracted_data': extracted_data})
+        except ValidationError as exc:
+            return JsonResponse({'success': False, 'error': str(exc)}, status=400)
         except Exception as e:
             logger.exception(
-                "Error processing OCR for file %s: %s", file.name, e,
-                extra={'file_name': file.name, 'user_id': request.user.pk,
+                "Error processing OCR for file upload: %s", e,
+                extra={'user_id': request.user.pk,
                        'organization_id': self.get_organization().pk if self.get_organization() else None}
             )
             return JsonResponse({'success': False, 'error': "Failed to process receipt with OCR."}, status=500)
@@ -368,27 +397,31 @@ class BaseJournalEntryView(LoginRequiredMixin, View):
             errors = validation_service.validate_journal_entry(journal_data, lines_data)
 
             if not errors:
-                with transaction.atomic():
-                    journal_instance = form.save(commit=False)
-                    if not journal_instance.pk:
-                        journal_instance.organization = request.user.get_active_organization()
-                        journal_instance.created_by = request.user
-                    
-                    journal_instance.save()
-                    
-                    formset.instance = journal_instance
-                    formset.save()
+                try:
+                    with transaction.atomic():
+                        journal_instance = form.save(commit=False)
+                        if not journal_instance.pk:
+                            journal_instance.organization = request.user.get_active_organization()
+                            journal_instance.created_by = request.user
+                        
+                        journal_instance.save()
+                        
+                        formset.instance = journal_instance
+                        formset.save()
 
-                    attachments = request.FILES.getlist('attachments')
-                    if attachments:
-                        service = JournalEntryService(user=request.user, organization=request.organization)
-                        service.add_attachments(journal_instance, attachments)
-                logger.info(
-                    "Journal entry %s saved successfully by user %s",
-                    journal_instance.pk, request.user.pk,
-                    extra={'journal_id': journal_instance.pk, 'user_id': request.user.pk, 'organization_id': request.organization.pk}
-                )
-                return redirect('accounting:journal_detail', pk=journal_instance.pk)
+                        attachments = request.FILES.getlist('attachments')
+                        if attachments:
+                            service = JournalEntryService(user=request.user, organization=request.organization)
+                            service.add_attachments(journal_instance, attachments)
+                except ValidationError as exc:
+                    form.add_error(None, str(exc))
+                else:
+                    logger.info(
+                        "Journal entry %s saved successfully by user %s",
+                        journal_instance.pk, request.user.pk,
+                        extra={'journal_id': journal_instance.pk, 'user_id': request.user.pk, 'organization_id': request.organization.pk}
+                    )
+                    return redirect('accounting:journal_detail', pk=journal_instance.pk)
             else:
                 # Add errors to the form and formset
                 if 'general' in errors:
@@ -568,11 +601,12 @@ class UploadReceiptView(LoginRequiredMixin, View):
         if not request.FILES.get('receipt'):
             return JsonResponse({'success': False, 'error': 'No receipt file found.'}, status=400)
 
-        receipt_file = request.FILES['receipt']
-        
         try:
-            extracted_data = process_receipt_with_ocr(receipt_file)
+            safe_file = _prepare_receipt_file(request.FILES['receipt'], label="Receipt upload")
+            extracted_data = process_receipt_with_ocr(safe_file)
             return JsonResponse({'success': True, 'extracted_data': extracted_data})
+        except ValidationError as exc:
+            return JsonResponse({'success': False, 'error': str(exc)}, status=400)
         except Exception as e:
             logger.exception(
                 "An unexpected error occurred in UploadReceiptView: %s", e,

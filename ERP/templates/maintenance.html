@@ -1,0 +1,198 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Down for Maintenance</title>
+    <style>
+        :root {
+            --bg: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #111827 100%);
+            --card: rgba(255, 255, 255, 0.06);
+            --accent: #22c55e;
+            --muted: #cbd5e1;
+        }
+        body {
+            margin: 0;
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: var(--bg);
+            color: #f8fafc;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+        }
+        .card {
+            background: var(--card);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 720px;
+            width: 100%;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(12px);
+        }
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(34, 197, 94, 0.15);
+            color: #bbf7d0;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            border: 1px solid rgba(34, 197, 94, 0.35);
+        }
+        h1 {
+            margin: 16px 0 8px;
+            font-size: 28px;
+            letter-spacing: -0.02em;
+        }
+        p {
+            color: var(--muted);
+            line-height: 1.6;
+            margin: 6px 0;
+        }
+        .stack {
+            display: grid;
+            gap: 14px;
+            margin: 18px 0;
+        }
+        .hint {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px dashed rgba(255, 255, 255, 0.12);
+            padding: 14px;
+            border-radius: 12px;
+        }
+        .actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+        button, .ghost {
+            border: none;
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        button.primary {
+            background: #22c55e;
+            color: #0f172a;
+            box-shadow: 0 12px 30px rgba(34, 197, 94, 0.35);
+        }
+        button.primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 16px 36px rgba(34, 197, 94, 0.45);
+        }
+        .ghost {
+            background: transparent;
+            color: #e2e8f0;
+            border: 1px solid rgba(226, 232, 240, 0.2);
+            text-decoration: none;
+        }
+        .meta {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+            font-size: 13px;
+            color: #cbd5e1;
+        }
+        .dot {
+            height: 8px;
+            width: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <article class="card">
+        <span class="pill">
+            <span class="dot"></span>
+            Maintenance in progress
+        </span>
+        <h1>{{ status_text|default:"System upgrade in progress - we'll be right back." }}</h1>
+        <div class="stack">
+            <p>{{ detail|default:"We're applying updates. Your work is safe and will be ready to resume once we're back online." }}</p>
+            {% if snapshot %}
+                <div class="hint">
+                    <strong>We paused you at:</strong>
+                    <div>Path: {{ snapshot.path }}</div>
+                    <div>Method: {{ snapshot.method }}</div>
+                    {% if snapshot.payload %}
+                        <div>Payload saved for resume.</div>
+                    {% endif %}
+                </div>
+            {% endif %}
+            <div class="actions">
+                <button id="retry-now" class="primary">Retry now</button>
+                <a class="ghost" href="mailto:support@himalytix.com">Notify me when back</a>
+            </div>
+            <div class="meta" id="status-meta">
+                <div>Version: {{ app_version }}</div>
+                {% if retry_after %}<div>Retry after: {{ retry_after }}s</div>{% endif %}
+                {% if updated_at %}<div>Last update: {{ updated_at }}</div>{% endif %}
+            </div>
+        </div>
+    </article>
+
+    <script>
+        (function() {
+            const retryBtn = document.getElementById("retry-now");
+            const statusMeta = document.getElementById("status-meta");
+            const statusUrl = "{% url 'maintenance_status' %}";
+            const streamUrl = "{% url 'maintenance_stream' %}";
+
+            function refreshNow() {
+                fetch(statusUrl, { credentials: "same-origin" })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (!data.enabled) {
+                            location.reload();
+                        } else {
+                            statusMeta.innerHTML = [
+                                "Version: " + (data.app_version || "{{ app_version }}"),
+                                "Retry after: " + (data.retry_after || "{{ retry_after|default:'300' }}") + "s",
+                                "Last update: " + (data.updated_at || "{{ updated_at|default:'' }}")
+                            ].map(t => "<div>" + t + "</div>").join("");
+                        }
+                    })
+                    .catch(() => {
+                        // Ignore errors; user can retry manually.
+                    });
+            }
+
+            if (retryBtn) {
+                retryBtn.addEventListener("click", refreshNow);
+            }
+
+            if (window.EventSource) {
+                try {
+                    const es = new EventSource(streamUrl);
+                    es.onmessage = function(evt) {
+                        try {
+                            const data = JSON.parse(evt.data || "{}");
+                            if (!data.enabled) {
+                                location.reload();
+                            }
+                        } catch (e) {
+                            // Best-effort; ignore malformed messages.
+                        }
+                    };
+                } catch (e) {
+                    // Fallback to polling if SSE fails.
+                    setInterval(refreshNow, 8000);
+                }
+            } else {
+                setInterval(refreshNow, 8000);
+            }
+        })();
+    </script>
+</body>
+</html>

@@ -20,6 +20,7 @@ class IssueStreamlitTokenView(APIView):
     """
 
     permission_classes = [IsAuthenticated]
+    authentication_classes = APIView.authentication_classes
 
     def post(self, request, *args: Any, **kwargs: Any):
         tenant_id = None

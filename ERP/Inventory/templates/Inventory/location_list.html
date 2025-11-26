@@ -1,21 +1,52 @@
-{% extends "Inventory/base.html" %}
+{% extends "Inventory/_list_base.html" %}
 {% load static %}
 
-{% block inventory_title %}Locations for {{ warehouse.name }}{% endblock %}
+{% block title %}Locations{% endblock %}
 
-{% block inventory_content %}
-<div class="sm:flex sm:items-center">
-    <div class="sm:flex-auto">
-        <h1 class="text-2xl font-semibold text-gray-900">Locations for {{ warehouse.name }} ({{ warehouse.code }})</h1>
-        <p class="mt-2 text-sm text-gray-700">A list of all storage locations within this warehouse.</p>
-    </div>
-    <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-        <a href="{% url 'inventory:location_create' warehouse_pk=warehouse.pk %}" class="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:w-auto">
-            Add Location
-        </a>
-    </div>
-</div>
+{% block list_actions %}
+  <div class="d-flex flex-wrap gap-2">
+    <a href="{% url 'inventory:warehouse_list' %}" class="btn btn-outline-secondary">
+      <i class="mdi mdi-arrow-left"></i> Warehouses
+    </a>
+    <a href="{% url 'inventory:location_create' %}" class="btn btn-primary">
+      <i class="mdi mdi-plus"></i> Add Location
+    </a>
+  </div>
+{% endblock %}
 
-{% include "Inventory/_list_table.html" with headers='Code,Name,Type,Active' fields='code,name,location_type,is_active' items=locations show_actions=True update_url_name='inventory:location_update' delete_url_name='inventory:location_delete' %}
+{% block table_head %}
+  <tr>
+    <th>Code</th>
+    <th>Name</th>
+    <th>Type</th>
+    <th>Active</th>
+    <th style="width:140px;">Actions</th>
+  </tr>
+{% endblock %}
 
+{% block table_body %}
+  {% if locations %}
+    {% for location in locations %}
+    <tr>
+      <td class="fw-semibold">{{ location.code }}</td>
+      <td>{{ location.name }}</td>
+      <td>{{ location.location_type }}</td>
+      <td>
+        {% if location.is_active %}
+          <span class="badge bg-success">Yes</span>
+        {% else %}
+          <span class="badge bg-secondary">No</span>
+        {% endif %}
+      </td>
+      <td>
+        <div class="btn-group btn-group-sm" role="group">
+          <a href="{% url 'inventory:location_update' location.pk %}" class="btn btn-outline-primary">Edit</a>
+          <a href="{% url 'inventory:location_delete' location.pk %}" class="btn btn-outline-danger">Delete</a>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  {% else %}
+    <tr><td colspan="5" class="text-center py-4 text-muted">No locations found.</td></tr>
+  {% endif %}
 {% endblock %}

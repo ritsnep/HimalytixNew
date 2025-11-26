@@ -99,20 +99,19 @@ class LocationCreateView(PermissionRequiredMixin, UserOrganizationMixin, CreateV
     permission_required = 'Inventory.add_location'
     success_url = reverse_lazy('inventory:location_list')
 
-    def get_initial(self):
-        initial = super().get_initial()
+    # If you want auto-code, inject here once a warehouse-scoped generator is defined.
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
         organization = self.get_organization()
         if organization:
-            code_gen = AutoIncrementCodeGenerator(Location, 'code', organization=organization, prefix='LOC')
-            initial['code'] = code_gen.generate_code()
-        return initial
+            form.fields['warehouse'].queryset = form.fields['warehouse'].queryset.filter(
+                organization=organization
+            )
+        return form
 
     def form_valid(self, form):
-        organization = self.get_organization()
-        form.instance.organization = organization
-        form.instance.created_by = self.request.user
-        form.instance.updated_by = self.request.user
-        messages.success(self.request, f'Location "{form.instance.name}" created successfully.')
+        messages.success(self.request, f'Location "{form.instance.name or form.instance.code}" created successfully.')
         return super().form_valid(form)
 
 

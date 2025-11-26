@@ -53,6 +53,15 @@ class LocationListView(BaseListView):
     context_object_name = 'locations'
     permission_required = ('Inventory', 'location', 'view')
 
+    def get_queryset(self):
+        """Filter by organization via warehouse since Location has no direct org FK."""
+        from django.views.generic import ListView
+        qs = ListView.get_queryset(self)
+        organization = self.get_organization()
+        if organization:
+            qs = qs.filter(warehouse__organization=organization)
+        return qs.order_by('-warehouse__code', 'code')
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['create_url'] = reverse_lazy('inventory:location_create')

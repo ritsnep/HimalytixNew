@@ -5,8 +5,10 @@ import hmac
 import struct
 import time
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from allauth.account.adapter import DefaultAccountAdapter
 from allauth.account.auth_backends import AuthenticationBackend
 
 from .models import LoginLog
@@ -129,3 +131,13 @@ class CustomAuthenticationBackend(AuthenticationBackend):
             user.locked_until = timezone.now() + timezone.timedelta(minutes=30)
         
         user.save(update_fields=['failed_login_attempts', 'locked_until'])
+
+
+class RestrictedAccountAdapter(DefaultAccountAdapter):
+    """Gate account signups unless explicitly enabled via settings."""
+
+    def is_open_for_signup(self, request):
+        allow_signup = getattr(settings, 'ACCOUNT_ALLOW_SIGNUP', False)
+        if allow_signup:
+            return super().is_open_for_signup(request)
+        return False

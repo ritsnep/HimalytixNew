@@ -18,7 +18,8 @@ class UserOrganizationAdmin(admin.ModelAdmin):
     list_filter = ('is_owner', 'is_active', 'role')
     search_fields = ('user__username', 'organization__name')
     readonly_fields = ('date_joined',)
-    list_select_related = ('user', 'organization', 'role')
+    # role is a CharField, so only follow relational fields here
+    list_select_related = ('user', 'organization')
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):

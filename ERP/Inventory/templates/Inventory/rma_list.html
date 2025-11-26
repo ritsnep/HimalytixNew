@@ -1,0 +1,47 @@
+{% extends "Inventory/_list_base.html" %}
+{% load static %}
+
+{% block title %}RMAs{% endblock %}
+
+{% block list_actions %}
+  {% if create_url %}
+  <a href="{{ create_url }}" class="btn btn-primary">
+    <i class="mdi mdi-plus"></i> Create RMA
+  </a>
+  {% endif %}
+{% endblock %}
+
+{% block table_head %}
+  <tr>
+    <th>Number</th>
+    <th>Product</th>
+    <th>Warehouse</th>
+    <th>Status</th>
+    <th>Reason</th>
+    <th class="text-end">Qty</th>
+    <th style="width:140px;">Actions</th>
+  </tr>
+{% endblock %}
+
+{% block table_body %}
+  {% if rmas %}
+    {% for rma in rmas %}
+    <tr>
+      <td class="fw-semibold">{{ rma.rma_number }}</td>
+      <td>{{ rma.product.code }}</td>
+      <td>{{ rma.warehouse.code }}</td>
+      <td><span class="badge bg-light text-dark">{{ rma.get_status_display }}</span></td>
+      <td>{{ rma.get_reason_display }}</td>
+      <td class="text-end">{{ rma.quantity }}</td>
+      <td>
+        <div class="btn-group btn-group-sm" role="group">
+          <a href="{% url 'inventory:rma_detail' rma.pk %}" class="btn btn-outline-info">View</a>
+          <a href="{% url 'inventory:rma_update' rma.pk %}" class="btn btn-outline-primary">Edit</a>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  {% else %}
+    <tr><td colspan="7" class="text-center py-4 text-muted">No RMAs found.</td></tr>
+  {% endif %}
+{% endblock %}

@@ -1,20 +1,24 @@
-from django.shortcuts import redirect, render
-from django.views import View
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.urls import reverse_lazy
-from django.contrib.auth.decorators import login_required
-from django.views.generic import TemplateView
-from django.db.models import Sum, Q
+import json
+import time
 from decimal import Decimal
-from django.contrib.auth.views import LoginView
-from usermanagement.forms import DasonLoginForm
-from django.utils import translation
-from django.http import HttpResponseRedirect
+
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseRedirect
-from django.urls import reverse
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.views import LoginView
+from django.db.models import Q, Sum
+from django.http import HttpResponseRedirect, JsonResponse, StreamingHttpResponse
+from django.shortcuts import redirect, render
+from django.urls import reverse, reverse_lazy
+from django.utils import translation
+from django.views import View
+from django.views.decorators.http import require_POST  # Added this line
+from django.views.generic import TemplateView
+from usermanagement.forms import DasonLoginForm
+from usermanagement.utils import permission_required  # Added this line
+
 from api.authentication import issue_streamlit_token
+from utils.maintenance import get_maintenance_state, serialize_state
 
 from accounting.models import (
     ChartOfAccount, Journal, JournalLine, GeneralLedger,
@@ -195,7 +199,38 @@ def set_region(request):
     return HttpResponseRedirect(request.META.get('HTTP_REFERER', '/'))
 
 
+def maintenance_status(request):
+    """Lightweight JSON status for maintenance banner / client polling."""
+    state = serialize_state()
+    snapshot = getattr(request, "maintenance_snapshot", None)
+    if snapshot:
+        state["snapshot"] = snapshot
+    return JsonResponse(state)
+
+
+def maintenance_stream(request):
+    """Simple SSE stream that emits state changes to connected clients."""
+    max_messages = getattr(settings, "MAINTENANCE_STREAM_MAX_MESSAGES", 120)
+    interval = getattr(settings, "MAINTENANCE_STREAM_INTERVAL", 2)
+
+    def event_stream():
+        last_payload = None
+        for _ in range(max_messages):
+            payload = serialize_state()
+            data = json.dumps(payload)
+            if data != last_payload:
+                yield f"data: {data}\n\n"
+                last_payload = data
+            time.sleep(interval)
+
+    response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+    response["Cache-Control"] = "no-cache"
+    return response
+
+
 @login_required
+@require_POST
+@permission_required('dashboard.access_streamlit')
 def v2_login_redirect(request):
     """Issue a short-lived token and redirect to /V2 with token as query param.
 

@@ -5,6 +5,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, List, Optional, Tuple
 
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
@@ -34,6 +35,11 @@ from accounting.models import (
 )
 from accounting.services.journal_entry_service import JournalEntryService
 from usermanagement.utils import PermissionUtils
+from utils.file_uploads import (
+    ALLOWED_ATTACHMENT_EXTENSIONS,
+    MAX_ATTACHMENT_UPLOAD_BYTES,
+    iter_validated_files,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -1520,16 +1526,33 @@ def journal_attachment_upload(request):
         return _json_error("No files uploaded.", status=400)
 
     created = []
-    for f in files:
-        att = Attachment.objects.create(journal=journal, file=f, uploaded_by=request.user)
-        created.append(
-            {
-                "id": att.pk,
-                "name": att.file.name.split("/")[-1],
-                "uploadedAt": att.uploaded_at.isoformat() if att.uploaded_at else None,
-                "uploadedBy": att.uploaded_by_id,
-            }
-        )
+    for uploaded in files:
+        try:
+            extracted_files = list(
+                iter_validated_files(
+                    uploaded,
+                    allowed_extensions=ALLOWED_ATTACHMENT_EXTENSIONS,
+                    max_bytes=MAX_ATTACHMENT_UPLOAD_BYTES,
+                    allow_archive=True,
+                    label="Attachment",
+                )
+            )
+        except ValidationError as exc:
+            return _json_error(str(exc), status=400)
+
+        for filename, content in extracted_files:
+            content.seek(0)
+            att = Attachment(journal=journal, uploaded_by=request.user)
+            att.file.save(filename, content, save=True)
+            created.append(
+                {
+                    "id": att.pk,
+                    "name": filename,
+                    "uploadedAt": att.uploaded_at.isoformat() if att.uploaded_at else None,
+                    "uploadedBy": att.uploaded_by_id,
+                }
+            )
+
     return JsonResponse({"ok": True, "attachments": created})
 
 

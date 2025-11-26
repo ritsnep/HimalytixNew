@@ -41,17 +41,36 @@ logger = logging.getLogger(__name__)
 
 # Create your views here.
 
+
+def _get_active_organization(request):
+    """Resolve the user's active organization from request or session."""
+    organization = getattr(request, "organization", None)
+    if organization:
+        return organization
+    user = getattr(request, "user", None)
+    if user and getattr(user, "is_authenticated", False) and hasattr(user, "get_active_organization"):
+        organization = user.get_active_organization()
+        if organization and hasattr(user, "set_active_organization"):
+            user.set_active_organization(organization)
+        return organization
+    return None
+
 @login_required
 @permission_required('forms_designer.change_voucherschema', raise_exception=True)
 def voucher_config_list(request):
-    configs = VoucherModeConfig.objects.all()
+    organization = _get_active_organization(request)
+    if not organization:
+        messages.warning(request, 'Please select an organization to continue.')
+        return redirect('select_organization')
+
+    configs = VoucherModeConfig.objects.filter(organization=organization)
     edit_id = request.GET.get('edit')
     edit_config = None
     schema = None
     schema_json = None
     udf_header = udf_line = None
     if edit_id:
-        edit_config = get_object_or_404(VoucherModeConfig, config_id=edit_id)
+        edit_config = get_object_or_404(VoucherModeConfig, config_id=edit_id, organization=organization)
         schema = get_active_schema(edit_config)
         # Convert dict-based schemas to lists and add 'name' property (robust for all sources)
         def dict_to_list_with_name(d):
@@ -99,12 +118,17 @@ def voucher_config_list(request):
         'schema_json': schema_json,
         'udf_header': udf_header,
         'udf_line': udf_line,
+        'organization': organization,
     })
 
 @login_required
 @permission_required('forms_designer.view_voucherschema', raise_exception=True)
 def schema_history(request, config_id):
-    config = get_object_or_404(VoucherModeConfig, config_id=config_id)
+    organization = _get_active_organization(request)
+    if not organization:
+        messages.warning(request, 'Please select an organization to continue.')
+        return redirect('select_organization')
+    config = get_object_or_404(VoucherModeConfig, config_id=config_id, organization=organization)
     schemas = VoucherSchema.objects.filter(voucher_mode_config=config).order_by('-version')
     return render(request, 'forms_designer/schema_history.html', {
         'config': config,
@@ -115,7 +139,10 @@ def schema_history(request, config_id):
 @permission_required('forms_designer.change_voucherschema', raise_exception=True)
 @require_POST
 def toggle_voucher_config_status(request, config_id):
-    config = get_object_or_404(VoucherModeConfig, config_id=config_id)
+    organization = _get_active_organization(request)
+    if not organization:
+        return JsonResponse({'error': 'Active organization required.'}, status=400)
+    config = get_object_or_404(VoucherModeConfig, config_id=config_id, organization=organization)
     if not request.user.has_perm('forms_designer.change_voucherschema'):
         return JsonResponse({'error': 'Permission denied.'}, status=403)
     # Toggle is_archived (active = not archived)
@@ -128,7 +155,11 @@ def toggle_voucher_config_status(request, config_id):
 @login_required
 @permission_required('forms_designer.change_voucherschema', raise_exception=True)
 def designer(request, config_id):
-    config = get_object_or_404(VoucherModeConfig, config_id=config_id)
+    organization = _get_active_organization(request)
+    if not organization:
+        messages.warning(request, 'Please select an organization to continue.')
+        return redirect('select_organization')
+    config = get_object_or_404(VoucherModeConfig, config_id=config_id, organization=organization)
     schema = get_active_schema(config)
     
     # Fetch UDFs and split them by scope
@@ -151,7 +182,11 @@ def designer(request, config_id):
 @permission_required('forms_designer.change_voucherschema', raise_exception=True)
 def designer_v2(request, config_id):
     """Enhanced designer with modern UI and advanced features"""
-    config = get_object_or_404(VoucherModeConfig, config_id=config_id)
+    organization = _get_active_organization(request)
+    if not organization:
+        messages.warning(request, 'Please select an organization to continue.')
+        return redirect('select_organization')
+    config = get_object_or_404(VoucherModeConfig, config_id=config_id, organization=organization)
     schema = get_active_schema(config)
     
     # Ensure schema has proper structure
@@ -208,7 +243,11 @@ def designer_v2(request, config_id):
 @login_required
 @permission_required('forms_designer.view_voucherschema', raise_exception=True)
 def preview(request, config_id):
-    config = get_object_or_404(VoucherModeConfig, config_id=config_id)
+    organization = _get_active_organization(request)
+    if not organization:
+        messages.warning(request, 'Please select an organization to continue.')
+        return redirect('select_organization')
+    config = get_object_or_404(VoucherModeConfig, config_id=config_id, organization=organization)
     schema = get_active_schema(config)
     # --- UDFs: Add UDF fields to schema dynamically ---
     udf_qs = VoucherUDFConfig.objects.filter(voucher_mode=config, is_active=True, archived_at__isnull=True)
@@ -273,13 +312,15 @@ def preview(request, config_id):
         'schema': schema,
     })
 
-@csrf_exempt
 @require_POST
 @login_required
 @permission_required('forms_designer.change_voucherschema', raise_exception=True)
 def save_schema_api(request, config_id):
     try:
-        config = get_object_or_404(VoucherModeConfig, config_id=config_id)
+        organization = _get_active_organization(request)
+        if not organization:
+            return JsonResponse({'status': 'error', 'message': 'Active organization required.'}, status=400)
+        config = get_object_or_404(VoucherModeConfig, config_id=config_id, organization=organization)
         new_schema = json.loads(request.body)
         save_schema(config, new_schema, user=request.user)
         return JsonResponse({'status': 'success', 'message': 'Schema saved successfully.'})

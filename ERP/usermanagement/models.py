@@ -7,6 +7,9 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from tenancy.models import Tenant
+
+
+_ACTIVE_ORG_CACHE_MISS = object()
 # class CustomUser(AbstractUser):
 #     full_name = models.CharField(max_length=100)
 #     role = models.CharField(max_length=50, choices=[("superadmin", "Super Admin"), ("admin", "Admin"), ("user", "User")])
@@ -125,28 +128,28 @@ class CustomUser(AbstractUser):
         return self.userorganization_set.all()
 
     def get_active_organization(self):
-        # First try to get from session
-        from django.contrib.sessions.models import Session
-        session = Session.objects.filter(session_key=self.last_login_at).first()
-        if session:
-            active_org_id = session.get('active_organization_id')
-            if active_org_id:
-                return Organization.objects.filter(id=active_org_id).first()
-        
-        # If not in session, get from user's organizations
-        user_org = self.userorganization_set.filter(is_active=True).first()
-        if user_org:
-            return user_org.organization
-            
-        # If still not found, get the first organization
-        return self.userorganization_set.first().organization if self.userorganization_set.exists() else None
+        cached = getattr(self, '_active_organization_cache', _ACTIVE_ORG_CACHE_MISS)
+        if cached is not _ACTIVE_ORG_CACHE_MISS:
+            return cached
+
+        organization = getattr(self, 'organization', None)
+        if organization:
+            self._active_organization_cache = organization
+            return organization
+
+        mapping = (
+            self.userorganization_set.filter(is_active=True)
+            .select_related('organization')
+            .order_by('organization__name')
+            .first()
+        )
+
+        organization = mapping.organization if mapping else None
+        self._active_organization_cache = organization
+        return organization
 
     def set_active_organization(self, organization):
-        from django.contrib.sessions.models import Session
-        session = Session.objects.filter(session_key=self.last_login_at).first()
-        if session:
-            session['active_organization_id'] = organization.id
-            session.save()
+        self._active_organization_cache = organization
 
 # class Company(models.Model):
 #     name = models.CharField(max_length=255)

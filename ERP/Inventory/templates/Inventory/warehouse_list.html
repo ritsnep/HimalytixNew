@@ -1,21 +1,52 @@
-{% extends "Inventory/base.html" %}
+{% extends "Inventory/_list_base.html" %}
 {% load static %}
 
-{% block inventory_title %}Warehouses{% endblock %}
+{% block title %}Warehouses{% endblock %}
 
-{% block inventory_content %}
-<div class="sm:flex sm:items-center">
-    <div class="sm:flex-auto">
-        <h1 class="text-2xl font-semibold text-gray-900">Warehouses</h1>
-        <p class="mt-2 text-sm text-gray-700">A list of all physical warehouses.</p>
-    </div>
-    <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-        <a href="{% url 'inventory:warehouse_create' %}" class="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:w-auto">
-            Add Warehouse
-        </a>
-    </div>
-</div>
+{% block list_actions %}
+  {% if create_url %}
+  <a href="{% url 'inventory:warehouse_create' %}" class="btn btn-primary">
+    <i class="mdi mdi-plus"></i> Add Warehouse
+  </a>
+  {% endif %}
+{% endblock %}
 
-{% include "Inventory/_list_table.html" with headers='Code,Name,City,Country,Active' fields='code,name,city,country_code,is_active' items=warehouses show_actions=True update_url_name='inventory:warehouse_update' delete_url_name='inventory:warehouse_delete' extra_actions='[{"label": "Locations", "url_name": "inventory:location_list", "color": "blue"}]' %}
+{% block table_head %}
+  <tr>
+    <th>Code</th>
+    <th>Name</th>
+    <th>City</th>
+    <th>Country</th>
+    <th>Active</th>
+    <th style="width:160px;">Actions</th>
+  </tr>
+{% endblock %}
 
+{% block table_body %}
+  {% if warehouses %}
+    {% for warehouse in warehouses %}
+    <tr>
+      <td class="fw-semibold">{{ warehouse.code }}</td>
+      <td>{{ warehouse.name }}</td>
+      <td>{{ warehouse.city }}</td>
+      <td>{{ warehouse.country_code }}</td>
+      <td>
+        {% if warehouse.is_active %}
+          <span class="badge bg-success">Yes</span>
+        {% else %}
+          <span class="badge bg-secondary">No</span>
+        {% endif %}
+      </td>
+      <td>
+        <div class="btn-group btn-group-sm" role="group">
+          <a href="{% url 'inventory:warehouse_update' warehouse.pk %}" class="btn btn-outline-primary">Edit</a>
+          <a href="{% url 'inventory:warehouse_delete' warehouse.pk %}" class="btn btn-outline-danger">Delete</a>
+          <a href="{% url 'inventory:location_list' %}" class="btn btn-outline-info">Locations</a>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  {% else %}
+    <tr><td colspan="6" class="text-center py-4 text-muted">No warehouses found.</td></tr>
+  {% endif %}
 {% endblock %}

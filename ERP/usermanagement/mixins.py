@@ -60,9 +60,17 @@ class UserOrganizationMixin(LoginRequiredMixin):
     
     def get_organization(self):
         """Get the active organization for the current user"""
-        if not self.request.user.is_authenticated:
+        user = getattr(self.request, "user", None)
+        if not user or not user.is_authenticated:
             return None
-        return self.request.user.get_active_organization()
+
+        organization = getattr(self.request, "organization", None)
+        if organization is not None:
+            if hasattr(user, "set_active_organization"):
+                user.set_active_organization(organization)
+            return organization
+
+        return user.get_active_organization()
 
     @property
     def organization(self):

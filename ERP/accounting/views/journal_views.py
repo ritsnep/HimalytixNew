@@ -1,10 +1,18 @@
-from django.http import HttpResponse, JsonResponse
-from django.template.loader import render_to_string
-from django.shortcuts import render, redirect
-from django.urls import reverse
 import json
 import random
-from accounting.models import Journal, JournalLine, ChartOfAccount  ,Attachment
+
+from django.core.exceptions import ValidationError
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import redirect, render
+from django.template.loader import render_to_string
+from django.urls import reverse
+
+from accounting.models import Attachment, ChartOfAccount, Journal, JournalLine
+from utils.file_uploads import (
+    ALLOWED_ATTACHMENT_EXTENSIONS,
+    MAX_ATTACHMENT_UPLOAD_BYTES,
+    iter_validated_files,
+)
 
 def new_journal_entry(request):
     """Render the journal entry page or handle the creation of a new journal entry."""
@@ -476,9 +484,35 @@ def upload_attachment(request, journal_id):
         # For now, we'll just simulate the upload
         file = request.FILES.get('attachment')
         if file:
-            # attachment = Attachment.objects.create(file=file, content_object=journal)
-            # For the demo, we just return a success message
-            return HttpResponse(f'<div class="list-group-item small text-success">Successfully uploaded {file.name}</div>')
+            try:
+                validated_files = list(
+                    iter_validated_files(
+                        file,
+                        allowed_extensions=ALLOWED_ATTACHMENT_EXTENSIONS,
+                        max_bytes=MAX_ATTACHMENT_UPLOAD_BYTES,
+                        allow_archive=True,
+                        label="Attachment",
+                    )
+                )
+            except ValidationError as exc:
+                return HttpResponse(
+                    f'<div class="list-group-item small text-danger">{exc}</div>',
+                    status=400,
+                )
+
+            if not validated_files:
+                return HttpResponse(
+                    '<div class="list-group-item small text-danger">No files to upload.</div>',
+                    status=400,
+                )
+
+            fragments = []
+            for _, content in validated_files:
+                # attachment = Attachment.objects.create(file=content, content_object=journal)
+                fragments.append(
+                    f'<div class="list-group-item small text-success">Successfully validated {content.name}</div>'
+                )
+            return HttpResponse(''.join(fragments))
     
     return HttpResponse('<div class="list-group-item small text-danger">Upload failed.</div>', status=400)
 

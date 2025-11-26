@@ -33,6 +33,8 @@ urlpatterns = [
     path('health/', health.health_check, name='health'),
     path('health/ready/', health.health_ready, name='health-ready'),
     path('health/live/', health.health_live, name='health-live'),
+    path('maintenance/status/', views.maintenance_status, name='maintenance_status'),
+    path('maintenance/stream/', views.maintenance_stream, name='maintenance_stream'),
     
     # ==========================================================================
     # SILK QUERY PROFILER (Development only - protect in production!)

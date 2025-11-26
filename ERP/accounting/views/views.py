@@ -803,40 +803,33 @@ class ChartOfAccountFormFieldsView(LoginRequiredMixin, View):
         return render(request, self.template_name, {'form': form})
 
 @login_required
-@csrf_exempt
+@require_POST
 def chart_of_accounts_create(request):
     initial = get_pending_form_initial(request)
     clear_storage_script = None
     org = getattr(request.user, 'organization', None)
-    if request.method == 'POST':
-        form = ChartOfAccountForm(request.POST, organization=org)
-        # Ensure organization is set on the instance before validation
+    form = ChartOfAccountForm(request.POST or None, initial=initial, organization=org)
+    context = {'form': form, 'form_post_url': request.path}
+    if form.is_valid():
         if org is not None:
             form.instance.organization = org
-        if form.is_valid():
-            form.save()
-            clear_pending_form(request)
-            clear_storage_script = """
-            <script>
-            document.body.dispatchEvent(new Event('clearFormStorage'));
-            </script>
-            """
-            # HTMX-aware redirect
-            if request.headers.get('HX-Request'):
-                from django.http import HttpResponse
-                response = HttpResponse()
-                response['HX-Redirect'] = reverse('accounting:chart_of_accounts_list')
-                response['HX-Trigger'] = 'clearFormStorage'
-                return response
-            else:
-                response = redirect('accounting:chart_of_accounts_list')
-                response['HX-Trigger'] = 'clearFormStorage'
-                return response
-    else:
-        form = ChartOfAccountForm(initial=initial, organization=org)
-    context = {'form': form, 'form_post_url': request.path}
-    if clear_storage_script:
-        context['clear_storage_script'] = clear_storage_script
+        form.save()
+        clear_pending_form(request)
+        clear_storage_script = """
+        <script>
+        document.body.dispatchEvent(new Event('clearFormStorage'));
+        </script>
+        """
+        if request.headers.get('HX-Request'):
+            from django.http import HttpResponse
+            response = HttpResponse()
+            response['HX-Redirect'] = reverse('accounting:chart_of_accounts_list')
+            response['HX-Trigger'] = 'clearFormStorage'
+            return response
+        response = redirect('accounting:chart_of_accounts_list')
+        response['HX-Trigger'] = 'clearFormStorage'
+        return response
+    context['clear_storage_script'] = clear_storage_script if 'clear_storage_script' in locals() else None
     return render(request, 'accounting/chart_of_accounts_form.html', context)
 
 # Financial Reports Views
@@ -1250,7 +1243,7 @@ def htmx_voucher_line(request):
         'skeleton': False,
     })
 
-@csrf_exempt  # TODO: Replace with CSRF protection in production
+@login_required
 @require_POST
 def htmx_validate_voucher(request):
     """

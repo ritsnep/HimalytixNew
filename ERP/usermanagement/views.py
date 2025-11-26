@@ -5,7 +5,7 @@ from django.utils import timezone
 from django.http import HttpResponseForbidden
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.views import LoginView
-from .models import  Module, Entity, CustomUser, Organization, Role
+from .models import  Module, Entity, CustomUser, Organization, Role, UserOrganization
 from .forms import  DasonLoginForm, ModuleForm, EntityForm, CustomUserCreationForm
 from django.contrib.auth.decorators import login_required
 # accounts/views.py or usermanagement/views.py
@@ -15,7 +15,7 @@ from django.contrib import messages
 from .models import LoginLog
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.mixins import LoginRequiredMixin
-from .models import Module, Entity, CustomUser, Organization, Role, Permission, UserRole
+from .models import Module, Entity, CustomUser, Organization, Role, Permission, UserRole, UserOrganization
 from .forms import (
     DasonLoginForm,
     ModuleForm,
@@ -97,17 +97,32 @@ def delete_user(request, pk):
 
 @login_required
 def select_organization(request):
+    memberships = (
+        UserOrganization.objects.filter(user=request.user, is_active=True)
+        .select_related('organization', 'organization__tenant')
+        .order_by('organization__name')
+    )
+    tenant = getattr(request, 'tenant', None)
+    if tenant:
+        memberships = memberships.filter(organization__tenant=tenant)
+
     if request.method == 'POST':
         org_id = request.POST.get('organization')
-        if org_id:
-            org = Organization.objects.get(id=org_id)
-            request.user.set_active_organization(org)
-            return redirect(request.GET.get('next', '/'))
-    
-    organizations = request.user.userorganization_set.all()
-    return render(request, 'usermanagement/select_organization.html', {
-        'organizations': organizations
-    })
+        if not org_id:
+            messages.error(request, 'Select an organization to continue.')
+        else:
+            mapping = memberships.filter(organization_id=org_id).first()
+            if mapping:
+                request.session['active_organization_id'] = mapping.organization_id
+                request.session.modified = True
+                return redirect(request.GET.get('next') or request.POST.get('next') or '/')
+            messages.error(request, 'You are not a member of that organization.')
+
+    return render(
+        request,
+        'usermanagement/select_organization.html',
+        {'organizations': memberships},
+    )
 
 class RoleListView(LoginRequiredMixin, ListView):
     model = Role

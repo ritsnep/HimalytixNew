@@ -1,18 +1,43 @@
-{% extends "Inventory/base.html" %}
-{% load static crispy_forms_tags %}
+{% extends "Inventory/_form_base.html" %}
+{% load static %}
 
-{% block inventory_title %}{% if form.instance.pk %}Edit{% else %}Create{% endif %} Location{% endblock %}
+{% block title %}{% if form.instance.pk %}Edit Location{% else %}Create Location{% endif %}{% endblock %}
 
-{% block inventory_content %}
-{% include "Inventory/_form_card.html" with title=form_title subtitle=form_subtitle form=form cancel_url=cancel_url %}
-{% endblock %}
-
-{% block extra_context %}
-    {% if form.instance.pk %}
-        {% with form_title="Edit Location" form_subtitle="Update details for this storage location." %}{% endwith %}
-        {% with cancel_url=object.warehouse|yesno:"/inventory/warehouses/"|add:object.warehouse.pk|add:"/locations/,""" %}{% endwith %}
-    {% else %}
-        {% with form_title="Create New Location" form_subtitle="Add a new storage location to {{ warehouse.name }}." %}{% endwith %}
-        {% with cancel_url=warehouse|yesno:"/inventory/warehouses/"|add:warehouse.pk|add:"/locations/,""" %}{% endwith %}
-    {% endif %}
+{% block form_content %}
+<div class="card">
+  <div class="card-body">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      <div class="row g-3">
+        <div class="col-md-6 col-lg-4">
+          <label class="form-label">Warehouse</label>
+          {{ form.warehouse }} {{ form.warehouse.errors }}
+        </div>
+        <div class="col-md-6 col-lg-4">
+          <label class="form-label">Code</label>
+          {{ form.code }} {{ form.code.errors }}
+        </div>
+        <div class="col-md-6 col-lg-4">
+          <label class="form-label">Name</label>
+          {{ form.name }} {{ form.name.errors }}
+        </div>
+        <div class="col-md-6 col-lg-4">
+          <label class="form-label">Type</label>
+          {{ form.location_type }} {{ form.location_type.errors }}
+        </div>
+        <div class="col-md-6 col-lg-4">
+          <div class="form-check mt-4">
+            {{ form.is_active }} {{ form.is_active.errors }}
+            <label class="form-check-label ms-1">Active?</label>
+          </div>
+        </div>
+      </div>
+      <div class="d-flex justify-content-end gap-2 mt-3">
+        <a href="{% url 'inventory:location_list' %}" class="btn btn-outline-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}

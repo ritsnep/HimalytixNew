@@ -1111,7 +1111,10 @@ def webhook_receiver(request, token):
     payload = request.body.decode("utf-8")
     IntegrationEvent.objects.create(
         event_type="webhook.received",
-        payload={"raw": payload},
+        payload={
+            "raw": payload,
+            "organization_id": sub.organization_id,
+        },
         source_object="WebhookSubscription",
         source_id=str(sub.pk),
     )
@@ -1128,6 +1131,11 @@ class ObservabilityView(PermissionRequiredMixin, UserOrganizationMixin, Template
         ctx["endpoints"] = IntegrationEndpoint.objects.filter(organization=org)
         ctx["credentials"] = IntegrationCredential.objects.filter(organization=org)
         ctx["webhooks"] = WebhookSubscription.objects.filter(organization=org)
-        ctx["recent_events"] = IntegrationEvent.objects.order_by("-created_at")[:20]
+        if org:
+            ctx["recent_events"] = IntegrationEvent.objects.filter(
+                payload__organization_id=getattr(org, "id", None)
+            ).order_by("-created_at")[:20]
+        else:
+            ctx["recent_events"] = []
         ctx["page_title"] = "Observability"
         return ctx

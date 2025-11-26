@@ -143,6 +143,12 @@
       })();
     </script>
     <script src="{% static 'js/app.js'%}"></script>
+    {% if maintenance_state %}
+      {{ maintenance_state|json_script:"maintenance-state" }}
+    {% endif %}
+    {% if maintenance_snapshot %}
+      {{ maintenance_snapshot|json_script:"maintenance-snapshot" }}
+    {% endif %}
 
     <script>
         // Configure toastr
@@ -170,6 +176,82 @@
             const type = evt.detail.type || 'success';
             toastr[type](message);
         });
+
+        // Maintenance + cache-busting client helper.
+        (function() {
+          var storageKey = 'himalytix-app-version';
+          var serverVersion = '{{ app_version }}';
+          var maintenanceStateNode = document.getElementById('maintenance-state');
+          var maintenanceSnapshotNode = document.getElementById('maintenance-snapshot');
+
+          function clearCachesThenReload(newVersion) {
+            try {
+              if (window.caches && window.caches.keys) {
+                window.caches.keys().then(function(names) {
+                  names.forEach(function(name) { window.caches.delete(name); });
+                });
+              }
+              sessionStorage.clear();
+              localStorage.setItem(storageKey, newVersion);
+            } catch (e) {
+              // Non-blocking best-effort cache purge.
+            }
+            window.location.reload();
+          }
+
+          try {
+            var previous = localStorage.getItem(storageKey);
+            if (serverVersion) {
+              if (previous && previous !== serverVersion) {
+                clearCachesThenReload(serverVersion);
+                return;
+              }
+              localStorage.setItem(storageKey, serverVersion);
+            }
+          } catch (e) {
+            // Ignore storage failures (private browsing, etc.)
+          }
+
+          function handleState(state) {
+            if (!state) return;
+            if (state.app_version && serverVersion && state.app_version !== serverVersion) {
+              clearCachesThenReload(state.app_version);
+              return;
+            }
+            if (state.enabled) {
+              toastr.warning(state.status_text || 'Maintenance mode enabled. We will resume shortly.');
+              setTimeout(function() { window.location.reload(); }, 1000);
+            }
+          }
+
+          if (maintenanceStateNode) {
+            try {
+              handleState(JSON.parse(maintenanceStateNode.textContent || '{}'));
+            } catch (e) { /* ignore */ }
+          }
+
+          if (maintenanceSnapshotNode) {
+            try {
+              var snap = JSON.parse(maintenanceSnapshotNode.textContent || '{}');
+              if (snap && snap.path) {
+                toastr.info('We saved your last action at ' + snap.path + '. Resume once maintenance ends.');
+              }
+            } catch (e) { /* ignore */ }
+          }
+
+          if (window.EventSource) {
+            try {
+              var es = new EventSource("{% url 'maintenance_stream' %}");
+              es.onmessage = function(evt) {
+                try {
+                  handleState(JSON.parse(evt.data || '{}'));
+                } catch (e) { /* ignore */ }
+              };
+            } catch (err) {
+              // SSE not available; nothing to do.
+            }
+          }
+        })();
     </script>
     {% endblock javascript %}
 </body>
