@@ -1,0 +1,33 @@
+{{ form.non_field_errors }}
+<div class="row g-3">
+  <div class="col-md-4">
+    <label class="form-label">Code</label>
+    {{ form.code }} {{ form.code.errors }}
+  </div>
+  <div class="col-md-8">
+    <label class="form-label">Name</label>
+    {{ form.name }} {{ form.name.errors }}
+  </div>
+  <div class="col-12">
+    <label class="form-label">Description</label>
+    {{ form.description }} {{ form.description.errors }}
+  </div>
+  <div class="col-md-4">
+    <label class="form-label">Currency</label>
+    {{ form.currency_code }} {{ form.currency_code.errors }}
+  </div>
+  <div class="col-md-4">
+    <label class="form-label">Valid From</label>
+    {{ form.valid_from }} {{ form.valid_from.errors }}
+  </div>
+  <div class="col-md-4">
+    <label class="form-label">Valid To</label>
+    {{ form.valid_to }} {{ form.valid_to.errors }}
+  </div>
+  <div class="col-md-4">
+    <div class="form-check mt-4">
+      {{ form.is_active }} {{ form.is_active.errors }}
+      <label class="form-check-label ms-1">Active?</label>
+    </div>
+  </div>
+</div>

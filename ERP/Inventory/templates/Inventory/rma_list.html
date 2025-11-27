@@ -1,11 +1,13 @@
-{% extends "Inventory/_list_base.html" %}
+{% extends "components/base/list_base.html" %}
 {% load static %}
 
 {% block title %}RMAs{% endblock %}
+{% block list_page_title %}Return Merchandise Authorizations{% endblock %}
+{% block list_title %}RMA List{% endblock %}
 
 {% block list_actions %}
-  {% if create_url %}
-  <a href="{{ create_url }}" class="btn btn-primary">
+  {% if can_add and create_url %}
+  <a href="{{ create_url }}" class="btn btn-success btn-sm">
     <i class="mdi mdi-plus"></i> Create RMA
   </a>
   {% endif %}
@@ -24,8 +26,7 @@
 {% endblock %}
 
 {% block table_body %}
-  {% if rmas %}
-    {% for rma in rmas %}
+  {% for rma in rmas %}
     <tr>
       <td class="fw-semibold">{{ rma.rma_number }}</td>
       <td>{{ rma.product.code }}</td>
@@ -41,7 +42,4 @@
       </td>
     </tr>
     {% endfor %}
-  {% else %}
-    <tr><td colspan="7" class="text-center py-4 text-muted">No RMAs found.</td></tr>
-  {% endif %}
 {% endblock %}

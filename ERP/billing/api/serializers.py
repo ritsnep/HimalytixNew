@@ -3,6 +3,7 @@
 REST API Serializers for Billing/Subscription features
 """
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
 from ..models import (
     SubscriptionPlan, UsageTier, Subscription, SubscriptionUsage,
     SubscriptionInvoice, DeferredRevenue, DeferredRevenueSchedule,
@@ -14,10 +15,9 @@ class UsageTierSerializer(serializers.ModelSerializer):
     class Meta:
         model = UsageTier
         fields = [
-            'id', 'from_quantity', 'to_quantity', 'price_per_unit',
-            'flat_fee', 'created_at', 'updated_at'
+            'id', 'subscription_plan', 'tier_name', 'min_quantity', 'max_quantity',
+            'price_per_unit', 'overage_price'
         ]
-        read_only_fields = ['created_at', 'updated_at']
 
 
 class SubscriptionPlanSerializer(serializers.ModelSerializer):
@@ -28,54 +28,51 @@ class SubscriptionPlanSerializer(serializers.ModelSerializer):
         model = SubscriptionPlan
         fields = [
             'id', 'organization', 'code', 'name', 'description',
-            'plan_type', 'base_price', 'billing_frequency',
-            'billing_frequency_unit', 'trial_period_days',
-            'setup_fee', 'is_active', 'currency_code',
-            'usage_metric', 'included_usage', 'overage_rate',
-            'contract_term_months', 'auto_renew', 'cancellation_notice_days',
-            'proration_policy', 'valid_from', 'valid_to',
-            'usage_tiers', 'is_currently_active',
-            'created_at', 'updated_at'
+            'plan_type', 'billing_cycle', 'base_price', 'currency_code',
+            'trial_period_days', 'setup_fee', 'minimum_commitment_months',
+            'auto_renew', 'is_active', 'usage_tiers',
+            'is_currently_active', 'created_at', 'updated_at'
         ]
         read_only_fields = ['organization', 'created_at', 'updated_at']
     
-    def get_is_currently_active(self, obj):
-        from django.utils import timezone
-        now = timezone.now().date()
-        return (obj.is_active and 
-                obj.valid_from <= now and 
-                (obj.valid_to is None or obj.valid_to >= now))
+    @extend_schema_field(serializers.BooleanField())
+    def get_is_currently_active(self, obj) -> bool:
+        return bool(obj.is_active)
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
-    plan_name = serializers.CharField(source='plan.name', read_only=True)
+    plan_name = serializers.CharField(source='subscription_plan.name', read_only=True)
     effective_price_value = serializers.DecimalField(
         source='effective_price', max_digits=15, decimal_places=2, read_only=True
     )
-    is_currently_active = serializers.BooleanField(source='is_active', read_only=True)
+    is_currently_active = serializers.SerializerMethodField()
     days_until_renewal = serializers.SerializerMethodField()
     
     class Meta:
         model = Subscription
         fields = [
             'id', 'organization', 'subscription_number', 'customer_id',
-            'plan', 'plan_name', 'status', 'start_date', 'end_date',
-            'current_period_start', 'current_period_end', 'trial_end_date',
-            'cancellation_date', 'cancellation_reason', 'base_price',
-            'discount_percent', 'discount_amount', 'effective_price_value',
-            'billing_frequency', 'billing_frequency_unit', 'payment_method',
-            'auto_renew', 'contract_term_months', 'renewal_count',
+            'subscription_plan', 'plan_name', 'status', 'start_date',
+            'trial_end_date', 'current_period_start', 'current_period_end',
+            'next_billing_date', 'cancellation_date', 'cancellation_reason',
+            'custom_price', 'discount_percent', 'effective_price_value',
+            'contract_term_months', 'contract_end_date', 'auto_renew',
             'is_currently_active', 'days_until_renewal', 'metadata',
-            'created_at', 'updated_at', 'created_by', 'updated_by'
+            'created_at', 'updated_at'
         ]
         read_only_fields = [
             'organization', 'subscription_number', 'effective_price_value',
             'is_currently_active', 'days_until_renewal',
-            'created_at', 'updated_at', 'created_by', 'updated_by'
+            'created_at', 'updated_at'
         ]
     
-    def get_days_until_renewal(self, obj):
-        if obj.current_period_end and obj.is_active():
+    @extend_schema_field(serializers.BooleanField())
+    def get_is_currently_active(self, obj) -> bool:
+        return obj.status == 'active'
+    
+    @extend_schema_field(serializers.IntegerField(allow_null=True))
+    def get_days_until_renewal(self, obj) -> int | None:
+        if obj.current_period_end:
             from django.utils import timezone
             delta = obj.current_period_end - timezone.now().date()
             return delta.days
@@ -84,51 +81,31 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
 class SubscriptionUsageSerializer(serializers.ModelSerializer):
     subscription_number = serializers.CharField(source='subscription.subscription_number', read_only=True)
-    is_overaged = serializers.SerializerMethodField()
     
     class Meta:
         model = SubscriptionUsage
         fields = [
-            'id', 'organization', 'subscription', 'subscription_number',
-            'period_start', 'period_end', 'usage_metric', 'quantity_used',
-            'included_quantity', 'overage_quantity', 'overage_rate',
-            'overage_charge', 'is_billed', 'billing_date',
-            'is_overaged', 'created_at', 'updated_at'
+            'id', 'subscription', 'subscription_number', 'usage_date',
+            'usage_type', 'quantity', 'unit_of_measure', 'tier_applied',
+            'calculated_amount', 'is_billed', 'billed_invoice_id', 'recorded_at'
         ]
-        read_only_fields = [
-            'organization', 'overage_quantity', 'overage_charge',
-            'is_overaged', 'created_at', 'updated_at'
-        ]
-    
-    def get_is_overaged(self, obj):
-        return obj.overage_quantity > 0
+        read_only_fields = ['recorded_at']
 
 
 class SubscriptionInvoiceSerializer(serializers.ModelSerializer):
     subscription_number = serializers.CharField(source='subscription.subscription_number', read_only=True)
-    is_overdue = serializers.SerializerMethodField()
     
     class Meta:
         model = SubscriptionInvoice
         fields = [
-            'id', 'organization', 'invoice_number', 'subscription',
-            'subscription_number', 'invoice_date', 'due_date',
-            'period_start', 'period_end', 'base_amount', 'usage_charges',
-            'setup_fee', 'prorated_amount', 'discount_amount',
-            'tax_amount', 'total_amount', 'currency_code', 'status',
-            'payment_date', 'payment_method', 'is_overdue', 'notes',
-            'created_at', 'updated_at'
+            'id', 'organization', 'invoice_id', 'invoice_number', 'subscription',
+            'subscription_number', 'billing_period_start', 'billing_period_end',
+            'subscription_amount', 'usage_amount', 'setup_fee', 'total_amount',
+            'created_at'
         ]
         read_only_fields = [
-            'organization', 'invoice_number', 'is_overdue',
-            'created_at', 'updated_at'
+            'organization', 'invoice_number', 'subscription_number', 'created_at'
         ]
-    
-    def get_is_overdue(self, obj):
-        if obj.status in ['paid', 'cancelled']:
-            return False
-        from django.utils import timezone
-        return obj.due_date < timezone.now().date()
 
 
 class DeferredRevenueScheduleSerializer(serializers.ModelSerializer):
@@ -143,7 +120,7 @@ class DeferredRevenueScheduleSerializer(serializers.ModelSerializer):
 
 class DeferredRevenueSerializer(serializers.ModelSerializer):
     subscription_number = serializers.CharField(source='subscription.subscription_number', read_only=True)
-    schedule = DeferredRevenueScheduleSerializer(many=True, read_only=True)
+    schedule = DeferredRevenueScheduleSerializer(source='schedule_lines', many=True, read_only=True)
     remaining_balance = serializers.SerializerMethodField()
     
     class Meta:
@@ -162,6 +139,7 @@ class DeferredRevenueSerializer(serializers.ModelSerializer):
             'remaining_balance', 'created_at', 'updated_at'
         ]
     
+    @extend_schema_field({'type': 'string', 'format': 'decimal'})
     def get_remaining_balance(self, obj):
         return obj.deferred_amount - obj.recognized_amount
 
@@ -184,6 +162,7 @@ class MilestoneRevenueSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
     
+    @extend_schema_field({'type': 'boolean'})
     def get_is_past_due(self, obj):
         if obj.status in ['completed', 'invoiced', 'recognized']:
             return False

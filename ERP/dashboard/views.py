@@ -6,7 +6,7 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView
-from django.db.models import Q, Sum
+from django.db.models import Q, Sum, Count
 from django.http import HttpResponseRedirect, JsonResponse, StreamingHttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
@@ -63,6 +63,16 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         # Get recent journals
         recent_journals = Journal.objects.filter(
             organization_id=organization.id
+        ).select_related(
+            'organization',
+            'journal_type',
+            'period',
+            'period__fiscal_year',
+            'created_by',
+            'approved_by',
+            'posted_by'
+        ).prefetch_related(
+            'journalline_set__account'
         ).order_by('-journal_date', '-created_at')[:10]
         
         # Get financial summary
@@ -88,6 +98,9 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         balances = GeneralLedger.objects.filter(
             organization_id=organization.id,
             period=period
+        ).select_related(
+            'account',
+            'organization'
         ).values('account__account_name', 'account__account_code').annotate(
             total_debit=Sum('debit_amount'),
             total_credit=Sum('credit_amount')
@@ -103,51 +116,50 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         if not period:
             return {}
         
-        # Get total assets, liabilities, equity
-        asset_accounts = ChartOfAccount.objects.filter(
-            organization_id=organization.id,
-            account_type__nature='asset'
-        )
-        liability_accounts = ChartOfAccount.objects.filter(
-            organization_id=organization.id,
-            account_type__nature='liability'
-        )
-        equity_accounts = ChartOfAccount.objects.filter(
+        # Use a single aggregated query for journal stats instead of multiple count() queries
+        journal_stats = Journal.objects.filter(
             organization=organization,
-            account_type__nature='equity'
+            period=period
+        ).aggregate(
+            total=Sum('id') / Sum('id'),  # Trick to get count as 1 or 0
+            total_journals=Count('id'),
+            posted_journals=Count('id', filter=Q(status='posted')),
+            draft_journals=Count('id', filter=Q(status='draft')),
         )
         
-        # Calculate totals (simplified - you might want to use GeneralLedger for actual balances)
+        # Get account type aggregations in a single query
+        account_balances = GeneralLedger.objects.filter(
+            organization_id=organization.id,
+            period=period
+        ).select_related('account__account_type').values(
+            'account__account_type__nature'
+        ).annotate(
+            total_debit=Sum('debit_amount'),
+            total_credit=Sum('credit_amount')
+        )
+        
+        # Calculate totals from aggregated data
         total_assets = Decimal('0')
         total_liabilities = Decimal('0')
         total_equity = Decimal('0')
         
-        # Get total journals for the period
-        total_journals = Journal.objects.filter(
-            organization=organization,
-            period=period
-        ).count()
-        
-        # Get posted vs draft journals
-        posted_journals = Journal.objects.filter(
-            organization=organization,
-            period=period,
-            status='posted'
-        ).count()
-        
-        draft_journals = Journal.objects.filter(
-            organization=organization,
-            period=period,
-            status='draft'
-        ).count()
+        for balance in account_balances:
+            net_balance = (balance['total_debit'] or Decimal('0')) - (balance['total_credit'] or Decimal('0'))
+            nature = balance['account__account_type__nature']
+            if nature == 'asset':
+                total_assets += net_balance
+            elif nature == 'liability':
+                total_liabilities += net_balance
+            elif nature == 'equity':
+                total_equity += net_balance
         
         return {
             'total_assets': total_assets,
             'total_liabilities': total_liabilities,
             'total_equity': total_equity,
-            'total_journals': total_journals,
-            'posted_journals': posted_journals,
-            'draft_journals': draft_journals,
+            'total_journals': journal_stats['total_journals'] or 0,
+            'posted_journals': journal_stats['posted_journals'] or 0,
+            'draft_journals': journal_stats['draft_journals'] or 0,
         }
 
 class Settings(LoginRequiredMixin, View):
@@ -210,13 +222,29 @@ def maintenance_status(request):
 
 def maintenance_stream(request):
     """Simple SSE stream that emits state changes to connected clients."""
-    max_messages = getattr(settings, "MAINTENANCE_STREAM_MAX_MESSAGES", 120)
+    # Check if maintenance mode is active first
+    state = get_maintenance_state()
+    if not state.get('active', False):
+        # If not in maintenance mode, send one message and close connection
+        def quick_response():
+            yield f"data: {{\"active\": false}}\n\n"
+        response = StreamingHttpResponse(quick_response(), content_type="text/event-stream")
+        response["Cache-Control"] = "no-cache"
+        return response
+    
+    # Only run the loop if maintenance mode is actually active
+    max_messages = getattr(settings, "MAINTENANCE_STREAM_MAX_MESSAGES", 30)  # Reduced from 120 to 30
     interval = getattr(settings, "MAINTENANCE_STREAM_INTERVAL", 2)
 
     def event_stream():
         last_payload = None
         for _ in range(max_messages):
             payload = serialize_state()
+            # Exit early if maintenance mode is deactivated
+            if not payload.get('active', False):
+                yield f"data: {json.dumps(payload)}\n\n"
+                break
+            
             data = json.dumps(payload)
             if data != last_payload:
                 yield f"data: {data}\n\n"

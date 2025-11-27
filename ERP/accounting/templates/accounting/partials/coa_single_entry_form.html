@@ -1,0 +1,203 @@
+<!-- Single Entry Form Partial -->
+<form id="coa-single-form" method="post" novalidate
+      hx-post="{% url 'accounting:chart_of_accounts_create' %}"
+      hx-trigger="submit"
+      hx-target="#form-response"
+      hx-swap="innerHTML"
+      hx-indicator=".htmx-indicator">
+    {% csrf_token %}
+    
+    <div id="form-response"></div>
+    
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>Errors:</strong>
+        <ul class="mb-0">
+            {% for error in form.non_field_errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+    
+    <!-- Basic Information -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5 class="text-primary mb-3"><i class="bx bx-info-circle"></i> Basic Information</h5>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label for="id_account_code" class="form-label">Account Code</label>
+                <input type="text" name="account_code" id="id_account_code" 
+                       class="form-control{% if form.account_code.errors %} is-invalid{% endif %}"
+                       value="{{ form.account_code.value|default:'' }}"
+                       placeholder="Auto-generated">
+                {% if form.account_code.errors %}
+                <div class="error-message">{{ form.account_code.errors|first }}</div>
+                {% endif %}
+                <small class="text-muted">Auto-generated from Parent/Type</small>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label for="id_account_name" class="form-label required-field">Account Name</label>
+                <input type="text" name="account_name" id="id_account_name" 
+                       class="form-control{% if form.account_name.errors %} is-invalid{% endif %}"
+                       value="{{ form.account_name.value|default:'' }}"
+                       placeholder="Enter account name"
+                       required
+                       data-pristine-required-message="Account name is required"
+                       autofocus>
+                {% if form.account_name.errors %}
+                <div class="error-message">{{ form.account_name.errors|first }}</div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label for="id_account_type" class="form-label required-field">Account Type</label>
+                <select name="account_type" id="id_account_type" 
+                        class="form-select{% if form.account_type.errors %} is-invalid{% endif %}"
+                        required
+                        data-pristine-required-message="Account type is required"
+                        hx-get="{% url 'accounting:chart_of_accounts_form_fields' %}"
+                        hx-trigger="change"
+                        hx-target="#parent-account-container"
+                        hx-swap="innerHTML">
+                    <option value="">Select Type</option>
+                    {% if form.account_type.field.choices %}
+                        {% for value, label in form.account_type.field.choices %}
+                            <option value="{{ value }}"{% if value == form.account_type.value %} selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    {% endif %}
+                </select>
+                {% if form.account_type.errors %}
+                <div class="error-message">{{ form.account_type.errors|first }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Parent & Hierarchy -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5 class="text-primary mb-3"><i class="bx bx-sitemap"></i> Hierarchy</h5>
+        </div>
+        
+        <div class="col-md-6">
+            <div id="parent-account-container" class="mb-3">
+                <label for="id_parent_account" class="form-label">Parent Account</label>
+                <select name="parent_account" id="id_parent_account" class="form-select">
+                    <option value="">None (Root Level)</option>
+                    {% if form.parent_account.field.choices %}
+                        {% for value, label in form.parent_account.field.choices %}
+                            {% if value %}
+                            <option value="{{ value }}"{% if value == form.parent_account.value %} selected{% endif %}>{{ label }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                </select>
+                <small class="text-muted">Optional - Leave blank for root level account</small>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label for="id_currency" class="form-label">Currency</label>
+                <select name="currency" id="id_currency" class="form-select">
+                    <option value="USD">USD - US Dollar</option>
+                    <option value="EUR">EUR - Euro</option>
+                    <option value="GBP">GBP - British Pound</option>
+                    <option value="NPR">NPR - Nepalese Rupee</option>
+                    <option value="INR">INR - Indian Rupee</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Description & Settings -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5 class="text-primary mb-3"><i class="bx bx-detail"></i> Details & Settings</h5>
+        </div>
+        
+        <div class="col-md-12">
+            <div class="mb-3">
+                <label for="id_description" class="form-label">Description</label>
+                <textarea name="description" id="id_description" 
+                          class="form-control" 
+                          rows="3" 
+                          placeholder="Enter account description">{{ form.description.value|default:'' }}</textarea>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" name="is_active" id="id_is_active" 
+                       {% if form.is_active.value or form.is_active.value is None %}checked{% endif %}>
+                <label class="form-check-label" for="id_is_active">
+                    Active
+                </label>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" name="allow_manual_journal" id="id_allow_manual_journal" 
+                       {% if form.allow_manual_journal.value %}checked{% endif %}>
+                <label class="form-check-label" for="id_allow_manual_journal">
+                    Allow Manual Journal
+                </label>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" name="bank_account" id="id_bank_account">
+                <label class="form-check-label" for="id_bank_account">
+                    Bank Account
+                </label>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" name="control_account" id="id_control_account">
+                <label class="form-check-label" for="id_control_account">
+                    Control Account
+                </label>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Form Actions -->
+    <div class="row">
+        <div class="col-12">
+            <hr class="my-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <a href="{% url 'accounting:chart_of_accounts_list' %}" class="btn btn-light">
+                    <i class="bx bx-x"></i> Cancel
+                </a>
+                <div>
+                    <button type="submit" name="save_and_new" class="btn btn-success">
+                        <i class="bx bx-save"></i> Save & New
+                        <span class="htmx-indicator spinner-border spinner-border-sm ms-1" role="status"></span>
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bx bx-save"></i> Save
+                        <span class="htmx-indicator spinner-border spinner-border-sm ms-1" role="status"></span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mt-3 text-muted small">
+                <i class="bx bx-info-circle"></i> 
+                <strong>Quick Tip:</strong> Press <kbd>Ctrl+S</kbd> to save or <kbd>Ctrl+Enter</kbd> for Save & New
+            </div>
+        </div>
+    </div>
+</form>

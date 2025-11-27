@@ -1,0 +1,260 @@
+{% extends 'partials/base.html' %}
+{% load static i18n %}
+
+{% block title %}{{ page_title|default:"List" }}{% endblock %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link href="{% static 'libs/datatables.net-bs4/css/dataTables.bootstrap4.min.css' %}" rel="stylesheet" type="text/css" />
+    <link href="{% static 'libs/datatables.net-buttons-bs4/css/buttons.bootstrap4.min.css' %}" rel="stylesheet" type="text/css" />
+    <link href="{% static 'libs/datatables.net-responsive-bs4/css/responsive.bootstrap4.min.css' %}" rel="stylesheet" type="text/css" />
+    <link href="{% static 'libs/datatables.net-fixedheader-bs4/css/fixedHeader.bootstrap4.min.css' %}" rel="stylesheet" type="text/css" />
+    <style>
+        .list-shell {
+            position: relative;
+        }
+        .list-shell .card-header h4 {
+            margin-bottom: 0;
+        }
+        .list-shell .list-toolbar .input-group-text kbd {
+            font-size: 10px;
+            padding: 0.15rem 0.35rem;
+            background-color: rgba(0,0,0,0.05);
+            border-radius: 4px;
+            letter-spacing: 1px;
+        }
+        .list-shell .list-toolbar .input-group-text i {
+            font-size: 14px;
+        }
+        .list-shell .list-toolbar .form-control {
+            min-width: 220px;
+        }
+        .list-shell .loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1050;
+        }
+        .list-shell .loading-overlay.d-none {
+            display: none !important;
+        }
+        .list-shell--expanded {
+            position: fixed;
+            inset: 1rem;
+            z-index: 1080;
+            background: var(--bs-body-bg);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.25);
+        }
+        .list-shell--expanded .card-body {
+            max-height: calc(100vh - 8rem);
+            overflow: auto;
+        }
+        .list-quick-metrics .card {
+            min-width: 180px;
+        }
+        @media (max-width: 767.98px) {
+            .list-shell .list-toolbar .form-control {
+                min-width: 140px;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div id="list-toast-container" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1085"></div>
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                <div>
+                    <h4 class="mb-sm-0 font-size-18">
+                        {% block list_page_title %}{{ page_title|default:"List" }}{% endblock %}
+                    </h4>
+                    {% if page_subtitle %}
+                        <p class="text-muted mb-0 small">{{ page_subtitle }}</p>
+                    {% endif %}
+                </div>
+                <div class="page-title-right">
+                    <ol class="breadcrumb m-0">
+                        {% if breadcrumbs %}
+                            {% for name, url in breadcrumbs %}
+                                {% if not forloop.last %}
+                                    <li class="breadcrumb-item"><a href="{{ url }}">{{ name }}</a></li>
+                                {% else %}
+                                    <li class="breadcrumb-item active">{{ name }}</li>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <li class="breadcrumb-item active">{{ page_title|default:"List" }}</li>
+                        {% endif %}
+                    </ol>
+                </div>
+            </div>
+
+            {% block list_metrics %}{% endblock %}
+
+            <div class="card list-shell"
+                 id="{{ list_shell_id|default:'list-shell' }}"
+                 data-datatable-id="{{ datatable_id|default:'datatable-buttons' }}"
+                 data-config-target="{{ datatable_config_id|default:'datatable-config' }}"
+                 data-shortcuts-target="{{ list_shortcuts_id|default:'list-shortcuts' }}"
+                 data-filter-target="{{ filter_drawer_id|default:'list-filter-drawer' }}"
+                 data-htmx-target="{{ htmx_target_id|default:'' }}">
+                <div class="card-header py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div class="d-flex flex-column">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <h4 class="card-title mb-0">
+                                {% block list_title %}{{ page_title|default:"List" }}{% endblock %}
+                            </h4>
+                            {% block list_title_badges %}{% endblock %}
+                        </div>
+                        {% if list_subtitle %}
+                            <small class="text-muted">{{ list_subtitle }}</small>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        {% block list_header_extras %}{% endblock %}
+                        <button class="btn btn-outline-secondary btn-sm"
+                                type="button"
+                                data-list-expand
+                                aria-pressed="false">
+                            <i class="mdi mdi-arrow-expand-all"></i>
+                            <span class="d-none d-md-inline">{% trans "Expand" %}</span>
+                            <kbd class="ms-2 d-none d-lg-inline">Ctrl+Shift+E</kbd>
+                        </button>
+                        {% if show_filter_toggle|default:True %}
+                            <button class="btn btn-outline-secondary btn-sm"
+                                    type="button"
+                                    data-list-filter-toggle="true"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#{{ filter_drawer_id|default:'list-filter-drawer' }}"
+                                    aria-expanded="false"
+                                    aria-controls="{{ filter_drawer_id|default:'list-filter-drawer' }}">
+                                <i class="mdi mdi-filter-variant"></i>
+                                <span class="d-none d-md-inline">{% trans "Filters" %}</span>
+                                <kbd class="ms-2 d-none d-lg-inline">Ctrl+Shift+F</kbd>
+                            </button>
+                        {% endif %}
+                        {% block list_actions %}
+                            {% if can_add|default:True and create_url %}
+                                <a href="{{ create_url }}" class="btn btn-success btn-sm">
+                                    <i class="mdi mdi-plus"></i> {{ create_button_text|default:"Add New" }}
+                                </a>
+                            {% endif %}
+                        {% endblock %}
+                    </div>
+                </div>
+
+                <div class="collapse border-top" id="{{ filter_drawer_id|default:'list-filter-drawer' }}">
+                    <div class="card-body bg-light-subtle">
+                        {% block list_filters %}
+                            {% block custom_filters %}
+                                <p class="text-muted small mb-0">Override <code>list_filters</code> to render filter controls.</p>
+                            {% endblock %}
+                        {% endblock %}
+                    </div>
+                </div>
+
+                <div class="card-body list-toolbar pb-1">
+                    <div class="d-flex flex-wrap gap-3 align-items-center justify-content-between mb-3">
+                        <div class="d-flex flex-wrap gap-2 align-items-center" data-list-quick-filters>
+                            {% block list_quick_filters %}{% endblock %}
+                        </div>
+                        <div class="d-flex flex-wrap gap-2 align-items-center" data-list-controls>
+                            {% trans "Quick search (/)" as default_search_placeholder %}
+                            <div class="input-group input-group-sm" data-list-search>
+                                <span class="input-group-text">
+                                    <i class="mdi mdi-magnify"></i>
+                                </span>
+                                <input type="search"
+                                       class="form-control"
+                                       placeholder="{{ quick_search_placeholder|default:default_search_placeholder }}"
+                                       autocomplete="off"
+                                       data-list-search-input>
+                                <span class="input-group-text d-none d-md-inline">
+                                    <kbd>/</kbd>
+                                </span>
+                            </div>
+                            <div class="d-flex flex-wrap gap-1" data-list-export></div>
+                            {% block list_toolbar_controls %}{% endblock %}
+                        </div>
+                    </div>
+                    {% block list_before_table %}{% endblock %}
+                    <div class="table-responsive position-relative">
+                        <div class="loading-overlay d-none" data-list-loading-indicator>
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                        <table id="{{ datatable_id|default:'datatable-buttons' }}" class="table table-bordered table-hover table-sm align-middle nowrap w-100 mb-0">
+                            <thead>
+                                {% block table_head %}
+                                    <tr>
+                                        <th>Define a <code>table_head</code> block.</th>
+                                    </tr>
+                                {% endblock %}
+                            </thead>
+                            <tbody id="{{ table_body_id|default:'datatable-body' }}">
+                                {% block table_body %}
+                                    <tr>
+                                        <td class="text-center text-muted py-4">Override <code>table_body</code> to display rows.</td>
+                                    </tr>
+                                {% endblock %}
+                            </tbody>
+                            <tfoot>
+                                {% block table_foot %}{% endblock %}
+                            </tfoot>
+                        </table>
+                    </div>
+                    {% block list_after_table %}{% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% include 'partials/footer.html' %}
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    <script src="{% static 'libs/datatables.net/js/jquery.dataTables.min.js' %}"></script>
+    <script src="{% static 'libs/datatables.net-bs4/js/dataTables.bootstrap4.min.js' %}"></script>
+    <script src="{% static 'libs/datatables.net-buttons/js/dataTables.buttons.min.js' %}"></script>
+    <script src="{% static 'libs/datatables.net-buttons-bs4/js/buttons.bootstrap4.min.js' %}"></script>
+    <script src="{% static 'libs/jszip/jszip.min.js' %}"></script>
+    <script src="{% static 'libs/pdfmake/build/pdfmake.min.js' %}"></script>
+    <script src="{% static 'libs/pdfmake/build/vfs_fonts.js' %}"></script>
+    <script src="{% static 'libs/datatables.net-buttons/js/buttons.html5.min.js' %}"></script>
+    <script src="{% static 'libs/datatables.net-buttons/js/buttons.print.min.js' %}"></script>
+    <script src="{% static 'libs/datatables.net-buttons/js/buttons.colVis.min.js' %}"></script>
+    <script src="{% static 'libs/datatables.net-responsive/js/dataTables.responsive.min.js' %}"></script>
+    <script src="{% static 'libs/datatables.net-responsive-bs4/js/responsive.bootstrap4.min.js' %}"></script>
+    <script src="{% static 'libs/datatables.net-fixedheader/js/dataTables.fixedHeader.min.js' %}"></script>
+    {% block datatable_extra_js %}{% endblock %}
+    {% with config_id=datatable_config_id|default:'datatable-config' %}
+        {% if datatable_config %}
+            {{ datatable_config|json_script:config_id }}
+        {% else %}
+            <script id="{{ config_id }}" type="application/json">{}</script>
+        {% endif %}
+    {% endwith %}
+    {% with shortcuts_id=list_shortcuts_id|default:'list-shortcuts' %}
+        {% if list_shortcuts %}
+            {{ list_shortcuts|json_script:shortcuts_id }}
+        {% else %}
+            <script id="{{ shortcuts_id }}" type="application/json">{}</script>
+        {% endif %}
+    {% endwith %}
+    <script src="{% static 'js/list-base.js' %}"></script>
+    {% block list_extra_js %}{% endblock %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.ListBase) {
+                window.ListBase.mount('#{{ list_shell_id|default:"list-shell" }}');
+            }
+        });
+    </script>
+{% endblock %}

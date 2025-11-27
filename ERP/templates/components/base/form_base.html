@@ -1,0 +1,189 @@
+{% extends 'partials/base.html' %}
+{% load static i18n %}
+
+{% block title %}
+    {% block page_title %}{{ page_title|default:form_title|default:"Form" }}{% endblock %}
+{% endblock %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'libs/flatpickr/dist/flatpickr.min.css' %}">
+    <link rel="stylesheet" href="{% static 'libs/bootstrap-datepicker/dist/css/bootstrap-datepicker.min.css' %}">
+    <link rel="stylesheet" href="{% static 'libs/pristinejs/dist/pristine.min.css' %}">
+    <style>
+        .form-shell {
+            position: relative;
+        }
+        .form-shell--expanded {
+            position: fixed;
+            inset: 1rem;
+            z-index: 1080;
+            overflow: auto;
+            box-shadow: 0 0 24px rgba(15, 23, 42, 0.25);
+        }
+        .form-shell--expanded .card-body {
+            max-height: calc(100vh - 10rem);
+            overflow-y: auto;
+        }
+        .form-shell__actions {
+            position: sticky;
+            bottom: -1px;
+            z-index: 10;
+            background: var(--bs-body-bg);
+            border-top: 1px solid var(--bs-border-color);
+            padding-top: 1rem;
+            margin-top: 2rem;
+        }
+        .form-shell__dirty-indicator {
+            display: none;
+        }
+        .form-shell__dirty-indicator.is-visible {
+            display: inline-flex;
+        }
+        .form-shell__breadcrumb {
+            font-size: 0.85rem;
+            color: var(--bs-secondary-color);
+        }
+        @media (max-width: 767.98px) {
+            .form-shell__actions {
+                position: static;
+                border-top: 0;
+                padding-top: 0;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div id="form-toast-container" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1085"></div>
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                <div>
+                    <h4 class="mb-sm-0 font-size-18">
+                        {% block form_heading %}{{ page_title|default:form_title|default:"Form" }}{% endblock %}
+                    </h4>
+                    {% if form_subtitle %}
+                        <p class="text-muted mb-0 small">{{ form_subtitle }}</p>
+                    {% endif %}
+                </div>
+                <div class="page-title-right">
+                    <ol class="breadcrumb m-0">
+                        {% if breadcrumbs %}
+                            {% for name, url in breadcrumbs %}
+                                {% if not forloop.last %}
+                                    <li class="breadcrumb-item"><a href="{{ url }}">{{ name }}</a></li>
+                                {% else %}
+                                    <li class="breadcrumb-item active">{{ name }}</li>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <li class="breadcrumb-item active">{{ page_title|default:form_title|default:"Form" }}</li>
+                        {% endif %}
+                    </ol>
+                </div>
+            </div>
+
+            <div class="card form-shell"
+                 id="{{ form_shell_id|default:'form-shell' }}"
+                 data-form-shell
+                 data-form-config-id="{{ form_config_id|default:'form-config' }}">
+                <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <h4 class="card-title mb-0">
+                                {% block form_title_text %}{{ form_title|default:page_title|default:"Form" }}{% endblock %}
+                            </h4>
+                            <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis form-shell__dirty-indicator"
+                                  data-form-dirty-indicator>
+                                {% trans "Unsaved changes" %}
+                            </span>
+                        </div>
+                        {% if form_description %}
+                            <p class="text-muted small mb-0">{{ form_description }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex gap-2 align-items-center flex-wrap">
+                        {% block form_header_extras %}{% endblock %}
+                        <button type="button"
+                                class="btn btn-outline-secondary btn-sm"
+                                data-form-expand>
+                            <i class="mdi mdi-arrow-expand-all"></i>
+                            <span class="d-none d-md-inline">{% trans "Expand" %}</span>
+                            <kbd class="ms-2 d-none d-lg-inline">Ctrl+Shift+E</kbd>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% block form_intro %}{% endblock %}
+                    {% block form_alerts %}
+                        {% if form_errors %}
+                            <div class="alert alert-danger">{{ form_errors }}</div>
+                        {% endif %}
+                    {% endblock %}
+                    {% block form_content %}
+                        <form method="{{ form_method|default:'post' }}"
+                              action="{{ form_action|default:request.path }}"
+                              {% if form_enctype %}enctype="{{ form_enctype }}"{% endif %}
+                              {% if form_novalidate|default:True %}novalidate{% endif %}
+                              id="{{ form_dom_id|default:'form-main' }}"
+                              data-form-base
+                              data-form-track-dirty="{{ form_track_dirty|default:'true' }}">
+                            {% csrf_token %}
+                            {% block form_hidden_fields %}{% endblock %}
+                            {% block form_fields %}
+                                <p class="text-muted mb-0">Override <code>form_fields</code> to supply form content.</p>
+                            {% endblock %}
+                            <div class="form-shell__actions d-flex flex-wrap gap-2 justify-content-between align-items-center"
+                                 data-form-actions>
+                                <span class="text-muted small">
+                                    <i class="mdi mdi-keyboard-outline"></i>
+                                    {% trans "Press Ctrl+S to save" %}
+                                </span>
+                                {% block form_actions %}
+                                    <div class="d-flex gap-2 ms-auto">
+                                        {% if cancel_url %}
+                                            <a href="{{ cancel_url }}" class="btn btn-outline-secondary">
+                                                {% trans "Cancel" %}
+                                            </a>
+                                        {% endif %}
+                                        <button type="submit" class="btn btn-primary" data-form-submit>
+                                            <span class="me-1">{% trans "Save" %}</span>
+                                            <kbd class="d-none d-lg-inline">Ctrl+S</kbd>
+                                        </button>
+                                    </div>
+                                {% endblock %}
+                            </div>
+                        </form>
+                    {% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% include 'partials/footer.html' %}
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    <script src="{% static 'libs/flatpickr/dist/flatpickr.min.js' %}"></script>
+    <script src="{% static 'libs/bootstrap-datepicker/dist/js/bootstrap-datepicker.min.js' %}"></script>
+    <script src="{% static 'libs/pristinejs/dist/pristine.min.js' %}"></script>
+    {% with config_id=form_config_id|default:'form-config' %}
+        {% if form_config %}
+            {{ form_config|json_script:config_id }}
+        {% else %}
+            <script id="{{ config_id }}" type="application/json">{}</script>
+        {% endif %}
+    {% endwith %}
+    <script src="{% static 'js/form-base.js' %}"></script>
+    {% block form_extra_js %}{% endblock %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.FormBase) {
+                window.FormBase.mount('#{{ form_shell_id|default:"form-shell" }}');
+            }
+        });
+    </script>
+{% endblock %}

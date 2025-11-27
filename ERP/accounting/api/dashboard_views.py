@@ -2,6 +2,7 @@ from datetime import datetime
 
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
+from drf_spectacular.utils import extend_schema, OpenApiTypes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
@@ -21,6 +22,11 @@ def _resolve_period_start(value):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@extend_schema(
+    responses={200: OpenApiTypes.OBJECT},
+    summary="Get dashboard metrics",
+    description="Returns financial dashboard metrics for the active organization"
+)
 def dashboard_metrics(request):
     organization = request.user.get_active_organization()
     if not organization:
@@ -31,6 +37,11 @@ def dashboard_metrics(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@extend_schema(
+    responses={200: OpenApiTypes.OBJECT},
+    summary="Export dashboard data as CSV",
+    description="Returns dashboard metrics in CSV format"
+)
 def dashboard_export_csv(request):
     organization = request.user.get_active_organization()
     if not organization:
@@ -42,6 +53,11 @@ def dashboard_export_csv(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@extend_schema(
+    responses={200: OpenApiTypes.OBJECT},
+    summary="Get VAT summary",
+    description="Returns VAT liability summary for the specified period"
+)
 def vat_summary(request):
     organization = request.user.get_active_organization()
     if not organization:
@@ -56,6 +72,11 @@ def vat_summary(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@extend_schema(
+    responses={200: OpenApiTypes.OBJECT},
+    summary="Get NFRS schedule",
+    description="Returns NFRS revenue recognition schedule for the specified period"
+)
 def nfrs_schedule(request):
     organization = request.user.get_active_organization()
     if not organization:

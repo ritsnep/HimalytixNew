@@ -21,6 +21,7 @@ from decimal import Decimal
 import logging
 
 from django.db import IntegrityError
+from django.db.models import Q
 from django.core.exceptions import ValidationError
 
 # WARNING: This script may create overlapping data if run with create_defaults. Review both scripts before running in production.
@@ -131,17 +132,21 @@ def create_default_data():
             'is_primary': True
         }
     )
-    # Add a sample login log for the superuser
-    LoginLog.objects.get_or_create(
+    # Add a sample login log for the superuser (only if one doesn't exist already)
+    if superuser and not LoginLog.objects.filter(
         user=superuser,
         login_method='email',
         success=True,
-        ip_address='127.0.0.1',
-        defaults={
-            'logout_time': None,
-            'session_time': None,
-        }
-    )
+        ip_address='127.0.0.1'
+    ).exists():
+        LoginLog.objects.create(
+            user=superuser,
+            login_method='email',
+            success=True,
+            ip_address='127.0.0.1',
+            logout_time=None,
+            session_time=None,
+        )
     # TENANCY DEFAULTS
     # 1. Default tenant
     tenant, _ = Tenant.objects.get_or_create(
@@ -244,42 +249,48 @@ def create_default_data():
             }
         )
     
-    # Create Nepali fiscal year 2081-2082 (2024-07-16 to 2025-07-16)
-    fiscal_year = FiscalYear.objects.filter(
-        organization=organization,
-        name="Fiscal Year 2081-2082"
-    ).first()
+    # Create Nepali fiscal year 2082-2083 (2025-07-15 to 2026-07-15)
+    fy_start = date(2025, 7, 15)
+    fy_end = date(2026, 7, 15)
+    fiscal_year = (
+        FiscalYear.objects.filter(organization=organization)
+        .filter(Q(start_date__lte=fy_end, end_date__gte=fy_start))
+        .order_by('start_date')
+        .first()
+    )
+    fiscal_year_created = False
     if not fiscal_year:
         fiscal_year = FiscalYear.objects.create(
             organization=organization,
-            name="Fiscal Year 2081-2082",
-            start_date=date(2024, 7, 16),
-            end_date=date(2025, 7, 16),
+            name="Fiscal Year 2082-2083",
+            start_date=fy_start,
+            end_date=fy_end,
             status='open',
             is_current=True,
             is_default=True,
             created_by=superuser
         )
+        fiscal_year_created = True
         logger.info(f"Created fiscal year: {fiscal_year.name}")
     else:
         logger.info(f"Using existing fiscal year: {fiscal_year.name}")
-    
+
     # Create accounting periods for the Nepali fiscal year
-    if created:  # Only create periods if fiscal year was just created
+    if fiscal_year_created:
         # Nepali months with their English equivalents and date ranges
         nepali_months = [
-            {'nepali': 'Shrawan', 'start': date(2024, 7, 16), 'end': date(2024, 8, 16)},
-            {'nepali': 'Bhadra', 'start': date(2024, 8, 17), 'end': date(2024, 9, 16)},
-            {'nepali': 'Ashwin', 'start': date(2024, 9, 17), 'end': date(2024, 10, 16)},
-            {'nepali': 'Kartik', 'start': date(2024, 10, 17), 'end': date(2024, 11, 15)},
-            {'nepali': 'Mangsir', 'start': date(2024, 11, 16), 'end': date(2024, 12, 15)},
-            {'nepali': 'Poush', 'start': date(2024, 12, 16), 'end': date(2025, 1, 14)},
-            {'nepali': 'Magh', 'start': date(2025, 1, 15), 'end': date(2025, 2, 13)},
-            {'nepali': 'Falgun', 'start': date(2025, 2, 14), 'end': date(2025, 3, 15)},
-            {'nepali': 'Chaitra', 'start': date(2025, 3, 16), 'end': date(2025, 4, 14)},
-            {'nepali': 'Baisakh', 'start': date(2025, 4, 15), 'end': date(2025, 5, 15)},
-            {'nepali': 'Jestha', 'start': date(2025, 5, 16), 'end': date(2025, 6, 15)},
-            {'nepali': 'Asar', 'start': date(2025, 6, 16), 'end': date(2025, 7, 16)},
+            {'nepali': 'Shrawan', 'start': date(2025, 7, 15), 'end': date(2025, 8, 15)},
+            {'nepali': 'Bhadra', 'start': date(2025, 8, 16), 'end': date(2025, 9, 15)},
+            {'nepali': 'Ashwin', 'start': date(2025, 9, 16), 'end': date(2025, 10, 15)},
+            {'nepali': 'Kartik', 'start': date(2025, 10, 16), 'end': date(2025, 11, 14)},
+            {'nepali': 'Mangsir', 'start': date(2025, 11, 15), 'end': date(2025, 12, 14)},
+            {'nepali': 'Poush', 'start': date(2025, 12, 15), 'end': date(2026, 1, 13)},
+            {'nepali': 'Magh', 'start': date(2026, 1, 14), 'end': date(2026, 2, 12)},
+            {'nepali': 'Falgun', 'start': date(2026, 2, 13), 'end': date(2026, 3, 14)},
+            {'nepali': 'Chaitra', 'start': date(2026, 3, 15), 'end': date(2026, 4, 13)},
+            {'nepali': 'Baisakh', 'start': date(2026, 4, 14), 'end': date(2026, 5, 14)},
+            {'nepali': 'Jestha', 'start': date(2026, 5, 15), 'end': date(2026, 6, 13)},
+            {'nepali': 'Asar', 'start': date(2026, 6, 14), 'end': date(2026, 7, 15)},
         ]
         
         current_nepali_month = 1  # Assuming we're in Shrawan for current period
@@ -289,7 +300,7 @@ def create_default_data():
                 fiscal_year=fiscal_year,
                 period_number=i,
                 defaults={
-                    'name': f"{month_data['nepali']} 2081-2082",
+                    'name': f"{month_data['nepali']} 2082-2083",
                     'start_date': month_data['start'],
                     'end_date': month_data['end'],
                     'status': 'open',

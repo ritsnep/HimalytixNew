@@ -1,12 +1,14 @@
-{% extends "Inventory/_list_base.html" %}
+{% extends "components/base/list_base.html" %}
 {% load static mptt_tags inventory_table_tags %}
 
 {% block title %}Product Categories{% endblock %}
+{% block list_page_title %}Product Categories{% endblock %}
+{% block list_title %}Product Categories{% endblock %}
 
 {% block list_actions %}
   <div class="btn-group btn-group-sm" role="group" aria-label="Category actions">
-    {% if create_url %}
-    <a href="{{ create_url }}" class="btn btn-primary">
+    {% if can_add and create_url %}
+    <a href="{{ create_url }}" class="btn btn-success btn-sm">
       <i class="mdi mdi-plus"></i> Add Category
     </a>
     {% endif %}
@@ -23,30 +25,26 @@
 {% endblock %}
 
 {% block table_body %}
-  {% if categories %}
-    {% recursetree categories %}
-      <tr>
-        <td class="align-middle">
-          <span style="padding-left: {{ node.get_ancestors|length|times:16 }}px"></span>
-          {{ node.name }}
-        </td>
-        <td>{{ node.code }}</td>
-        <td>
-          {% if node.is_active %}
-            <span class="badge bg-success">Yes</span>
-          {% else %}
-            <span class="badge bg-secondary">No</span>
-          {% endif %}
-        </td>
-        <td>
-          <div class="btn-group btn-group-sm" role="group">
-            <a href="{% url 'inventory:product_category_update' node.pk %}" class="btn btn-outline-primary">Edit</a>
-            <a href="{% url 'inventory:product_category_delete' node.pk %}" class="btn btn-outline-danger">Delete</a>
-          </div>
-        </td>
-      </tr>
-    {% endrecursetree %}
-  {% else %}
-    <tr><td colspan="4" class="text-center py-4 text-muted">No product categories found.</td></tr>
-  {% endif %}
+  {% recursetree categories %}
+    <tr>
+      <td class="align-middle">
+        <span style="padding-left: {{ node.get_ancestors|length|times:16 }}px"></span>
+        {{ node.name }}
+      </td>
+      <td>{{ node.code }}</td>
+      <td>
+        {% if node.is_active %}
+          <span class="badge bg-success">Yes</span>
+        {% else %}
+          <span class="badge bg-secondary">No</span>
+        {% endif %}
+      </td>
+      <td>
+        <div class="btn-group btn-group-sm" role="group">
+          <a href="{% url 'inventory:product_category_update' node.pk %}" class="btn btn-outline-primary">Edit</a>
+          <a href="{% url 'inventory:product_category_delete' node.pk %}" class="btn btn-outline-danger">Delete</a>
+        </div>
+      </td>
+    </tr>
+  {% endrecursetree %}
 {% endblock %}

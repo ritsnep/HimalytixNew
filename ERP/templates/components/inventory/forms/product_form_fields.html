@@ -1,0 +1,73 @@
+{{ form.non_field_errors }}
+<div class="row g-3">
+  <div class="col-md-6 col-lg-4">
+    <label class="form-label">Category</label>
+    {{ form.category }} {{ form.category.errors }}
+  </div>
+  <div class="col-md-6 col-lg-4">
+    <label class="form-label">Code</label>
+    {{ form.code }} {{ form.code.errors }}
+  </div>
+  <div class="col-md-6 col-lg-4">
+    <label class="form-label">Name</label>
+    {{ form.name }} {{ form.name.errors }}
+  </div>
+  <div class="col-md-12">
+    <label class="form-label">Description</label>
+    {{ form.description }} {{ form.description.errors }}
+  </div>
+  <div class="col-md-4">
+    <label class="form-label">UOM</label>
+    {{ form.uom }} {{ form.uom.errors }}
+  </div>
+  <div class="col-md-4">
+    <label class="form-label">Currency</label>
+    {{ form.currency_code }} {{ form.currency_code.errors }}
+  </div>
+  <div class="col-md-4">
+    <label class="form-label">Sale Price</label>
+    {{ form.sale_price }} {{ form.sale_price.errors }}
+  </div>
+  <div class="col-md-4">
+    <label class="form-label">Cost Price</label>
+    {{ form.cost_price }} {{ form.cost_price.errors }}
+  </div>
+  <div class="col-md-4">
+    <label class="form-label">Min Order Qty</label>
+    {{ form.min_order_quantity }} {{ form.min_order_quantity.errors }}
+  </div>
+  <div class="col-md-4">
+    <label class="form-label">Reorder Level</label>
+    {{ form.reorder_level }} {{ form.reorder_level.errors }}
+  </div>
+  <div class="col-md-4">
+    <label class="form-label">Preferred Vendor ID</label>
+    {{ form.preferred_vendor_id }} {{ form.preferred_vendor_id.errors }}
+  </div>
+  <div class="col-md-4">
+    <label class="form-label">Barcode</label>
+    {{ form.barcode }} {{ form.barcode.errors }}
+  </div>
+  <div class="col-md-4">
+    <label class="form-label">SKU</label>
+    {{ form.sku }} {{ form.sku.errors }}
+  </div>
+  <div class="col-md-4">
+    <div class="form-check mt-4">
+      {{ form.is_inventory_item }} {{ form.is_inventory_item.errors }}
+      <label class="form-check-label ms-1">Is Inventory Item?</label>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label">Income Account</label>
+    {{ form.income_account }} {{ form.income_account.errors }}
+  </div>
+  <div class="col-md-4">
+    <label class="form-label">Expense Account</label>
+    {{ form.expense_account }} {{ form.expense_account.errors }}
+  </div>
+  <div class="col-md-4">
+    <label class="form-label">Inventory Account</label>
+    {{ form.inventory_account }} {{ form.inventory_account.errors }}
+  </div>
+</div>

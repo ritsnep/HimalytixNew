@@ -21,6 +21,22 @@
 - [ ] SSL certificates obtained (HTTPS)
 - [ ] Domain name configured (DNS records set)
 
+### 1.1 Critical Environment Variables
+
+| Variable | Production Target | Notes |
+|----------|-------------------|-------|
+| `DJANGO_SECRET_KEY` | Strong, unique value | Never commit to git; rotate if leaked |
+| `DJANGO_DEBUG` | `0` | Debug features must be off in prod |
+| `DJANGO_ALLOWED_HOSTS` | Comma-separated FQDNs | Include load balancer hostnames |
+| `SECURE_SSL_REDIRECT` | `1` | Prevents HTTP access once TLS terminates |
+| `SESSION_COOKIE_SECURE` / `CSRF_COOKIE_SECURE` | `1` | Forces cookies over HTTPS only |
+| `SESSION_COOKIE_SAMESITE` / `CSRF_COOKIE_SAMESITE` | `Lax` or `None` (as required) | Align with SSO/embedded flows |
+| `ACCOUNT_ALLOW_SIGNUP` | `0` | Blocks anonymous self-registration |
+| `MAINTENANCE_MODE` | `0` (normal) | Flip to `1` only while the kill switch is active |
+| `MAINTENANCE_MESSAGE` / `MAINTENANCE_STATUS_TEXT` | Friendly copy | Displayed to blocked users and API clients |
+
+**Tip:** `.env` is auto-loaded by `python-dotenv`, so `manage.py` commands always pick up the latest values. Validate the `.env` checked into the server before every deploy.
+
 ### 2. Code Readiness
 
 - [ ] All Phase 3 tests pass: `python manage.py test`
@@ -148,8 +164,12 @@ python manage.py shell
 # Verify critical settings
 python manage.py shell
 >>> from django.conf import settings
->>> print(f"DEBUG: {settings.DEBUG}")  # Should be False
+>>> print(f"DEBUG: {settings.DEBUG}")  # Must be False in production
 >>> print(f"ALLOWED_HOSTS: {settings.ALLOWED_HOSTS}")
+>>> print(f"SECURE_SSL_REDIRECT: {settings.SECURE_SSL_REDIRECT}")
+>>> print(f"SESSION_COOKIE_SECURE / CSRF_COOKIE_SECURE: {settings.SESSION_COOKIE_SECURE} / {settings.CSRF_COOKIE_SECURE}")
+>>> print(f"ACCOUNT_ALLOW_SIGNUP: {settings.ACCOUNT_ALLOW_SIGNUP}")
+>>> print(f"Maintenance enabled: {settings.MAINTENANCE_MODE}")
 >>> print(f"DATABASES: {settings.DATABASES}")
 >>> print(f"REDIS_URL: {settings.REDIS_URL or 'Not set'}")
 >>> print(f"EMAIL_BACKEND: {settings.EMAIL_BACKEND}")
@@ -196,6 +216,32 @@ python manage.py shell
 >>> r = redis.Redis.from_url('redis://localhost:6379/0')
 >>> r.ping()  # Should return True
 ```
+
+#### Maintenance Kill Switch Workflow
+
+Use the maintenance middleware as a cache-backed kill switch to drain traffic before migrations or risky deploys.
+
+```bash
+# A) Enable maintenance mode with a friendly message
+python manage.py shell
+>>> from utils.maintenance import set_maintenance_state, serialize_state
+>>> set_maintenance_state(
+...     enabled=True,
+...     message="We are shipping Phase 3 updates. Please retry in 5 minutes.",
+...     status_text="Upgrade in progress",
+... )
+>>> serialize_state()
+
+# B) Confirm health endpoints still respond (allowed URLs bypass maintenance)
+curl -I https://your-domain.com/health/
+
+# C) Disable when deploy completes
+python manage.py shell
+>>> from utils.maintenance import set_maintenance_state
+>>> set_maintenance_state(enabled=False)
+```
+
+Snapshots of blocked requests are stored in Redis using `MAINTENANCE_SNAPSHOT_TTL`, so unblock users promptly after the deploy.
 
 #### Step 4: Service Startup
 

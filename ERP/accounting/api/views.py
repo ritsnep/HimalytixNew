@@ -1,5 +1,6 @@
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, permission_classes
+from drf_spectacular.utils import extend_schema, OpenApiTypes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Count
@@ -33,6 +34,11 @@ from .serializers import (
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@extend_schema(
+    responses={200: OpenApiTypes.OBJECT},
+    summary="Suggest journal entry descriptions",
+    description="Returns frequently used journal entry descriptions based on historical data"
+)
 def suggest_journal_entries(request):
     """
     Suggests journal entries based on historical data.
@@ -53,6 +59,11 @@ def suggest_journal_entries(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@extend_schema(
+    responses={200: OpenApiTypes.OBJECT},
+    summary="Suggest journal entry lines",
+    description="Returns suggested account lines for a journal entry based on description"
+)
 def get_line_suggestions(request):
     """
     Suggests lines to complete an entry based on the provided description.
@@ -90,6 +101,11 @@ def get_line_suggestions(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@extend_schema(
+    responses={200: OpenApiTypes.OBJECT},
+    summary="Validate journal entry field",
+    description="Validates a single field value from the journal entry form"
+)
 def validate_field(request):
     """
     Validates a single field from the journal entry form.
@@ -111,13 +127,27 @@ def validate_field(request):
     return Response({'success': True})
 
 from rest_framework.views import APIView
+from rest_framework import serializers
 
 class JournalBulkActionView(APIView):
     permission_classes = [IsAuthenticated]
+    class RequestSerializer(serializers.Serializer):
+        action = serializers.ChoiceField(choices=['post','delete','approve','reject','submit','reverse'])
+        journal_ids = serializers.ListField(child=serializers.IntegerField(min_value=1))
+
+    class ResponseSerializer(serializers.Serializer):
+        success = serializers.BooleanField()
+        deleted = serializers.IntegerField(required=False)
+        posted = serializers.IntegerField(required=False)
+        message = serializers.CharField(required=False)
+
+    @extend_schema(request=RequestSerializer, responses={200: ResponseSerializer})
 
     def post(self, request, *args, **kwargs):
-        action = request.data.get('action')
-        journal_ids = request.data.get('journal_ids')
+        serializer = self.RequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        action = serializer.validated_data['action']
+        journal_ids = serializer.validated_data['journal_ids']
 
         if not action or not journal_ids:
             return Response({'error': 'Missing action or journal_ids'}, status=status.HTTP_400_BAD_REQUEST)
@@ -142,16 +172,19 @@ class JournalBulkActionView(APIView):
 
         if action == 'delete':
             deleted_count = journals.delete()[0]
-            return Response({'success': True, 'deleted': deleted_count})
+            resp = self.ResponseSerializer({'success': True, 'deleted': deleted_count})
+            return Response(resp.data)
         if action == 'post':
             posted = 0
             for journal in journals:
                 if journal.status == 'approved':
                     post_journal(journal, request.user)
                     posted += 1
-            return Response({'success': True, 'posted': posted})
+            resp = self.ResponseSerializer({'success': True, 'posted': posted})
+            return Response(resp.data)
 
-        return Response({'success': True, 'message': f'Action {action} acknowledged for {journals.count()} journals.'}, status=status.HTTP_200_OK)
+        resp = self.ResponseSerializer({'success': True, 'message': f'Action {action} acknowledged for {journals.count()} journals.'})
+        return Response(resp.data, status=status.HTTP_200_OK)
 
 class OrganizationScopedMixin:
     permission_classes = [IsAuthenticated]

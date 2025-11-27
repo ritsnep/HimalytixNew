@@ -1,11 +1,13 @@
-{% extends "Inventory/_list_base.html" %}
+{% extends "components/base/list_base.html" %}
 {% load static %}
 
 {% block title %}Shipments{% endblock %}
+{% block list_page_title %}Shipments{% endblock %}
+{% block list_title %}Shipment Queue{% endblock %}
 
 {% block list_actions %}
-  {% if create_url %}
-  <a href="{{ create_url }}" class="btn btn-primary">
+  {% if can_add and create_url %}
+  <a href="{{ create_url }}" class="btn btn-success btn-sm">
     <i class="mdi mdi-plus"></i> Create Shipment
   </a>
   {% endif %}
@@ -24,8 +26,7 @@
 {% endblock %}
 
 {% block table_body %}
-  {% if shipments %}
-    {% for shipment in shipments %}
+  {% for shipment in shipments %}
     <tr>
       <td class="fw-semibold">{{ shipment.shipment_number }}</td>
       <td>{{ shipment.carrier_name }}</td>
@@ -41,7 +42,4 @@
       </td>
     </tr>
     {% endfor %}
-  {% else %}
-    <tr><td colspan="7" class="text-center py-4 text-muted">No shipments found.</td></tr>
-  {% endif %}
 {% endblock %}

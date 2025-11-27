@@ -1,0 +1,33 @@
+{{ form.non_field_errors }}
+<div class="row g-3">
+  <div class="col-md-4">
+    <label class="form-label">Code</label>
+    {{ form.code }} {{ form.code.errors }}
+  </div>
+  <div class="col-md-8">
+    <label class="form-label">Name</label>
+    {{ form.name }} {{ form.name.errors }}
+  </div>
+  <div class="col-md-12">
+    <label class="form-label">Address</label>
+    {{ form.address_line1 }} {{ form.address_line1.errors }}
+  </div>
+  <div class="col-md-4">
+    <label class="form-label">City</label>
+    {{ form.city }} {{ form.city.errors }}
+  </div>
+  <div class="col-md-4">
+    <label class="form-label">Country Code</label>
+    {{ form.country_code }} {{ form.country_code.errors }}
+  </div>
+  <div class="col-md-4">
+    <label class="form-label">Inventory Account</label>
+    {{ form.inventory_account }} {{ form.inventory_account.errors }}
+  </div>
+  <div class="col-md-4">
+    <div class="form-check mt-4">
+      {{ form.is_active }} {{ form.is_active.errors }}
+      <label class="form-check-label ms-1">Active?</label>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,126 @@
+<!-- Bulk Import Preview Template -->
+<div class="card fade-in">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="bx bx-list-check"></i> Import Preview</h5>
+    </div>
+    <div class="card-body">
+        
+        <!-- Summary -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="alert alert-primary text-center">
+                    <h4 class="mb-0">{{ total_count }}</h4>
+                    <small>Total Rows</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="alert alert-success text-center">
+                    <h4 class="mb-0">{{ total_count|add:"-"|add:error_count }}</h4>
+                    <small>Valid</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="alert alert-danger text-center">
+                    <h4 class="mb-0">{{ error_count }}</h4>
+                    <small>Errors</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                {% if not validate_only %}
+                <div class="alert alert-info text-center">
+                    <h4 class="mb-0">{{ saved_count }}</h4>
+                    <small>Imported</small>
+                </div>
+                {% else %}
+                <div class="alert alert-warning text-center">
+                    <h4 class="mb-0"><i class="bx bx-search-alt"></i></h4>
+                    <small>Validation Only</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if not validate_only and saved_count > 0 %}
+        <div class="alert alert-success">
+            <h5><i class="bx bx-check-circle"></i> Import Successful!</h5>
+            <p class="mb-0">
+                Successfully imported <strong>{{ saved_count }}</strong> account(s) to your Chart of Accounts.
+                <a href="{% url 'accounting:chart_of_accounts_list' %}" class="alert-link">View Chart of Accounts</a>
+            </p>
+        </div>
+        {% endif %}
+        
+        <!-- Results Table -->
+        <div class="table-responsive">
+            <table class="table table-sm table-hover preview-table">
+                <thead>
+                    <tr>
+                        <th width="50">#</th>
+                        <th width="80">Status</th>
+                        <th width="120">Code</th>
+                        <th>Name</th>
+                        <th width="100">Type</th>
+                        <th width="120">Parent</th>
+                        <th>Errors</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in results %}
+                    <tr class="{% if result.valid %}preview-row-valid{% else %}preview-row-error{% endif %}">
+                        <td>{{ result.line_num }}</td>
+                        <td>
+                            {% if result.valid %}
+                                <span class="badge bg-success"><i class="bx bx-check"></i> Valid</span>
+                            {% else %}
+                                <span class="badge bg-danger"><i class="bx bx-x"></i> Error</span>
+                            {% endif %}
+                        </td>
+                        <td><code>{{ result.code }}</code></td>
+                        <td><strong>{{ result.name }}</strong></td>
+                        <td><span class="badge bg-secondary">{{ result.type }}</span></td>
+                        <td>
+                            {% if result.parent_code %}
+                                <code>{{ result.parent_code }}</code>
+                            {% else %}
+                                <span class="text-muted">Root</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if result.errors %}
+                                <ul class="mb-0 small text-danger">
+                                    {% for error in result.errors %}
+                                    <li>{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <span class="text-success"><i class="bx bx-check"></i></span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Actions -->
+        {% if validate_only %}
+        <div class="mt-4 text-center">
+            <p class="text-muted">Validation complete. Ready to import?</p>
+            <form method="post" 
+                  hx-post="{% url 'accounting:chart_of_accounts_bulk_create' %}"
+                  hx-trigger="submit"
+                  hx-target="#bulk-preview"
+                  hx-swap="innerHTML">
+                {% csrf_token %}
+                <input type="hidden" name="bulk_data" value="{{ request.POST.bulk_data }}">
+                <input type="hidden" name="skip_errors" value="{{ request.POST.skip_errors }}">
+                <input type="hidden" name="update_existing" value="{{ request.POST.update_existing }}">
+                <button type="submit" class="btn btn-success btn-lg">
+                    <i class="bx bx-download"></i> Proceed with Import
+                </button>
+            </form>
+        </div>
+        {% endif %}
+        
+    </div>
+</div>

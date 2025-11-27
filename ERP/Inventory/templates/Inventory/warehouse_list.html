@@ -1,13 +1,15 @@
-{% extends "Inventory/_list_base.html" %}
+{% extends "components/base/list_base.html" %}
 {% load static %}
 
 {% block title %}Warehouses{% endblock %}
+{% block list_page_title %}Warehouses{% endblock %}
+{% block list_title %}Warehouse Directory{% endblock %}
 
 {% block list_actions %}
-  {% if create_url %}
-  <a href="{% url 'inventory:warehouse_create' %}" class="btn btn-primary">
-    <i class="mdi mdi-plus"></i> Add Warehouse
-  </a>
+  {% if can_add and create_url %}
+    <a href="{{ create_url }}" class="btn btn-success btn-sm">
+      <i class="mdi mdi-plus"></i> Add Warehouse
+    </a>
   {% endif %}
 {% endblock %}
 
@@ -23,8 +25,7 @@
 {% endblock %}
 
 {% block table_body %}
-  {% if warehouses %}
-    {% for warehouse in warehouses %}
+  {% for warehouse in warehouses %}
     <tr>
       <td class="fw-semibold">{{ warehouse.code }}</td>
       <td>{{ warehouse.name }}</td>
@@ -45,8 +46,5 @@
         </div>
       </td>
     </tr>
-    {% endfor %}
-  {% else %}
-    <tr><td colspan="6" class="text-center py-4 text-muted">No warehouses found.</td></tr>
-  {% endif %}
+  {% endfor %}
 {% endblock %}

@@ -1,4 +1,6 @@
+from decimal import Decimal
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
 
 from accounting.models import (
     APPayment,
@@ -16,13 +18,13 @@ from accounting.models import (
 class VendorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vendor
-        fields = ['id', 'code', 'display_name', 'status', 'payment_term', 'accounts_payable_account']
+        fields = ['vendor_id', 'code', 'display_name', 'status', 'payment_term', 'accounts_payable_account']
 
 
 class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
-        fields = ['id', 'code', 'display_name', 'status', 'payment_term', 'accounts_receivable_account']
+        fields = ['customer_id', 'code', 'display_name', 'status', 'payment_term', 'accounts_receivable_account']
 
 
 class PurchaseInvoiceSerializer(serializers.ModelSerializer):
@@ -56,9 +58,16 @@ class BankAccountSerializer(serializers.ModelSerializer):
 
 
 class AssetSerializer(serializers.ModelSerializer):
+    book_value = serializers.SerializerMethodField()
+
     class Meta:
         model = Asset
         fields = ['asset_id', 'name', 'category', 'acquisition_date', 'cost', 'book_value', 'status']
+
+    @extend_schema_field({'type': 'string', 'format': 'decimal'})
+    def get_book_value(self, obj: Asset) -> Decimal:
+        # Simple book value: cost - accumulated_depreciation (can be extended)
+        return (obj.cost or 0) - (obj.accumulated_depreciation or 0)
 
 
 class IntegrationEventSerializer(serializers.ModelSerializer):

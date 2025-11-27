@@ -3,6 +3,7 @@ from django.views.generic import UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from accounting.forms import TaxCodeForm
 from accounting.views.views_mixins import UserOrganizationMixin, PermissionRequiredMixin
+from accounting.mixins import AdvancedFormMixin
 from accounting.models import *
 # from accounting.forms import FiscalYearForm, CostCenterForm, VoucherModeConfigForm, VoucherModeDefaultForm, DepartmentForm, ChartOfAccountForm, VoucherUDFConfigForm, AccountTypeForm, CurrencyForm, TaxTypeForm, TaxAuthorityForm, ProjectForm, AccountingPeriodForm, JournalTypeForm, CurrencyExchangeRateForm, JournalForm
 from accounting.forms import (
@@ -331,11 +332,15 @@ class VoucherUDFConfigUpdateView(PermissionRequiredMixin, LoginRequiredMixin, Up
         })
         return context
 
-class AccountTypeUpdateView(LoginRequiredMixin, UpdateView):
+class AccountTypeUpdateView(AdvancedFormMixin, LoginRequiredMixin, UpdateView):
     model = AccountType
     form_class = AccountTypeForm
     template_name = 'accounting/account_type_form.html'
     success_url = reverse_lazy('accounting:account_type_list')
+    
+    # Advanced form configuration
+    app_name = 'accounting'
+    model_name = 'account_type'
 
     def form_valid(self, form):
         form.instance.updated_by = self.request.user
@@ -344,6 +349,8 @@ class AccountTypeUpdateView(LoginRequiredMixin, UpdateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['form_title'] = 'Update Account Type'
+        context['page_title'] = 'Account Type'
+        context['list_url'] = reverse_lazy('accounting:account_type_list')
         context['back_url'] = reverse_lazy('accounting:account_type_list')
         context['breadcrumbs'] = [
             ('Account Types', reverse_lazy('accounting:account_type_list')),
@@ -351,13 +358,17 @@ class AccountTypeUpdateView(LoginRequiredMixin, UpdateView):
         ]
         return context
 
-class CurrencyUpdateView(PermissionRequiredMixin, LoginRequiredMixin, UpdateView):
+class CurrencyUpdateView(AdvancedFormMixin, PermissionRequiredMixin, LoginRequiredMixin, UpdateView):
     model = Currency
     form_class = CurrencyForm
     template_name = 'accounting/currency_form.html'
     success_url = reverse_lazy('accounting:currency_list')
     permission_required = ('accounting', 'currency', 'change')
     pk_url_kwarg = 'currency_code'
+    
+    # Advanced form configuration
+    app_name = 'accounting'
+    model_name = 'currency'
 
     def get_object(self, queryset=None):
         return self.model.objects.get(currency_code=self.kwargs['currency_code'])
@@ -369,6 +380,8 @@ class CurrencyUpdateView(PermissionRequiredMixin, LoginRequiredMixin, UpdateView
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['form_title'] = 'Update Currency'
+        context['page_title'] = 'Currency'
+        context['list_url'] = reverse_lazy('accounting:currency_list')
         context['back_url'] = reverse_lazy('accounting:currency_list')
         context['breadcrumbs'] = [
             ('Currencies', reverse_lazy('accounting:currency_list')),

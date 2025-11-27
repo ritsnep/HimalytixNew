@@ -12,6 +12,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema, OpenApiTypes
 
 from utils.auth import get_user_organization
 from utils.file_uploads import (
@@ -77,6 +78,11 @@ def _prepare_import_file(uploaded_file, *, label: str):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsOrganizationMember])
+@extend_schema(
+    responses={200: OpenApiTypes.OBJECT},
+    summary="Import Products",
+    description="Import products from Excel file"
+)
 def import_products(request):
     """
     Import products from uploaded Excel file
@@ -111,6 +117,11 @@ def import_products(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsOrganizationMember])
+@extend_schema(
+    responses={200: OpenApiTypes.OBJECT},
+    summary="Import Price List",
+    description="Import price list items from Excel file"
+)
 def import_price_list(request):
     """
     Import price list items from uploaded Excel file
@@ -139,6 +150,11 @@ def import_price_list(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsOrganizationMember])
+@extend_schema(
+    responses={200: OpenApiTypes.OBJECT},
+    summary="Import Inventory Adjustments",
+    description="Import inventory adjustments from Excel file"
+)
 def import_inventory_adjustment(request):
     """
     Import inventory adjustments from uploaded Excel file
@@ -172,6 +188,11 @@ def import_inventory_adjustment(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsOrganizationMember])
+@extend_schema(
+    responses={200: OpenApiTypes.OBJECT},
+    summary="Import Bill of Materials",
+    description="Import BOM from Excel file"
+)
 def import_bom(request):
     """
     Import Bill of Materials from uploaded Excel file
@@ -201,6 +222,11 @@ def import_bom(request):
 # Export endpoints
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsOrganizationMember])
+@extend_schema(
+    responses={200: OpenApiTypes.BINARY},
+    summary="Download Product Import Template",
+    description="Download blank Excel template for product import"
+)
 def export_product_template(request):
     """
     Download blank product import template
@@ -223,6 +249,11 @@ def export_product_template(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsOrganizationMember])
+@extend_schema(
+    responses={200: OpenApiTypes.BINARY},
+    summary="Export Products",
+    description="Export existing products to Excel file"
+)
 def export_products(request):
     """
     Export existing products to Excel
@@ -259,6 +290,11 @@ def export_products(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsOrganizationMember])
+@extend_schema(
+    responses={200: OpenApiTypes.BINARY},
+    summary="Download Price List Template",
+    description="Download blank Excel template for price list import"
+)
 def export_price_list_template(request):
     """
     Download blank price list import template
@@ -281,6 +317,11 @@ def export_price_list_template(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsOrganizationMember])
+@extend_schema(
+    responses={200: OpenApiTypes.BINARY},
+    summary="Export Price List",
+    description="Export price list to Excel file"
+)
 def export_price_list(request, price_list_id):
     """
     Export price list to Excel
@@ -311,6 +352,11 @@ def export_price_list(request, price_list_id):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsOrganizationMember])
+@extend_schema(
+    responses={200: OpenApiTypes.BINARY},
+    summary="Generate Physical Count Template",
+    description="Generate Excel template with current inventory for physical count"
+)
 def export_inventory_count_template(request):
     """
     Generate physical count template with current inventory
@@ -347,6 +393,11 @@ def export_inventory_count_template(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsOrganizationMember])
+@extend_schema(
+    responses={200: OpenApiTypes.BINARY},
+    summary="Export Stock Levels Report",
+    description="Export current stock levels to Excel file"
+)
 def export_stock_report(request):
     """
     Export stock levels report
@@ -383,6 +434,11 @@ def export_stock_report(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsOrganizationMember])
+@extend_schema(
+    responses={200: OpenApiTypes.BINARY},
+    summary="Download BOM Template",
+    description="Download blank Excel template for BOM import"
+)
 def export_bom_template(request):
     """
     Download blank BOM import template
@@ -405,6 +461,11 @@ def export_bom_template(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsOrganizationMember])
+@extend_schema(
+    responses={200: OpenApiTypes.BINARY},
+    summary="Export Bill of Materials",
+    description="Export BOM to Excel file"
+)
 def export_bom(request, bom_id):
     """
     Export BOM to Excel

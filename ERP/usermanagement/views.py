@@ -86,7 +86,14 @@ def create_user(request):
 
 @login_required
 def user_list(request):
-    users = CustomUser.objects.all()
+    users = CustomUser.objects.select_related(
+        'organization',
+        'organization__tenant'
+    ).prefetch_related(
+        'user_roles__role',
+        'user_permissions',
+        'groups'
+    ).all()
     return render(request, 'usermanagement/user_list.html', {'users': users})
 
 @login_required

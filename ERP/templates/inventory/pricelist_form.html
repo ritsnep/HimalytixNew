@@ -1,15 +1,15 @@
-{% extends 'Inventory/_form_base.html' %}
+{% extends 'components/base/form_base.html' %}
 {% load i18n %}
 
-{% block page_title %}
+{% block title %}
     {% if form.instance.pk %}
         {% trans "Edit Price List" %}
     {% else %}
-        {% trans "New Price List" %}
+        {% trans "Create Price List" %}
     {% endif %}
 {% endblock %}
 
-{% block form_title %}
+{% block form_title_text %}
     {% if form.instance.pk %}
         {% trans "Edit Price List" %}: {{ form.instance.name }}
     {% else %}
@@ -17,4 +17,17 @@
     {% endif %}
 {% endblock %}
 
-{% block cancel_url %}{% url 'inventory:pricelist_list' %}{% endblock %}
+{% block form_fields %}
+    {% include 'components/inventory/forms/pricelist_form_fields.html' %}
+{% endblock %}
+
+{% block form_actions %}
+  <div class="d-flex gap-2 ms-auto">
+    <a href="{% url 'inventory:pricelist_list' %}" class="btn btn-outline-secondary">
+        {% trans "Cancel" %}
+    </a>
+    <button type="submit" class="btn btn-primary" data-form-submit>
+        {% trans "Save" %}
+    </button>
+  </div>
+{% endblock %}

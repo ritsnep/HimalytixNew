@@ -1,0 +1,10 @@
+<div class="field-info-item">
+    <strong>{{ field_name|title }}</strong>
+    {% if required %}
+        <span class="badge bg-danger ms-1">Required</span>
+    {% endif %}
+    <span class="badge bg-info ms-1">{{ field_type }}</span>
+    {% if help_text %}
+        <p class="small text-muted mb-0">{{ help_text }}</p>
+    {% endif %}
+</div>

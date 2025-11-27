@@ -1,0 +1,47 @@
+{{ form.non_field_errors }}
+<div class="row g-3">
+  <div class="col-md-6 col-lg-4">
+    <label class="form-label">RMA Number</label>
+    {{ form.rma_number }} {{ form.rma_number.errors }}
+  </div>
+  <div class="col-md-6 col-lg-4">
+    <label class="form-label">Customer ID</label>
+    {{ form.customer_id }} {{ form.customer_id.errors }}
+  </div>
+  <div class="col-md-6 col-lg-4">
+    <label class="form-label">Product</label>
+    {{ form.product }} {{ form.product.errors }}
+  </div>
+  <div class="col-md-6 col-lg-4">
+    <label class="form-label">Warehouse</label>
+    {{ form.warehouse }} {{ form.warehouse.errors }}
+  </div>
+  <div class="col-md-6 col-lg-4">
+    <label class="form-label">Quantity</label>
+    {{ form.quantity }} {{ form.quantity.errors }}
+  </div>
+  <div class="col-md-6 col-lg-4">
+    <label class="form-label">Order Reference</label>
+    {{ form.order_reference }} {{ form.order_reference.errors }}
+  </div>
+  <div class="col-md-6 col-lg-4">
+    <label class="form-label">Invoice</label>
+    {{ form.original_invoice }} {{ form.original_invoice.errors }}
+  </div>
+  <div class="col-md-6 col-lg-4">
+    <label class="form-label">Status</label>
+    {{ form.status }} {{ form.status.errors }}
+  </div>
+  <div class="col-md-6 col-lg-4">
+    <label class="form-label">Reason</label>
+    {{ form.reason }} {{ form.reason.errors }}
+  </div>
+  <div class="col-12">
+    <label class="form-label">Description</label>
+    {{ form.description }} {{ form.description.errors }}
+  </div>
+  <div class="col-12">
+    <label class="form-label">Notes</label>
+    {{ form.notes }} {{ form.notes.errors }}
+  </div>
+</div>

@@ -48,7 +48,7 @@ MAINTENANCE_ALLOW_URLS = env_list("MAINTENANCE_ALLOW_URLS") or [
 ]
 MAINTENANCE_ALLOW_IPS = env_list("MAINTENANCE_ALLOW_IPS")
 MAINTENANCE_ALLOW_SUPERUSER = env_bool("MAINTENANCE_ALLOW_SUPERUSER", default=True)
-MAINTENANCE_STREAM_MAX_MESSAGES = int(os.getenv("MAINTENANCE_STREAM_MAX_MESSAGES", "120"))
+MAINTENANCE_STREAM_MAX_MESSAGES = int(os.getenv("MAINTENANCE_STREAM_MAX_MESSAGES", "30"))  # Reduced from 120 to 30 (1 minute total)
 MAINTENANCE_STREAM_INTERVAL = int(os.getenv("MAINTENANCE_STREAM_INTERVAL", "2"))
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -177,7 +177,7 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [os.path.join(BASE_DIR, 'templates')],
-    'APP_DIRS': DEBUG,  # Use app directories loader only in DEBUG
+        'APP_DIRS': False,  # Must be False when using custom loaders
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
@@ -188,10 +188,10 @@ TEMPLATES = [
                 'utils.i18n.i18n_context',
                 'dashboard.context_processors.branding_context',
                 'dashboard.context_processors.runtime_context',
+                'dashboard.context_processors.ui_metadata_context',
             ],
             # Enable cached template loader when not in DEBUG
-            **({
-                'loaders': [
+            **({'loaders': [
                     (
                         'django.template.loaders.cached.Loader',
                         [
@@ -200,7 +200,12 @@ TEMPLATES = [
                         ],
                     )
                 ]
-            } if not DEBUG else {}),
+            } if not DEBUG else {
+                'loaders': [
+                    'django.template.loaders.filesystem.Loader',
+                    'django.template.loaders.app_directories.Loader',
+                ]
+            }),
         },
     },
 ]
@@ -430,46 +435,46 @@ structlog.configure(
     cache_logger_on_first_use=True,
 )
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'json': {
-            '()': structlog.stdlib.ProcessorFormatter,
-            'processor': structlog.processors.JSONRenderer(),
-            'foreign_pre_chain': shared_processors,
-        },
-        'console': {
-            '()': structlog.stdlib.ProcessorFormatter,
-            'processor': structlog.dev.ConsoleRenderer(),
-            'foreign_pre_chain': shared_processors,
-        },
-    },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': LOG_FORMAT,
-        },
-        'file': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs', 'application.log'),
-            'maxBytes': 10485760,  # 10MB
-            'backupCount': 5,
-            'formatter': LOG_FORMAT,
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['console', 'file'],
-            'level': LOG_LEVEL,
-            'propagate': False,
-        },
-        '': {
-            'handlers': ['console', 'file'],
-            'level': LOG_LEVEL,
-        },
-    },
-}
+# LOGGING = {
+#     'version': 1,
+#     'disable_existing_loggers': False,
+#     'formatters': {
+#         'json': {
+#             '()': structlog.stdlib.ProcessorFormatter,
+#             'processor': structlog.processors.JSONRenderer(),
+#             'foreign_pre_chain': shared_processors,
+#         },
+#         'console': {
+#             '()': structlog.stdlib.ProcessorFormatter,
+#             'processor': structlog.dev.ConsoleRenderer(),
+#             'foreign_pre_chain': shared_processors,
+#         },
+#     },
+#     'handlers': {
+#         'console': {
+#             'class': 'logging.StreamHandler',
+#             'formatter': LOG_FORMAT,
+#         },
+#         'file': {
+#             'class': 'logging.handlers.RotatingFileHandler',
+#             'filename': os.path.join(BASE_DIR, 'logs', 'application.log'),
+#             'maxBytes': 10485760,  # 10MB
+#             'backupCount': 5,
+#             'formatter': LOG_FORMAT,
+#         },
+#     },
+#     'loggers': {
+#         'django': {
+#             'handlers': ['console', 'file'],
+#             'level': LOG_LEVEL,
+#             'propagate': False,
+#         },
+#         '': {
+#             'handlers': ['console', 'file'],
+#             'level': LOG_LEVEL,
+#         },
+#     },
+# }
 
 
 AUTHENTICATION_BACKENDS = [
@@ -609,6 +614,139 @@ SPECTACULAR_SETTINGS = {
 # Chart of Account hierarchy limits
 COA_MAX_DEPTH = int(os.environ.get("COA_MAX_DEPTH", 10))
 COA_MAX_SIBLINGS = int(os.environ.get("COA_MAX_SIBLINGS", 99))
+
+# =============================================================================
+# Advanced Form Features Configuration
+# Toggle advanced features (tabs, bulk import, templates, shortcuts) per app/model
+# =============================================================================
+ADVANCED_FORM_FEATURES = {
+    # Accounting module
+    'accounting': {
+        # ✅ COMPLETED - Advanced forms with all features
+        'chart_of_accounts': {
+            'enable_tabs': True,
+            'enable_bulk_import': True,
+            'enable_templates': True,
+            'enable_shortcuts': True,
+            'enable_save_and_new': True,
+        },
+        'account_type': {
+            'enable_tabs': False,
+            'enable_bulk_import': False,
+            'enable_templates': False,
+            'enable_shortcuts': True,
+            'enable_save_and_new': True,
+        },
+        'currency': {
+                        'enable_tabs': True,
+                        'enable_bulk_import': True,
+                        'enable_templates': True,
+            'enable_shortcuts': True,
+            'enable_save_and_new': True,
+        },
+        
+        # 🔴 HIGH PRIORITY - Frequently used forms
+        'tax_type': {
+            'enable_shortcuts': True,
+            'enable_save_and_new': True,
+        },
+        'tax_code': {
+            'enable_shortcuts': True,
+            'enable_save_and_new': True,
+        },
+        'cost_center': {
+            'enable_shortcuts': True,
+            'enable_save_and_new': True,
+        },
+        'department': {
+            'enable_shortcuts': True,
+            'enable_save_and_new': True,
+        },
+        'journal_type': {
+            'enable_shortcuts': True,
+            'enable_save_and_new': True,
+        },
+        'project': {
+            'enable_shortcuts': True,
+            'enable_save_and_new': True,
+        },
+        
+        # 🟡 MEDIUM PRIORITY - Standard forms
+        'fiscal_year': {
+            'enable_shortcuts': True,
+            'enable_save_and_new': True,
+        },
+        'tax_authority': {
+            'enable_shortcuts': True,
+            'enable_save_and_new': True,
+        },
+        'currency_exchange_rate': {
+            'enable_shortcuts': True,
+            'enable_save_and_new': True,
+        },
+        'accounting_period': {
+            'enable_shortcuts': True,
+            'enable_save_and_new': True,
+        },
+        'voucher_mode_config': {
+            'enable_shortcuts': True,
+            'enable_save_and_new': True,
+        },
+        'voucher_mode_default': {
+            'enable_shortcuts': True,
+            'enable_save_and_new': True,
+        },
+        'voucher_udf_config': {
+            'enable_shortcuts': True,
+            'enable_save_and_new': True,
+        },
+        'general_ledger': {
+            'enable_shortcuts': True,
+            'enable_save_and_new': True,
+        },
+        
+        # 🟢 SPECIAL - Complex forms (wizard-based)
+        'journal_entry': {
+            'enable_tabs': False,
+            'enable_bulk_import': True,
+            'enable_shortcuts': True,
+            'enable_save_and_new': True,
+        },
+    },
+    # Billing module
+    'billing': {
+        'invoice': {
+            'enable_tabs': True,
+            'enable_bulk_import': True,
+            'enable_shortcuts': True,
+            'enable_save_and_new': True,
+        },
+        'customer': {
+            'enable_bulk_import': True,
+            'enable_shortcuts': True,
+        },
+    },
+    # Inventory module
+    'inventory': {
+        'product': {
+            'enable_tabs': True,
+            'enable_bulk_import': True,
+            'enable_templates': True,
+            'enable_shortcuts': True,
+        },
+        'warehouse': {
+            'enable_shortcuts': True,
+        },
+    },
+    # Global defaults for all forms
+    'default': {
+        'enable_tabs': False,
+        'enable_bulk_import': False,
+        'enable_templates': False,
+        'enable_shortcuts': True,
+        'enable_save_and_new': True,
+    }
+}
 
 # =============================================================================
 # Optional production hardening (enable via ENV to avoid breaking local dev)

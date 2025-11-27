@@ -24,3 +24,18 @@ def runtime_context(request) -> Dict[str, object]:
         "maintenance_state": state,
         "maintenance_snapshot": snapshot,
     }
+
+
+def ui_metadata_context(_request) -> Dict[str, str]:
+    """
+    Provide safe defaults for common template metadata keys so that components
+    like the shared form/list shells can always resolve them without raising
+    VariableDoesNotExist when views omit the variables.
+    """
+    return {
+        "page_title": "",
+        "form_title": "",
+        "list_title": "",
+        "page_subtitle": "",
+        "form_subtitle": "",
+    }

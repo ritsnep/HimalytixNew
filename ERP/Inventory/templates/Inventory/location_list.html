@@ -1,16 +1,20 @@
-{% extends "Inventory/_list_base.html" %}
+{% extends "components/base/list_base.html" %}
 {% load static %}
 
 {% block title %}Locations{% endblock %}
+{% block list_page_title %}Locations{% endblock %}
+{% block list_title %}Storage Locations{% endblock %}
 
 {% block list_actions %}
   <div class="d-flex flex-wrap gap-2">
-    <a href="{% url 'inventory:warehouse_list' %}" class="btn btn-outline-secondary">
+    <a href="{% url 'inventory:warehouse_list' %}" class="btn btn-outline-secondary btn-sm">
       <i class="mdi mdi-arrow-left"></i> Warehouses
     </a>
-    <a href="{% url 'inventory:location_create' %}" class="btn btn-primary">
-      <i class="mdi mdi-plus"></i> Add Location
-    </a>
+    {% if can_add and create_url %}
+      <a href="{{ create_url }}" class="btn btn-success btn-sm">
+        <i class="mdi mdi-plus"></i> Add Location
+      </a>
+    {% endif %}
   </div>
 {% endblock %}
 
@@ -25,8 +29,7 @@
 {% endblock %}
 
 {% block table_body %}
-  {% if locations %}
-    {% for location in locations %}
+  {% for location in locations %}
     <tr>
       <td class="fw-semibold">{{ location.code }}</td>
       <td>{{ location.name }}</td>
@@ -45,8 +48,5 @@
         </div>
       </td>
     </tr>
-    {% endfor %}
-  {% else %}
-    <tr><td colspan="5" class="text-center py-4 text-muted">No locations found.</td></tr>
-  {% endif %}
+  {% endfor %}
 {% endblock %}

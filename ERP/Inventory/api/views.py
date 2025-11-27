@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Sum, Q
+from drf_spectacular.utils import extend_schema, OpenApiTypes
 
 from ..models import (
     Product, ProductCategory, Warehouse, Location, Batch,
@@ -346,6 +347,11 @@ class RMAViewSet(BaseInventoryViewSet):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsOrganizationMember])
+@extend_schema(
+    responses={200: OpenApiTypes.OBJECT},
+    summary="Calculate Available-to-Promise",
+    description="Calculate ATP inventory for specified products"
+)
 def calculate_atp(request):
     """
     Calculate Available-to-Promise for products
@@ -397,6 +403,11 @@ def calculate_atp(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsOrganizationMember])
+@extend_schema(
+    responses={200: OpenApiTypes.OBJECT},
+    summary="Allocate Inventory",
+    description="Allocate inventory for an order with specified strategy"
+)
 def allocate_inventory(request):
     """
     Allocate inventory for an order
@@ -468,6 +479,11 @@ def allocate_inventory(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsOrganizationMember])
+@extend_schema(
+    responses={200: OpenApiTypes.OBJECT},
+    summary="Check Order Availability",
+    description="Check if multi-product order can be fulfilled"
+)
 def check_order_availability(request):
     """
     Check if multi-product order can be fulfilled
@@ -520,6 +536,11 @@ def check_order_availability(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsOrganizationMember])
+@extend_schema(
+    responses={200: OpenApiTypes.OBJECT},
+    summary="Get Fulfillment Options",
+    description="Get warehouse fulfillment options for order"
+)
 def get_fulfillment_options(request):
     """
     Get warehouse fulfillment options for order

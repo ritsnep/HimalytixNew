@@ -47,7 +47,7 @@
 {% endblock %}
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://unpkg.com/htmx.org@1.9.2"></script>
+<script src="{% static 'libs/htmx.org/dist/htmx.min.js' %}"></script>
 <script>
 function openConfigModal(configId) {
     fetch(`?edit=${configId}`, {headers: {'HX-Request': 'true'}})

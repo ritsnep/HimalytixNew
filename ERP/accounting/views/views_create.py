@@ -13,6 +13,7 @@ from accounting.forms.general_ledger_form import GeneralLedgerForm
 from django.views.generic import CreateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from accounting.views.views_mixins import UserOrganizationMixin, PermissionRequiredMixin
+from accounting.mixins import AdvancedFormMixin  # Import the new mixin
 from django.urls import reverse, reverse_lazy
 from django.contrib import messages  # Add this import for messages
 from django.db import transaction    # Add this import for transaction
@@ -133,11 +134,15 @@ class TaxAuthorityCreateView(LoginRequiredMixin, CreateView):
         return context
 
 
-class AccountTypeCreateView(LoginRequiredMixin, CreateView):
+class AccountTypeCreateView(AdvancedFormMixin, LoginRequiredMixin, CreateView):
     model = AccountType
     form_class = AccountTypeForm
     template_name = 'accounting/account_type_form.html'
     success_url = reverse_lazy('accounting:account_type_list')
+    
+    # Advanced form configuration
+    app_name = 'accounting'
+    model_name = 'account_type'
 
     def form_valid(self, form):
         form.instance.created_by = self.request.user
@@ -157,6 +162,8 @@ class AccountTypeCreateView(LoginRequiredMixin, CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['form_title'] = 'Create Account Type'
+        context['page_title'] = 'Account Type'
+        context['list_url'] = reverse('accounting:account_type_list')
         context['back_url'] = reverse('accounting:account_type_list')
         context['breadcrumbs'] = [
             ('Account Types', reverse('accounting:account_type_list')),
@@ -165,12 +172,16 @@ class AccountTypeCreateView(LoginRequiredMixin, CreateView):
         return context
 
 
-class ChartOfAccountCreateView(PermissionRequiredMixin, UserOrganizationMixin, CreateView):
+class ChartOfAccountCreateView(AdvancedFormMixin, PermissionRequiredMixin, UserOrganizationMixin, CreateView):
     model = ChartOfAccount
     form_class = ChartOfAccountForm
-    template_name = 'accounting/chart_of_accounts_form.html'
+    template_name = 'accounting/chart_of_accounts_form_enhanced.html'  # Use enhanced template
     success_url = reverse_lazy('accounting:chart_of_accounts_list')
     permission_required = ('accounting', 'chartofaccount', 'add')
+    
+    # AdvancedFormMixin configuration
+    app_name = 'accounting'
+    model_name = 'chart_of_accounts'
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -187,6 +198,13 @@ class ChartOfAccountCreateView(PermissionRequiredMixin, UserOrganizationMixin, C
         if account_type:
             initial['account_type'] = account_type
         return initial
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['list_url'] = reverse_lazy('accounting:chart_of_accounts_list')
+        context['page_title'] = 'Chart of Accounts'
+        context['form_title'] = 'Create Chart of Account'
+        return context
 
     def form_valid(self, form):
         try:
@@ -234,7 +252,8 @@ class ChartOfAccountCreateView(PermissionRequiredMixin, UserOrganizationMixin, C
         context = super().get_context_data(**kwargs)
         context.update({
             'form_title': 'Create Chart of Account',
-            'page_title': 'Create Chart of Account',
+            'page_title': 'Chart of Accounts',
+            'list_url': reverse('accounting:chart_of_accounts_list'),
             'breadcrumbs': [
                 ('Chart of Accounts', reverse('accounting:chart_of_accounts_list')),
                 ('Create Chart of Account', None)
@@ -243,12 +262,40 @@ class ChartOfAccountCreateView(PermissionRequiredMixin, UserOrganizationMixin, C
         })
         return context
 
-class CurrencyCreateView(PermissionRequiredMixin, LoginRequiredMixin, CreateView):
+class CurrencyCreateView(AdvancedFormMixin, PermissionRequiredMixin, LoginRequiredMixin, CreateView):
     model = Currency
     form_class = CurrencyForm
-    template_name = 'accounting/currency_form.html'
+    template_name = 'accounting/currency_form_enhanced.html'
     success_url = reverse_lazy('accounting:currency_list')
     permission_required = ('accounting', 'currency', 'add')
+    
+    # Advanced form configuration
+    app_name = 'accounting'
+    model_name = 'currency'
+    
+    # Bulk import field configuration (for template rendering)
+    bulk_field_config = {
+        'currency_code': {
+            'required': True,
+            'type': 'str',
+            'help_text': '3-letter ISO currency code',
+        },
+        'currency_name': {
+            'required': True,
+            'type': 'str',
+            'help_text': 'Full currency name',
+        },
+        'symbol': {
+            'required': False,
+            'type': 'str',
+            'help_text': 'Currency symbol',
+        },
+        'is_active': {
+            'required': False,
+            'type': 'bool',
+            'help_text': 'Active status',
+        },
+    }
 
     def form_valid(self, form):
         form.instance.created_by = self.request.user
@@ -257,7 +304,10 @@ class CurrencyCreateView(PermissionRequiredMixin, LoginRequiredMixin, CreateView
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['form_title'] = 'Create Currency'
+        context['page_title'] = 'Currency'
+        context['list_url'] = reverse('accounting:currency_list')
         context['back_url'] = reverse('accounting:currency_list')
+        context['bulk_field_config'] = self.bulk_field_config
         context['breadcrumbs'] = [
             ('Currencies', reverse('accounting:currency_list')),
             ('Create Currency', None)

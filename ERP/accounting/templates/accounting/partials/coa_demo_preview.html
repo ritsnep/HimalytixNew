@@ -1,0 +1,53 @@
+<!-- Demo Template Preview -->
+<div class="card fade-in">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0"><i class="bx bx-show"></i> Preview: {{ template_name }}</h5>
+    </div>
+    <div class="card-body">
+        
+        <div class="alert alert-info mb-4">
+            <p class="mb-0">
+                <strong>{{ accounts|length }}</strong> accounts will be created.
+                Review the accounts below before importing.
+            </p>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+                <thead class="table-light">
+                    <tr>
+                        <th width="120">Code</th>
+                        <th>Account Name</th>
+                        <th width="120">Type</th>
+                        <th width="120">Parent</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for code, name, acc_type, parent_code, description in accounts %}
+                    <tr>
+                        <td><code>{{ code }}</code></td>
+                        <td><strong>{{ name }}</strong></td>
+                        <td><span class="badge bg-secondary">{{ acc_type }}</span></td>
+                        <td>
+                            {% if parent_code %}
+                                <code>{{ parent_code }}</code>
+                            {% else %}
+                                <span class="text-muted">Root</span>
+                            {% endif %}
+                        </td>
+                        <td class="small">{{ description }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="mt-4 text-center">
+            <button type="button" class="btn btn-light" onclick="document.getElementById('demo-preview-container').innerHTML=''">
+                <i class="bx bx-x"></i> Close Preview
+            </button>
+        </div>
+        
+    </div>
+</div>

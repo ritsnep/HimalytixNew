@@ -1,0 +1,92 @@
+{% load i18n %}
+{% load bulk_import_tags %}
+
+<div class="bulk-import-results">
+    {% if validate_only %}
+        <div class="alert alert-info">
+            <i class="bx bx-info-circle"></i>
+            <strong>{% trans "Validation Results" %}</strong>
+            <p>{% trans "Review the validation results below. Click 'Import' to save the data." %}</p>
+        </div>
+    {% else %}
+        <div class="alert alert-success">
+            <i class="bx bx-check-circle"></i>
+            <strong>{% trans "Import Complete" %}</strong>
+            <p>
+                {% blocktrans with saved=saved_count total=total_count %}
+                Successfully imported {{ saved }} of {{ total }} records.
+                {% endblocktrans %}
+            </p>
+        </div>
+    {% endif %}
+
+    {% if error_count > 0 %}
+        <div class="alert alert-warning">
+            <i class="bx bx-error"></i>
+            <strong>{% trans "Errors Found" %}</strong>
+            <p>
+                {% blocktrans with errors=error_count %}
+                {{ errors }} record(s) have validation errors and were not imported.
+                {% endblocktrans %}
+            </p>
+        </div>
+    {% endif %}
+
+    <div class="table-responsive mt-3">
+        <table class="table table-sm table-bordered">
+            <thead>
+                <tr>
+                    <th width="50">{% trans "Line" %}</th>
+                    <th width="60">{% trans "Status" %}</th>
+                    {% for field in fields %}
+                        <th>{{ field|title }}</th>
+                    {% endfor %}
+                    <th>{% trans "Errors" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in results %}
+                    <tr class="{% if result.valid %}table-success{% else %}table-danger{% endif %}">
+                        <td>{{ result.line_num }}</td>
+                        <td class="text-center">
+                            {% if result.valid %}
+                                <i class="bx bx-check-circle text-success"></i>
+                            {% else %}
+                                <i class="bx bx-x-circle text-danger"></i>
+                            {% endif %}
+                        </td>
+                        {% for field in fields %}
+                            <td>{{ result.row_data|dict_get:field|default:"-" }}</td>
+                        {% endfor %}
+                        <td>
+                            {% if result.errors %}
+                                <ul class="mb-0 ps-3">
+                                    {% for error in result.errors %}
+                                        <li class="text-danger small">{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if validate_only and error_count < total_count %}
+        <div class="d-flex gap-2 mt-3">
+            <button type="button" 
+                    class="btn btn-primary"
+                    hx-post="{% url 'accounting:bulk_import' model_name|lower %}"
+                    hx-include="[name='bulk_data']"
+                    hx-target="#bulk-import-results">
+                <i class="bx bx-upload"></i> {% trans "Import Valid Records" %}
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="location.reload()">
+                <i class="bx bx-revision"></i> {% trans "Start Over" %}
+            </button>
+        </div>
+    {% endif %}
+</div>

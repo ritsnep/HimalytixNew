@@ -1,0 +1,339 @@
+{% extends 'accounting/_coa_form_base.html' %}
+{% load static %}
+{% load bulk_import_tags %}
+
+{% block title %}Currency{% endblock %}
+
+{% block form_content %}
+<div class="tab-content" id="currencyTabContent">
+    <!-- Single Entry Tab (Default) -->
+    <div class="tab-pane fade show active" id="single-entry" role="tabpanel" aria-labelledby="single-entry-tab">
+        {% block single_entry_content %}
+        <form id="currency-form" method="post" novalidate>
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong>Errors:</strong>
+                <ul class="mb-0">
+                    {% for error in form.non_field_errors %}
+                    <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endif %}
+
+            <!-- Currency Information -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h5 class="text-primary mb-3"><i class="bx bx-money"></i> Currency Information</h5>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="{{ form.currency_code.id_for_label }}" class="form-label required-field">Currency Code</label>
+                        <input type="text" 
+                               name="currency_code" 
+                               id="{{ form.currency_code.id_for_label }}" 
+                               class="form-control{% if form.currency_code.errors %} is-invalid{% endif %}"
+                               value="{{ form.currency_code.value|default:'' }}"
+                               placeholder="e.g., USD, EUR, GBP"
+                               required
+                               maxlength="3"
+                               data-pristine-required-message="Currency code is required"
+                               autofocus>
+                        {% if form.currency_code.errors %}
+                        <div class="error-message">{{ form.currency_code.errors|first }}</div>
+                        {% endif %}
+                        <small class="text-muted">3-letter ISO 4217 code</small>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="{{ form.currency_name.id_for_label }}" class="form-label required-field">Currency Name</label>
+                        <input type="text" 
+                               name="currency_name" 
+                               id="{{ form.currency_name.id_for_label }}" 
+                               class="form-control{% if form.currency_name.errors %} is-invalid{% endif %}"
+                               value="{{ form.currency_name.value|default:'' }}"
+                               placeholder="e.g., US Dollar, Euro"
+                               required
+                               data-pristine-required-message="Currency name is required">
+                        {% if form.currency_name.errors %}
+                        <div class="error-message">{{ form.currency_name.errors|first }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Display Settings -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h5 class="text-primary mb-3"><i class="bx bx-cog"></i> Display Settings</h5>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="{{ form.symbol.id_for_label }}" class="form-label">Symbol</label>
+                        <input type="text" 
+                               name="symbol" 
+                               id="{{ form.symbol.id_for_label }}" 
+                               class="form-control{% if form.symbol.errors %} is-invalid{% endif %}"
+                               value="{{ form.symbol.value|default:'' }}"
+                               placeholder="e.g., $, €, £">
+                        {% if form.symbol.errors %}
+                        <div class="error-message">{{ form.symbol.errors|first }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <div class="form-check form-switch mt-4">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   name="is_active" 
+                                   id="{{ form.is_active.id_for_label }}"
+                                   {% if form.is_active.value %}checked{% endif %}>
+                            <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                Active
+                            </label>
+                        </div>
+                        <small class="text-muted">Only active currencies can be used in transactions</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="d-flex gap-2 justify-content-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bx bx-save"></i> Save
+                        </button>
+                        {% if enable_save_and_new %}
+                        <button type="submit" name="save_and_new" value="1" class="btn btn-success">
+                            <i class="bx bx-save"></i> Save & New
+                        </button>
+                        {% endif %}
+                        <a href="{{ list_url }}" class="btn btn-secondary">
+                            <i class="bx bx-x"></i> Cancel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </form>
+        {% endblock %}
+    </div>
+
+    <!-- Bulk Import Tab -->
+    {% if enable_bulk_import %}
+    <div class="tab-pane fade" id="bulk-import" role="tabpanel" aria-labelledby="bulk-import-tab">
+        {% block bulk_import_content %}
+        <div class="row">
+            <div class="col-lg-12">
+                <!-- Field Information -->
+                <div class="alert alert-info mb-4">
+                    <h6><i class="bx bx-info-circle"></i> Bulk Import Instructions</h6>
+                    <p class="mb-2">Paste tab-separated or comma-separated data with the following columns in order:</p>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="field-info-item">
+                                <strong>Currency Code</strong>
+                                <span class="badge bg-danger ms-1">Required</span>
+                                <span class="badge bg-info ms-1">str</span>
+                                <p class="small text-muted mb-0">3-letter ISO currency code</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="field-info-item">
+                                <strong>Currency Name</strong>
+                                <span class="badge bg-danger ms-1">Required</span>
+                                <span class="badge bg-info ms-1">str</span>
+                                <p class="small text-muted mb-0">Full currency name</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="field-info-item">
+                                <strong>Symbol</strong>
+                                <span class="badge bg-info ms-1">str</span>
+                                <p class="small text-muted mb-0">Currency symbol</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="field-info-item">
+                                <strong>Is Active</strong>
+                                <span class="badge bg-info ms-1">bool</span>
+                                <p class="small text-muted mb-0">Active status (true/false)</p>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="mb-0 mt-2"><strong>Example:</strong></p>
+                    <pre class="bg-light p-2 rounded"><code>USD	US Dollar	$	true
+EUR	Euro	€	true
+GBP	British Pound	£	true</code></pre>
+                </div>
+
+                <!-- Bulk Import Form -->
+                <div class="card">
+                    <div class="card-body">
+                        <form id="bulk-import-form" 
+                              hx-post="{% url 'accounting:currency_bulk_import' %}"
+                              hx-target="#bulk-import-results"
+                              hx-indicator=".htmx-indicator">
+                            {% csrf_token %}
+                            
+                            <div class="mb-3">
+                                <label for="bulk_data" class="form-label">Paste Currency Data</label>
+                                <textarea class="form-control font-monospace" 
+                                          id="bulk_data" 
+                                          name="bulk_data" 
+                                          rows="10" 
+                                          placeholder="Paste tab-separated or comma-separated data here..."></textarea>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="update_existing" name="update_existing">
+                                        <label class="form-check-label" for="update_existing">
+                                            Update existing currencies
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="skip_errors" name="skip_errors" checked>
+                                        <label class="form-check-label" for="skip_errors">
+                                            Skip errors and continue
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="validate_only" name="validate_only" checked>
+                                        <label class="form-check-label" for="validate_only">
+                                            Validate only (preview)
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bx bx-upload"></i> 
+                                    <span class="htmx-indicator spinner-border spinner-border-sm" role="status"></span>
+                                    Validate & Preview
+                                </button>
+                                <button type="reset" class="btn btn-secondary">
+                                    <i class="bx bx-revision"></i> Clear
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- Results Container -->
+                        <div id="bulk-import-results" class="mt-4"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endblock %}
+    </div>
+    {% endif %}
+
+    <!-- Demo Templates Tab -->
+    {% if enable_templates %}
+    <div class="tab-pane fade" id="demo-data" role="tabpanel" aria-labelledby="demo-data-tab">
+        {% block demo_templates_content %}
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="alert alert-info mb-4">
+                    <h6><i class="bx bx-data"></i> Currency Templates</h6>
+                    <p class="mb-0">Choose a pre-configured template to quickly import common currencies.</p>
+                </div>
+
+                <!-- Template Cards -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <div class="template-card" data-template="major-currencies">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="bx bx-world font-size-24 text-primary me-2"></i>
+                                <h6 class="mb-0">Major World Currencies</h6>
+                            </div>
+                            <p class="text-muted small mb-2">USD, EUR, GBP, JPY, CHF</p>
+                            <button type="button" 
+                                    class="btn btn-sm btn-outline-primary"
+                                    hx-get="{% url 'accounting:currency_demo_preview' %}?template=major-currencies"
+                                    hx-target="#demo-preview">
+                                <i class="bx bx-show"></i> Preview
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="template-card" data-template="asian-currencies">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="bx bx-map font-size-24 text-info me-2"></i>
+                                <h6 class="mb-0">Asian Currencies</h6>
+                            </div>
+                            <p class="text-muted small mb-2">INR, CNY, SGD, HKD, KRW, THB</p>
+                            <button type="button" 
+                                    class="btn btn-sm btn-outline-info"
+                                    hx-get="{% url 'accounting:currency_demo_preview' %}?template=asian-currencies"
+                                    hx-target="#demo-preview">
+                                <i class="bx bx-show"></i> Preview
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="template-card" data-template="all-common">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="bx bx-globe font-size-24 text-success me-2"></i>
+                                <h6 class="mb-0">All Common Currencies</h6>
+                            </div>
+                            <p class="text-muted small mb-2">Top 10 traded currencies</p>
+                            <button type="button" 
+                                    class="btn btn-sm btn-outline-success"
+                                    hx-get="{% url 'accounting:currency_demo_preview' %}?template=all-common"
+                                    hx-target="#demo-preview">
+                                <i class="bx bx-show"></i> Preview
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preview Container -->
+                <div id="demo-preview"></div>
+                
+                <!-- Results Container -->
+                <div id="demo-import-results"></div>
+            </div>
+        </div>
+        {% endblock %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_form_js %}
+// Auto-uppercase currency code
+document.addEventListener('DOMContentLoaded', function() {
+    const currencyCodeInput = document.getElementById('{{ form.currency_code.id_for_label }}');
+    if (currencyCodeInput) {
+        currencyCodeInput.addEventListener('input', function(e) {
+            this.value = this.value.toUpperCase();
+        });
+    }
+    
+    // Template card selection
+    document.querySelectorAll('.template-card').forEach(card => {
+        card.addEventListener('click', function() {
+            document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
+            this.classList.add('selected');
+        });
+    });
+});
+{% endblock %}

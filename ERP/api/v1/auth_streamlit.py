@@ -4,7 +4,8 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework import status
+from rest_framework import status, serializers
+from drf_spectacular.utils import extend_schema, inline_serializer
 
 from api.authentication import (
     issue_streamlit_token,
@@ -22,6 +23,20 @@ class IssueStreamlitTokenView(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = APIView.authentication_classes
 
+    @extend_schema(
+        request=None,
+        responses={
+            200: inline_serializer(
+                name='StreamlitTokenResponse',
+                fields={
+                    'token': serializers.CharField(),
+                    'claims': serializers.JSONField(),
+                }
+            )
+        },
+        summary="Issue Streamlit Token",
+        description="Issue a short-lived signed token for Streamlit integration"
+    )
     def post(self, request, *args: Any, **kwargs: Any):
         tenant_id = None
         # Prefer middleware-provided tenant if available
@@ -51,6 +66,16 @@ class VerifyStreamlitTokenView(APIView):
     authentication_classes = [StreamlitTokenAuthentication]
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name='StreamlitClaimsResponse',
+                fields={'claims': serializers.JSONField()}
+            )
+        },
+        summary="Verify Streamlit Token",
+        description="Verify a Streamlit token and return the decoded claims"
+    )
     def get(self, request, *args: Any, **kwargs: Any):
         # If authentication succeeded, claims are attached to request.auth or request.streamlit_claims
         claims = getattr(request, "streamlit_claims", None) or request.auth

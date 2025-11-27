@@ -1,0 +1,576 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block title %}{{ form_title|default:"Form" }}{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'libs/flatpickr/dist/flatpickr.min.css' %}">
+<link href="{% static 'libs/bootstrap-datepicker/dist/css/bootstrap-datepicker.min.css' %}" rel="stylesheet">
+<link href="{% static 'libs/pristinejs/dist/pristine.min.css' %}" rel="stylesheet">
+<style>
+    /* Universal Advanced Form Styles */
+    .advanced-form { position: relative; }
+    .coa-enhanced-form { position: relative; }  /* Backward compatibility */
+    
+    /* Tab Styles */
+    .form-tabs, .coa-tabs { border-bottom: 2px solid #e9ecef; margin-bottom: 1.5rem; }
+    .form-tabs .nav-link, .coa-tabs .nav-link { border: none; border-bottom: 2px solid transparent; padding: 0.75rem 1.5rem; }
+    .form-tabs .nav-link.active, .coa-tabs .nav-link.active { border-bottom-color: #556ee6; color: #556ee6; font-weight: 600; }
+    .form-tabs .nav-link:hover, .coa-tabs .nav-link:hover { border-bottom-color: #748ffc; }
+    
+    /* Bulk Import Styles */
+    .bulk-import-container { background: #f8f9fa; border: 2px dashed #dee2e6; border-radius: 0.5rem; padding: 2rem; text-align: center; transition: all 0.3s; }
+    .bulk-import-container.dragover { background: #e7f1ff; border-color: #556ee6; }
+    .bulk-import-container textarea { font-family: 'Consolas', 'Monaco', monospace; font-size: 0.875rem; }
+    
+    /* Template/Demo Data Styles */
+    .template-card, .demo-card { border: 1px solid #e9ecef; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem; transition: all 0.2s; cursor: pointer; }
+    .template-card:hover, .demo-card:hover { border-color: #556ee6; background: #f8f9fa; transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .template-card.selected, .demo-card.selected { border-color: #556ee6; background: #e7f1ff; }
+    
+    /* Keyboard Shortcuts Panel */
+    .shortcuts-panel { position: fixed; right: 20px; bottom: 20px; z-index: 1050; max-width: 350px; }
+    .shortcuts-panel .card { box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .shortcut-key { display: inline-block; padding: 0.25rem 0.5rem; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 0.25rem; font-family: monospace; font-size: 0.75rem; margin-right: 0.25rem; }
+    
+    /* Preview Table */
+    .preview-table { font-size: 0.875rem; }
+    .preview-table th { background: #f8f9fa; font-weight: 600; }
+    .preview-row-valid { background: #d1f2eb; }
+    .preview-row-error { background: #f8d7da; }
+    
+    /* Quick Action Buttons */
+    .quick-actions { position: sticky; top: 70px; z-index: 100; background: white; padding: 1rem 0; margin-bottom: 1rem; border-bottom: 1px solid #e9ecef; }
+    
+    /* Loading State */
+    .htmx-indicator { display: none; }
+    .htmx-request .htmx-indicator { display: inline-block; }
+    .htmx-request button { opacity: 0.7; pointer-events: none; }
+    .htmx-swapping { opacity: 0.5; transition: opacity 200ms ease-in; }
+    .htmx-settling { opacity: 1; transition: opacity 200ms ease-out; }
+    
+    /* Disabled State */
+    button:disabled, .btn:disabled { cursor: not-allowed; opacity: 0.6; }
+    
+    /* Smooth Transitions */
+    .form-control, .form-select { transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out; }
+    .btn { transition: all 0.15s ease-in-out; }
+    
+    /* Validation Styles */
+    .error-message { color: #dc3545; font-size: 0.875rem; margin-top: 0.25rem; display: block; }
+    .is-invalid { border-color: #dc3545 !important; }
+    .is-invalid:focus { box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25); }
+    .is-valid { border-color: #198754 !important; }
+    .is-valid:focus { box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25); }
+    .required-field::after { content: " *"; color: #dc3545; }
+    
+    /* Form Group Styles */
+    .form-group.has-danger .form-control { border-color: #dc3545; }
+    .form-group.has-success .form-control { border-color: #198754; }
+    .form-group .text-danger { color: #dc3545; font-size: 0.875rem; margin-top: 0.25rem; }
+    
+    /* Animation */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-in { animation: fadeIn 0.3s ease-out; }
+    
+    {% block extra_form_css %}{% endblock %}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <!-- Breadcrumb -->
+            {% block breadcrumb %}
+            <div class="row">
+                <div class="col-12">
+                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                        <h4 class="mb-sm-0 font-size-18">{{ page_title|default:"Form" }}</h4>
+                        <div class="page-title-right">
+                            <ol class="breadcrumb m-0">
+                                {% block breadcrumb_items %}
+                                <li class="breadcrumb-item"><a href="{{ list_url|default:'#' }}">List</a></li>
+                                <li class="breadcrumb-item active">{{ form_title|default:"Create" }}</li>
+                                {% endblock %}
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endblock %}
+
+            {% block quick_actions %}
+            <!-- Quick Actions Bar -->
+            <div class="quick-actions">
+                <div class="row">
+                    <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <!-- Tab Navigation (conditional) -->
+                        {% if enable_tabs|default:True %}
+                        <div class="btn-group" role="group" aria-label="Form tabs">
+                            {% block tab_buttons %}
+                            <button type="button" class="btn btn-sm btn-outline-primary active" 
+                                    data-tab="single" 
+                                    onclick="showTab('single')"
+                                    aria-label="Single Entry Tab"
+                                    aria-pressed="true">
+                                <i class="bx bx-file" aria-hidden="true"></i> Single Entry
+                            </button>
+                            {% if enable_bulk_import|default:True %}
+                            <button type="button" class="btn btn-sm btn-outline-primary" 
+                                    data-tab="bulk" 
+                                    onclick="showTab('bulk')"
+                                    aria-label="Bulk Import Tab"
+                                    aria-pressed="false">
+                                <i class="bx bx-spreadsheet" aria-hidden="true"></i> Bulk Import
+                            </button>
+                            {% endif %}
+                            {% if enable_templates|default:True %}
+                            <button type="button" class="btn btn-sm btn-outline-primary" 
+                                    data-tab="demo" 
+                                    onclick="showTab('demo')"
+                                    aria-label="Templates Tab"
+                                    aria-pressed="false">
+                                <i class="bx bx-data" aria-hidden="true"></i> Templates
+                            </button>
+                            {% endif %}
+                            {% endblock %}
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Action Buttons -->
+                        <div class="btn-group" role="group" aria-label="Form actions">
+                            {% block action_buttons %}
+                            <button type="button" 
+                                    class="btn btn-sm btn-outline-success" 
+                                    onclick="saveForm()"
+                                    aria-label="Save form"
+                                    title="Save (Ctrl+S)">
+                                <i class="bx bx-save" aria-hidden="true"></i> Save
+                            </button>
+                            {% if enable_save_and_new|default:True %}
+                            <button type="button" 
+                                    class="btn btn-sm btn-outline-success" 
+                                    onclick="saveAndNew()"
+                                    aria-label="Save and create new"
+                                    title="Save & New (Ctrl+Enter)">
+                                <i class="bx bx-save" aria-hidden="true"></i> Save & New
+                            </button>
+                            {% endif %}
+                            {% if enable_shortcuts|default:True %}
+                            <button type="button" 
+                                    class="btn btn-sm btn-outline-info" 
+                                    onclick="toggleShortcuts()"
+                                    aria-label="Toggle keyboard shortcuts"
+                                    title="Keyboard Shortcuts (Shift+?)">
+                                <i class="bx bx-keyboard" aria-hidden="true"></i> Shortcuts
+                            </button>
+                            {% endif %}
+                            <a href="{{ list_url|default:'#' }}" 
+                               class="btn btn-sm btn-outline-secondary"
+                               aria-label="Back to list"
+                               title="Back to list">
+                                <i class="bx bx-arrow-back" aria-hidden="true"></i> Back
+                            </a>
+                            {% endblock %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endblock %}
+
+            <!-- Main Form Content -->
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="card coa-enhanced-form">
+                        <div class="card-body">
+                            {% block form_content %}
+                            <!-- Form content goes here -->
+                            {% endblock %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% block shortcuts_panel %}
+            <!-- Keyboard Shortcuts Panel -->
+            <div class="shortcuts-panel" id="shortcuts-panel" style="display: none;">
+                <div class="card">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0"><i class="bx bx-keyboard"></i> Keyboard Shortcuts</h6>
+                        <button type="button" class="btn btn-sm btn-link text-white" onclick="toggleShortcuts()">
+                            <i class="bx bx-x"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="shortcut-item mb-2">
+                            <span class="shortcut-key">Ctrl</span> + <span class="shortcut-key">S</span>
+                            <span class="ms-2">Save Form</span>
+                        </div>
+                        <div class="shortcut-item mb-2">
+                            <span class="shortcut-key">Ctrl</span> + <span class="shortcut-key">Enter</span>
+                            <span class="ms-2">Save & New</span>
+                        </div>
+                        <div class="shortcut-item mb-2">
+                            <span class="shortcut-key">Alt</span> + <span class="shortcut-key">N</span>
+                            <span class="ms-2">Single Entry Tab</span>
+                        </div>
+                        <div class="shortcut-item mb-2">
+                            <span class="shortcut-key">Alt</span> + <span class="shortcut-key">B</span>
+                            <span class="ms-2">Bulk Import Tab</span>
+                        </div>
+                        <div class="shortcut-item mb-2">
+                            <span class="shortcut-key">Alt</span> + <span class="shortcut-key">D</span>
+                            <span class="ms-2">Demo Data Tab</span>
+                        </div>
+                        <div class="shortcut-item mb-2">
+                            <span class="shortcut-key">Shift</span> + <span class="shortcut-key">?</span>
+                            <span class="ms-2">Toggle Shortcuts</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <span class="shortcut-key">Esc</span>
+                            <span class="ms-2">Close Panels</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endblock %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+{{ block.super }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'libs/flatpickr/dist/flatpickr.min.js' %}"></script>
+<script src="{% static 'libs/bootstrap-datepicker/dist/js/bootstrap-datepicker.min.js' %}"></script>
+
+<script>
+    // ==========================================
+    // UNIVERSAL ADVANCED FORM BASE JAVASCRIPT
+    // ==========================================
+    
+    // Configuration from template context
+    const FORM_CONFIG = {
+        enableTabs: {% if enable_tabs %}true{% else %}false{% endif %},
+        enableBulkImport: {% if enable_bulk_import %}true{% else %}false{% endif %},
+        enableTemplates: {% if enable_templates %}true{% else %}false{% endif %},
+        enableShortcuts: {% if enable_shortcuts %}true{% else %}false{% endif %},
+        enableSaveAndNew: {% if enable_save_and_new %}true{% else %}false{% endif %},
+        formId: '{{ form_id|default:"coa-form" }}',
+    };
+    
+    // Shortcuts Panel Toggle
+    function toggleShortcuts() {
+        const panel = document.getElementById('shortcuts-panel');
+        if (panel) {
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        }
+    }
+
+    // Tab Management
+    function showTab(tabName) {
+        if (!FORM_CONFIG.enableTabs) return;
+        
+        // Map tab names to tab-pane IDs
+        const tabMap = {
+            'single': 'single-entry',
+            'bulk': 'bulk-import',
+            'demo': 'demo-data'
+        };
+        
+        const targetTabId = tabMap[tabName] || tabName;
+        
+        // Update tab buttons with ARIA attributes
+        document.querySelectorAll('[data-tab]').forEach(btn => {
+            btn.classList.remove('active');
+            btn.setAttribute('aria-pressed', 'false');
+        });
+        
+        const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+        if (activeBtn) {
+            activeBtn.classList.add('active');
+            activeBtn.setAttribute('aria-pressed', 'true');
+        }
+        
+        // Update tab content
+        document.querySelectorAll('.tab-pane').forEach(pane => {
+            pane.classList.remove('show', 'active');
+            pane.setAttribute('aria-hidden', 'true');
+        });
+        
+        const targetPane = document.getElementById(targetTabId);
+        if (targetPane) {
+            targetPane.classList.add('show', 'active');
+            targetPane.setAttribute('aria-hidden', 'false');
+        } else {
+            console.warn(`Tab pane with ID '${targetTabId}' not found`);
+        }
+        
+        // Focus first input in active tab
+        setTimeout(() => {
+            const activeTab = document.querySelector('.tab-pane.active');
+            const firstInput = activeTab?.querySelector('input:not([type="hidden"]), textarea, select');
+            if (firstInput) firstInput.focus();
+        }, 100);
+    }
+    
+    // Form Save Functions
+    function saveForm() {
+        // Try to find form by ID first
+        let form = document.getElementById(FORM_CONFIG.formId);
+        
+        // If not found, try common form IDs
+        if (!form) {
+            form = document.getElementById('coa-single-form') || 
+                   document.querySelector('.tab-pane.active form') ||
+                   document.querySelector('form[method="post"]');
+        }
+        
+        if (form) {
+            // Trigger pristine validation if available
+            if (window.pristineInstances && window.pristineInstances.has(form)) {
+                const pristine = window.pristineInstances.get(form);
+                if (pristine.validate()) {
+                    form.requestSubmit();
+                } else {
+                    // Show validation error notification
+                    if (typeof toastr !== 'undefined') {
+                        toastr.error('Please fix the validation errors before submitting', 'Validation Error');
+                    }
+                    // Focus first invalid field
+                    const firstInvalid = form.querySelector('.is-invalid');
+                    if (firstInvalid) firstInvalid.focus();
+                }
+            } else {
+                form.requestSubmit();
+            }
+        } else {
+            console.error('No form found to submit');
+            if (typeof toastr !== 'undefined') {
+                toastr.error('Form not found', 'Error');
+            }
+        }
+    }
+    
+    function saveAndNew() {
+        if (!FORM_CONFIG.enableSaveAndNew) return;
+        
+        let form = document.getElementById(FORM_CONFIG.formId);
+        if (!form) {
+            form = document.getElementById('coa-single-form') || 
+                   document.querySelector('.tab-pane.active form') ||
+                   document.querySelector('form[method="post"]');
+        }
+        
+        if (form) {
+            // Trigger pristine validation if available
+            if (window.pristineInstances && window.pristineInstances.has(form)) {
+                const pristine = window.pristineInstances.get(form);
+                if (!pristine.validate()) {
+                    // Show validation error notification
+                    if (typeof toastr !== 'undefined') {
+                        toastr.error('Please fix the validation errors before submitting', 'Validation Error');
+                    }
+                    // Focus first invalid field
+                    const firstInvalid = form.querySelector('.is-invalid');
+                    if (firstInvalid) firstInvalid.focus();
+                    return; // Don't submit if validation fails
+                }
+            }
+            
+            // Remove existing save_and_new input if any
+            const existingInput = form.querySelector('input[name="save_and_new"]');
+            if (existingInput) existingInput.remove();
+            
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'save_and_new';
+            input.value = '1';
+            form.appendChild(input);
+            form.requestSubmit();
+        } else {
+            console.error('No form found to submit');
+            if (typeof toastr !== 'undefined') {
+                toastr.error('Form not found', 'Error');
+            }
+        }
+    }
+
+    // Global Keyboard Shortcuts
+    if (FORM_CONFIG.enableShortcuts) {
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+S: Save
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                saveForm();
+            }
+            
+            // Ctrl+Enter: Save & New
+            if (FORM_CONFIG.enableSaveAndNew && e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                saveAndNew();
+            }
+            
+            // Alt+1-3: Switch Tabs
+            if (FORM_CONFIG.enableTabs && e.altKey && ['1', '2', '3'].includes(e.key)) {
+                e.preventDefault();
+                const tabNames = ['single', 'bulk', 'demo'];
+                const tabIndex = parseInt(e.key) - 1;
+                if (tabNames[tabIndex]) {
+                    showTab(tabNames[tabIndex]);
+                }
+            }
+            
+            // Shift+?: Toggle Shortcuts
+            if (e.shiftKey && e.key === '?') {
+                e.preventDefault();
+                toggleShortcuts();
+            }
+            
+            // Escape: Close panels
+            if (e.key === 'Escape') {
+                const panel = document.getElementById('shortcuts-panel');
+                if (panel && panel.style.display !== 'none') {
+                    toggleShortcuts();
+                }
+            }
+        });
+    }
+    
+    // Initialize on DOM Ready
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // Initialize Datepickers
+        if (typeof $.fn.datepicker !== 'undefined') {
+            $('.datepicker').datepicker({
+                format: 'yyyy-mm-dd',
+                autoclose: true,
+                todayHighlight: true,
+                orientation: 'bottom auto'
+            });
+        }
+        
+        // Initialize Flatpickr for date-time fields
+        if (typeof flatpickr !== 'undefined') {
+            flatpickr('.flatpickr', {
+                dateFormat: 'Y-m-d',
+                allowInput: true
+            });
+        }
+        
+        // Initialize Pristine Validation
+        if (typeof Pristine !== 'undefined') {
+            window.pristineInstances = window.pristineInstances || new Map();
+            
+            const forms = document.querySelectorAll('form[novalidate]');
+            forms.forEach(function(form) {
+                const pristine = new Pristine(form, {
+                    classTo: 'mb-3',
+                    errorClass: 'is-invalid',
+                    successClass: 'is-valid',
+                    errorTextParent: 'mb-3',
+                    errorTextTag: 'div',
+                    errorTextClass: 'error-message'
+                });
+                
+                window.pristineInstances.set(form, pristine);
+                
+                // Validate on submit
+                form.addEventListener('submit', function(e) {
+                    if (!pristine.validate()) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        // Focus first invalid field
+                        const firstInvalid = form.querySelector('.is-invalid');
+                        if (firstInvalid) {
+                            firstInvalid.focus();
+                            firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }
+                });
+            });
+        }
+        
+        // Add required field indicators
+        document.querySelectorAll('input[required], select[required], textarea[required]').forEach(field => {
+            const label = document.querySelector(`label[for="${field.id}"]`);
+            if (label && !label.classList.contains('required-field')) {
+                label.classList.add('required-field');
+            }
+        });
+    });
+
+    // HTMX Event Handlers
+    document.body.addEventListener('htmx:afterSwap', function(event) {
+        // Reinitialize components after HTMX swap
+        if (typeof $.fn.datepicker !== 'undefined') {
+            $('.datepicker').datepicker({
+                format: 'yyyy-mm-dd',
+                autoclose: true,
+                todayHighlight: true
+            });
+        }
+        
+        // Show success message if response contains success indicator
+        const successMsg = event.detail.target.querySelector('.alert-success');
+        if (successMsg && typeof toastr !== 'undefined') {
+            toastr.success('Operation completed successfully');
+        }
+    });
+
+    document.body.addEventListener('htmx:responseError', function(event) {
+        console.error('HTMX Response Error:', event.detail);
+        if (typeof toastr !== 'undefined') {
+            const status = event.detail.xhr.status;
+            let message = 'An error occurred. Please try again.';
+            
+            if (status === 404) {
+                message = 'Resource not found.';
+            } else if (status === 403) {
+                message = 'You do not have permission to perform this action.';
+            } else if (status === 500) {
+                message = 'Server error. Please contact support.';
+            } else if (status === 400) {
+                message = 'Invalid request. Please check your input.';
+            }
+            
+            toastr.error(message, 'Error');
+        }
+    });
+    
+    document.body.addEventListener('htmx:sendError', function(event) {
+        console.error('HTMX Send Error:', event.detail);
+        if (typeof toastr !== 'undefined') {
+            toastr.error('Network error. Please check your connection.', 'Connection Error');
+        }
+    });
+    
+    document.body.addEventListener('htmx:beforeRequest', function(event) {
+        // Disable submit buttons during request
+        const form = event.detail.elt;
+        if (form.tagName === 'FORM') {
+            const buttons = form.querySelectorAll('button[type="submit"]');
+            buttons.forEach(btn => btn.disabled = true);
+        }
+    });
+    
+    document.body.addEventListener('htmx:afterRequest', function(event) {
+        // Re-enable submit buttons after request
+        const form = event.detail.elt;
+        if (form.tagName === 'FORM') {
+            const buttons = form.querySelectorAll('button[type="submit"]');
+            buttons.forEach(btn => btn.disabled = false);
+        }
+    });
+
+    {% block extra_form_js %}{% endblock %}
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+{% endblock extra_js %}
+

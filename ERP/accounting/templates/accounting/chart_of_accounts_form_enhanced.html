@@ -1,0 +1,52 @@
+{% extends 'accounting/_coa_form_base.html' %}
+{% load static %}
+
+{% block form_content %}
+<!-- Tab Content -->
+<div class="tab-content" id="coaTabContent">
+    
+    <!-- Single Entry Tab -->
+    <div class="tab-pane fade show active" id="single-entry" role="tabpanel">
+        {% include 'accounting/partials/coa_single_entry_form.html' %}
+    </div>
+    
+    <!-- Bulk Import Tab -->
+    <div class="tab-pane fade" id="bulk-import" role="tabpanel">
+        {% include 'accounting/partials/coa_bulk_import_form.html' %}
+    </div>
+    
+    <!-- Demo Data Tab -->
+    <div class="tab-pane fade" id="demo-data" role="tabpanel">
+        {% include 'accounting/partials/coa_demo_data.html' %}
+    </div>
+    
+</div>
+{% endblock %}
+
+{% block extra_form_js %}
+// COA-specific enhancements
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Enhanced COA Form loaded');
+    
+    // Add visual feedback for required fields
+    document.querySelectorAll('input[required], select[required], textarea[required]').forEach(field => {
+        const label = document.querySelector(`label[for="${field.id}"]`);
+        if (label && !label.classList.contains('required-field')) {
+            label.classList.add('required-field');
+        }
+    });
+    
+    // Show welcome toast
+    if (typeof toastr !== 'undefined') {
+        toastr.info('💡 Press Shift+? to view keyboard shortcuts', 'Quick Tip');
+    }
+});
+
+// HTMX Success Handler
+document.body.addEventListener('htmx:afterSwap', function(event) {
+    const successMsg = event.detail.target.querySelector('.alert-success');
+    if (successMsg) {
+        setTimeout(() => successMsg.classList.add('fade-in'), 100);
+    }
+});
+{% endblock %}

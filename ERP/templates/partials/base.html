@@ -100,7 +100,7 @@
     <!-- pace js -->
     <script src="{% static 'libs/pace-js/pace.min.js'%}"></script>
     <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+    <script src="{% static 'libs/htmx.org/dist/htmx.min.js' %}"></script>
     <!-- Pristine.js (local) to avoid CDN/tracking blocks -->
     <script src="{% static 'libs/pristinejs/dist/pristine.min.js' %}"></script>
     <!-- Toastr -->
@@ -109,9 +109,18 @@
       // Ensure HTMX sends the Django CSRF token for POST/PUT/DELETE.
       (function() {
         function getCookie(name) {
-          const value = `; ${document.cookie}`;
-          const parts = value.split(`; ${name}=`);
-          if (parts.length === 2) return parts.pop().split(';').shift();
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
         }
         document.body.addEventListener('htmx:configRequest', function (evt) {
           const token = getCookie('csrftoken');
@@ -239,14 +248,27 @@
             } catch (e) { /* ignore */ }
           }
 
-          if (window.EventSource) {
+          // Only connect to SSE stream if we detect maintenance mode might be active
+          // This prevents unnecessary long-polling connections on every page
+          // Check if maintenance banner is visible or maintenance mode flag is set
+          var maintenanceBanner = document.getElementById('maintenance-banner');
+          var shouldConnectSSE = maintenanceBanner && maintenanceBanner.style.display !== 'none';
+          
+          if (window.EventSource && shouldConnectSSE) {
             try {
               var es = new EventSource("{% url 'maintenance_stream' %}");
               es.onmessage = function(evt) {
                 try {
-                  handleState(JSON.parse(evt.data || '{}'));
+                  var state = JSON.parse(evt.data || '{}');
+                  handleState(state);
+                  // Close connection if maintenance is not active
+                  if (!state.active) {
+                    es.close();
+                  }
                 } catch (e) { /* ignore */ }
               };
+              // Auto-close after 2 minutes to prevent hanging connections
+              setTimeout(function() { es.close(); }, 120000);
             } catch (err) {
               // SSE not available; nothing to do.
             }

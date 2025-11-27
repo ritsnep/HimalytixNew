@@ -47,7 +47,7 @@ class DeviceCategoryViewSet(BaseServiceViewSet):
     queryset = DeviceCategory.objects.all()
     serializer_class = DeviceCategorySerializer
     search_fields = ['code', 'name']
-    filterset_fields = ['is_active', 'parent']
+    filterset_fields = ['is_active']
 
 
 class DeviceModelViewSet(BaseServiceViewSet):
@@ -59,11 +59,11 @@ class DeviceModelViewSet(BaseServiceViewSet):
 
 
 class DeviceLifecycleViewSet(BaseServiceViewSet):
-    queryset = DeviceLifecycle.objects.select_related('model').prefetch_related('state_history')
+    queryset = DeviceLifecycle.objects.select_related('device_model').prefetch_related('state_history')
     serializer_class = DeviceLifecycleSerializer
-    search_fields = ['device_serial', 'customer_id']
-    filterset_fields = ['model', 'customer_id', 'current_state']
-    ordering_fields = ['purchase_date', 'activation_date', 'created_at']
+    search_fields = ['serial_number', 'customer_id']
+    filterset_fields = ['device_model', 'customer_id', 'state']
+    ordering_fields = ['deployed_date', 'warranty_start_date', 'created_at']
     
     @action(detail=False, methods=['get'])
     def warranty_expiring(self, request):
@@ -73,16 +73,16 @@ class DeviceLifecycleViewSet(BaseServiceViewSet):
         thirty_days = now + timedelta(days=30)
         
         expiring = self.get_queryset().filter(
-            warranty_end__gte=now,
-            warranty_end__lte=thirty_days,
-            current_state__in=['deployed', 'active']
+            warranty_end_date__gte=now,
+            warranty_end_date__lte=thirty_days,
+            state__in=['deployed', 'active']
         )
         return Response(DeviceLifecycleSerializer(expiring, many=True).data)
     
     @action(detail=False, methods=['get'])
     def by_state(self, request):
         """Get device count by state"""
-        state_counts = self.get_queryset().values('current_state').annotate(
+        state_counts = self.get_queryset().values('state').annotate(
             count=Count('id')
         ).order_by('-count')
         
@@ -101,13 +101,13 @@ class DeviceLifecycleViewSet(BaseServiceViewSet):
         # Record state change
         DeviceStateHistory.objects.create(
             device=device,
-            from_state=device.current_state,
+            from_state=device.state,
             to_state=new_state,
             changed_by=request.user.id,
             reason=reason
         )
         
-        device.current_state = new_state
+        device.state = new_state
         device.updated_by = request.user.id
         device.save()
         
@@ -161,9 +161,9 @@ class ServiceContractViewSet(BaseServiceViewSet):
 class ServiceTicketViewSet(BaseServiceViewSet):
     queryset = ServiceTicket.objects.select_related('service_contract', 'device')
     serializer_class = ServiceTicketSerializer
-    search_fields = ['ticket_number', 'customer_id', 'subject']
-    filterset_fields = ['status', 'priority', 'issue_type', 'service_contract']
-    ordering_fields = ['reported_date', 'priority', 'sla_resolution_due']
+    search_fields = ['ticket_number', 'subject', 'description']
+    filterset_fields = ['status', 'priority', 'service_contract', 'device', 'sla_breach']
+    ordering_fields = ['created_date', 'priority', 'resolution_date']
     
     @action(detail=False, methods=['get'])
     def open(self, request):
@@ -266,11 +266,16 @@ class WarrantyPoolViewSet(BaseServiceViewSet):
 
 
 class RMAHardwareViewSet(BaseServiceViewSet):
-    queryset = RMAHardware.objects.select_related('device', 'warranty_pool')
+    queryset = RMAHardware.objects.select_related(
+        'device', 
+        'service_contract', 
+        'service_ticket', 
+        'replacement_device'
+    )
     serializer_class = RMAHardwareSerializer
-    search_fields = ['rma_number', 'customer_id', 'replacement_serial']
-    filterset_fields = ['status', 'is_warranty_claim', 'claim_status']
-    ordering_fields = ['requested_date', 'status']
+    search_fields = ['rma_number', 'warranty_claim_number', 'return_tracking_number', 'replacement_tracking_number']
+    filterset_fields = ['status', 'failure_type', 'is_under_warranty', 'repair_action']
+    ordering_fields = ['requested_date', 'status', 'completed_date']
     
     @action(detail=False, methods=['get'])
     def pending_approval(self, request):

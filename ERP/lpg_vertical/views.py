@@ -7,6 +7,7 @@ from django.views.generic import TemplateView
 from rest_framework import permissions, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema, OpenApiTypes
 
 from lpg_vertical import forms as lpg_forms
 from lpg_vertical.models import (
@@ -161,6 +162,11 @@ class LogisticsTripViewSet(OrganizationScopedViewSet):
 
 @api_view(["GET"])
 @permission_classes([permissions.IsAuthenticated])
+@extend_schema(
+    responses={200: OpenApiTypes.OBJECT},
+    summary="LPG Dashboard Summary",
+    description="Returns LPG vertical dashboard summary for specified date range"
+)
 def dashboard_summary_view(request):
     org = _get_org(request)
     start = parse_date(request.GET.get("from") or "") or date.today().replace(day=1)
@@ -171,6 +177,11 @@ def dashboard_summary_view(request):
 
 @api_view(["GET"])
 @permission_classes([permissions.IsAuthenticated])
+@extend_schema(
+    responses={200: OpenApiTypes.OBJECT},
+    summary="LPG Revenue & Expense Trend",
+    description="Returns revenue and expense trend data for LPG vertical"
+)
 def revenue_expense_trend_view(request):
     org = _get_org(request)
     trend = revenue_expense_trend(org, months=6)
@@ -179,6 +190,11 @@ def revenue_expense_trend_view(request):
 
 @api_view(["GET"])
 @permission_classes([permissions.IsAuthenticated])
+@extend_schema(
+    responses={200: OpenApiTypes.OBJECT},
+    summary="LPG Profit & Loss",
+    description="Returns profit and loss statement for LPG vertical"
+)
 def profit_and_loss_view(request):
     org = _get_org(request)
     start = parse_date(request.GET.get("from")) or date.today().replace(day=1)

@@ -37,6 +37,10 @@ class PostingService:
     ERR_INVALID_STATUS_TRANSITION = "Invalid journal status transition from {current_status} to {new_status}."
     ERR_REVERSAL_NOT_ALLOWED = "Only posted journals can be reversed."
     ERR_REVERSAL_ALREADY_EXISTS = "This journal already has a reversal entry."
+    ERR_PERIOD_MISMATCH = "Journal date must fall within the selected open accounting period."
+    ERR_PERIOD_ORG_MISMATCH = "Journal period must belong to the journal's organization."
+    ERR_PERIOD_REQUIRED = "Journal must be assigned to an accounting period."
+    ERR_POST_DATE_REQUIRED = "Journal date is required for posting."
     ERR_VOUCHER_TYPE_VALIDATION = "Voucher type specific validation failed: {reason}"
     ERR_MISSING_DIMENSION = "Required dimension {dimension} is missing for account {account_code}."
     ERR_PERIOD_NOT_CLOSED = "Period is not closed and cannot be reopened."
@@ -110,8 +114,21 @@ class PostingService:
                 self._check_permission(permission, journal.organization)
 
     def _validate_period_control(self, journal: Journal) -> None:
-        if not AccountingPeriod.is_date_in_open_period(journal.organization, journal.journal_date):
+        if journal.journal_date is None:
+            raise ValidationError(self.ERR_POST_DATE_REQUIRED)
+
+        period = getattr(journal, "period", None)
+        if period is None:
+            raise ValidationError(self.ERR_PERIOD_REQUIRED)
+
+        if period.organization_id != journal.organization_id:
+            raise ValidationError(self.ERR_PERIOD_ORG_MISMATCH)
+
+        if period.status != "open":
             raise ValidationError(self.ERR_PERIOD_CLOSED)
+
+        if not (period.start_date <= journal.journal_date <= period.end_date):
+            raise ValidationError(self.ERR_PERIOD_MISMATCH)
 
     def _validate_double_entry_invariant(self, journal: Journal) -> None:
         journal.update_totals()
@@ -361,11 +378,6 @@ class PostingService:
             raise ValidationError("Journal is already posted.")
         if journal.is_locked and journal.status != "posted":
             raise ValidationError(self.ERR_JOURNAL_LOCKED)
-        if journal.period is None:
-            raise ValidationError("Journal must be assigned to an accounting period.")
-        if journal.period.status != "open":
-            raise ValidationError(self.ERR_PERIOD_CLOSED)
-
         self.validate(journal, lines)
 
         number_set = False

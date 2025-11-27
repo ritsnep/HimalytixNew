@@ -57,13 +57,17 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Edit `.env` with your settings:
+Edit `.env` with your settings (boolean flags accept `1/0`, `true/false`, or `on/off`):
 
 ```env
 # Django
 DJANGO_SECRET_KEY=your-secret-key-here
-DEBUG=True
-ALLOWED_HOSTS=localhost,127.0.0.1
+DJANGO_DEBUG=1
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+SECURE_SSL_REDIRECT=0  # force HTTPS in production
+SESSION_COOKIE_SECURE=0
+CSRF_COOKIE_SECURE=0
+ACCOUNT_ALLOW_SIGNUP=0
 
 # Database (PostgreSQL recommended)
 DB_ENGINE=postgresql
@@ -76,6 +80,8 @@ DB_PORT=5432
 # Celery
 CELERY_BROKER_URL=redis://localhost:6379/0
 ```
+
+The project loads `.env` automatically via `python-dotenv`, so these values override system settings for every `manage.py` command.
 
 **Security Note**: Generate a secure secret key:
 ```bash
@@ -106,6 +112,27 @@ celery -A dashboard worker -l info
 ```
 
 Visit: **http://localhost:8000**
+
+## UI Building Blocks
+
+### components/base/list_base.html
+
+- Shared layout for list/index pages, wrapping DataTables, export buttons, responsive layout, and a collapsible filter drawer that plays nicely with HTMX updates.
+- **Inputs**: page_title, list_title, readcrumbs, create_url, create_button_text, datatable_config (JSON block), list_shortcuts (JSON block), ilter_drawer_id, datatable_id, and optional quick_search_placeholder.
+- **Blocks**: list_page_title, list_title, list_actions, list_header_extras, list_quick_filters, list_filters, 	able_head, 	able_body, 	able_foot, list_before_table, list_after_table, list_extra_js.
+- **Keyboard shortcuts** via static/js/list-base.js: / focuses search, Ctrl+Shift+F toggles filters, Ctrl+Shift+E expands the table, and arbitrary shortcuts can be declared with {"shortcuts": [{"keys": "ctrl+k", "action": "focus", "target": "#global-search"}]} inside the list_shortcuts_id script tag.
+- DataTables options are merged from <script type="application/json" id="datatable-config">{ ... }</script> so per-page configs can tweak buttons, AJAX sources, or column definitions without duplicating JS.
+
+### components/base/form_base.html
+
+- Shared shell for CRUD forms: breadcrumb + title bar, sticky action rail, dirty-state indicator, and helpful hotkeys baked in.
+- **Inputs**: orm_title, orm_description, orm_subtitle, readcrumbs, orm_method, orm_action, orm_enctype, orm_dom_id, cancel_url, orm_config (JSON block), orm_track_dirty.
+- **Blocks**: orm_heading, orm_title_text, orm_intro, orm_alerts, orm_hidden_fields, orm_fields, orm_actions, orm_extra_js.
+- **Keyboard shortcuts** via static/js/form-base.js: Ctrl+S saves, Ctrl+Enter submits, Ctrl+Shift+E expands the surface. Provide custom shortcuts by adding {"shortcuts": [{"keys": "ctrl+shift+h", "message": "Help opened"}]} to the orm_config_id JSON block.
+- Enhancements: .datepicker fields automatically use Bootstrap Datepicker, .flatpickr variants use Flatpickr, and Pristine.js validates any form marked 
+ovalidate unless you set orm_track_dirty=False.
+
+Inventory is the pilot module already running on these shared components. Other apps can migrate gradually by switching their {% extends %} directives to components/base/list_base.html / components/base/form_base.html, filling the documented blocks, and (optionally) dropping per-page JS in favour of the new helpers.
 
 ## 📊 Architecture
 
@@ -173,6 +200,31 @@ python manage.py test accounting
 
 See [.github/workflows/cd.yml](.github/workflows/cd.yml) for automated deployment.
 
+## 🛡️ Maintenance Kill Switch
+
+The `MaintenanceModeMiddleware` protects production during risky deploys:
+
+- State lives in Redis (`maintenance:state`) so multiple app servers stay in sync.
+- Environment defaults (`MAINTENANCE_MODE`, `MAINTENANCE_MESSAGE`, etc.) seed the cache, but you can flip the switch live without redeploying.
+- Requests are short-circuited with HTTP 503 + friendly HTML/JSON copy. Health checks, `/metrics`, static assets, and optional allowlists continue working.
+- In-flight POST/PUT requests capture a lightweight snapshot (`MAINTENANCE_SNAPSHOT_TTL`) so users can resume once maintenance clears.
+
+Basic workflow:
+
+```bash
+# Enable maintenance before migrations
+python manage.py shell
+>>> from utils.maintenance import set_maintenance_state
+>>> set_maintenance_state(enabled=True, message="Upgrade in progress", status_text="ETA 5 min")
+
+# Disable when done
+python manage.py shell
+>>> from utils.maintenance import set_maintenance_state
+>>> set_maintenance_state(enabled=False)
+```
+
+Tune behavior via `MAINTENANCE_ALLOW_URLS`, `MAINTENANCE_ALLOW_IPS`, `MAINTENANCE_MESSAGE`, `MAINTENANCE_RETRY_AFTER`, and `MAINTENANCE_STREAM_*` env vars documented above.
+
 ## 📚 Documentation
 
 - **[Quick Start Guide](QUICK_START_GUIDE.md)**: Detailed setup instructions
@@ -231,8 +283,8 @@ python manage.py shell
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DJANGO_SECRET_KEY` | - | Django secret key (**required**) |
-| `DEBUG` | `False` | Debug mode (set `True` in dev only) |
-| `ALLOWED_HOSTS` | `localhost` | Comma-separated allowed hosts |
+| `DJANGO_DEBUG` | `False` | Debug mode (set `1` only for local development) |
+| `DJANGO_ALLOWED_HOSTS` | `localhost` | Comma-separated allowed hosts |
 | `DB_ENGINE` | `postgresql` | Database engine (`postgresql`, `sqlite3`, `mssql`) |
 | `DB_NAME` | `erpdb` | Database name |
 | `DB_USER` | `postgres` | Database user |
@@ -242,6 +294,16 @@ python manage.py shell
 | `CELERY_BROKER_URL` | `redis://localhost:6379/0` | Celery broker URL |
 | `LOG_LEVEL` | `INFO` | Logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
 | `LOG_FORMAT` | `console` | Log format (`console` or `json`) |
+| `SECURE_SSL_REDIRECT` | `True` when not in debug | Enforce HTTPS in production; set `0` locally to avoid redirect loops |
+| `SESSION_COOKIE_SECURE` | `True` when not in debug | Serve session cookies only over HTTPS |
+| `CSRF_COOKIE_SECURE` | `True` when not in debug | Serve CSRF cookies only over HTTPS |
+| `SESSION_COOKIE_SAMESITE` | `Lax` | Adjust to `None` when embedding in other domains |
+| `CSRF_COOKIE_SAMESITE` | `Lax` | Match client expectations for cross-site posts |
+| `ACCOUNT_ALLOW_SIGNUP` | `0` | Disable self-service signup outside controlled environments |
+| `MAINTENANCE_MODE` | `0` | Puts the site behind the maintenance middleware when enabled |
+| `MAINTENANCE_MESSAGE` | Friendly default | Copy displayed on maintenance page/broadcasts |
+| `MAINTENANCE_RETRY_AFTER` | `300` | Seconds to communicate via `Retry-After` header |
+| `MAINTENANCE_ALLOW_URLS` | `/health/,/metrics` | Comma-separated paths that bypass maintenance mode |
 
 See [`.env.example`](.env.example) for complete list.
 

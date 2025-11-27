@@ -15,6 +15,7 @@ from accounting.models import (
     JournalType,
 )
 from accounting.services.journal_entry_service import JournalEntryService
+from accounting.services.posting_service import PostingService
 from usermanagement.models import Organization
 
 
@@ -151,9 +152,30 @@ class JournalPostingRequirementsTests(TestCase):
         Journal.objects.filter(pk=journal.pk).update(journal_number="")
         journal.refresh_from_db()
 
+        # Use the current sequence value (which may have advanced during fixture creation)
+        self.auto_number_type.refresh_from_db()
         next_seq = self.auto_number_type.sequence_next
         expected_number = f"{self.auto_number_type.auto_numbering_prefix or ''}{str(next_seq).zfill(self.auto_number_type.sequence_padding)}"
 
         posted = self.service.post(journal)
         self.assertEqual(posted.journal_number, expected_number)
         self.assertEqual(posted.status, "posted")
+
+        self.auto_number_type.refresh_from_db()
+        self.assertEqual(self.auto_number_type.sequence_next, next_seq + 1)
+
+    def test_post_rejects_closed_period(self) -> None:
+        journal = self._build_journal(self.auto_number_type, status="draft")
+        self.period.status = "closed"
+        self.period.save(update_fields=["status"])
+
+        with self.assertRaisesMessage(ValueError, PostingService.ERR_PERIOD_CLOSED):
+            self.service.post(journal)
+
+    def test_post_rejects_date_outside_selected_period(self) -> None:
+        journal = self._build_journal(self.auto_number_type, status="draft")
+        Journal.objects.filter(pk=journal.pk).update(journal_date=date(2025, 2, 5))
+        journal.refresh_from_db()
+
+        with self.assertRaisesMessage(ValueError, PostingService.ERR_PERIOD_MISMATCH):
+            self.service.post(journal)

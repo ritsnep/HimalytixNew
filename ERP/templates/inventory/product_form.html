@@ -1,15 +1,15 @@
-{% extends 'Inventory/_form_base.html' %}
+{% extends 'components/base/form_base.html' %}
 {% load i18n %}
 
-{% block page_title %}
+{% block title %}
     {% if form.instance.pk %}
         {% trans "Edit Product" %}
     {% else %}
-        {% trans "New Product" %}
+        {% trans "Create Product" %}
     {% endif %}
 {% endblock %}
 
-{% block form_title %}
+{% block form_title_text %}
     {% if form.instance.pk %}
         {% trans "Edit Product" %}: {{ form.instance.name }}
     {% else %}
@@ -17,4 +17,17 @@
     {% endif %}
 {% endblock %}
 
-{% block cancel_url %}{% url 'inventory:product_list' %}{% endblock %}
+{% block form_fields %}
+    {% include 'components/inventory/forms/product_form_fields.html' %}
+{% endblock %}
+
+{% block form_actions %}
+  <div class="d-flex gap-2 ms-auto">
+    <a href="{% url 'inventory:product_list' %}" class="btn btn-outline-secondary">
+        {% trans "Cancel" %}
+    </a>
+    <button type="submit" class="btn btn-primary" data-form-submit>
+        {% trans "Save" %}
+    </button>
+  </div>
+{% endblock %}

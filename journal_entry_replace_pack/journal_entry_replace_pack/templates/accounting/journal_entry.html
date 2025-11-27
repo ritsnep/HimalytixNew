@@ -29,6 +29,6 @@
 {% block body_extra %}
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   {# Optional: HTMX if you plan to add hx-* attributes later #}
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="{% static 'libs/htmx.org/dist/htmx.min.js' %}"></script>
   <script src="{% static 'accounting/js/voucher_entry.js' %}" defer></script>
 {% endblock %}

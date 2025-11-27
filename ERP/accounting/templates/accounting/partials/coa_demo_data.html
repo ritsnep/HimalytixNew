@@ -1,0 +1,254 @@
+<!-- Demo Data Tab Partial -->
+<div class="demo-data-section">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-primary">
+                <h5 class="alert-heading"><i class="bx bx-data"></i> Quick Start with Demo Data</h5>
+                <p class="mb-0">Select a pre-configured chart of accounts template to get started quickly. You can customize it after import.</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Demo Templates -->
+    <div class="row">
+        
+        <!-- Basic Business Template -->
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="demo-card" onclick="selectDemoTemplate('basic-business')" data-template="basic-business">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0"><i class="bx bx-briefcase text-primary"></i> Basic Business</h5>
+                    <span class="badge bg-success">Recommended</span>
+                </div>
+                <p class="text-muted mb-3">Simple chart of accounts for small businesses and startups.</p>
+                <div class="small">
+                    <strong>Includes:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>10 Assets accounts</li>
+                        <li>5 Liability accounts</li>
+                        <li>3 Equity accounts</li>
+                        <li>8 Revenue accounts</li>
+                        <li>12 Expense accounts</li>
+                    </ul>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-primary w-100 mt-3" 
+                        onclick="previewDemo('basic-business')">
+                    <i class="bx bx-show"></i> Preview
+                </button>
+            </div>
+        </div>
+        
+        <!-- Retail Template -->
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="demo-card" onclick="selectDemoTemplate('retail')" data-template="retail">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0"><i class="bx bx-store text-info"></i> Retail Business</h5>
+                    <span class="badge bg-info">Popular</span>
+                </div>
+                <p class="text-muted mb-3">Comprehensive COA for retail and e-commerce businesses.</p>
+                <div class="small">
+                    <strong>Includes:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>15 Assets (with inventory)</li>
+                        <li>8 Liability accounts</li>
+                        <li>4 Equity accounts</li>
+                        <li>12 Revenue streams</li>
+                        <li>18 Expense categories</li>
+                    </ul>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-info w-100 mt-3" 
+                        onclick="previewDemo('retail')">
+                    <i class="bx bx-show"></i> Preview
+                </button>
+            </div>
+        </div>
+        
+        <!-- Service Company Template -->
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="demo-card" onclick="selectDemoTemplate('service')" data-template="service">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0"><i class="bx bx-wrench text-warning"></i> Service Company</h5>
+                    <span class="badge bg-warning text-dark">New</span>
+                </div>
+                <p class="text-muted mb-3">Optimized for consulting and service-based businesses.</p>
+                <div class="small">
+                    <strong>Includes:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>8 Assets (no inventory)</li>
+                        <li>6 Liability accounts</li>
+                        <li>3 Equity accounts</li>
+                        <li>10 Service revenues</li>
+                        <li>15 Operating expenses</li>
+                    </ul>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-warning w-100 mt-3" 
+                        onclick="previewDemo('service')">
+                    <i class="bx bx-show"></i> Preview
+                </button>
+            </div>
+        </div>
+        
+        <!-- Manufacturing Template -->
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="demo-card" onclick="selectDemoTemplate('manufacturing')" data-template="manufacturing">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0"><i class="bx bx-cog text-danger"></i> Manufacturing</h5>
+                    <span class="badge bg-danger">Advanced</span>
+                </div>
+                <p class="text-muted mb-3">Complete COA for manufacturing and production companies.</p>
+                <div class="small">
+                    <strong>Includes:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>20 Assets (with WIP)</li>
+                        <li>10 Liability accounts</li>
+                        <li>5 Equity accounts</li>
+                        <li>15 Revenue accounts</li>
+                        <li>25 Cost/Expense accounts</li>
+                    </ul>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger w-100 mt-3" 
+                        onclick="previewDemo('manufacturing')">
+                    <i class="bx bx-show"></i> Preview
+                </button>
+            </div>
+        </div>
+        
+        <!-- Non-Profit Template -->
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="demo-card" onclick="selectDemoTemplate('nonprofit')" data-template="nonprofit">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0"><i class="bx bx-heart text-success"></i> Non-Profit</h5>
+                    <span class="badge bg-secondary">Specialized</span>
+                </div>
+                <p class="text-muted mb-3">Chart of accounts for NGOs and non-profit organizations.</p>
+                <div class="small">
+                    <strong>Includes:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>12 Assets</li>
+                        <li>7 Liability accounts</li>
+                        <li>Net Assets (Fund accounts)</li>
+                        <li>Grants & Donations</li>
+                        <li>Program expenses</li>
+                    </ul>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-3" 
+                        onclick="previewDemo('nonprofit')">
+                    <i class="bx bx-show"></i> Preview
+                </button>
+            </div>
+        </div>
+        
+        <!-- Minimal Template -->
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="demo-card" onclick="selectDemoTemplate('minimal')" data-template="minimal">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0"><i class="bx bx-file text-secondary"></i> Minimal Starter</h5>
+                    <span class="badge bg-light text-dark">Simple</span>
+                </div>
+                <p class="text-muted mb-3">Bare minimum accounts to get started, build as you go.</p>
+                <div class="small">
+                    <strong>Includes:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>5 Basic assets</li>
+                        <li>3 Basic liabilities</li>
+                        <li>1 Equity account</li>
+                        <li>2 Revenue accounts</li>
+                        <li>5 Expense accounts</li>
+                    </ul>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-3" 
+                        onclick="previewDemo('minimal')">
+                    <i class="bx bx-show"></i> Preview
+                </button>
+            </div>
+        </div>
+        
+    </div>
+    
+    <!-- Preview Modal Target -->
+    <div id="demo-preview-container" class="mt-4">
+        <!-- Preview content will be loaded here -->
+    </div>
+    
+    <!-- Import Form -->
+    <form id="demo-import-form" method="post" style="display:none;"
+          hx-post="{% url 'accounting:chart_of_accounts_demo_import' %}"
+          hx-trigger="submit"
+          hx-target="#demo-result"
+          hx-swap="innerHTML"
+          hx-indicator=".demo-spinner">
+        {% csrf_token %}
+        <input type="hidden" name="template_type" id="selected-template" value="">
+        
+        <div id="demo-result" class="mt-4"></div>
+        
+        <div class="d-flex justify-content-between align-items-center mt-4">
+            <button type="button" class="btn btn-light" onclick="cancelDemoImport()">
+                <i class="bx bx-x"></i> Cancel
+            </button>
+            <button type="submit" class="btn btn-success">
+                <i class="bx bx-download"></i> Import Selected Template
+                <span class="demo-spinner htmx-indicator spinner-border spinner-border-sm ms-1"></span>
+            </button>
+        </div>
+    </form>
+    
+</div>
+
+<script>
+let selectedTemplate = null;
+
+function selectDemoTemplate(templateName) {
+    // Remove selection from all cards
+    document.querySelectorAll('.demo-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    
+    // Add selection to clicked card
+    const card = document.querySelector(`[data-template="${templateName}"]`);
+    if (card) {
+        card.classList.add('selected');
+    }
+    
+    selectedTemplate = templateName;
+    document.getElementById('selected-template').value = templateName;
+    document.getElementById('demo-import-form').style.display = 'block';
+    
+    toastr.success(`Selected: ${templateName.replace('-', ' ').toUpperCase()} template`);
+}
+
+function previewDemo(templateName) {
+    event.stopPropagation();
+    
+    // Make HTMX request to preview endpoint
+    htmx.ajax('GET', `{% url 'accounting:chart_of_accounts_demo_preview' %}?template=${templateName}`, {
+        target: '#demo-preview-container',
+        swap: 'innerHTML'
+    });
+    
+    // Scroll to preview
+    setTimeout(() => {
+        document.getElementById('demo-preview-container').scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+        });
+    }, 100);
+}
+
+function cancelDemoImport() {
+    selectedTemplate = null;
+    document.getElementById('demo-import-form').style.display = 'none';
+    document.getElementById('demo-preview-container').innerHTML = '';
+    document.querySelectorAll('.demo-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+}
+
+// Auto-select recommended template on load
+document.addEventListener('DOMContentLoaded', function() {
+    const recommendedCard = document.querySelector('[data-template="basic-business"]');
+    if (recommendedCard && !selectedTemplate) {
+        // Just highlight it, don't auto-select
+        recommendedCard.style.borderColor = '#556ee6';
+    }
+});
+</script>

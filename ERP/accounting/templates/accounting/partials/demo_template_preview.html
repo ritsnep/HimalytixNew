@@ -1,0 +1,69 @@
+{% load i18n %}
+
+<div class="demo-template-preview">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="bx bx-file-blank"></i>
+                {{ template_metadata.name }}
+            </h5>
+            <p class="mb-0 small">{{ template_metadata.description }}</p>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th width="50">#</th>
+                            {% for key in template_data.0.keys %}
+                                {% if not key.startswith('_') %}
+                                    <th>{{ key|title }}</th>
+                                {% endif %}
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in template_data %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                {% for key, value in record.items %}
+                                    {% if not key.startswith('_') %}
+                                        <td>
+                                            {% if value is True %}
+                                                <i class="bx bx-check text-success"></i>
+                                            {% elif value is False %}
+                                                <i class="bx bx-x text-danger"></i>
+                                            {% else %}
+                                                {{ value|default:"-" }}
+                                            {% endif %}
+                                        </td>
+                                    {% endif %}
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="alert alert-info mt-3">
+                <i class="bx bx-info-circle"></i>
+                {% blocktrans with count=template_data|length %}
+                This template contains {{ count }} record(s). Click import to add them to your system.
+                {% endblocktrans %}
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="button"
+                        class="btn btn-primary"
+                        hx-post="{% url 'accounting:demo_import' model_name|lower %}"
+                        hx-vals='{"template_type": "{{ template_key }}"}'
+                        hx-target="#demo-import-results">
+                    <i class="bx bx-upload"></i> {% trans "Import Template" %}
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="this.closest('.demo-template-preview').remove()">
+                    <i class="bx bx-x"></i> {% trans "Cancel" %}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -105,3 +105,52 @@ class PermissionRequiredMixin(LoginRequiredMixin, UserOrganizationMixin):
             return self.handle_no_permission()
 
         return super().dispatch(request, *args, **kwargs)
+
+
+class AdvancedFormMixin:
+    """
+    Mixin to add advanced form features to any CreateView/UpdateView
+    Features include: multi-tabs, bulk import, templates, keyboard shortcuts
+    
+    Usage:
+        class MyCreateView(AdvancedFormMixin, PermissionRequiredMixin, CreateView):
+            app_name = 'accounting'
+            model_name = 'chart_of_accounts'
+            template_name = 'components/_form_base_advanced.html'  # or inherit from it
+    """
+    app_name = None  # e.g., 'accounting', 'billing', 'inventory'
+    model_name = None  # e.g., 'chart_of_accounts', 'invoice', 'product'
+    
+    def get_form_features(self):
+        """Get enabled features from settings"""
+        from django.conf import settings
+        
+        features_config = getattr(settings, 'ADVANCED_FORM_FEATURES', {})
+        
+        # Get app-specific configuration
+        app_config = features_config.get(self.app_name, {})
+        model_config = app_config.get(self.model_name, {})
+        
+        # Merge with global defaults
+        default_config = features_config.get('default', {})
+        merged_config = {**default_config, **model_config}
+        
+        return merged_config
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Add form feature toggles
+        features = self.get_form_features()
+        context.update(features)
+        
+        # Add form metadata
+        context['form_id'] = f'{self.model_name}-form'
+        context['app_name'] = self.app_name
+        context['model_name'] = self.model_name
+        
+        # Add list URL if not provided
+        if 'list_url' not in context and hasattr(self, 'success_url'):
+            context['list_url'] = self.success_url
+        
+        return context

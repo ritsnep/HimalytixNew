@@ -1,0 +1,222 @@
+<!-- Bulk Import Form Partial -->
+<div class="bulk-import-section">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <h5 class="alert-heading"><i class="bx bx-info-circle"></i> Bulk Import Instructions</h5>
+                <p class="mb-2">You can import multiple accounts at once using one of these methods:</p>
+                <ul class="mb-0">
+                    <li><strong>Copy from Excel:</strong> Copy rows from Excel/Google Sheets and paste into the text area below</li>
+                    <li><strong>Manual Entry:</strong> Enter tab-separated values (one account per line)</li>
+                    <li><strong>CSV Upload:</strong> Upload a CSV file with account data</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Expected Format -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h6 class="card-title"><i class="bx bx-table"></i> Expected Format</h6>
+                    <p class="mb-2">Columns (Tab-separated or comma-separated):</p>
+                    <code class="d-block p-2 bg-white border rounded">
+                        Account Code | Account Name | Account Type | Parent Code | Description | Active
+                    </code>
+                    <p class="mt-2 mb-0 small text-muted">
+                        <strong>Example:</strong><br>
+                        <code>1000 | Cash | asset | | Cash on Hand | true</code><br>
+                        <code>1100 | Accounts Receivable | asset | 1000 | Customer Receivables | true</code>
+                    </p>
+                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="downloadSampleCSV()">
+                        <i class="bx bx-download"></i> Download Sample CSV
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Paste Area -->
+    <form id="bulk-import-form" method="post" 
+          hx-post="{% url 'accounting:chart_of_accounts_bulk_create' %}"
+          hx-trigger="submit"
+          hx-target="#bulk-preview"
+          hx-swap="innerHTML"
+          hx-indicator=".bulk-spinner">
+        {% csrf_token %}
+        
+        <div class="row mb-4">
+            <div class="col-12">
+                <label for="bulk-data" class="form-label required-field">
+                    Paste Data from Excel or Enter Manually
+                </label>
+                <div class="bulk-import-container" id="pasteArea">
+                    <textarea name="bulk_data" id="bulk-data" class="form-control" rows="12" 
+                              placeholder="Paste from Excel here... (Tab-separated)&#10;&#10;Example:&#10;1000	Cash	asset		Cash on Hand	true&#10;1100	Accounts Receivable	asset	1000	Customer Receivables	true&#10;1200	Inventory	asset		Merchandise Inventory	true"
+                              required></textarea>
+                    <div class="mt-3">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearPasteArea()">
+                            <i class="bx bx-trash"></i> Clear
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="fillSampleData()">
+                            <i class="bx bx-data"></i> Load Sample Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Options -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="skip_errors" id="skip-errors" checked>
+                    <label class="form-check-label" for="skip-errors">
+                        Skip rows with errors and import valid ones
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="update_existing" id="update-existing">
+                    <label class="form-check-label" for="update-existing">
+                        Update existing accounts
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="validate_only" id="validate-only">
+                    <label class="form-check-label" for="validate-only">
+                        Validate only (don't save)
+                    </label>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bx bx-search-alt"></i> Preview & Validate
+                    <span class="bulk-spinner htmx-indicator spinner-border spinner-border-sm ms-1"></span>
+                </button>
+                <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('csv-upload').click()">
+                    <i class="bx bx-upload"></i> Upload CSV File
+                </button>
+                <input type="file" id="csv-upload" accept=".csv,.txt" style="display:none" onchange="handleFileUpload(event)">
+            </div>
+        </div>
+    </form>
+    
+    <!-- Preview Section -->
+    <div id="bulk-preview" class="mt-4">
+        <!-- Preview will be loaded here via HTMX -->
+    </div>
+    
+</div>
+
+<script>
+// Sample Data for Quick Testing
+const sampleBulkData = `1000	Cash	asset		Cash and cash equivalents	true
+1010	Petty Cash	asset	1000	Small cash fund	true
+1100	Accounts Receivable	asset		Customer receivables	true
+1200	Inventory	asset		Merchandise inventory	true
+2000	Accounts Payable	liability		Vendor payables	true
+2100	Accrued Expenses	liability		Expenses incurred but not paid	true
+3000	Owner's Equity	equity		Owner's capital account	true
+4000	Sales Revenue	revenue		Revenue from sales	true
+5000	Cost of Goods Sold	expense		Direct costs of sales	true
+5100	Salaries Expense	expense		Employee salaries	true`;
+
+function fillSampleData() {
+    document.getElementById('bulk-data').value = sampleBulkData;
+    toastr.success('Sample data loaded! Click "Preview & Validate" to continue.');
+}
+
+function clearPasteArea() {
+    document.getElementById('bulk-data').value = '';
+    document.getElementById('bulk-preview').innerHTML = '';
+}
+
+function downloadSampleCSV() {
+    const csvContent = `Account Code,Account Name,Account Type,Parent Code,Description,Active
+1000,Cash,asset,,Cash and cash equivalents,true
+1010,Petty Cash,asset,1000,Small cash fund,true
+1100,Accounts Receivable,asset,,Customer receivables,true
+1200,Inventory,asset,,Merchandise inventory,true
+2000,Accounts Payable,liability,,Vendor payables,true
+2100,Accrued Expenses,liability,,Expenses incurred but not paid,true
+3000,Owner's Equity,equity,,Owner's capital account,true
+4000,Sales Revenue,revenue,,Revenue from sales,true
+5000,Cost of Goods Sold,expense,,Direct costs of sales,true
+5100,Salaries Expense,expense,,Employee salaries,true`;
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'chart_of_accounts_sample.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    toastr.success('Sample CSV downloaded!');
+}
+
+function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const content = e.target.result;
+        // Convert CSV to tab-separated if needed
+        const converted = content.replace(/,/g, '\t');
+        document.getElementById('bulk-data').value = converted;
+        toastr.success('File loaded! Review the data and click "Preview & Validate".');
+    };
+    reader.readAsText(file);
+}
+
+// Drag and drop support
+const pasteArea = document.getElementById('pasteArea');
+if (pasteArea) {
+    pasteArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.classList.add('dragover');
+    });
+    
+    pasteArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.classList.remove('dragover');
+    });
+    
+    pasteArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            const file = files[0];
+            if (file.type === 'text/csv' || file.name.endsWith('.csv') || file.name.endsWith('.txt')) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const content = event.target.result;
+                    const converted = content.replace(/,/g, '\t');
+                    document.getElementById('bulk-data').value = converted;
+                    toastr.success('File dropped! Review and validate.');
+                };
+                reader.readAsText(file);
+            } else {
+                toastr.error('Please drop a CSV or TXT file.');
+            }
+        }
+    });
+}
+</script>

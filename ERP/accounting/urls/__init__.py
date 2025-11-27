@@ -39,6 +39,11 @@ from ..views.views import (
 )
 from ..views.views_list import ChartOfAccountListPartial
 from ..views.views_list import ChartOfAccountListView
+from ..views import chart_of_account_enhanced
+from ..views.currency_bulk_import import (
+    CurrencyBulkCreateView as CurrencyBulkImportView,
+    CurrencyDemoImportView as CurrencyDemoView,
+)
 
 # Import from views_create.py
 from ..views.views_create import (
@@ -213,6 +218,11 @@ urlpatterns = [
     path('chart-of-accounts/<int:pk>/update/', ChartOfAccountUpdateView.as_view(), name='chart_of_accounts_update'),
     path('chart-of-accounts/<int:pk>/delete/', ChartOfAccountDeleteView.as_view(), name='chart_of_accounts_delete'),
     path('chart-of-accounts/form-fields/', ChartOfAccountFormFieldsView.as_view(), name='chart_of_accounts_form_fields'),
+    
+    # Enhanced Chart of Accounts - Bulk Import & Demo Data
+    path('chart-of-accounts/bulk-create/', chart_of_account_enhanced.ChartOfAccountBulkCreateView.as_view(), name='chart_of_accounts_bulk_create'),
+    path('chart-of-accounts/demo-import/', chart_of_account_enhanced.ChartOfAccountDemoImportView.as_view(), name='chart_of_accounts_demo_import'),
+    path('chart-of-accounts/demo-preview/', chart_of_account_enhanced.ChartOfAccountDemoPreviewView.as_view(), name='chart_of_accounts_demo_preview'),
 
     # Account Type URLs
     path('account-types/', AccountTypeListView.as_view(), name='account_type_list'),
@@ -223,6 +233,9 @@ urlpatterns = [
     # Currency URLs
     path('currencies/', CurrencyListView.as_view(), name='currency_list'),
     path('currencies/create/', CurrencyCreateView.as_view(), name='currency_create'),
+    path('currencies/bulk-import/', CurrencyBulkImportView.as_view(), name='currency_bulk_import'),
+    path('currencies/demo-import/', CurrencyDemoView.as_view(), name='currency_demo_import'),
+    path('currencies/demo-preview/', CurrencyDemoView.as_view(), name='currency_demo_preview'),
     path('currencies/<str:currency_code>/edit/', CurrencyUpdateView.as_view(), name='currency_update'),
     path('currencies/<str:currency_code>/delete/', CurrencyDeleteView.as_view(), name='currency_delete'),
 

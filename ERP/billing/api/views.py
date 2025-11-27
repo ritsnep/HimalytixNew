@@ -47,7 +47,7 @@ class SubscriptionPlanViewSet(BaseBillingViewSet):
     queryset = SubscriptionPlan.objects.prefetch_related('usage_tiers')
     serializer_class = SubscriptionPlanSerializer
     search_fields = ['code', 'name']
-    filterset_fields = ['plan_type', 'billing_frequency_unit', 'is_active']
+    filterset_fields = ['plan_type', 'billing_cycle', 'is_active']
     ordering_fields = ['code', 'name', 'base_price', 'created_at']
     
     @action(detail=False, methods=['get'])
@@ -55,10 +55,7 @@ class SubscriptionPlanViewSet(BaseBillingViewSet):
         """Get currently active subscription plans"""
         now = timezone.now().date()
         active_plans = self.get_queryset().filter(
-            is_active=True,
-            valid_from__lte=now
-        ).filter(
-            Q(valid_to__isnull=True) | Q(valid_to__gte=now)
+            is_active=True
         )
         return Response(SubscriptionPlanSerializer(active_plans, many=True).data)
 
@@ -74,10 +71,10 @@ class UsageTierViewSet(viewsets.ModelViewSet):
 
 
 class SubscriptionViewSet(BaseBillingViewSet):
-    queryset = Subscription.objects.select_related('plan')
+    queryset = Subscription.objects.select_related('subscription_plan')
     serializer_class = SubscriptionSerializer
     search_fields = ['subscription_number', 'customer_id']
-    filterset_fields = ['status', 'plan', 'customer_id']
+    filterset_fields = ['status', 'subscription_plan', 'customer_id']
     ordering_fields = ['start_date', 'current_period_end', 'created_at']
     
     @action(detail=False, methods=['get'])
@@ -156,8 +153,8 @@ class SubscriptionViewSet(BaseBillingViewSet):
 class SubscriptionUsageViewSet(BaseBillingViewSet):
     queryset = SubscriptionUsage.objects.select_related('subscription')
     serializer_class = SubscriptionUsageSerializer
-    filterset_fields = ['subscription', 'is_billed', 'usage_metric']
-    ordering_fields = ['period_start', 'quantity_used', 'overage_charge']
+    filterset_fields = ['subscription', 'is_billed', 'usage_type']
+    ordering_fields = ['usage_date', 'quantity', 'calculated_amount']
     
     @action(detail=False, methods=['get'])
     def unbilled(self, request):
@@ -170,44 +167,16 @@ class SubscriptionInvoiceViewSet(BaseBillingViewSet):
     queryset = SubscriptionInvoice.objects.select_related('subscription')
     serializer_class = SubscriptionInvoiceSerializer
     search_fields = ['invoice_number']
-    filterset_fields = ['subscription', 'status']
-    ordering_fields = ['invoice_date', 'due_date', 'total_amount']
-    
-    @action(detail=False, methods=['get'])
-    def overdue(self, request):
-        """Get overdue invoices"""
-        now = timezone.now().date()
-        overdue = self.get_queryset().filter(
-            status__in=['draft', 'sent'],
-            due_date__lt=now
-        )
-        return Response(SubscriptionInvoiceSerializer(overdue, many=True).data)
-    
-    @action(detail=True, methods=['post'])
-    def record_payment(self, request, pk=None):
-        """Record payment for an invoice"""
-        invoice = self.get_object()
-        payment_date = request.data.get('payment_date', timezone.now().date())
-        payment_method = request.data.get('payment_method', '')
-        
-        if invoice.status == 'paid':
-            return Response({'error': 'Invoice already paid'}, status=400)
-        
-        invoice.status = 'paid'
-        invoice.payment_date = payment_date
-        invoice.payment_method = payment_method
-        invoice.updated_by = request.user.id
-        invoice.save()
-        
-        return Response(SubscriptionInvoiceSerializer(invoice).data)
+    filterset_fields = ['subscription']
+    ordering_fields = ['created_at', 'invoice_number', 'total_amount']
 
 
 class DeferredRevenueViewSet(BaseBillingViewSet):
-    queryset = DeferredRevenue.objects.select_related('subscription').prefetch_related('schedule')
+    queryset = DeferredRevenue.objects.select_related('subscription').prefetch_related('schedule_lines')
     serializer_class = DeferredRevenueSerializer
-    search_fields = ['invoice_number']
+    search_fields = ['invoice_id']
     filterset_fields = ['subscription', 'is_fully_recognized', 'recognition_method']
-    ordering_fields = ['recognition_start_date', 'deferred_amount']
+    ordering_fields = ['service_period_start', 'deferred_amount']
     
     @action(detail=False, methods=['get'])
     def pending_recognition(self, request):
