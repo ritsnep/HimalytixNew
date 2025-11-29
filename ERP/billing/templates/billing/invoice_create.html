@@ -1,0 +1,7 @@
+{% comment %}
+This file is a thin wrapper so the view `invoice_create` can render
+`billing/invoice_create.html` while the full template is maintained in
+`billing/invoice_create_template.html` for easier editing.
+{% endcomment %}
+
+{% include 'billing/invoice_create_template.html' %}

@@ -384,6 +384,13 @@ LOGIN_URL = '/accounts/login/'  # or whatever your login URL is
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# IRD E-Billing Configuration (can be overridden by environment variables)
+IRD_API_URL = os.getenv('IRD_API_URL', 'https://ird.gov.np/api/v1')
+IRD_USERNAME = os.getenv('IRD_USERNAME', '')
+IRD_PASSWORD = os.getenv('IRD_PASSWORD', '')
+IRD_SELLER_PAN = os.getenv('IRD_SELLER_PAN', '')
+
+
 
 # =============================================================================
 # STRUCTURED LOGGING CONFIGURATION (structlog)

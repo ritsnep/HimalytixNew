@@ -1,0 +1,321 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Invoice {{ invoice.invoice_number }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-lg-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">Invoice {{ invoice.invoice_number }}</h1>
+                    <small class="text-muted">Created: {{ invoice.created_at|date:"Y-m-d H:i" }}</small>
+                </div>
+                <div>
+                    <a href="{% url 'accounting:invoice_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to List
+                    </a>
+                    {% if invoice.status == 'draft' and invoice.ird_status != 'synced' %}
+                    <a href="{% url 'accounting:invoice_edit' invoice.invoice_id %}" class="btn btn-warning">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'accounting:invoice_print' invoice.invoice_id %}" 
+                       class="btn btn-secondary" target="_blank">
+                        <i class="fas fa-print"></i> Print
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Invoice Details -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Invoice Details</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <h6>Customer Information</h6>
+                            <p class="mb-1"><strong>{{ invoice.customer_display_name }}</strong></p>
+                            {% if invoice.customer %}
+                            <p class="mb-0 text-muted">{{ invoice.customer.address|default:"" }}</p>
+                            <p class="mb-0 text-muted">PAN: {{ invoice.customer.tax_id|default:"N/A" }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <p class="mb-1"><strong>Invoice Date:</strong> {{ invoice.invoice_date|date:"Y-m-d" }}</p>
+                            <p class="mb-1"><strong>Due Date:</strong> {{ invoice.due_date|date:"Y-m-d" }}</p>
+                            <p class="mb-1"><strong>Currency:</strong> {{ invoice.currency.code }}</p>
+                            {% if invoice.reference_number %}
+                            <p class="mb-1"><strong>Reference:</strong> {{ invoice.reference_number }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Invoice Lines -->
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Description</th>
+                                    <th class="text-end">Qty</th>
+                                    <th class="text-end">Unit Price</th>
+                                    <th class="text-end">Amount</th>
+                                    <th class="text-end">Tax</th>
+                                    <th class="text-end">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for line in lines %}
+                                <tr>
+                                    <td>{{ line.line_number }}</td>
+                                    <td>
+                                        {{ line.description }}
+                                        {% if line.product_code %}
+                                        <br><small class="text-muted">Code: {{ line.product_code }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">{{ line.quantity }}</td>
+                                    <td class="text-end">{{ line.unit_price|floatformat:2 }}</td>
+                                    <td class="text-end">{{ line.line_total|floatformat:2 }}</td>
+                                    <td class="text-end">{{ line.tax_amount|floatformat:2 }}</td>
+                                    <td class="text-end">
+                                        <strong>{{ line.line_total|floatformat:2 }}</strong>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="6" class="text-end"><strong>Subtotal:</strong></td>
+                                    <td class="text-end"><strong>{{ invoice.subtotal|floatformat:2 }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="6" class="text-end"><strong>Tax Total:</strong></td>
+                                    <td class="text-end"><strong>{{ invoice.tax_total|floatformat:2 }}</strong></td>
+                                </tr>
+                                <tr class="table-active">
+                                    <td colspan="6" class="text-end"><strong>Grand Total:</strong></td>
+                                    <td class="text-end">
+                                        <strong class="h5">{{ invoice.currency.code }} {{ invoice.total|floatformat:2 }}</strong>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    {% if invoice.notes %}
+                    <div class="mt-3">
+                        <h6>Notes:</h6>
+                        <p>{{ invoice.notes }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar - Status & IRD Info -->
+        <div class="col-lg-4">
+            <!-- Status Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Status</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">
+                        <strong>Invoice Status:</strong>
+                        <span class="badge bg-{{ invoice.status|yesno:'success,warning,danger' }}">
+                            {{ invoice.get_status_display }}
+                        </span>
+                    </p>
+                    <p class="mb-2">
+                        <strong>IRD Status:</strong>
+                        {% if invoice.ird_status == 'synced' %}
+                        <span class="badge bg-success">
+                            <i class="fas fa-check"></i> Synced
+                        </span>
+                        {% elif invoice.ird_status == 'failed' %}
+                        <span class="badge bg-danger">
+                            <i class="fas fa-times"></i> Failed
+                        </span>
+                        {% elif invoice.ird_status == 'pending' %}
+                        <span class="badge bg-warning">
+                            <i class="fas fa-clock"></i> Pending
+                        </span>
+                        {% else %}
+                        <span class="badge bg-secondary">Not Submitted</span>
+                        {% endif %}
+                    </p>
+
+                    <!-- Action Buttons -->
+                    <div class="mt-3">
+                        {% if invoice.status == 'draft' %}
+                        <form method="post" action="{% url 'accounting:invoice_post' invoice.invoice_id %}">
+                            {% csrf_token %}
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="auto_submit_ird" 
+                                       id="autoSubmitIrd" value="true">
+                                <label class="form-check-label" for="autoSubmitIrd">
+                                    Auto-submit to IRD
+                                </label>
+                            </div>
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="fas fa-check"></i> Post Invoice
+                            </button>
+                        </form>
+                        {% endif %}
+
+                        {% if invoice.status == 'posted' and invoice.ird_status != 'synced' %}
+                        <button class="btn btn-primary w-100 mb-2" id="submitToIrdBtn">
+                            <i class="fas fa-upload"></i> Submit to IRD
+                        </button>
+                        {% endif %}
+
+                        {% if invoice.ird_status == 'synced' %}
+                        <a href="{% url 'accounting:invoice_cancel_ird' invoice.invoice_id %}" 
+                           class="btn btn-danger w-100">
+                            <i class="fas fa-ban"></i> Cancel in IRD
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- IRD Information -->
+            {% if invoice.ird_status == 'synced' %}
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-check-circle"></i> IRD Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2"><strong>Acknowledgment ID:</strong><br>
+                        <code>{{ invoice.ird_ack_id }}</code>
+                    </p>
+                    <p class="mb-2"><strong>Signature:</strong><br>
+                        <small><code>{{ invoice.ird_signature|truncatechars:50 }}</code></small>
+                    </p>
+                    <p class="mb-2"><strong>Submitted:</strong><br>
+                        {{ invoice.ird_last_submitted_at|date:"Y-m-d H:i:s" }}
+                    </p>
+                    {% if invoice.ird_fiscal_year_code %}
+                    <p class="mb-2"><strong>Fiscal Year:</strong> {{ invoice.ird_fiscal_year_code }}</p>
+                    {% endif %}
+                    <p class="mb-2"><strong>Reprint Count:</strong> {{ invoice.ird_reprint_count }}</p>
+
+                    <!-- QR Code -->
+                    {% if qr_data %}
+                    <div class="text-center mt-3">
+                        <h6>QR Code</h6>
+                        <img src="{% url 'accounting:invoice_qr_code' invoice.invoice_id %}" 
+                             alt="Invoice QR Code" class="img-fluid" style="max-width: 200px;">
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- IRD Failed Information -->
+            {% if invoice.ird_status == 'failed' %}
+            <div class="card shadow mb-4 border-danger">
+                <div class="card-header py-3 bg-danger text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-exclamation-triangle"></i> IRD Submission Failed
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if invoice.ird_last_response %}
+                    <p class="mb-0"><strong>Error Message:</strong></p>
+                    <p class="text-danger">{{ invoice.ird_last_response.message|default:"Unknown error" }}</p>
+                    {% endif %}
+                    <button class="btn btn-warning w-100" id="retryIrdBtn">
+                        <i class="fas fa-redo"></i> Retry Submission
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Audit Trail -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Audit Trail</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-1"><small><strong>Created:</strong> {{ invoice.created_at|date:"Y-m-d H:i" }}</small></p>
+                    {% if invoice.created_by %}
+                    <p class="mb-1"><small><strong>Created By:</strong> {{ invoice.created_by.get_full_name|default:invoice.created_by.username }}</small></p>
+                    {% endif %}
+                    <p class="mb-1"><small><strong>Updated:</strong> {{ invoice.updated_at|date:"Y-m-d H:i" }}</small></p>
+                    {% if invoice.updated_by %}
+                    <p class="mb-0"><small><strong>Updated By:</strong> {{ invoice.updated_by.get_full_name|default:invoice.updated_by.username }}</small></p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Submit to IRD button
+document.getElementById('submitToIrdBtn')?.addEventListener('click', function() {
+    if (!confirm('Submit this invoice to IRD?')) {
+        return;
+    }
+    
+    fetch('{% url "accounting:invoice_submit_ird" invoice.invoice_id %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Invoice submitted to IRD successfully!\nAck ID: ' + data.ird_ack_id);
+            location.reload();
+        } else {
+            alert('IRD submission failed: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error: ' + error);
+    });
+});
+
+// Retry IRD submission
+document.getElementById('retryIrdBtn')?.addEventListener('click', function() {
+    if (!confirm('Retry IRD submission?')) {
+        return;
+    }
+    
+    fetch('{% url "accounting:invoice_submit_ird" invoice.invoice_id %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Invoice submitted to IRD successfully!');
+            location.reload();
+        } else {
+            alert('IRD submission failed: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error: ' + error);
+    });
+});
+</script>
+{% endblock %}

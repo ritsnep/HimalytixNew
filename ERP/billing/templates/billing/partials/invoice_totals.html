@@ -1,0 +1,33 @@
+<div class="totals-section">
+    <div class="total-row">
+        <span>Subtotal:</span>
+        <strong>NPR {{ subtotal|default:0|floatformat:2 }}</strong>
+    </div>
+    
+    <div class="total-row">
+        <span>Discount:</span>
+        <div class="d-flex gap-2 align-items-center">
+            <input type="number" 
+                   class="form-control form-control-sm" 
+                   name="discount_percent"
+                   placeholder="%"
+                   style="width: 80px;"
+                   min="0"
+                   max="100"
+                   step="0.01"
+                   value="0"
+                   onchange="recalculateTotal()">
+            <strong>NPR {{ discount_amount|default:0|floatformat:2 }}</strong>
+        </div>
+    </div>
+    
+    <div class="total-row">
+        <span>Tax (VAT):</span>
+        <strong>NPR {{ tax_total|default:0|floatformat:2 }}</strong>
+    </div>
+    
+    <div class="total-row grand-total">
+        <span>TOTAL:</span>
+        <strong>NPR {{ total|default:0|floatformat:2 }}</strong>
+    </div>
+</div>

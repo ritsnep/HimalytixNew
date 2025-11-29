@@ -1,0 +1,175 @@
+<!-- billing/templates/billing/partials/invoice_line_row.html -->
+<div class="invoice-line-row">
+    <input type="hidden" name="line_index[]" value="{{ line_index }}">
+    
+    <div class="row">
+        <!-- Description / Product -->
+        <div class="col-md-4">
+            <div class="form-group">
+                <label class="small">Description *</label>
+                <input type="text" 
+                       class="form-control form-control-sm" 
+                       name="description_{{ line_index }}"
+                       placeholder="Item description"
+                       required>
+                <input type="hidden" name="product_id_{{ line_index }}" id="productId_{{ line_index }}">
+            </div>
+        </div>
+        
+        <!-- Quantity -->
+        <div class="col-md-2">
+            <div class="form-group">
+                <label class="small">Quantity *</label>
+                <input type="number" 
+                       class="form-control form-control-sm" 
+                       name="quantity_{{ line_index }}"
+                       step="0.01"
+                       min="0"
+                       value="1"
+                       required>
+            </div>
+        </div>
+        
+        <!-- Unit Price -->
+        <div class="col-md-2">
+            <div class="form-group">
+                <label class="small">Unit Price *</label>
+                <input type="number" 
+                       class="form-control form-control-sm" 
+                       name="unit_price_{{ line_index }}"
+                       step="0.01"
+                       min="0"
+                       value="0"
+                       required>
+            </div>
+        </div>
+        
+        <!-- Tax Rate -->
+        <div class="col-md-2">
+            <div class="form-group">
+                <label class="small">Tax Rate</label>
+                <select class="form-control form-control-sm" 
+                        name="tax_rate_{{ line_index }}">
+                    <option value="">No Tax</option>
+                    {% for tax in tax_rates %}
+                    <option value="{{ tax.tax_code_id }}">
+                        {{ tax.name }} ({{ tax.rate }}%)
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        
+        <!-- Revenue Account -->
+        <div class="col-md-2">
+            <div class="form-group">
+                <label class="small">Account</label>
+                <select class="form-control form-control-sm" 
+                        name="revenue_account_{{ line_index }}">
+                    {% for account in revenue_accounts %}
+                    <option value="{{ account.account_id }}" {% if account.is_default %}selected{% endif %}>
+                        {{ account.account_code }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row align-items-center">
+        <div class="col-md-10">
+            <div class="text-end">
+                <small class="text-muted">
+                    Line Total: <strong id="lineTotal_{{ line_index }}">0.00</strong>
+                </small>
+            </div>
+        </div>
+        <div class="col-md-2 text-end">
+            <button type="button" 
+                    class="btn btn-sm btn-danger"
+                    onclick="removeLine(this)">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- billing/templates/billing/partials/customer_results.html -->
+{% if customers %}
+    {% for customer in customers %}
+    <div class="customer-item" onclick="selectCustomer('{{ customer.customer_id }}', '{{ customer.customer_name }}')">
+        <div>
+            <strong>{{ customer.customer_name }}</strong>
+            {% if customer.tax_id %}
+            <span class="badge badge-secondary ms-2">PAN: {{ customer.tax_id }}</span>
+            {% endif %}
+        </div>
+        <small class="text-muted">
+            {% if customer.phone %}{{ customer.phone }}{% endif %}
+            {% if customer.email %} • {{ customer.email }}{% endif %}
+        </small>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="customer-item text-muted">
+        No customers found. Press Enter to use as new customer.
+    </div>
+{% endif %}
+
+<!-- billing/templates/billing/partials/product_results.html -->
+{% if products %}
+    {% for product in products %}
+    <div class="product-item" onclick="selectProduct('{{ line_index }}', '{{ product.id }}', '{{ product.name }}', '{{ product.sale_price }}')">
+        <div>
+            <strong>{{ product.code }}</strong> - {{ product.name }}
+        </div>
+        <small class="text-muted">
+            Price: NPR {{ product.sale_price }}
+            {% if product.uom %} • Unit: {{ product.uom }}{% endif %}
+        </small>
+    </div>
+{% else %}
+    <div class="product-item text-muted">
+        No products found
+    </div>
+{% endif %}
+
+<!-- billing/templates/billing/partials/invoice_totals.html -->
+<div class="totals-section">
+    <div class="total-row">
+        <span>Subtotal:</span>
+        <strong>NPR {{ subtotal|default:0|floatformat:2 }}</strong>
+    </div>
+    
+    <div class="total-row">
+        <span>Discount:</span>
+        <div class="d-flex gap-2 align-items-center">
+            <input type="number" 
+                   class="form-control form-control-sm" 
+                   name="discount_percent"
+                   placeholder="%"
+                   style="width: 80px;"
+                   min="0"
+                   max="100"
+                   step="0.01"
+                   value="0"
+                   onchange="recalculateTotal()">
+            <strong>NPR {{ discount_amount|default:0|floatformat:2 }}</strong>
+        </div>
+    </div>
+    
+    <div class="total-row">
+        <span>Tax (VAT):</span>
+        <strong>NPR {{ tax_total|default:0|floatformat:2 }}</strong>
+    </div>
+    
+    <div class="total-row grand-total">
+        <span>TOTAL:</span>
+        <strong>NPR {{ total|default:0|floatformat:2 }}</strong>
+    </div>
+</div>
+
+<!-- billing/templates/billing/partials/line_total_display.html -->
+<script>
+    document.getElementById('lineTotal_{{ line_index }}').textContent = '{{ line_total|floatformat:2 }}';
+</script>

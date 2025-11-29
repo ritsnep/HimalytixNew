@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block title %}Export Tally{% endblock %}
+{% block content %}
+<div class="container">
+  <h1>Export to Tally</h1>
+  <form method="post">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label>Start Date</label>
+      <input type="date" name="start_date" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label>End Date</label>
+      <input type="date" name="end_date" class="form-control" required>
+    </div>
+    <button class="btn btn-primary">Export</button>
+  </form>
+</div>
+{% endblock %}

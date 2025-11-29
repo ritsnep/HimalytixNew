@@ -1,0 +1,334 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block title %}Create Sales Invoice{% endblock %}
+
+{% block extra_css %}
+<style>
+    .invoice-form {
+        background: white;
+        border-radius: 8px;
+        padding: 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .form-section {
+        margin-bottom: 24px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .form-section:last-child {
+        border-bottom: none;
+    }
+    .section-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 16px;
+    }
+    .customer-search-results {
+        position: absolute;
+        background: white;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        max-height: 200px;
+        overflow-y: auto;
+        width: 100%;
+        z-index: 10;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .customer-item {
+        padding: 8px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    .customer-item:hover {
+        background: #f9fafb;
+    }
+    .invoice-line-row {
+        background: #f9fafb;
+        padding: 12px;
+        margin-bottom: 8px;
+        border-radius: 4px;
+        border: 1px solid #e5e7eb;
+    }
+    .line-controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+    .totals-section {
+        background: #f9fafb;
+        padding: 16px;
+        border-radius: 8px;
+        margin-top: 24px;
+    }
+    .total-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+    }
+    .total-row.grand-total {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1f2937;
+        border-top: 2px solid #d1d5db;
+        padding-top: 12px;
+        margin-top: 8px;
+    }
+    .btn {
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s;
+    }
+    .btn-primary {
+        background: #3b82f6;
+        color: white;
+    }
+    .btn-primary:hover {
+        background: #2563eb;
+    }
+    .btn-secondary {
+        background: #6b7280;
+        color: white;
+    }
+    .btn-secondary:hover {
+        background: #4b5563;
+    }
+    .btn-success {
+        background: #10b981;
+        color: white;
+    }
+    .btn-success:hover {
+        background: #059669;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-header mb-4">
+                <h1 class="page-title">Create Sales Invoice</h1>
+                <p class="text-muted">Enter invoice details and submit to IRD</p>
+            </div>
+
+            <!-- Quick creation toolbar: Chart of Accounts, Journal Entry, Customers, Products -->
+            <div class="d-flex gap-2 mb-3">
+                <a class="btn btn-outline-primary btn-sm" href="{% url 'accounting:chart_of_accounts_create' %}">
+                    <i class="mdi mdi-book-plus"></i> New Account
+                </a>
+                <a class="btn btn-outline-primary btn-sm" href="{% url 'accounting:journal_entry' %}">
+                    <i class="mdi mdi-file-document-edit"></i> Journal Entry
+                </a>
+                <a class="btn btn-outline-secondary btn-sm" href="{% url 'accounting:customer_list' %}">
+                    <i class="mdi mdi-account-multiple-plus"></i> Customers
+                </a>
+                <a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:product_list' %}">
+                    <i class="mdi mdi-cube-plus"></i> Products
+                </a>
+            </div>
+
+            <form id="invoiceForm" method="post" action="{% url 'billing:invoice_save' %}">
+                {% csrf_token %}
+                
+                <div class="invoice-form">
+                    <!-- Customer Section -->
+                    <div class="form-section">
+                        <h3 class="section-title">Customer Information</h3>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group position-relative">
+                                    <label>Customer *</label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="customerSearch"
+                                           placeholder="Search customer by name, phone, or PAN"
+                                             hx-get="{% url 'billing:customer_search' %}"
+                                           hx-trigger="keyup changed delay:300ms"
+                                           hx-target="#customerResults"
+                                           hx-include="[name='q']"
+                                           autocomplete="off">
+                                    <input type="hidden" name="customer_id" id="customerId">
+                                    <input type="hidden" name="customer_name" id="customerName">
+                                    <div id="customerResults" class="customer-search-results" style="display:none;"></div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Invoice Date *</label>
+                                    <input type="date" 
+                                           class="form-control" 
+                                           name="invoice_date" 
+                                           value="{{ today|date:'Y-m-d' }}"
+                                           required>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Due Date</label>
+                                    <input type="date" 
+                                           class="form-control" 
+                                           name="due_date">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Reference Number</label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="reference_number"
+                                           placeholder="PO number or reference">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Invoice Lines Section -->
+                    <div class="form-section">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h3 class="section-title mb-0">Invoice Items</h3>
+                                <button type="button" 
+                                    class="btn btn-primary"
+                                    hx-get="{% url 'billing:add_invoice_line' %}?index=1"
+                                    hx-target="#invoiceLines"
+                                    hx-swap="beforeend"
+                                    onclick="updateLineIndices()">
+                                <i class="fas fa-plus"></i> Add Line
+                            </button>
+                        </div>
+                        
+                        <div id="invoiceLines">
+                            <!-- Invoice lines will be added here via HTMX -->
+                            {% include 'billing/partials/invoice_line_row.html' with line_index=1 %}
+                        </div>
+                    </div>
+
+                    <!-- Totals Section -->
+                    <div class="form-section">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Notes (Internal)</label>
+                                    <textarea class="form-control" 
+                                              name="notes" 
+                                              rows="3"
+                                              placeholder="Internal notes (not shown to customer)"></textarea>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div id="invoiceTotals">
+                                    {% include 'billing/partials/invoice_totals.html' with subtotal=0 tax_total=0 total=0 %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="form-section">
+                        <div class="d-flex gap-2 justify-content-end">
+                            <button type="button" 
+                                    class="btn btn-secondary"
+                                    onclick="window.history.back()">
+                                Cancel
+                            </button>
+                            <button type="submit" 
+                                    name="action" 
+                                    value="save_draft"
+                                    class="btn btn-secondary">
+                                <i class="fas fa-save"></i> Save as Draft
+                            </button>
+                            <button type="submit" 
+                                    name="action" 
+                                    value="post"
+                                    class="btn btn-success">
+                                <i class="fas fa-check"></i> Post & Submit to IRD
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+let lineCounter = 1;
+
+// Customer selection
+document.addEventListener('htmx:afterSwap', function(event) {
+    if (event.detail.target.id === 'customerResults') {
+        document.getElementById('customerResults').style.display = 'block';
+    }
+});
+
+function selectCustomer(id, name) {
+    document.getElementById('customerId').value = id;
+    document.getElementById('customerName').value = name;
+    document.getElementById('customerSearch').value = name;
+    document.getElementById('customerResults').style.display = 'none';
+}
+
+// Hide customer results when clicking outside
+document.addEventListener('click', function(event) {
+    const searchBox = document.getElementById('customerSearch');
+    const results = document.getElementById('customerResults');
+    if (!searchBox.contains(event.target) && !results.contains(event.target)) {
+        results.style.display = 'none';
+    }
+});
+
+// Update line indices after adding/removing
+function updateLineIndices() {
+    lineCounter++;
+    const lines = document.querySelectorAll('.invoice-line-row');
+    lines.forEach((line, index) => {
+        const inputs = line.querySelectorAll('input[name^="line_index"]');
+        inputs.forEach(input => input.value = index + 1);
+    });
+}
+
+// Remove line
+function removeLine(button) {
+    const line = button.closest('.invoice-line-row');
+    line.remove();
+    recalculateTotal();
+}
+
+// Recalculate invoice total
+function recalculateTotal() {
+    const form = document.getElementById('invoiceForm');
+    const formData = new FormData(form);
+    
+    // Collect all line data
+    const lines = document.querySelectorAll('.invoice-line-row');
+    lines.forEach((line, index) => {
+        formData.append('line_index[]', index + 1);
+    });
+    
+    fetch('{% url "billing:calculate_invoice_total" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.text())
+    .then(html => {
+        document.getElementById('invoiceTotals').innerHTML = html;
+    });
+}
+
+// Auto-calculate on quantity/price change
+document.addEventListener('input', function(event) {
+    if (event.target.matches('[name^="quantity_"], [name^="unit_price_"], [name^="tax_rate_"]')) {
+        recalculateTotal();
+    }
+});
+</script>
+{% endblock %}

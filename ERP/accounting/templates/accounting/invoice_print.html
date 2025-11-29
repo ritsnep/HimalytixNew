@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Print Invoice {{ invoice.invoice_number }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        body {
+            font-size: 12pt;
+        }
+        .invoice-box {
+            box-shadow: none !important;
+            border: 1px solid #ddd;
+        }
+    }
+    
+    .invoice-box {
+        max-width: 800px;
+        margin: auto;
+        padding: 30px;
+        border: 1px solid #eee;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+        font-size: 14px;
+        line-height: 24px;
+        font-family: 'Helvetica Neue', 'Helvetica', Helvetica, Arial, sans-serif;
+        color: #555;
+    }
+    
+    .invoice-box table {
+        width: 100%;
+        line-height: inherit;
+        text-align: left;
+    }
+    
+    .invoice-box table td {
+        padding: 5px;
+        vertical-align: top;
+    }
+    
+    .invoice-box table tr.top table td {
+        padding-bottom: 20px;
+    }
+    
+    .invoice-box table tr.information table td {
+        padding-bottom: 40px;
+    }
+    
+    .invoice-box table tr.heading td {
+        background: #eee;
+        border-bottom: 1px solid #ddd;
+        font-weight: bold;
+    }
+    
+    .invoice-box table tr.item td {
+        border-bottom: 1px solid #eee;
+    }
+    
+    .invoice-box table tr.total td:nth-child(2) {
+        border-top: 2px solid #eee;
+        font-weight: bold;
+    }
+    
+    .qr-code-section {
+        text-align: center;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px dashed #ddd;
+    }
+    
+    .ird-badge {
+        display: inline-block;
+        padding: 10px 20px;
+        background: #28a745;
+        color: white;
+        border-radius: 5px;
+        font-weight: bold;
+        margin: 10px 0;
+    }
+    
+    .reprint-watermark {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-45deg);
+        font-size: 100px;
+        color: rgba(255, 0, 0, 0.1);
+        font-weight: bold;
+        z-index: -1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Print Button -->
+    <div class="no-print text-center mb-3">
+        <button onclick="window.print()" class="btn btn-primary btn-lg">
+            <i class="fas fa-print"></i> Print Invoice
+        </button>
+        <a href="{% url 'accounting:invoice_detail' invoice.invoice_id %}" class="btn btn-secondary btn-lg">
+            <i class="fas fa-arrow-left"></i> Back to Invoice
+        </a>
+    </div>
+
+    <!-- Reprint Watermark -->
+    {% if is_reprint %}
+    <div class="reprint-watermark">REPRINT</div>
+    {% endif %}
+
+    <!-- Invoice -->
+    <div class="invoice-box">
+        <!-- Header -->
+        <table>
+            <tr class="top">
+                <td colspan="4">
+                    <table>
+                        <tr>
+                            <td class="title">
+                                <h2>{{ organization.name }}</h2>
+                                <p>
+                                    {{ organization.address|default:"" }}<br>
+                                    {% if organization.phone %}Phone: {{ organization.phone }}<br>{% endif %}
+                                    {% if organization.email %}Email: {{ organization.email }}<br>{% endif %}
+                                    PAN: {{ organization.tax_id|default:"N/A" }}
+                                </p>
+                            </td>
+                            <td style="text-align: right;">
+                                <h3>SALES INVOICE</h3>
+                                <p>
+                                    <strong>Invoice #:</strong> {{ invoice.invoice_number }}<br>
+                                    <strong>Date:</strong> {{ invoice.invoice_date|date:"Y-m-d" }}<br>
+                                    <strong>Due Date:</strong> {{ invoice.due_date|date:"Y-m-d" }}
+                                </p>
+                                {% if invoice.ird_status == 'synced' %}
+                                <div class="ird-badge">
+                                    <i class="fas fa-check-circle"></i> IRD VERIFIED
+                                </div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+
+            <!-- Customer Information -->
+            <tr class="information">
+                <td colspan="4">
+                    <table>
+                        <tr>
+                            <td>
+                                <strong>Bill To:</strong><br>
+                                {{ invoice.customer_display_name }}<br>
+                                {% if invoice.customer %}
+                                {{ invoice.customer.address|default:"" }}<br>
+                                PAN: {{ invoice.customer.tax_id|default:"N/A" }}
+                                {% endif %}
+                            </td>
+                            <td style="text-align: right;">
+                                {% if invoice.reference_number %}
+                                <strong>Reference:</strong> {{ invoice.reference_number }}<br>
+                                {% endif %}
+                                <strong>Payment Terms:</strong> {{ invoice.payment_term|default:"N/A" }}<br>
+                                <strong>Currency:</strong> {{ invoice.currency.code }}
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+
+            <!-- Line Items Header -->
+            <tr class="heading">
+                <td>#</td>
+                <td>Description</td>
+                <td style="text-align: right;">Quantity</td>
+                <td style="text-align: right;">Unit Price</td>
+                <td style="text-align: right;">Amount</td>
+                <td style="text-align: right;">Tax</td>
+                <td style="text-align: right;">Total</td>
+            </tr>
+
+            <!-- Line Items -->
+            {% for line in lines %}
+            <tr class="item">
+                <td>{{ line.line_number }}</td>
+                <td>
+                    {{ line.description }}
+                    {% if line.product_code %}
+                    <br><small>Code: {{ line.product_code }}</small>
+                    {% endif %}
+                </td>
+                <td style="text-align: right;">{{ line.quantity }}</td>
+                <td style="text-align: right;">{{ line.unit_price|floatformat:2 }}</td>
+                <td style="text-align: right;">{{ line.line_total|floatformat:2 }}</td>
+                <td style="text-align: right;">{{ line.tax_amount|floatformat:2 }}</td>
+                <td style="text-align: right;">{{ line.line_total|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+
+            <!-- Totals -->
+            <tr class="total">
+                <td colspan="5"></td>
+                <td style="text-align: right;"><strong>Subtotal:</strong></td>
+                <td style="text-align: right;">{{ invoice.subtotal|floatformat:2 }}</td>
+            </tr>
+            <tr class="total">
+                <td colspan="5"></td>
+                <td style="text-align: right;"><strong>Tax Total:</strong></td>
+                <td style="text-align: right;">{{ invoice.tax_total|floatformat:2 }}</td>
+            </tr>
+            <tr class="total">
+                <td colspan="5"></td>
+                <td style="text-align: right;"><strong>GRAND TOTAL:</strong></td>
+                <td style="text-align: right;"><h4>{{ invoice.currency.code }} {{ invoice.total|floatformat:2 }}</h4></td>
+            </tr>
+        </table>
+
+        <!-- Notes -->
+        {% if invoice.notes %}
+        <div style="margin-top: 30px; padding: 15px; background: #f9f9f9; border-left: 3px solid #007bff;">
+            <strong>Notes:</strong><br>
+            {{ invoice.notes }}
+        </div>
+        {% endif %}
+
+        <!-- IRD Information & QR Code -->
+        {% if invoice.ird_status == 'synced' and qr_image %}
+        <div class="qr-code-section">
+            <h5>IRD E-Billing Information</h5>
+            <p>
+                <strong>Acknowledgment ID:</strong> {{ invoice.ird_ack_id }}<br>
+                <strong>Fiscal Year:</strong> {{ invoice.ird_fiscal_year_code|default:"N/A" }}<br>
+                <strong>Submitted:</strong> {{ invoice.ird_last_submitted_at|date:"Y-m-d H:i:s" }}
+            </p>
+            
+            <!-- QR Code -->
+            <div style="margin: 20px 0;">
+                <img src="data:image/png;base64,{{ qr_image }}" alt="QR Code" style="max-width: 200px;">
+            </div>
+            
+            <p style="font-size: 10px; color: #999;">
+                Scan this QR code to verify invoice authenticity with Nepal IRD
+            </p>
+            
+            {% if is_reprint %}
+            <p style="color: red; font-weight: bold;">
+                REPRINT #{{ invoice.ird_reprint_count }}
+            </p>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Footer -->
+        <div style="margin-top: 50px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; font-size: 12px; color: #999;">
+            <p>
+                This is a computer-generated invoice and is valid without signature.<br>
+                {% if invoice.ird_status == 'synced' %}
+                This invoice has been registered with the Inland Revenue Department of Nepal.<br>
+                {% endif %}
+                Thank you for your business!
+            </p>
+            <p style="margin-top: 10px;">
+                <small>Printed on: {{ now|date:"Y-m-d H:i:s" }}</small>
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-print on load (optional)
+// window.onload = function() { window.print(); }
+</script>
+{% endblock %}

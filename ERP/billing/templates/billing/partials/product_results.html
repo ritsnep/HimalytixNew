@@ -1,0 +1,17 @@
+{% if products %}
+    {% for product in products %}
+    <div class="product-item" onclick="selectProduct('{{ line_index }}', '{{ product.id }}', '{{ product.name }}', '{{ product.sale_price }}')">
+        <div>
+            <strong>{{ product.code }}</strong> - {{ product.name }}
+        </div>
+        <small class="text-muted">
+            Price: NPR {{ product.sale_price }}
+            {% if product.uom %} • Unit: {{ product.uom }}{% endif %}
+        </small>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="product-item text-muted">
+        No products found
+    </div>
+{% endif %}

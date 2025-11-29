@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Cancel Invoice in IRD{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> Cancel Invoice in IRD
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <strong>Warning!</strong> This action will cancel the invoice in the IRD system. 
+                        This cannot be undone.
+                    </div>
+
+                    <h6>Invoice Details:</h6>
+                    <ul>
+                        <li><strong>Invoice Number:</strong> {{ invoice.invoice_number }}</li>
+                        <li><strong>Customer:</strong> {{ invoice.customer_display_name }}</li>
+                        <li><strong>Amount:</strong> {{ invoice.currency.code }} {{ invoice.total|floatformat:2 }}</li>
+                        <li><strong>IRD Ack ID:</strong> {{ invoice.ird_ack_id }}</li>
+                        <li><strong>Submitted:</strong> {{ invoice.ird_last_submitted_at|date:"Y-m-d H:i" }}</li>
+                    </ul>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="cancellation_reason" class="form-label">
+                                Cancellation Reason <span class="text-danger">*</span>
+                            </label>
+                            <textarea name="cancellation_reason" id="cancellation_reason" 
+                                      class="form-control" rows="4" required
+                                      placeholder="Enter the reason for cancellation (required by IRD)"></textarea>
+                            <small class="text-muted">
+                                This reason will be sent to IRD and cannot be changed later.
+                            </small>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger btn-lg">
+                                <i class="fas fa-ban"></i> Cancel Invoice in IRD
+                            </button>
+                            <a href="{% url 'accounting:invoice_detail' invoice.invoice_id %}" 
+                               class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Go Back
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.querySelector('form').addEventListener('submit', function(e) {
+    if (!confirm('Are you absolutely sure you want to cancel this invoice in IRD?\n\nThis action CANNOT be undone.')) {
+        e.preventDefault();
+    }
+});
+</script>
+{% endblock %}

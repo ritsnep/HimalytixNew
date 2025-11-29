@@ -1,0 +1,41 @@
+{% extends 'billing/_list_base.html' %}
+{% load static %}
+
+{% block page_title %}Sales Invoices{% endblock %}
+
+{% block create_button %}
+  <a href="{% url 'billing:invoice_create' %}" class="btn btn-primary btn-sm">New Invoice</a>
+{% endblock %}
+
+{% block table_head %}
+  <thead>
+    <tr>
+      <th>Number</th>
+      <th>Date</th>
+      <th>Customer</th>
+      <th>Total</th>
+      <th>Status</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+{% endblock %}
+
+{% block table_body %}
+  <tbody>
+    {% for inv in invoices %}
+    <tr>
+      <td>{{ inv.invoice_number }}</td>
+      <td>{{ inv.invoice_date }}</td>
+      <td>{{ inv.customer_display_name }}</td>
+      <td>{{ inv.total }}</td>
+      <td>{{ inv.status }}</td>
+      <td>
+        <a href="{% url 'billing:invoice_detail' inv.invoice_id %}" class="btn btn-sm btn-outline-primary">View</a>
+        <a href="{% url 'billing:invoice_pdf' inv.invoice_id %}" class="btn btn-sm btn-outline-secondary">PDF</a>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6">No invoices found.</td></tr>
+    {% endfor %}
+  </tbody>
+{% endblock %}

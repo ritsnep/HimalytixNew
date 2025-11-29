@@ -2436,15 +2436,28 @@ class SalesInvoice(models.Model):
         blank=True,
         related_name='sales_invoices',
     )
-    ird_signature = models.CharField(max_length=512, null=True, blank=True)
+    # IRD E-Billing fields
+    ird_signature = models.TextField(null=True, blank=True)
     ird_ack_id = models.CharField(max_length=100, null=True, blank=True)
-    ird_status = models.CharField(max_length=50, null=True, blank=True)
-    ird_last_response = models.JSONField(default=dict, blank=True)
+    ird_status = models.CharField(
+        max_length=20,
+        choices=[
+            ('pending', 'Pending'),
+            ('synced', 'Synced'),
+            ('failed', 'Failed'),
+            ('cancelled', 'Cancelled'),
+        ],
+        default='pending',
+        null=True,
+        blank=True,
+    )
+    ird_last_response = models.JSONField(default=dict, blank=True, null=True)
     ird_last_submitted_at = models.DateTimeField(null=True, blank=True)
     ird_fiscal_year_code = models.CharField(max_length=20, blank=True, default='')
     ird_is_realtime = models.BooleanField(default=True)
     ird_digital_payment_amount = models.DecimalField(max_digits=19, decimal_places=4, null=True, blank=True)
     ird_digital_payment_txn_id = models.CharField(max_length=100, blank=True, default='')
+    ird_qr_data = models.CharField(max_length=500, blank=True, null=True)
     ird_reprint_count = models.PositiveIntegerField(default=0)
     ird_last_printed_at = models.DateTimeField(null=True, blank=True)
     ird_last_reprint_reason = models.CharField(max_length=255, blank=True, default='')
@@ -2472,6 +2485,8 @@ class SalesInvoice(models.Model):
         ordering = ('-invoice_date', '-invoice_id')
         indexes = [
             models.Index(fields=['organization', 'status']),
+            models.Index(fields=['organization', 'ird_status']),
+            models.Index(fields=['ird_ack_id']),
         ]
 
     def __str__(self):
