@@ -3162,7 +3162,7 @@ class JournalType(models.Model):
         the next unique number.
         """
         from django.db import transaction
-        from accounting.models import FiscalYear # Import here to avoid circular dependency
+        from accounting.models import FiscalYear, Journal  # Import here to avoid circular dependency
 
         with transaction.atomic():
             jt = JournalType.objects.select_for_update().get(pk=self.pk)
@@ -3187,8 +3187,25 @@ class JournalType(models.Model):
 
             prefix = "".join(prefix_parts)
             suffix = jt.auto_numbering_suffix or ''
+            padding = jt.sequence_padding or 3
 
             next_num = jt.sequence_next
+            
+            # Collision detection: ensure the generated number doesn't already exist
+            # This handles cases where sequence_next is out of sync with actual data
+            max_attempts = 1000  # Safety limit to prevent infinite loop
+            for _ in range(max_attempts):
+                formatted_num = str(next_num).zfill(padding)
+                candidate_number = f"{prefix}{formatted_num}{suffix}"
+                
+                # Check if this journal number already exists for the organization
+                if not Journal.objects.filter(
+                    organization=jt.organization,
+                    journal_number=candidate_number
+                ).exists():
+                    break  # Found a unique number
+                next_num += 1
+            
             jt.sequence_next = next_num + 1
 
             update_fields = ["sequence_next"]
@@ -3197,9 +3214,7 @@ class JournalType(models.Model):
 
             jt.save(update_fields=update_fields)
 
-        padding = jt.sequence_padding or 3
-        formatted_num = str(next_num).zfill(padding)
-        return f"{prefix}{formatted_num}{suffix}"
+        return candidate_number
 
 
 class DocumentSequenceConfig(models.Model):

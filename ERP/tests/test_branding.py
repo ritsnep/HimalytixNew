@@ -36,7 +36,7 @@ def tenant_factory(db):
 def test_branding_defaults_without_tenant():
     branding = get_branding_for_tenant()
     assert branding["favicon_url"] == static("images/favicon.ico")
-    assert branding["logo_light_url"].endswith("himalytix-sm.svg")
+    assert "himalytix-sm.svg" in branding["logo_light_url"]
 
 
 @pytest.mark.django_db

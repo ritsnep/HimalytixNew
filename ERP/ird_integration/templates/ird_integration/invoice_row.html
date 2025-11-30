@@ -1,0 +1,30 @@
+<tr id="invoice-row-{{ invoice.id }}">
+  <td>{{ invoice.invoice_number }}</td>
+  <td>{{ invoice.invoice_date }}</td>
+  <td>{{ invoice.buyer_name }}</td>
+  <td>
+    {% if invoice.status == 'success' %}
+      <span class="badge bg-success">Success</span>
+    {% elif invoice.status == 'failed' %}
+      <span class="badge bg-danger">Failed</span>
+    {% else %}
+      <span class="badge bg-secondary">Pending</span>
+    {% endif %}
+    {% if invoice.status == 'failed' and invoice.error_message %}
+      <div class="text-danger small">{{ invoice.error_message }}</div>
+    {% endif %}
+  </td>
+  <td>
+    {% if invoice.status == 'failed' %}
+      <button
+        class="btn btn-sm btn-warning"
+        hx-post="{% url 'ird_integration:resend_invoice' invoice.id %}"
+        hx-target="#invoice-row-{{ invoice.id }}"
+        hx-swap="outerHTML">
+        Resend
+      </button>
+    {% else %}
+      <button class="btn btn-sm btn-secondary" disabled>Resend</button>
+    {% endif %}
+  </td>
+</tr>

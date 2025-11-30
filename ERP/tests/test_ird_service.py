@@ -111,7 +111,7 @@ def test_submit_invoice_updates_metadata_and_uses_headers(settings):
 
     # Metadata persisted on the invoice object
     assert invoice.metadata.get("ird_ack_id") == "ACK-123"
-    assert invoice.metadata.get("ird_signature") == sign_payload(result.payload, "secret")
+    assert invoice.metadata.get("ird_signature") == sign_payload(result.payload, hmac_secret="secret")
 
     # Request header wiring
     assert session.last_request["url"] == "https://example.test/api"

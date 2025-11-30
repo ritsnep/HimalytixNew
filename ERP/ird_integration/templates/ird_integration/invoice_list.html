@@ -1,0 +1,27 @@
+{% extends "partials/base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>Invoices</h2>
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>Invoice #</th>
+        <th>Date</th>
+        <th>Buyer</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for invoice in invoices %}
+        {% include "ird_integration/invoice_row.html" %}
+      {% empty %}
+        <tr>
+          <td colspan="5" class="text-center">No invoices found.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

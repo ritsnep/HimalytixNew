@@ -21,7 +21,7 @@ from typing import Dict, List, Tuple, Optional, Any
 import logging
 
 from accounting.models import (
-    Organization, Account, Journal, JournalLine, ApprovalLog,
+    Organization, Account, Journal, JournalLine,
     AccountingPeriod, FiscalYear
 )
 

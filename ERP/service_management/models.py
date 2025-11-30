@@ -19,6 +19,7 @@ class DeviceCategory(models.Model):
     is_active = models.BooleanField(default=True)
     
     class Meta:
+        app_label = 'service_management'
         unique_together = ('organization', 'code')
         ordering = ['name']
     
@@ -51,6 +52,7 @@ class DeviceModel(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
+        app_label = 'service_management'
         unique_together = ('organization', 'model_number')
         ordering = ['manufacturer', 'model_name']
     
@@ -113,6 +115,7 @@ class DeviceLifecycle(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
+        app_label = 'service_management'
         indexes = [
             models.Index(fields=['organization', 'state']),
             models.Index(fields=['customer_id', 'state']),
@@ -141,6 +144,7 @@ class DeviceStateHistory(models.Model):
     reason = models.TextField(blank=True)
     
     class Meta:
+        app_label = 'service_management'
         ordering = ['-change_date']
     
     def __str__(self):
@@ -207,6 +211,7 @@ class ServiceContract(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
+        app_label = 'service_management'
         indexes = [
             models.Index(fields=['organization', 'status']),
             models.Index(fields=['customer_id', 'status']),
@@ -290,6 +295,7 @@ class ServiceTicket(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
+        app_label = 'service_management'
         indexes = [
             models.Index(fields=['organization', 'status']),
             models.Index(fields=['customer_id', 'status']),
@@ -322,6 +328,7 @@ class WarrantyPool(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
+        app_label = 'service_management'
         unique_together = ('organization', 'device_model', 'pool_name')
         ordering = ['device_model', 'pool_name']
     
@@ -418,6 +425,7 @@ class RMAHardware(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
+        app_label = 'service_management'
         indexes = [
             models.Index(fields=['organization', 'status']),
             models.Index(fields=['device', 'status']),
@@ -454,6 +462,7 @@ class DeviceProvisioningTemplate(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
+        app_label = 'service_management'
         ordering = ['template_name']
     
     def __str__(self):
@@ -489,6 +498,7 @@ class DeviceProvisioningLog(models.Model):
     completion_date = models.DateTimeField(null=True, blank=True)
     
     class Meta:
+        app_label = 'service_management'
         ordering = ['-provisioning_date']
     
     def __str__(self):

@@ -72,7 +72,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             'approved_by',
             'posted_by'
         ).prefetch_related(
-            'journalline_set__account'
+            'lines__account'
         ).order_by('-journal_date', '-created_at')[:10]
         
         # Get financial summary

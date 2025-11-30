@@ -33,10 +33,15 @@ class PurchaseInvoiceSerializer(serializers.ModelSerializer):
         fields = ['invoice_id', 'invoice_number', 'vendor', 'invoice_date', 'due_date', 'total', 'status']
 
 
-class SalesInvoiceSerializer(serializers.ModelSerializer):
+class AccountingSalesInvoiceSerializer(serializers.ModelSerializer):
+    """Serializer for accounting module SalesInvoice (distinct from lpg_vertical.SalesInvoiceSerializer)."""
     class Meta:
         model = SalesInvoice
         fields = ['invoice_id', 'invoice_number', 'customer', 'invoice_date', 'due_date', 'total', 'status']
+
+
+# Alias for backward compatibility
+SalesInvoiceSerializer = AccountingSalesInvoiceSerializer
 
 
 class APPaymentSerializer(serializers.ModelSerializer):

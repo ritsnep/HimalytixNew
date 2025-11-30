@@ -4,10 +4,11 @@ from io import TextIOWrapper
 
 from django.core.exceptions import ValidationError
 from django.http import Http404
-from rest_framework import renderers, status, viewsets
+from rest_framework import renderers, serializers as drf_serializers, status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from drf_spectacular.utils import extend_schema, inline_serializer, OpenApiParameter
 
 from accounting.models import (
     ChartOfAccount,
@@ -65,6 +66,21 @@ class JournalImportView(APIView):
     permission_classes = [IsAuthenticated, IsOrganizationMember]
     renderer_classes = [renderers.JSONRenderer, renderers.BrowsableAPIRenderer]
 
+    @extend_schema(
+        request={'multipart/form-data': {'type': 'object', 'properties': {'file': {'type': 'string', 'format': 'binary'}}}},
+        responses={
+            200: inline_serializer(
+                name='JournalImportResponse',
+                fields={'created': drf_serializers.ListField(child=drf_serializers.IntegerField())}
+            ),
+            400: inline_serializer(
+                name='JournalImportError',
+                fields={'detail': drf_serializers.CharField()}
+            )
+        },
+        summary="Import Journals from CSV",
+        description="Upload a CSV file to bulk import journal entries"
+    )
     def post(self, request):
         file = request.FILES.get("file")
         if not file:
@@ -135,6 +151,43 @@ class TrialBalanceView(APIView):
     permission_classes = [IsAuthenticated, IsOrganizationMember]
     renderer_classes = [renderers.JSONRenderer, renderers.BrowsableAPIRenderer]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='fiscal_year',
+                type=int,
+                location=OpenApiParameter.QUERY,
+                required=True,
+                description="ID of the fiscal year to get trial balance for"
+            )
+        ],
+        responses={
+            200: inline_serializer(
+                name='TrialBalanceResponse',
+                fields={
+                    'results': drf_serializers.ListField(
+                        child=inline_serializer(
+                            name='TrialBalanceEntry',
+                            fields={
+                                'account_id': drf_serializers.IntegerField(),
+                                'account_code': drf_serializers.CharField(),
+                                'account_name': drf_serializers.CharField(),
+                                'debit_total': drf_serializers.DecimalField(max_digits=20, decimal_places=2),
+                                'credit_total': drf_serializers.DecimalField(max_digits=20, decimal_places=2),
+                                'balance': drf_serializers.DecimalField(max_digits=20, decimal_places=2),
+                            }
+                        )
+                    )
+                }
+            ),
+            400: inline_serializer(
+                name='TrialBalanceError',
+                fields={'detail': drf_serializers.CharField()}
+            )
+        },
+        summary="Get Trial Balance",
+        description="Retrieve trial balance for a specific fiscal year"
+    )
     def get(self, request):
         fiscal_year = request.query_params.get("fiscal_year")
         if not fiscal_year:

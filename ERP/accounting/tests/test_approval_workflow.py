@@ -19,11 +19,9 @@ from datetime import timedelta
 from decimal import Decimal
 
 from accounting.models import Journal, JournalType, JournalLine
-from accounting.models.approval_workflow import (
+from accounting.models import (
     ApprovalWorkflow,
     ApprovalStep,
-    ApprovalLog,
-    ApprovalDecision,
 )
 from usermanagement.models import Organization
 

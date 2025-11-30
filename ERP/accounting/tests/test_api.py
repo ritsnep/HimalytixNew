@@ -5,7 +5,7 @@ from rest_framework.authtoken.models import Token
 from django.contrib.auth import get_user_model
 from accounting.models import (
     Organization, Journal, JournalType, AccountingPeriod, FiscalYear, 
-    Account, JournalLine, ApprovalLog
+    Account, JournalLine
 )
 import datetime
 from decimal import Decimal

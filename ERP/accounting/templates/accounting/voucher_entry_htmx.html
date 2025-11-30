@@ -1,0 +1,372 @@
+{% extends "accounting/base_voucher.html" %}
+{% load static widget_tweaks %}
+
+{% block title %}
+    {% if voucher %}Edit Voucher {{ voucher.journal_number }}{% else %}Create New Voucher{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">
+                <i class="fas fa-file-invoice-dollar text-primary me-2"></i>
+                {% if voucher %}Edit Voucher{% else %}Create New Voucher{% endif %}
+            </h1>
+            {% if voucher %}
+                <p class="text-muted mb-0">Journal Number: <strong>{{ voucher.journal_number }}</strong></p>
+            {% endif %}
+        </div>
+        <div class="btn-group" role="group">
+            <a href="{% url 'accounting:voucher_list' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to List
+            </a>
+            {% if voucher %}
+                <a href="{% url 'accounting:voucher_detail' voucher.pk %}" class="btn btn-outline-info">
+                    <i class="fas fa-eye me-1"></i>View Details
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Validation Messages Container -->
+    <div id="validation-messages">
+        {% include "accounting/htmx/validation_messages.html" %}
+    </div>
+
+    <!-- Main Form -->
+    <form id="voucher-form" method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+
+        <!-- Voucher Header Section -->
+        {% include "accounting/htmx/voucher_header_section.html" %}
+
+        <!-- Voucher Lines Section -->
+        {% include "accounting/htmx/voucher_lines_container.html" %}
+
+        <!-- Line Actions Panel -->
+        {% include "accounting/htmx/line_actions_panel.html" %}
+
+        <!-- Balance Status -->
+        {% include "accounting/htmx/balance_status.html" %}
+
+        <!-- Form Actions -->
+        <div class="card border-warning mt-4" id="form-actions">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="form-check me-3">
+                                <input class="form-check-input" type="checkbox" id="auto_validate" checked>
+                                <label class="form-check-label" for="auto_validate">
+                                    Auto-validate before saving
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="auto_balance" checked>
+                                <label class="form-check-label" for="auto_balance">
+                                    Auto-balance if unbalanced
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="text-muted small">
+                            <i class="fas fa-info-circle me-1"></i>
+                            <strong>Tips:</strong> Ensure all required fields are filled and the voucher is balanced before saving.
+                            Use the line actions panel for bulk operations.
+                        </div>
+                    </div>
+
+                    <div class="col-md-4 text-end">
+                        <div class="btn-group-vertical w-100" role="group">
+                            <button type="button"
+                                    class="btn btn-outline-primary mb-2"
+                                    onclick="validateForm()"
+                                    id="validate-btn">
+                                <i class="fas fa-check-circle me-1"></i>Validate
+                            </button>
+                            <button type="button"
+                                    class="btn btn-warning mb-2"
+                                    onclick="saveAsDraft()"
+                                    id="draft-btn">
+                                <i class="fas fa-save me-1"></i>Save as Draft
+                            </button>
+                            <button type="submit"
+                                    class="btn btn-success"
+                                    onclick="return confirmSave()"
+                                    id="save-btn">
+                                <i class="fas fa-check-double me-1"></i>
+                                {% if voucher %}Update Voucher{% else %}Create Voucher{% endif %}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <!-- Account Lookup Modal -->
+    {% include "accounting/htmx/account_lookup_panel.html" %}
+
+    <!-- Tax Calculator Modal (Optional) -->
+    <div class="modal fade" id="taxCalculatorModal" tabindex="-1" aria-labelledby="taxCalculatorModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="taxCalculatorModalLabel">
+                        <i class="fas fa-calculator me-2"></i>Tax Calculator
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    {% include "accounting/htmx/tax_calculation_display.html" with line_id="modal" %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include HTMX -->
+<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+<script src="https://unpkg.com/htmx.org/dist/ext/ws.js"></script>
+
+<!-- Custom JavaScript -->
+<script>
+// Global variables
+let isValidating = false;
+let isSaving = false;
+
+// Form validation
+function validateForm() {
+    if (isValidating) return;
+
+    isValidating = true;
+    const validateBtn = document.getElementById('validate-btn');
+    const originalText = validateBtn.innerHTML;
+
+    validateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Validating...';
+    validateBtn.disabled = true;
+
+    // Trigger HTMX validation
+    htmx.ajax('POST', '{% url "accounting:voucher_line_validation_hx" journal_id %}', {
+        target: '#validation-messages'
+    }).then(() => {
+        isValidating = false;
+        validateBtn.innerHTML = originalText;
+        validateBtn.disabled = false;
+    });
+}
+
+// Save as draft
+function saveAsDraft() {
+    if (isSaving) return;
+
+    const form = document.getElementById('voucher-form');
+    const draftBtn = document.getElementById('draft-btn');
+
+    // Add draft flag
+    const draftInput = document.createElement('input');
+    draftInput.type = 'hidden';
+    draftInput.name = 'save_as_draft';
+    draftInput.value = 'true';
+    form.appendChild(draftInput);
+
+    // Submit form
+    isSaving = true;
+    draftBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+    draftBtn.disabled = true;
+
+    form.submit();
+}
+
+// Confirm save
+function confirmSave() {
+    const autoValidate = document.getElementById('auto_validate').checked;
+
+    if (autoValidate) {
+        // Quick validation before save
+        const hasErrors = document.querySelectorAll('.is-invalid').length > 0;
+        if (hasErrors) {
+            if (!confirm('There are validation errors. Save anyway?')) {
+                return false;
+            }
+        }
+    }
+
+    if (isSaving) return false;
+
+    const saveBtn = document.getElementById('save-btn');
+    const originalText = saveBtn.innerHTML;
+
+    isSaving = true;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+    saveBtn.disabled = true;
+
+    // Allow form to submit normally
+    return true;
+}
+
+// HTMX event handlers
+document.addEventListener('htmx:beforeRequest', function(evt) {
+    // Show loading indicators
+    const target = evt.target;
+    if (target) {
+        target.style.opacity = '0.7';
+    }
+});
+
+document.addEventListener('htmx:afterRequest', function(evt) {
+    // Hide loading indicators
+    const target = evt.target;
+    if (target) {
+        target.style.opacity = '1';
+    }
+});
+
+// Handle HTMX errors
+document.addEventListener('htmx:responseError', function(evt) {
+    addErrorMessage('Request failed: ' + evt.detail.xhr.statusText);
+});
+
+// Handle successful HTMX responses
+document.addEventListener('htmx:afterSwap', function(evt) {
+    // Re-initialize any plugins or event handlers after content swap
+    if (evt.detail.target.id === 'lines-container') {
+        updateLinesSummary();
+    }
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // Ctrl/Cmd + S to save
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (!isSaving) {
+            document.getElementById('save-btn').click();
+        }
+    }
+
+    // Ctrl/Cmd + D to save as draft
+    if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+        e.preventDefault();
+        if (!isSaving) {
+            saveAsDraft();
+        }
+    }
+
+    // Ctrl/Cmd + V to validate
+    if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+        e.preventDefault();
+        validateForm();
+    }
+
+    // Ctrl/Cmd + L to add line
+    if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
+        e.preventDefault();
+        addNewLine();
+    }
+});
+
+// Auto-save functionality (optional)
+let autoSaveTimeout;
+function triggerAutoSave() {
+    clearTimeout(autoSaveTimeout);
+    autoSaveTimeout = setTimeout(() => {
+        // Optional: Implement auto-save to localStorage or server
+        console.log('Auto-save triggered');
+    }, 30000); // 30 seconds
+}
+
+// Attach auto-save to form changes
+document.addEventListener('input', triggerAutoSave);
+document.addEventListener('change', triggerAutoSave);
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Set up form validation
+    const form = document.getElementById('voucher-form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            // Custom validation logic can go here
+        });
+    }
+
+    // Initialize tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    console.log('Voucher entry form initialized');
+});
+</script>
+
+<style>
+/* Custom styles for voucher entry */
+.container-fluid {
+    max-width: 1400px;
+}
+
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: none;
+    border-radius: 0.5rem;
+}
+
+.card-header {
+    border-radius: 0.5rem 0.5rem 0 0 !important;
+    font-weight: 600;
+}
+
+.btn {
+    border-radius: 0.375rem;
+    font-weight: 500;
+}
+
+.form-control, .form-select {
+    border-radius: 0.375rem;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Loading states */
+.htmx-request {
+    opacity: 0.7;
+}
+
+.htmx-request .btn {
+    pointer-events: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .container-fluid {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .btn-group-vertical .btn {
+        margin-bottom: 0.5rem;
+    }
+
+    .card-body {
+        padding: 1rem;
+    }
+}
+
+/* Print styles */
+@media print {
+    .btn, .card-header, #form-actions {
+        display: none !important;
+    }
+
+    .container-fluid {
+        max-width: none;
+    }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "partials/base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>Credit Notes</h2>
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>Credit Note #</th>
+        <th>Date</th>
+        <th>Reference</th>
+        <th>Reason</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for credit_note in credit_notes %}
+        {% include "ird_integration/creditnote_row.html" %}
+      {% empty %}
+        <tr>
+          <td colspan="6" class="text-center">No credit notes available.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

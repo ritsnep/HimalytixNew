@@ -1,0 +1,142 @@
+{% load static %}
+
+<div class="card border-info mt-3" id="balance-status" hx-get="{% url 'accounting:voucher_balance_check_hx' journal_id %}" hx-trigger="load, change from:#lines-container" hx-target="#balance-status">
+    <div class="card-header bg-info text-white">
+        <h6 class="mb-0">
+            <i class="fas fa-balance-scale me-2"></i>Balance Status
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Total Debit:</span>
+                    <span class="fw-bold text-danger" id="total-debit">{{ total_debit|default:"0.00" }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Total Credit:</span>
+                    <span class="fw-bold text-success" id="total-credit">{{ total_credit|default:"0.00" }}</span>
+                </div>
+                <hr>
+                <div class="d-flex justify-content-between">
+                    <span class="fw-bold">Difference:</span>
+                    <span class="fw-bold {{ difference|default:0 >= 0 ? 'text-success' : 'text-danger' }}" id="balance-difference">
+                        {{ difference|default:"0.00" }}
+                    </span>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="text-center">
+                    {% if difference|default:0 == 0 %}
+                        <div class="alert alert-success py-2 mb-0">
+                            <i class="fas fa-check-circle fa-lg me-2"></i>
+                            <strong>Balanced</strong>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning py-2 mb-0">
+                            <i class="fas fa-exclamation-triangle fa-lg me-2"></i>
+                            <strong>Unbalanced</strong>
+                            <br>
+                            <small class="text-muted">Difference: {{ difference|default:"0.00" }}</small>
+                        </div>
+                    {% endif %}
+
+                    {% if auto_balance_enabled %}
+                        <button type="button"
+                                class="btn btn-sm btn-outline-primary mt-2"
+                                onclick="autoBalance()"
+                                id="auto-balance-btn">
+                            <i class="fas fa-magic me-1"></i>Auto Balance
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Balance suggestions (if unbalanced) -->
+        {% if difference|default:0 != 0 %}
+            <div class="mt-3 pt-3 border-top">
+                <h6 class="text-muted mb-2">
+                    <i class="fas fa-lightbulb me-1"></i>Suggestions:
+                </h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <small class="text-muted">
+                            {% if difference|default:0 > 0 %}
+                                • Add a credit entry of {{ difference|default:"0.00" }} to balance
+                            {% else %}
+                                • Add a debit entry of {{ (difference|default:0)|abs }} to balance
+                            {% endif %}
+                        </small>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted">
+                            • Check amounts for calculation errors
+                            <br>
+                            • Verify account types (Asset/Liability/Income/Expense)
+                        </small>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Auto-balance functionality
+function autoBalance() {
+    if (confirm('This will automatically adjust the last line to balance the voucher. Continue?')) {
+        const btn = document.getElementById('auto-balance-btn');
+        const originalText = btn.innerHTML;
+
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Balancing...';
+        btn.disabled = true;
+
+        // Trigger HTMX request to auto-balance
+        htmx.ajax('POST', '{% url "accounting:voucher_auto_balance_hx" journal_id %}', {
+            target: '#lines-container',
+            swap: 'innerHTML'
+        }).then(() => {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            // Balance status will update automatically via HTMX trigger
+        }).catch(() => {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            addErrorMessage('Auto-balance failed. Please check your entries.');
+        });
+    }
+}
+
+// Update balance display when lines change
+function updateBalanceDisplay(debit, credit, difference) {
+    document.getElementById('total-debit').textContent = debit;
+    document.getElementById('total-credit').textContent = credit;
+    document.getElementById('balance-difference').textContent = difference;
+
+    const diffElement = document.getElementById('balance-difference');
+    diffElement.className = 'fw-bold ' + (parseFloat(difference) >= 0 ? 'text-success' : 'text-danger');
+}
+
+// Helper function to add error messages
+function addErrorMessage(message) {
+    const messagesContainer = document.getElementById('validation-messages');
+    if (messagesContainer) {
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-danger alert-dismissible fade show';
+        alert.innerHTML = `
+            <i class="fas fa-exclamation-triangle me-2"></i>${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        messagesContainer.appendChild(alert);
+
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.remove();
+            }
+        }, 5000);
+    }
+}
+</script>

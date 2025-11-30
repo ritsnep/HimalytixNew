@@ -11,6 +11,7 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.utils.dateparse import parse_date
 from django.db.models import Q
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_POST
 
 from accounting.config.settings import journal_entry_settings
@@ -1088,6 +1089,7 @@ def journal_config(request):
 
 
 @login_required
+@ensure_csrf_cookie
 def journal_entry(request):
     """Render the Excel-like Journal Entry UI."""
     # Support both journal_id and voucher_id parameters (for legacy and new URLs)
@@ -1166,6 +1168,7 @@ def journal_entry(request):
 
 
 @login_required
+@ensure_csrf_cookie
 def journal_select_config(request):
     """Render a dedicated configuration selection screen before voucher entry."""
     organization = _active_organization(request.user)
@@ -1239,9 +1242,15 @@ def journal_save_draft(request):
         return _json_error(message, status=400, details=details, debug_token=debug_token)
     except PermissionError as exc:
         return _json_error(str(exc), status=403, debug_token=debug_token)
-    except Exception:
+    except Exception as exc:
+        import traceback
+        from django.conf import settings
         logger.exception("Unexpected error while saving journal draft.")
-        return _json_error("Unexpected error while saving journal draft.", status=500, debug_token=debug_token)
+        error_msg = "Unexpected error while saving journal draft."
+        details = None
+        if settings.DEBUG:
+            details = {"exception": str(exc), "traceback": traceback.format_exc()}
+        return _json_error(error_msg, status=500, debug_token=debug_token, details=details)
 
 
 @login_required

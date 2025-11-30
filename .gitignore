@@ -1,6 +1,6 @@
 # Django collectstatic output
 /collected_static_files/
-
+.coverage
 
 
 # # --- Python bytecode & build ---

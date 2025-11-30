@@ -51,6 +51,7 @@ urlpatterns = [
     path('account/', include('account.urls')),
     path('inventory/', include('Inventory.urls')),
     path('billing/', include('billing.urls', namespace='billing')),
+    path('ird/', include('ird_integration.urls', namespace='ird_integration')),
     path('service-management/', include('service_management.urls', namespace='service_management')),
     
     # Include accounting app with explicit namespace for reverse('accounting:*') lookups

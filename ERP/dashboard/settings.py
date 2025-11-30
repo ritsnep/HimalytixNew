@@ -132,6 +132,7 @@ INSTALLED_APPS = [
     'widget_tweaks',
     'formtools',
     'billing',
+    'ird_integration',
     'enterprise',
     'service_management',
     'lpg_vertical',
@@ -389,6 +390,7 @@ IRD_API_URL = os.getenv('IRD_API_URL', 'https://ird.gov.np/api/v1')
 IRD_USERNAME = os.getenv('IRD_USERNAME', '')
 IRD_PASSWORD = os.getenv('IRD_PASSWORD', '')
 IRD_SELLER_PAN = os.getenv('IRD_SELLER_PAN', '')
+IRD_ENCRYPTION_KEY = os.getenv('IRD_ENCRYPTION_KEY', SECRET_KEY)
 
 
 
@@ -599,6 +601,12 @@ SPECTACULAR_SETTINGS = {
     # Schema Generation
     'COMPONENT_SPLIT_REQUEST': True,
     'SORT_OPERATIONS': True,
+    
+    # Custom Authentication Extensions (resolves drf_spectacular.W001 warnings)
+    'EXTENSIONS': [
+        'api.schema.StreamlitTokenAuthenticationScheme',
+        'api.schema.TenantTokenAuthenticationScheme',
+    ],
     
     # Contact & License
     'CONTACT': {

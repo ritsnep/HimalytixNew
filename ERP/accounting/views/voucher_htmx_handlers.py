@@ -223,7 +223,6 @@ class VoucherLineRecalculateHtmxView(BaseVoucherView):
                 'is_balanced': is_balanced,
                 'balance_message': self._t(request, 'voucher.balance.balanced', 'Balanced') if is_balanced else self._t(request, 'voucher.balance.unbalanced', 'Unbalanced: Debit {debit} ≠ Credit {credit}', debit=total_debit, credit=total_credit)
             })
-            })
 
         except Journal.DoesNotExist:
             logger.warning(f"Journal {journal_id} not found")
@@ -687,15 +686,377 @@ class VoucherBalanceCheckHtmxView(BaseVoucherView):
             )
 
 
+class VoucherAddLineHtmxView(BaseVoucherView):
+    """
+    HTMX handler for adding a new line to a voucher.
+
+    Creates a new journal line with default values and returns
+    the HTML fragment for the new line row.
+    """
+
+    def post(self, request, *args, **kwargs) -> HttpResponse:
+        """
+        Add a new line to the journal.
+
+        Args:
+            request: HTTP request
+            *args, **kwargs: URL parameters (journal_id)
+
+        Returns:
+            HttpResponse: HTML fragment for new line
+        """
+        organization = self.get_organization()
+        journal_id = kwargs.get('journal_id')
+
+        try:
+            journal = Journal.objects.get(
+                id=journal_id,
+                organization=organization
+            )
+
+            # Check if journal allows editing
+            if journal.status not in ['draft', 'pending']:
+                msg = self._t(
+                    request,
+                    'voucher.error.cannot_add_to_status',
+                    f'Cannot add lines to {journal.status} journals',
+                    status=journal.status,
+                )
+                return HttpResponse(
+                    f'<div class="alert alert-danger">{msg}</div>',
+                    status=400
+                )
+
+            # Get the next line number
+            next_line_number = journal.lines.count() + 1
+
+            # Create new line with defaults
+            new_line = JournalLine.objects.create(
+                journal=journal,
+                line_number=next_line_number,
+                description='',
+                debit_amount=None,
+                credit_amount=None,
+                created_by=request.user,
+                updated_by=request.user,
+            )
+
+            logger.info(
+                f"Line {new_line.id} added to journal {journal_id} "
+                f"by {request.user.username}"
+            )
+
+            # Return HTML fragment for the new line
+            context = {
+                'line': new_line,
+                'journal': journal,
+                'line_number': next_line_number,
+                'accounts': [],  # Will be populated by account lookup
+                'can_edit': True,
+                'can_delete': True,
+            }
+
+            html = render_to_string(
+                'accounting/htmx/voucher_line_row.html',
+                context,
+                request=request
+            )
+
+            return HttpResponse(
+                html,
+                headers={'HX-Trigger': 'lineAdded'}
+            )
+
+        except Journal.DoesNotExist:
+            logger.warning(f"Journal {journal_id} not found")
+            return HttpResponse(
+                f'<div class="alert alert-danger">{self._t(request, "voucher.error.journal_not_found", "Journal not found")}</div>',
+                status=404
+            )
+
+        except Exception as e:
+            logger.exception(f"Error adding line: {e}")
+            return HttpResponse(
+                f'<div class="alert alert-danger">{self._t(request, "voucher.error.error_prefix", "Error: {message}", message=str(e))}</div>',
+                status=500
+            )
+
+
+class VoucherAccountLookupHtmxView(BaseVoucherView):
+    """
+    HTMX handler for account lookup/search functionality.
+
+    Provides autocomplete suggestions for account selection
+    in voucher line forms.
+    """
+
+    def get(self, request, *args, **kwargs) -> JsonResponse:
+        """
+        Search for accounts based on query.
+
+        Args:
+            request: HTTP request with 'q' parameter
+            *args, **kwargs: URL parameters
+
+        Returns:
+            JsonResponse: Account suggestions
+        """
+        organization = self.get_organization()
+        query = request.GET.get('q', '').strip()
+        limit = int(request.GET.get('limit', 10))
+
+        try:
+            from accounting.models import ChartOfAccount
+
+            # Build queryset with filters
+            accounts = ChartOfAccount.objects.filter(
+                organization=organization,
+                is_active=True
+            )
+
+            if query:
+                accounts = accounts.filter(
+                    account_name__icontains=query
+                ) | accounts.filter(
+                    account_code__icontains=query
+                )
+
+            # Order by relevance (exact matches first, then code, then name)
+            accounts = accounts.order_by(
+                'account_code'
+            )[:limit]
+
+            # Format results
+            results = []
+            for account in accounts:
+                results.append({
+                    'id': account.id,
+                    'text': f"{account.account_code} - {account.account_name}",
+                    'code': account.account_code,
+                    'name': account.account_name,
+                    'type': account.account_type.name if account.account_type else '',
+                    'balance': float(account.balance or 0),
+                })
+
+            logger.debug(
+                f"Account lookup - Query: '{query}', "
+                f"Results: {len(results)}"
+            )
+
+            return JsonResponse({
+                'results': results,
+                'total': len(results)
+            })
+
+        except Exception as e:
+            logger.exception(f"Error in account lookup: {e}")
+            return JsonResponse({
+                'error': 'Search failed',
+                'results': []
+            }, status=500)
+
+
+class VoucherTaxCalculationHtmxView(BaseVoucherView):
+    """
+    HTMX handler for tax calculations on voucher lines.
+
+    Calculates tax amounts based on base amount, tax rate, and tax type.
+    Supports different tax calculation methods.
+    """
+
+    def post(self, request, *args, **kwargs) -> JsonResponse:
+        """
+        Calculate tax for a line amount.
+
+        Args:
+            request: HTTP request with calculation parameters
+            *args, **kwargs: URL parameters
+
+        Returns:
+            JsonResponse: Tax calculation results
+        """
+        try:
+            # Parse input data
+            data = request.POST or json.loads(request.body)
+            base_amount = float(data.get('base_amount', 0) or 0)
+            tax_rate = float(data.get('tax_rate', 0) or 0)
+            tax_type = data.get('tax_type', 'inclusive')  # inclusive/exclusive
+            line_id = data.get('line_id')
+
+            # Validate inputs
+            if base_amount < 0:
+                return JsonResponse({
+                    'valid': False,
+                    'error': 'Base amount cannot be negative'
+                }, status=400)
+
+            if tax_rate < 0 or tax_rate > 100:
+                return JsonResponse({
+                    'valid': False,
+                    'error': 'Tax rate must be between 0 and 100'
+                }, status=400)
+
+            # Calculate tax
+            if tax_type == 'inclusive':
+                # Tax is included in the base amount
+                tax_amount = round(base_amount * tax_rate / (100 + tax_rate), 2)
+                net_amount = base_amount - tax_amount
+            else:
+                # Tax is additional to the base amount
+                tax_amount = round(base_amount * tax_rate / 100, 2)
+                net_amount = base_amount
+
+            total_amount = net_amount + tax_amount
+
+            logger.debug(
+                f"Tax calculation - Base: {base_amount}, "
+                f"Rate: {tax_rate}%, Type: {tax_type}, "
+                f"Tax: {tax_amount}, Total: {total_amount}"
+            )
+
+            return JsonResponse({
+                'valid': True,
+                'base_amount': base_amount,
+                'tax_rate': tax_rate,
+                'tax_type': tax_type,
+                'tax_amount': tax_amount,
+                'net_amount': net_amount,
+                'total_amount': total_amount,
+                'calculation_method': tax_type
+            })
+
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Invalid tax calculation input: {e}")
+            return JsonResponse({
+                'valid': False,
+                'error': 'Invalid input data'
+            }, status=400)
+
+        except Exception as e:
+            logger.exception(f"Error calculating tax: {e}")
+            return JsonResponse({
+                'valid': False,
+                'error': f'Calculation failed: {str(e)}'
+            }, status=500)
+
+
+class VoucherAutoBalanceHtmxView(BaseVoucherView):
+    """
+    HTMX handler for automatically balancing a voucher.
+
+    Adjusts the last line to balance the voucher by adding
+    the difference to either debit or credit.
+    """
+
+    def post(self, request, *args, **kwargs) -> HttpResponse:
+        """
+        Auto-balance the journal by adjusting the last line.
+
+        Args:
+            request: HTTP request
+            *args, **kwargs: URL parameters (journal_id)
+
+        Returns:
+            HttpResponse: Updated lines container HTML
+        """
+        organization = self.get_organization()
+        journal_id = kwargs.get('journal_id')
+
+        try:
+            journal = Journal.objects.get(
+                id=journal_id,
+                organization=organization
+            )
+
+            # Check if journal allows editing
+            if journal.status not in ['draft', 'pending']:
+                msg = self._t(
+                    request,
+                    'voucher.error.cannot_edit_status',
+                    f'Cannot edit {journal.status} journals',
+                    status=journal.status,
+                )
+                return HttpResponse(
+                    f'<div class="alert alert-danger">{msg}</div>',
+                    status=400
+                )
+
+            # Calculate current totals
+            lines = list(journal.lines.all().order_by('line_number'))
+            if not lines:
+                return HttpResponse(
+                    '<div class="alert alert-warning">No lines to balance</div>',
+                    status=400
+                )
+
+            total_debit = sum(l.debit_amount or 0 for l in lines)
+            total_credit = sum(l.credit_amount or 0 for l in lines)
+            difference = total_debit - total_credit
+
+            if difference == 0:
+                return HttpResponse(
+                    '<div class="alert alert-info">Journal is already balanced</div>'
+                )
+
+            # Adjust the last line
+            last_line = lines[-1]
+
+            if difference > 0:
+                # Debit exceeds credit, add to credit of last line
+                last_line.credit_amount = (last_line.credit_amount or 0) + difference
+                last_line.debit_amount = None
+                adjustment_type = 'credit'
+            else:
+                # Credit exceeds debit, add to debit of last line
+                last_line.debit_amount = (last_line.debit_amount or 0) + abs(difference)
+                last_line.credit_amount = None
+                adjustment_type = 'debit'
+
+            last_line.description = f"{last_line.description or ''} (Auto-balanced)".strip()
+            last_line.updated_by = request.user
+            last_line.save()
+
+            logger.info(
+                f"Auto-balanced journal {journal_id} - "
+                f"Adjusted line {last_line.id} {adjustment_type} by {abs(difference)}"
+            )
+
+            # Return updated lines container
+            context = {
+                'journal': journal,
+                'lines': lines,
+                'total_debit': total_debit + (abs(difference) if difference < 0 else 0),
+                'total_credit': total_credit + (difference if difference > 0 else 0),
+                'is_balanced': True,
+            }
+
+            html = render_to_string(
+                'accounting/htmx/voucher_lines_container.html',
+                context,
+                request=request
+            )
+
+            return HttpResponse(
+                html,
+                headers={'HX-Trigger': 'journalBalanced'}
+            )
+
+        except Journal.DoesNotExist:
+            logger.warning(f"Journal {journal_id} not found")
+            return HttpResponse(
+                f'<div class="alert alert-danger">{self._t(request, "voucher.error.journal_not_found", "Journal not found")}</div>',
+                status=404
+            )
+
+        except Exception as e:
+            logger.exception(f"Error auto-balancing journal: {e}")
+            return HttpResponse(
+                f'<div class="alert alert-danger">{self._t(request, "voucher.error.error_prefix", "Error: {message}", message=str(e))}</div>',
+                status=500
+            )
+
+
 # Import after all views defined to avoid circular imports
 from django.template.loader import render_to_string
-    def _t(self, request, key: str, fallback: str, **kwargs) -> str:
-        try:
-            lang = get_current_language(request)
-            trans = load_translations(lang)
-            template = trans.get(key, fallback)
-            return template.format(**kwargs) if kwargs else template
-        except Exception:
-            return fallback
 
 

@@ -1,0 +1,284 @@
+{% load static %}
+<!-- Voucher Lines Container -->
+<div class="voucher-lines-container" id="voucher-lines-section">
+    <div class="card border-success">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="fas fa-list-ol me-2"></i>Journal Lines
+            </h5>
+            <div class="badge bg-light text-dark" id="lines-count-badge">
+                {{ lines|length|default:0 }} line{{ lines|length|pluralize }}
+            </div>
+        </div>
+
+        <div class="card-body">
+            <!-- Lines Container -->
+            <div id="lines-container" class="lines-container">
+                {% for line in lines %}
+                    {% include "accounting/htmx/voucher_line_row.html" with line=line forloop=forloop %}
+                {% empty %}
+                    <!-- Empty state -->
+                    <div class="text-center py-5 text-muted">
+                        <i class="fas fa-plus-circle fa-3x mb-3"></i>
+                        <h5>No lines added yet</h5>
+                        <p>Click "Add Line" to start building your journal entry</p>
+                        <button type="button"
+                                class="btn btn-primary"
+                                onclick="addNewLine()">
+                            <i class="fas fa-plus me-2"></i>Add First Line
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- Add Line Button -->
+            <div class="text-center mt-4" id="add-line-section">
+                <button type="button"
+                        class="btn btn-success btn-lg"
+                        onclick="addNewLine()"
+                        title="Add a new journal line">
+                    <i class="fas fa-plus-circle me-2"></i>Add Line
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lines Summary -->
+    <div class="card border-info mt-3" id="lines-summary">
+        <div class="card-header bg-info text-white">
+            <h6 class="mb-0">
+                <i class="fas fa-chart-bar me-2"></i>Lines Summary
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-3">
+                    <div class="border rounded p-2">
+                        <div class="h5 mb-0 text-primary" id="summary-total-lines">{{ lines|length|default:0 }}</div>
+                        <small class="text-muted">Total Lines</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="border rounded p-2">
+                        <div class="h5 mb-0 text-success" id="summary-completed-lines">0</div>
+                        <small class="text-muted">Completed</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="border rounded p-2">
+                        <div class="h5 mb-0 text-warning" id="summary-incomplete-lines">{{ lines|length|default:0 }}</div>
+                        <small class="text-muted">Incomplete</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="border rounded p-2">
+                        <div class="h5 mb-0 text-info" id="summary-accounts-used">0</div>
+                        <small class="text-muted">Accounts Used</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Line Template (Hidden) -->
+<div id="line-template" style="display: none;">
+    {% include "accounting/htmx/voucher_line_row.html" with line=None forloop=forloop %}
+</div>
+
+<style>
+.voucher-lines-container .card-header {
+    border-bottom: 2px solid #198754;
+}
+
+.lines-container {
+    min-height: 200px;
+}
+
+.lines-container:empty::after {
+    content: "No lines added yet. Click 'Add Line' to get started.";
+    display: block;
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+    padding: 2rem;
+}
+
+#lines-summary .card-header {
+    border-bottom: 2px solid #0dcaf0;
+}
+
+#lines-summary .border {
+    transition: all 0.3s ease;
+}
+
+#lines-summary .border:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .voucher-lines-container .card-body {
+        padding: 1rem;
+    }
+
+    #lines-summary .row > div {
+        margin-bottom: 1rem;
+    }
+
+    #add-line-section .btn {
+        width: 100%;
+    }
+}
+
+/* Animation for new lines */
+@keyframes slideInFromBottom {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.voucher-line-row {
+    animation: slideInFromBottom 0.3s ease-out;
+}
+</style>
+
+<script>
+// Lines container functions
+function addNewLine() {
+    const linesContainer = document.getElementById('lines-container');
+    const emptyState = linesContainer.querySelector('.text-center');
+
+    // Remove empty state if it exists
+    if (emptyState) {
+        emptyState.remove();
+    }
+
+    // Get the next line number
+    const existingLines = linesContainer.querySelectorAll('.voucher-line-row');
+    const nextLineNumber = existingLines.length + 1;
+
+    // Clone template or create new line
+    const template = document.getElementById('line-template');
+    const newLine = template.cloneNode(true);
+    newLine.id = 'line-' + Date.now();
+    newLine.style.display = 'block';
+
+    // Update line number
+    const lineNumberElement = newLine.querySelector('.line-number');
+    if (lineNumberElement) {
+        lineNumberElement.textContent = nextLineNumber;
+    }
+
+    // Update form field indices
+    const inputs = newLine.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+        if (input.name) {
+            input.name = input.name.replace(/lines-\d+-/, `lines-${nextLineNumber - 1}-`);
+        }
+        if (input.id) {
+            input.id = input.id.replace(/lines-\d+-/, `lines-${nextLineNumber - 1}-`);
+        }
+    });
+
+    // Add to container
+    linesContainer.appendChild(newLine);
+    htmx.process(newLine);
+
+    // Update summary
+    updateLinesSummary();
+
+    // Scroll to new line
+    scrollToElement(newLine);
+
+    // Add success message
+    addSuccessMessage(`Line ${nextLineNumber} added successfully`);
+}
+
+function removeLine(lineElement) {
+    if (confirm('Are you sure you want to remove this line?')) {
+        lineElement.remove();
+        updateLinesSummary();
+        addSuccessMessage('Line removed successfully');
+
+        // Show empty state if no lines remain
+        const linesContainer = document.getElementById('lines-container');
+        const remainingLines = linesContainer.querySelectorAll('.voucher-line-row');
+
+        if (remainingLines.length === 0) {
+            const emptyState = document.createElement('div');
+            emptyState.className = 'text-center py-5 text-muted';
+            emptyState.innerHTML = `
+                <i class="fas fa-plus-circle fa-3x mb-3"></i>
+                <h5>No lines added yet</h5>
+                <p>Click "Add Line" to start building your journal entry</p>
+                <button type="button" class="btn btn-primary" onclick="addNewLine()">
+                    <i class="fas fa-plus me-2"></i>Add First Line
+                </button>
+            `;
+            linesContainer.appendChild(emptyState);
+        }
+    }
+}
+
+function updateLinesSummary() {
+    const lines = document.querySelectorAll('.voucher-line-row');
+    const totalLines = lines.length;
+    let completedLines = 0;
+    let incompleteLines = 0;
+    const accountsUsed = new Set();
+
+    lines.forEach(line => {
+        const accountSelect = line.querySelector('select[name*="-account"]');
+        const debitInput = line.querySelector('input[name*="-debit_amount"]');
+        const creditInput = line.querySelector('input[name*="-credit_amount"]');
+
+        // Check if account is selected
+        if (accountSelect && accountSelect.value) {
+            accountsUsed.add(accountSelect.value);
+        }
+
+        // Check if amounts are entered
+        const hasDebit = debitInput && parseFloat(debitInput.value) > 0;
+        const hasCredit = creditInput && parseFloat(creditInput.value) > 0;
+
+        if (hasDebit || hasCredit) {
+            completedLines++;
+        } else {
+            incompleteLines++;
+        }
+    });
+
+    // Update display
+    document.getElementById('lines-count-badge').textContent =
+        `${totalLines} line${totalLines !== 1 ? 's' : ''}`;
+    document.getElementById('summary-total-lines').textContent = totalLines;
+    document.getElementById('summary-completed-lines').textContent = completedLines;
+    document.getElementById('summary-incomplete-lines').textContent = incompleteLines;
+    document.getElementById('summary-accounts-used').textContent = accountsUsed.size;
+}
+
+// Initialize summary on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateLinesSummary();
+});
+
+// Update summary when lines change
+document.addEventListener('input', function(e) {
+    if (e.target.matches('input[name*="-debit_amount"], input[name*="-credit_amount"], select[name*="-account"]')) {
+        updateLinesSummary();
+    }
+});
+
+document.addEventListener('change', function(e) {
+    if (e.target.matches('select[name*="-account"]')) {
+        updateLinesSummary();
+    }
+});
+</script>

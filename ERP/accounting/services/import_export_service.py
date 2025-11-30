@@ -406,7 +406,7 @@ class ExportService:
         # Add data
         row_idx = 2
         for journal in journals:
-            for line in journal.journalline_set.all():
+            for line in journal.lines.all():
                 ws.cell(row=row_idx, column=1).value = journal.date
                 ws.cell(row=row_idx, column=2).value = journal.journal_type.code
                 ws.cell(row=row_idx, column=3).value = journal.reference
@@ -437,7 +437,7 @@ class ExportService:
         writer.writeheader()
         
         for journal in journals:
-            for line in journal.journalline_set.all():
+            for line in journal.lines.all():
                 writer.writerow({
                     'Date': journal.date,
                     'Journal Type': journal.journal_type.code,

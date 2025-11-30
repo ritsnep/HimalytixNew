@@ -1,0 +1,205 @@
+{% load static %}
+<!-- Account Lookup Modal -->
+<div class="modal fade" id="accountLookupModal" tabindex="-1" aria-labelledby="accountLookupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="accountLookupModalLabel">
+                    <i class="fas fa-search me-2"></i>Select Account
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Search Input -->
+                <div class="mb-3">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text"
+                               class="form-control"
+                               id="account-search-input"
+                               placeholder="Search by account code or name..."
+                               hx-get="{% url 'accounting:voucher_account_lookup_hx' %}"
+                               hx-trigger="input changed delay:300ms, keyup[key=='Enter']"
+                               hx-target="#account-results-container"
+                               hx-vals='{"q": this.value, "limit": "50"}'>
+                        <button class="btn btn-outline-secondary" type="button" onclick="clearAccountSearch()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Account Type Filters -->
+                <div class="mb-3">
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Account type filters">
+                        <input type="radio" class="btn-check" name="account-type-filter" id="filter-all" autocomplete="off" checked
+                               hx-get="{% url 'accounting:voucher_account_lookup_hx' %}"
+                               hx-trigger="change"
+                               hx-target="#account-results-container"
+                               hx-vals='{"q": document.getElementById("account-search-input").value, "type": ""}'>
+                        <label class="btn btn-outline-primary" for="filter-all">All</label>
+
+                        <input type="radio" class="btn-check" name="account-type-filter" id="filter-assets" autocomplete="off"
+                               hx-get="{% url 'accounting:voucher_account_lookup_hx' %}"
+                               hx-trigger="change"
+                               hx-target="#account-results-container"
+                               hx-vals='{"q": document.getElementById("account-search-input").value, "type": "asset"}'>
+                        <label class="btn btn-outline-primary" for="filter-assets">Assets</label>
+
+                        <input type="radio" class="btn-check" name="account-type-filter" id="filter-liabilities" autocomplete="off"
+                               hx-get="{% url 'accounting:voucher_account_lookup_hx' %}"
+                               hx-trigger="change"
+                               hx-target="#account-results-container"
+                               hx-vals='{"q": document.getElementById("account-search-input").value, "type": "liability"}'>
+                        <label class="btn btn-outline-primary" for="filter-liabilities">Liabilities</label>
+
+                        <input type="radio" class="btn-check" name="account-type-filter" id="filter-equity" autocomplete="off"
+                               hx-get="{% url 'accounting:voucher_account_lookup_hx' %}"
+                               hx-trigger="change"
+                               hx-target="#account-results-container"
+                               hx-vals='{"q": document.getElementById("account-search-input").value, "type": "equity"}'>
+                        <label class="btn btn-outline-primary" for="filter-equity">Equity</label>
+
+                        <input type="radio" class="btn-check" name="account-type-filter" id="filter-revenue" autocomplete="off"
+                               hx-get="{% url 'accounting:voucher_account_lookup_hx' %}"
+                               hx-trigger="change"
+                               hx-target="#account-results-container"
+                               hx-vals='{"q": document.getElementById("account-search-input").value, "type": "revenue"}'>
+                        <label class="btn btn-outline-primary" for="filter-revenue">Revenue</label>
+
+                        <input type="radio" class="btn-check" name="account-type-filter" id="filter-expenses" autocomplete="off"
+                               hx-get="{% url 'accounting:voucher_account_lookup_hx' %}"
+                               hx-trigger="change"
+                               hx-target="#account-results-container"
+                               hx-vals='{"q": document.getElementById("account-search-input").value, "type": "expense"}'>
+                        <label class="btn btn-outline-primary" for="filter-expenses">Expenses</label>
+                    </div>
+                </div>
+
+                <!-- Results Container -->
+                <div id="account-results-container" class="account-results-container">
+                    <!-- Initial load of accounts -->
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-search fa-2x mb-2"></i>
+                        <p>Start typing to search for accounts...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="select-account-btn" disabled>Select Account</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Account Results Template -->
+<script type="text/template" id="account-result-template">
+    <div class="account-result-item list-group-item list-group-item-action p-3"
+         data-account-id="{{ id }}"
+         data-account-code="{{ code }}"
+         data-account-name="{{ name }}"
+         onclick="selectAccount(this)">
+        <div class="d-flex justify-content-between align-items-start">
+            <div class="flex-grow-1">
+                <div class="fw-bold text-primary">{{ code }} - {{ name }}</div>
+                <div class="small text-muted">
+                    <span class="badge bg-secondary">{{ type }}</span>
+                    {% if balance %}
+                        <span class="ms-2">Balance: ${{ balance }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="text-end">
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAccount(this.parentElement.parentElement)">
+                    <i class="fas fa-check"></i> Select
+                </button>
+            </div>
+        </div>
+    </div>
+</script>
+
+<style>
+.account-results-container {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+}
+
+.account-result-item {
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.account-result-item:hover {
+    background-color: #f8f9fa;
+    border-left-color: #0d6efd;
+}
+
+.account-result-item.selected {
+    background-color: #e3f2fd;
+    border-left-color: #1976d2;
+}
+
+.account-result-item.selected .badge {
+    background-color: #1976d2 !important;
+}
+</style>
+
+<script>
+let selectedAccount = null;
+
+function clearAccountSearch() {
+    document.getElementById('account-search-input').value = '';
+    document.getElementById('account-results-container').innerHTML = `
+        <div class="text-center text-muted py-4">
+            <i class="fas fa-search fa-2x mb-2"></i>
+            <p>Start typing to search for accounts...</p>
+        </div>
+    `;
+}
+
+function selectAccount(element) {
+    // Remove previous selection
+    document.querySelectorAll('.account-result-item').forEach(item => {
+        item.classList.remove('selected');
+    });
+
+    // Select current item
+    element.classList.add('selected');
+    selectedAccount = {
+        id: element.dataset.accountId,
+        code: element.dataset.accountCode,
+        name: element.dataset.accountName
+    };
+
+    // Enable select button
+    document.getElementById('select-account-btn').disabled = false;
+}
+
+// Handle account selection from modal
+document.getElementById('select-account-btn').addEventListener('click', function() {
+    if (selectedAccount) {
+        // This function should be defined by the calling context
+        if (window.onAccountSelected) {
+            window.onAccountSelected(selectedAccount);
+        }
+
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('accountLookupModal'));
+        modal.hide();
+
+        // Reset state
+        selectedAccount = null;
+        this.disabled = true;
+    }
+});
+
+// Clear selection when modal is closed
+document.getElementById('accountLookupModal').addEventListener('hidden.bs.modal', function() {
+    selectedAccount = null;
+    document.getElementById('select-account-btn').disabled = true;
+    clearAccountSearch();
+});
+</script>

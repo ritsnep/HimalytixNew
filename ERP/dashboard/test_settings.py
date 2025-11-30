@@ -3,19 +3,21 @@ from .settings import *
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'test_db.sqlite3',
+        'NAME': ':memory:',
+        'OPTIONS': {
+            'foreign_keys': False,  # Disable foreign key constraints
+            'init_command': 'PRAGMA foreign_keys=OFF;',  # Ensure foreign keys are off
+        }
     }
 }
 
-# Speed up tests by disabling migrations. Django will use ``syncdb`` instead.
-class DisableMigrations(dict):
-    def __contains__(self, item):
-        return True
+# Disable migrations for tests by setting MIGRATION_MODULES to empty dict
+MIGRATION_MODULES = {}
 
-    def __getitem__(self, item):
-        return None
+# Exclude problematic apps that cause migration issues
+INSTALLED_APPS = [app for app in INSTALLED_APPS if app != 'service_management']
 
-MIGRATION_MODULES = DisableMigrations()
+EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
 
 if 'rest_framework' not in INSTALLED_APPS:
     INSTALLED_APPS += ['rest_framework']

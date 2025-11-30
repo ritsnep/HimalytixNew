@@ -203,9 +203,9 @@ def _sign_with_rsa(payload: Dict[str, Any], private_key_pem: str, passphrase: Op
 
 def sign_payload(
     payload: Dict[str, Any],
+    hmac_secret: Optional[str] = None,
     *,
     method: str = DEFAULT_SIGNING_METHOD,
-    hmac_secret: Optional[str] = None,
     rsa_private_key: Optional[str] = None,
     rsa_passphrase: Optional[str] = None,
 ) -> str:

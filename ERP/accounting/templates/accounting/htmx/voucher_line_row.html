@@ -1,0 +1,167 @@
+{% load static widget_tweaks %}
+<div class="voucher-line-row border rounded p-3 mb-3 bg-light" id="line-{{ line.id|default:forloop.counter }}" hx-target="this" hx-swap="outerHTML">
+    <div class="row g-3 align-items-end">
+        <!-- Line Number -->
+        <div class="col-auto">
+            <label class="form-label fw-bold text-primary">{{ line_number|default:forloop.counter }}</label>
+        </div>
+
+        <!-- Account Selection -->
+        <div class="col-md-4">
+            <label class="form-label">Account <span class="text-danger">*</span></label>
+            <div class="position-relative">
+                <select name="lines-{{ forloop.counter0 }}-account"
+                        class="form-select account-select"
+                        hx-get="{% url 'accounting:voucher_account_lookup_hx' %}"
+                        hx-trigger="input changed delay:300ms, focus"
+                        hx-target="#account-results-{{ line.id|default:forloop.counter }}"
+                        hx-vals='{"q": this.value}'
+                        required>
+                    <option value="">Select Account...</option>
+                    {% for account in accounts %}
+                        <option value="{{ account.id }}" {% if line.account_id == account.id %}selected{% endif %}>
+                            {{ account.account_code }} - {{ account.account_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <!-- Account Search Results Dropdown -->
+                <div id="account-results-{{ line.id|default:forloop.counter }}" class="account-search-results position-absolute bg-white border rounded shadow-sm" style="z-index: 1000; max-height: 200px; overflow-y: auto; display: none; width: 100%;"></div>
+            </div>
+        </div>
+
+        <!-- Description -->
+        <div class="col-md-3">
+            <label class="form-label">Description</label>
+            <input type="text"
+                   name="lines-{{ forloop.counter0 }}-description"
+                   class="form-control"
+                   placeholder="Enter description"
+                   value="{{ line.description|default:'' }}"
+                   maxlength="255">
+        </div>
+
+        <!-- Debit Amount -->
+        <div class="col-md-2">
+            <label class="form-label">Debit Amount</label>
+            <input type="number"
+                   name="lines-{{ forloop.counter0 }}-debit_amount"
+                   class="form-control debit-amount"
+                   placeholder="0.00"
+                   step="0.01"
+                   min="0"
+                   value="{{ line.debit_amount|default:'' }}"
+                   hx-post="{% url 'accounting:voucher_tax_calculation_hx' %}"
+                   hx-trigger="input changed delay:500ms"
+                   hx-vals='{"line_id": "{{ line.id|default:forloop.counter }}", "base_amount": this.value, "tax_rate": "0"}'
+                   hx-target="#tax-results-{{ line.id|default:forloop.counter }}">
+        </div>
+
+        <!-- Credit Amount -->
+        <div class="col-md-2">
+            <label class="form-label">Credit Amount</label>
+            <input type="number"
+                   name="lines-{{ forloop.counter0 }}-credit_amount"
+                   class="form-control credit-amount"
+                   placeholder="0.00"
+                   step="0.01"
+                   min="0"
+                   value="{{ line.credit_amount|default:'' }}"
+                   hx-post="{% url 'accounting:voucher_tax_calculation_hx' %}"
+                   hx-trigger="input changed delay:500ms"
+                   hx-vals='{"line_id": "{{ line.id|default:forloop.counter }}", "base_amount": this.value, "tax_rate": "0"}'
+                   hx-target="#tax-results-{{ line.id|default:forloop.counter }}">
+        </div>
+
+        <!-- Actions -->
+        <div class="col-auto">
+            <div class="btn-group" role="group">
+                {% if can_delete %}
+                <button type="button"
+                        class="btn btn-outline-danger btn-sm"
+                        hx-delete="{% url 'accounting:voucher_line_delete_hx' journal_id line.id %}"
+                        hx-confirm="Are you sure you want to delete this line?"
+                        title="Delete line">
+                    <i class="fas fa-trash"></i>
+                </button>
+                {% endif %}
+                <button type="button"
+                        class="btn btn-outline-info btn-sm"
+                        onclick="duplicateLine(this)"
+                        title="Duplicate line">
+                    <i class="fas fa-copy"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tax Calculation Results -->
+    <div id="tax-results-{{ line.id|default:forloop.counter }}" class="tax-calculation-results mt-2 p-2 bg-white border rounded small">
+        <!-- Tax results will be loaded here via HTMX -->
+    </div>
+
+    <!-- Line Validation Messages -->
+    <div id="line-validation-{{ line.id|default:forloop.counter }}" class="line-validation mt-2">
+        <!-- Validation messages will appear here -->
+    </div>
+
+    <!-- Hidden Fields -->
+    <input type="hidden" name="lines-{{ forloop.counter0 }}-id" value="{{ line.id|default:'' }}">
+    <input type="hidden" name="lines-{{ forloop.counter0 }}-line_number" value="{{ line_number|default:forloop.counter }}">
+</div>
+
+<style>
+.account-search-results .list-group-item {
+    cursor: pointer;
+    border: none;
+    padding: 0.5rem 0.75rem;
+}
+
+.account-search-results .list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+.tax-calculation-results:empty {
+    display: none;
+}
+
+.line-validation .alert {
+    margin-bottom: 0;
+    padding: 0.5rem 0.75rem;
+}
+</style>
+
+<script>
+function duplicateLine(button) {
+    const lineRow = button.closest('.voucher-line-row');
+    const clonedRow = lineRow.cloneNode(true);
+
+    // Update IDs and names for the cloned row
+    const timestamp = Date.now();
+    clonedRow.id = 'line-' + timestamp;
+
+    // Update form field names and IDs
+    const inputs = clonedRow.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+        if (input.name) {
+            input.name = input.name.replace(/lines-\d+-/, 'lines-' + timestamp + '-');
+        }
+        if (input.id) {
+            input.id = input.id.replace(/lines-\d+-/, 'lines-' + timestamp + '-');
+        }
+        // Clear values for cloned fields
+        if (input.type !== 'hidden') {
+            input.value = '';
+        }
+    });
+
+    // Clear tax results
+    const taxResults = clonedRow.querySelector('.tax-calculation-results');
+    if (taxResults) taxResults.innerHTML = '';
+
+    // Insert after current row
+    lineRow.parentNode.insertBefore(clonedRow, lineRow.nextSibling);
+
+    // Trigger HTMX to re-initialize event listeners
+    htmx.process(clonedRow);
+}
+</script>

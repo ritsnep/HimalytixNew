@@ -1,0 +1,31 @@
+<tr id="creditnote-row-{{ credit_note.id }}">
+  <td>{{ credit_note.credit_note_number }}</td>
+  <td>{{ credit_note.credit_note_date }}</td>
+  <td>{{ credit_note.ref_invoice.invoice_number }}</td>
+  <td>{{ credit_note.reason_for_return }}</td>
+  <td>
+    {% if credit_note.status == 'success' %}
+      <span class="badge bg-success">Success</span>
+    {% elif credit_note.status == 'failed' %}
+      <span class="badge bg-danger">Failed</span>
+    {% else %}
+      <span class="badge bg-secondary">Pending</span>
+    {% endif %}
+    {% if credit_note.status == 'failed' and credit_note.error_message %}
+      <div class="text-danger small">{{ credit_note.error_message }}</div>
+    {% endif %}
+  </td>
+  <td>
+    {% if credit_note.status == 'failed' %}
+      <button
+        class="btn btn-sm btn-warning"
+        hx-post="{% url 'ird_integration:resend_creditnote' credit_note.id %}"
+        hx-target="#creditnote-row-{{ credit_note.id }}"
+        hx-swap="outerHTML">
+        Resend
+      </button>
+    {% else %}
+      <button class="btn btn-sm btn-secondary" disabled>Resend</button>
+    {% endif %}
+  </td>
+</tr>

@@ -3,6 +3,7 @@ from django.urls import path, include
 from accounting.views import views_import
 from .views import journal_entry, journal_entry_view, voucher_views
 from .views import voucher_crud_views
+from .views import voucher_htmx_handlers
 from .views import views_journal_grid as journal_grid_view
 from .views.report_views import (
     ReportListView,
@@ -192,6 +193,18 @@ urlpatterns = [
     path('vouchers/<int:pk>/delete/', voucher_crud_views.VoucherDeleteView.as_view(), name='voucher_delete'),
     path('vouchers/<int:pk>/duplicate/', voucher_crud_views.VoucherDuplicateView.as_view(), name='voucher_duplicate'),
     path('vouchers/<int:pk>/post/', voucher_crud_views.VoucherPostView.as_view(), name='voucher_post'),
+    
+    # Voucher HTMX Handlers
+    path('vouchers/<int:journal_id>/htmx/add-line/', voucher_htmx_handlers.VoucherAddLineHtmxView.as_view(), name='voucher_add_line_hx'),
+    path('vouchers/htmx/account-lookup/', voucher_htmx_handlers.VoucherAccountLookupHtmxView.as_view(), name='voucher_account_lookup_hx'),
+    path('vouchers/htmx/tax-calculation/', voucher_htmx_handlers.VoucherTaxCalculationHtmxView.as_view(), name='voucher_tax_calculation_hx'),
+    path('vouchers/<int:journal_id>/htmx/line-recalculate/', voucher_htmx_handlers.VoucherLineRecalculateHtmxView.as_view(), name='voucher_line_recalculate_hx'),
+    path('vouchers/<int:journal_id>/htmx/status-validation/', voucher_htmx_handlers.VoucherStatusValidationHtmxView.as_view(), name='voucher_status_validation_hx'),
+    path('vouchers/<int:journal_id>/htmx/quick-action/', voucher_htmx_handlers.VoucherQuickActionHtmxView.as_view(), name='voucher_quick_action_hx'),
+    path('vouchers/<int:journal_id>/htmx/line-validation/', voucher_htmx_handlers.VoucherLineValidationHtmxView.as_view(), name='voucher_line_validation_hx'),
+    path('vouchers/<int:journal_id>/htmx/balance-check/', voucher_htmx_handlers.VoucherBalanceCheckHtmxView.as_view(), name='voucher_balance_check_hx'),
+    path('vouchers/<int:journal_id>/htmx/auto-balance/', voucher_htmx_handlers.VoucherAutoBalanceHtmxView.as_view(), name='voucher_auto_balance_hx'),
+    path('vouchers/<int:journal_id>/htmx/line-delete/<int:line_id>/', voucher_htmx_handlers.VoucherLineDeleteHtmxView.as_view(), name='voucher_line_delete_hx'),
     
     # Legacy Voucher Views (kept for backward compatibility)
     path('vouchers/legacy/print/<int:pk>/', voucher_views.VoucherPrintView.as_view(), name='voucher_print'),

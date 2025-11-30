@@ -7,7 +7,20 @@ function getCookie(name) {
   const parts = value.split(`; ${name}=`);
   if (parts.length === 2) return parts.pop().split(';').shift();
 }
-const CSRFTOKEN = getCookie('csrftoken');
+
+// Get CSRF token from cookie or hidden input ({% csrf_token %} creates input[name=csrfmiddlewaretoken])
+function getCSRFToken() {
+  // Try cookie first
+  let token = getCookie('csrftoken');
+  if (token) return token;
+  // Fallback to hidden input
+  const input = document.querySelector('input[name=csrfmiddlewaretoken]');
+  if (input) return input.value;
+  return '';
+}
+
+// For backward compatibility (though prefer getCSRFToken() for freshness)
+const CSRFTOKEN = getCSRFToken();
 
 // Read endpoints from the root element (#app). If not present, we fallback to local behaviors.
 const __root = document.getElementById('app');
@@ -222,7 +235,7 @@ async function postJSON(url, payload, meta = {}) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRFToken': CSRFTOKEN || ''
+        'X-CSRFToken': getCSRFToken()
       },
       credentials: 'same-origin',
       body: JSON.stringify(payload)
@@ -1002,7 +1015,7 @@ const App = {
       const res = await fetch(ATTACH_UPLOAD_ENDPOINT, {
         method: 'POST',
         credentials: 'same-origin',
-        headers: { 'X-CSRFToken': CSRFTOKEN || '' },
+        headers: { 'X-CSRFToken': getCSRFToken() },
         body: form,
       });
       const text = await res.text();
@@ -1055,7 +1068,7 @@ const App = {
     fetch(ATTACH_DELETE_ENDPOINT, {
       method: 'POST',
       credentials: 'same-origin',
-      headers: { 'X-CSRFToken': CSRFTOKEN || '' },
+      headers: { 'X-CSRFToken': getCSRFToken() },
       body: form,
     })
       .then((res) => res.json().catch(() => ({})).then((data) => ({ res, data })))

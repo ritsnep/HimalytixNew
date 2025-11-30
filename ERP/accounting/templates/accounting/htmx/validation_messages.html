@@ -1,0 +1,247 @@
+{% load static %}
+<!-- Form Validation Messages -->
+<div class="validation-messages-container" id="validation-messages">
+    {% if errors %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <div class="d-flex align-items-start">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-exclamation-triangle fa-lg me-2"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <h6 class="alert-heading mb-2">Please correct the following errors:</h6>
+
+                    <!-- General Errors -->
+                    {% if errors.general %}
+                        <div class="mb-2">
+                            <strong>General Errors:</strong>
+                            <ul class="mb-1">
+                                {% for error in errors.general %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+
+                    <!-- Header Errors -->
+                    {% if errors.header %}
+                        <div class="mb-2">
+                            <strong>Header Errors:</strong>
+                            <ul class="mb-1">
+                                {% for field, field_errors in errors.header.items %}
+                                    {% for error in field_errors %}
+                                        <li><strong>{{ field|title }}:</strong> {{ error }}</li>
+                                    {% endfor %}
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+
+                    <!-- Line Errors -->
+                    {% if errors.lines %}
+                        <div class="mb-2">
+                            <strong>Line Errors:</strong>
+                            {% for line_error in errors.lines %}
+                                <div class="border-start border-danger border-3 ps-2 mb-2">
+                                    <small class="text-muted">Line {{ line_error.index|add:1 }}:</small>
+                                    <ul class="mb-1">
+                                        {% for field, field_errors in line_error.errors.items %}
+                                            {% for error in field_errors %}
+                                                <li><strong>{{ field|title }}:</strong> {{ error }}</li>
+                                            {% endfor %}
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Success Messages -->
+    {% if success_messages %}
+        {% for message in success_messages %}
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i>
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Warning Messages -->
+    {% if warnings %}
+        {% for warning in warnings %}
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                {{ warning }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Info Messages -->
+    {% if info_messages %}
+        {% for info in info_messages %}
+            <div class="alert alert-info alert-dismissible fade show" role="alert">
+                <i class="fas fa-info-circle me-2"></i>
+                {{ info }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<!-- Inline Field Validation -->
+<div class="field-validation-container d-none">
+    <div class="invalid-feedback" id="field-error-template">
+        <!-- Error message will be inserted here -->
+    </div>
+</div>
+
+<style>
+.validation-messages-container .alert {
+    border-left: 4px solid;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.validation-messages-container .alert-danger {
+    border-left-color: #dc3545;
+}
+
+.validation-messages-container .alert-success {
+    border-left-color: #198754;
+}
+
+.validation-messages-container .alert-warning {
+    border-left-color: #ffc107;
+}
+
+.validation-messages-container .alert-info {
+    border-left-color: #0dcaf0;
+}
+
+.validation-messages-container ul {
+    margin-bottom: 0.5rem;
+    padding-left: 1.5rem;
+}
+
+.validation-messages-container li {
+    margin-bottom: 0.25rem;
+}
+
+.field-validation-container .invalid-feedback {
+    display: block;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+/* Animation for validation messages */
+@keyframes slideInFromTop {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.validation-messages-container .alert {
+    animation: slideInFromTop 0.3s ease-out;
+}
+</style>
+
+<script>
+// Function to display validation errors for specific fields
+function showFieldErrors(fieldName, errors) {
+    const field = document.querySelector(`[name="${fieldName}"]`);
+    if (field) {
+        // Remove existing error styling
+        field.classList.remove('is-invalid');
+        const existingFeedback = field.parentNode.querySelector('.invalid-feedback');
+        if (existingFeedback) {
+            existingFeedback.remove();
+        }
+
+        // Add error styling and message
+        if (errors && errors.length > 0) {
+            field.classList.add('is-invalid');
+
+            const feedback = document.createElement('div');
+            feedback.className = 'invalid-feedback';
+            feedback.textContent = errors.join(', ');
+
+            field.parentNode.appendChild(feedback);
+        }
+    }
+}
+
+// Function to clear all validation errors
+function clearValidationErrors() {
+    // Clear field-level errors
+    document.querySelectorAll('.is-invalid').forEach(field => {
+        field.classList.remove('is-invalid');
+        const feedback = field.parentNode.querySelector('.invalid-feedback');
+        if (feedback) {
+            feedback.remove();
+        }
+    });
+
+    // Clear general validation messages
+    const container = document.getElementById('validation-messages');
+    if (container) {
+        container.innerHTML = '';
+    }
+}
+
+// Function to add a success message
+function addSuccessMessage(message) {
+    const container = document.getElementById('validation-messages');
+    if (container) {
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-success alert-dismissible fade show';
+        alert.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        container.appendChild(alert);
+
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.remove();
+            }
+        }, 5000);
+    }
+}
+
+// Function to add an error message
+function addErrorMessage(message) {
+    const container = document.getElementById('validation-messages');
+    if (container) {
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-danger alert-dismissible fade show';
+        alert.innerHTML = `
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        container.appendChild(alert);
+    }
+}
+
+// Auto-dismiss alerts when clicked
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('btn-close')) {
+        const alert = e.target.closest('.alert');
+        if (alert) {
+            alert.remove();
+        }
+    }
+});
+</script>

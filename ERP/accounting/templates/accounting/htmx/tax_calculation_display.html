@@ -1,0 +1,191 @@
+{% load static %}
+<!-- Tax Calculation Display -->
+<div class="tax-calculation-display card border-info mt-2" id="tax-display-{{ line_id }}">
+    <div class="card-body p-2">
+        <div class="row g-2 align-items-center">
+            <div class="col-auto">
+                <small class="text-muted fw-bold">
+                    <i class="fas fa-calculator text-info me-1"></i>Tax Calculation
+                </small>
+            </div>
+
+            <div class="col-auto">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text">Rate</span>
+                    <input type="number"
+                           class="form-control tax-rate-input"
+                           placeholder="0.00"
+                           step="0.01"
+                           min="0"
+                           max="100"
+                           value="{{ tax_rate|default:'0' }}"
+                           onchange="updateTaxCalculation(this, '{{ line_id }}')">
+                    <span class="input-group-text">%</span>
+                </div>
+            </div>
+
+            <div class="col-auto">
+                <select class="form-select form-select-sm tax-type-select"
+                        onchange="updateTaxCalculation(this, '{{ line_id }}')">
+                    <option value="inclusive" {% if tax_type == 'inclusive' %}selected{% endif %}>Inclusive</option>
+                    <option value="exclusive" {% if tax_type == 'exclusive' %}selected{% endif %}>Exclusive</option>
+                </select>
+            </div>
+
+            <div class="col">
+                <div class="tax-breakdown small">
+                    <span class="text-muted">Base: </span>
+                    <span class="fw-bold text-primary" id="tax-base-{{ line_id }}">{{ base_amount|default:'0.00'|floatformat:2 }}</span>
+                    <span class="text-muted mx-2">|</span>
+                    <span class="text-muted">Tax: </span>
+                    <span class="fw-bold text-success" id="tax-amount-{{ line_id }}">{{ tax_amount|default:'0.00'|floatformat:2 }}</span>
+                    <span class="text-muted mx-2">|</span>
+                    <span class="text-muted">Total: </span>
+                    <span class="fw-bold text-info" id="tax-total-{{ line_id }}">{{ total_amount|default:'0.00'|floatformat:2 }}</span>
+                </div>
+            </div>
+
+            <div class="col-auto">
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary"
+                        onclick="clearTaxCalculation('{{ line_id }}')"
+                        title="Clear tax calculation">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Tax Details (Expandable) -->
+        <div class="tax-details mt-2" id="tax-details-{{ line_id }}" style="display: none;">
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <div class="border rounded p-2 bg-light">
+                        <small class="text-muted d-block">Calculation Method</small>
+                        <span class="badge bg-info" id="calc-method-{{ line_id }}">
+                            {% if tax_type == 'inclusive' %}Tax Included in Amount{% else %}Tax Added to Amount{% endif %}
+                        </span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="border rounded p-2 bg-light">
+                        <small class="text-muted d-block">Formula</small>
+                        <code class="small" id="tax-formula-{{ line_id }}">
+                            {% if tax_type == 'inclusive' %}
+                                Tax = Amount × Rate ÷ (100 + Rate)
+                            {% else %}
+                                Tax = Amount × Rate ÷ 100
+                            {% endif %}
+                        </code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.tax-calculation-display {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.tax-breakdown {
+    font-family: 'Courier New', monospace;
+}
+
+.tax-details {
+    border-top: 1px solid #dee2e6;
+    padding-top: 0.5rem;
+}
+
+.tax-rate-input:focus,
+.tax-type-select:focus {
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+</style>
+
+<script>
+function updateTaxCalculation(element, lineId) {
+    const container = element.closest('.tax-calculation-display');
+    const rateInput = container.querySelector('.tax-rate-input');
+    const typeSelect = container.querySelector('.tax-type-select');
+
+    const baseAmount = parseFloat(document.querySelector(`input[name*="-debit_amount"], input[name*="-credit_amount"]`).value) || 0;
+    const taxRate = parseFloat(rateInput.value) || 0;
+    const taxType = typeSelect.value;
+
+    // Calculate tax
+    let taxAmount, netAmount, totalAmount;
+
+    if (taxType === 'inclusive') {
+        // Tax is included in the base amount
+        taxAmount = baseAmount * taxRate / (100 + taxRate);
+        netAmount = baseAmount - taxAmount;
+        totalAmount = baseAmount;
+    } else {
+        // Tax is additional to the base amount
+        taxAmount = baseAmount * taxRate / 100;
+        netAmount = baseAmount;
+        totalAmount = baseAmount + taxAmount;
+    }
+
+    // Update display
+    document.getElementById(`tax-base-${lineId}`).textContent = netAmount.toFixed(2);
+    document.getElementById(`tax-amount-${lineId}`).textContent = taxAmount.toFixed(2);
+    document.getElementById(`tax-total-${lineId}`).textContent = totalAmount.toFixed(2);
+
+    // Update formula display
+    const formulaElement = document.getElementById(`tax-formula-${lineId}`);
+    const methodElement = document.getElementById(`calc-method-${lineId}`);
+
+    if (taxType === 'inclusive') {
+        formulaElement.textContent = `Tax = ${baseAmount.toFixed(2)} × ${taxRate}% ÷ (100 + ${taxRate}) = ${taxAmount.toFixed(2)}`;
+        methodElement.textContent = 'Tax Included in Amount';
+        methodElement.className = 'badge bg-info';
+    } else {
+        formulaElement.textContent = `Tax = ${baseAmount.toFixed(2)} × ${taxRate}% ÷ 100 = ${taxAmount.toFixed(2)}`;
+        methodElement.textContent = 'Tax Added to Amount';
+        methodElement.className = 'badge bg-warning';
+    }
+
+    // Trigger HTMX request to update server-side calculation
+    htmx.ajax('POST', '{% url "accounting:voucher_tax_calculation_hx" %}', {
+        values: {
+            base_amount: baseAmount.toString(),
+            tax_rate: taxRate.toString(),
+            tax_type: taxType,
+            line_id: lineId
+        },
+        target: `#tax-display-${lineId}`
+    });
+}
+
+function clearTaxCalculation(lineId) {
+    const container = document.getElementById(`tax-display-${lineId}`);
+    const rateInput = container.querySelector('.tax-rate-input');
+    const typeSelect = container.querySelector('.tax-type-select');
+
+    // Reset values
+    rateInput.value = '0';
+    typeSelect.value = 'inclusive';
+
+    // Clear display
+    document.getElementById(`tax-base-${lineId}`).textContent = '0.00';
+    document.getElementById(`tax-amount-${lineId}`).textContent = '0.00';
+    document.getElementById(`tax-total-${lineId}`).textContent = '0.00';
+
+    // Hide details
+    const details = document.getElementById(`tax-details-${lineId}`);
+    if (details) details.style.display = 'none';
+}
+
+// Toggle tax details visibility
+document.addEventListener('click', function(e) {
+    if (e.target.closest('.tax-calculation-display')) {
+        const display = e.target.closest('.tax-calculation-display');
+        const details = display.querySelector('.tax-details');
+        if (details) {
+            details.style.display = details.style.display === 'none' ? 'block' : 'none';
+        }
+    }
+});
+</script>

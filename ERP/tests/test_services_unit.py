@@ -7,6 +7,7 @@ import pytest
 
 from accounting.services.inventory_posting_service import InventoryPostingService
 from accounting.services.journal_entry_service import JournalEntryService
+from Inventory.models import InventoryItem
 
 pytestmark = pytest.mark.django_db
 
@@ -117,9 +118,7 @@ def test_inventory_posting_weighted_average_and_issue(monkeypatch):
     assert issue.credit_account == "INV"
 
     # After receipt and issue, remaining on-hand should be 6 units @ 5
-    item = MonkeyPatchedItem = monkeypatch.getattr(
-        "accounting.services.inventory_posting_service.InventoryItem"
-    ).objects.item
+    item = InventoryItem.objects.get(product=product, warehouse=warehouse)
     assert item.quantity_on_hand == Decimal("6")
     assert item.unit_cost == Decimal("5")
     # Stock ledger was created twice (receipt + issue)

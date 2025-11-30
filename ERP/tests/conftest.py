@@ -34,23 +34,6 @@ def db_setup(db):
     return db
 
 
-@pytest.fixture(scope='session')
-def django_db_setup():
-    """
-    Session-level database configuration.
-    Override default test database settings.
-    """
-    from django.conf import settings
-    settings.DATABASES['default'] = {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'test_himalytix',
-        'USER': 'erp',
-        'PASSWORD': 'test',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
-
-
 # =============================================================================
 # USER FIXTURES
 # =============================================================================

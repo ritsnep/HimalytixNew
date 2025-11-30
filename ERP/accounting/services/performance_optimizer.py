@@ -20,7 +20,7 @@ from typing import List, Dict, Any, Optional
 
 from accounting.models import (
     Organization, Journal, JournalLine, Account, AccountingPeriod,
-    ApprovalWorkflow, ApprovalLog
+    ApprovalWorkflow
 )
 
 logger = logging.getLogger(__name__)
@@ -59,9 +59,9 @@ class PerformanceOptimizer:
             'created_by',
             'modified_by'
         ).prefetch_related(
-            'journalline_set__account',
-            'journalline_set__department',
-            'journalline_set__project',
+            'lines__account',
+            'lines__department',
+            'lines__project',
             'approvallog_set__approved_by'
         )
     

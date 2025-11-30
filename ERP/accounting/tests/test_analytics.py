@@ -24,7 +24,7 @@ import json
 
 from accounting.models import (
     Organization, Account, Journal, JournalLine, JournalType,
-    AccountingPeriod, FiscalYear, ApprovalLog
+    AccountingPeriod, FiscalYear
 )
 from accounting.services.analytics_service import (
     AnalyticsService, FinancialMetrics, TrendAnalyzer, PerformanceMetrics, CacheManager
