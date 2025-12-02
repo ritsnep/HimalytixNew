@@ -42,7 +42,7 @@
 
 # # --- Test/coverage ---
 # .coverage
-# htmlcov/
+htmlcov/
 # .tox/
 # .pytest_cache/
 

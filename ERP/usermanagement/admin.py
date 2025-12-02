@@ -43,7 +43,7 @@ class CustomUserAdmin(UserAdmin):
         }),
     )
     readonly_fields = ('created_at', 'updated_at', 'deleted_at')
-    list_select_related = ('role', 'organization')
+    list_select_related = ('organization',)
 
 # Organization Models
 @admin.register(Organization)

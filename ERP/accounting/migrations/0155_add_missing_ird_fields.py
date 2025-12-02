@@ -6,7 +6,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('accounting', '0154_salesinvoice_ird_fields'),
+        ('accounting', '0153_add_performance_indexes'),
     ]
 
     operations = [
