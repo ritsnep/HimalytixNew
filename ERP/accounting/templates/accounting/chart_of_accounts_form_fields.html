@@ -56,28 +56,141 @@
             {% endif %}
         </div>
     </div>
-    <div class="col-md-6">
-        <div class="mb-3">
-            <label for="{{ form.last_reconciled_date.id_for_label }}" class="form-label">Last Reconciled Date</label>
-            {{ form.last_reconciled_date }}
-            {% if form.last_reconciled_date.errors %}
-            <div class="error-message">{{ form.last_reconciled_date.errors }}</div>
-            {% endif %}
-        </div>
-    </div>
 </div>
 {% endif %}
 
-<!-- Hidden Fields -->
-{{ form.account_code }}
-{{ form.account_level }}
-{{ form.tree_path }}
-{{ form.display_order }}
+<!-- UDF Fields Section -->
+{% if udf_definitions %}
+<div class="row mt-4" id="udf-fields-section">
+    <div class="col-12">
+        <hr>
+        <h6 class="mb-3">Custom Fields</h6>
+    </div>
+    {% for udf in udf_definitions %}
+    <div class="col-md-6 mb-3" id="udf-field-{{ udf.id }}">
+        <div class="form-group">
+            <label for="udf_{{ udf.field_name }}" class="form-label">
+                {{ udf.display_name }}
+                {% if udf.is_required %}<span class="text-danger">*</span>{% endif %}
+            </label>
+            
+            {% if udf.field_type == 'text' %}
+                <input type="text" 
+                    class="form-control" 
+                    name="udf_{{ udf.field_name }}" 
+                    id="udf_{{ udf.field_name }}"
+                    value="{{ udf.computed_value|default:'' }}"
+                    {% if udf.max_length %}maxlength="{{ udf.max_length }}"{% endif %}
+                    {% if udf.is_required %}required{% endif %}
+                    {% if udf.help_text %}title="{{ udf.help_text }}"{% endif %}>
+            
+            {% elif udf.field_type == 'number' %}
+                <input type="number" 
+                    class="form-control" 
+                    name="udf_{{ udf.field_name }}" 
+                    id="udf_{{ udf.field_name }}"
+                    value="{{ udf.computed_value|default:'' }}"
+                    {% if udf.min_value %}min="{{ udf.min_value }}"{% endif %}
+                    {% if udf.max_value %}max="{{ udf.max_value }}"{% endif %}
+                    {% if udf.is_required %}required{% endif %}
+                    {% if udf.help_text %}title="{{ udf.help_text }}"{% endif %}>
+            
+            {% elif udf.field_type == 'decimal' %}
+                <input type="number" 
+                    step="0.01"
+                    class="form-control" 
+                    name="udf_{{ udf.field_name }}" 
+                    id="udf_{{ udf.field_name }}"
+                    value="{{ udf.computed_value|default:'' }}"
+                    {% if udf.min_value %}min="{{ udf.min_value }}"{% endif %}
+                    {% if udf.max_value %}max="{{ udf.max_value }}"{% endif %}
+                    {% if udf.is_required %}required{% endif %}
+                    {% if udf.help_text %}title="{{ udf.help_text }}"{% endif %}>
+            
+            {% elif udf.field_type == 'date' %}
+                <input type="date" 
+                    class="form-control" 
+                    name="udf_{{ udf.field_name }}" 
+                    id="udf_{{ udf.field_name }}"
+                    value="{{ udf.computed_value|default:'' }}"
+                    {% if udf.is_required %}required{% endif %}>
+            
+            {% elif udf.field_type == 'datetime' %}
+                <input type="datetime-local" 
+                    class="form-control" 
+                    name="udf_{{ udf.field_name }}" 
+                    id="udf_{{ udf.field_name }}"
+                    value="{{ udf.computed_value|default:'' }}"
+                    {% if udf.is_required %}required{% endif %}>
+            
+            {% elif udf.field_type == 'boolean' %}
+                <div class="form-check mt-2">
+                    <input type="checkbox" 
+                        class="form-check-input" 
+                        name="udf_{{ udf.field_name }}" 
+                        id="udf_{{ udf.field_name }}"
+                        value="true"
+                        {% if udf.computed_value %}checked{% endif %}>
+                    <label class="form-check-label" for="udf_{{ udf.field_name }}">
+                        {{ udf.display_name }}
+                    </label>
+                </div>
+            
+            {% elif udf.field_type == 'select' %}
+                <select class="form-select" 
+                    name="udf_{{ udf.field_name }}" 
+                    id="udf_{{ udf.field_name }}"
+                    {% if udf.is_required %}required{% endif %}>
+                    <option value="">-- Select --</option>
+                    {% if udf.choices %}
+                        {% for choice in udf.choices %}
+                            <option value="{{ choice }}" {% if choice == udf.computed_value %}selected{% endif %}>{{ choice }}</option>
+                        {% endfor %}
+                    {% endif %}
+                </select>
+            
+            {% elif udf.field_type == 'multiselect' %}
+                <select class="form-select" 
+                    name="udf_{{ udf.field_name }}" 
+                    id="udf_{{ udf.field_name }}"
+                    multiple
+                    {% if udf.is_required %}required{% endif %}>
+                    {% if udf.choices %}
+                        {% for choice in udf.choices %}
+                            <option value="{{ choice }}">{{ choice }}</option>
+                        {% endfor %}
+                    {% endif %}
+                </select>
+            
+            {% elif udf.field_type == 'json' %}
+                <textarea class="form-control" 
+                    name="udf_{{ udf.field_name }}" 
+                    id="udf_{{ udf.field_name }}"
+                    rows="3"
+                    {% if udf.is_required %}required{% endif %}>{{ udf.computed_value|default:'' }}</textarea>
+            
+            {% else %}
+                <input type="text" 
+                    class="form-control" 
+                    name="udf_{{ udf.field_name }}" 
+                    id="udf_{{ udf.field_name }}"
+                    value="{{ udf.computed_value|default:'' }}"
+                    {% if udf.is_required %}required{% endif %}>
+            {% endif %}
+            
+            {% if udf.help_text and udf.field_type != 'boolean' %}
+                <small class="form-text text-muted d-block mt-1">{{ udf.help_text }}</small>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
 
 <script>
 // Reinit local form scripts after HTMX swaps
 document.addEventListener('htmx:afterSwap', function(evt) {
-    if (evt.target && evt.target.id === 'dynamic-fields') {
+    if (evt.target && evt.target.id === 'dynamic-fields-container') {
         if (window.initCoaForm) window.initCoaForm('fieldsSwap');
     }
 });

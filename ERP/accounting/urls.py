@@ -4,6 +4,15 @@ from accounting.views import views_import
 from .views import journal_entry, journal_entry_view, voucher_views
 from .views import voucher_crud_views
 from .views import voucher_htmx_handlers
+from .views.voucher_create_view import (
+    VoucherCreateView,
+    VoucherCreateHtmxView,
+    VoucherAccountLookupHtmxView,
+    VoucherTaxCalculationHtmxView,
+)
+from .views.voucher_edit_view import VoucherEditView
+from .views.voucher_detail_view import VoucherDetailView
+from .views.voucher_list_view import VoucherListView
 from .views import views_journal_grid as journal_grid_view
 from .views.report_views import (
     ReportListView,
@@ -104,6 +113,17 @@ urlpatterns = [
     path('journal-entry-grid/paste', journal_grid_view.journal_entry_grid_paste, name='journal_entry_grid_paste'),
     path('journal-entry-grid/save', journal_grid_view.journal_entry_grid_save, name='journal_entry_grid_save'),
     path('journal-entry-grid/account-lookup', journal_grid_view.account_lookup, name='journal_entry_grid_account_lookup'),
+
+    # Phase 2 voucher views (BaseVoucherView-backed)
+    path('voucher-entry/', VoucherListView.as_view(), name='voucher_entry_list'),
+    path('voucher-entry/create/', VoucherCreateView.as_view(), name='voucher_entry_create'),
+    path('voucher-entry/create/<str:journal_type>/', VoucherCreateView.as_view(), name='voucher_entry_create_typed'),
+    path('voucher-entry/<int:pk>/', VoucherDetailView.as_view(), name='voucher_entry_detail'),
+    path('voucher-entry/<int:pk>/edit/', VoucherEditView.as_view(), name='voucher_entry_edit'),
+    path('voucher-entry/htmx/add-line/', VoucherCreateHtmxView.as_view(), name='voucher_entry_add_line_hx'),
+    path('voucher-entry/htmx/account-lookup/', VoucherAccountLookupHtmxView.as_view(), name='voucher_entry_account_lookup_hx'),
+    path('voucher-entry/htmx/tax-calculation/', VoucherTaxCalculationHtmxView.as_view(), name='voucher_entry_tax_calculation_hx'),
+
     # Journal Entry URLs
     path('journal-entry/', journal_entry.journal_entry, name='journal_entry'),
     path('journal-entry/select-config/', journal_entry.journal_select_config, name='journal_select_config'),

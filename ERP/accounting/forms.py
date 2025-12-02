@@ -345,7 +345,8 @@ class ChartOfAccountForm(BootstrapFormMixin, forms.ModelForm):
             'readonly': True,
             'maxlength': '50',
             'pattern': r'^[0-9]+(\.[0-9]{2})*$',
-            'title': 'Account code must be numeric, optionally with dot and two digits for children.'
+            'title': 'Account code must be numeric, optionally with dot and two digits for children.',
+            'placeholder': 'Auto-generated'
         })
     )
     use_custom_code = forms.BooleanField(
@@ -474,7 +475,7 @@ class ChartOfAccountForm(BootstrapFormMixin, forms.ModelForm):
                 is_active=True,
             )
             self.fields['account_type'].queryset = AccountType.objects.filter(
-                is_archived=False
+                archived_at__isnull=True
             )
             currency_choices = [(currency.currency_code, f"{currency.currency_code} - {currency.currency_name}")
                                for currency in Currency.objects.filter(is_active=True)]
@@ -610,6 +611,16 @@ class ChartOfAccountForm(BootstrapFormMixin, forms.ModelForm):
         # Set organization for new instances
         if self.organization and not instance.pk:
             instance.organization = self.organization
+
+        # Extract and save UDF fields from cleaned_data
+        udf_data = {}
+        for field_name in list(self.cleaned_data.keys()):
+            if field_name.startswith('udf_'):
+                udf_key = field_name.replace('udf_', '')
+                udf_data[udf_key] = self.cleaned_data[field_name]
+        
+        if udf_data:
+            instance.udf_data = udf_data
 
         # Set account code / custom code mapping
         instance.use_custom_code = self.cleaned_data.get('use_custom_code', False)

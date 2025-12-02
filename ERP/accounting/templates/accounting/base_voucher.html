@@ -37,7 +37,7 @@ Usage:
       {% endif %}
     </div>
     <div class="btn-group" role="group">
-      <a href="{% url 'accounting:journal_list' %}" class="btn btn-outline-secondary">
+      <a href="{% url 'accounting:voucher_entry_list' %}" class="btn btn-outline-secondary">
         <i class="bi bi-list"></i> {% trans "Back to List" %}
       </a>
     </div>
@@ -81,7 +81,7 @@ Usage:
           <i class="bi bi-table"></i> {% trans "Journal Lines" %}
         </h5>
         <button type="button" class="btn btn-sm btn-outline-primary"
-                hx-get="{% url 'accounting:journal_htmx' action='add_line' %}"
+                hx-get="{% url 'accounting:voucher_entry_add_line_hx' %}"
                 hx-vals='js:{form_count: document.querySelectorAll("[name*=lines-]").length / 5}'
                 hx-target="#journal-lines"
                 hx-swap="beforeend"
@@ -128,7 +128,9 @@ Usage:
 </div>
 
 {% block scripts %}
-  <script src="{% static 'accounting/js/journal_entry.js' %}"></script>
-  <script src="{% static 'accounting/js/journal_validation.js' %}"></script>
+  <script src="{% static 'accounting/js/voucher_forms.js' %}"></script>
+  <script src="{% static 'accounting/js/voucher_totals.js' %}"></script>
+  <script src="{% static 'accounting/js/voucher_validation.js' %}"></script>
+  <script src="{% static 'accounting/js/voucher_htmx.js' %}"></script>
 {% endblock %}
 {% endblock %}

@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}{{ page_title|default:"Journal Entry" }}{% endblock %}
+
+{% block page_content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h1 class="h4 mb-0">Journal {{ journal.journal_number|default:journal.id }}</h1>
+      <p class="text-muted mb-0">{{ journal.journal_date }} · {{ journal.journal_type }}</p>
+    </div>
+    <div class="btn-group">
+      <a class="btn btn-outline-secondary" href="{% url 'accounting:voucher_entry_list' %}">Back to list</a>
+      <a class="btn btn-primary" href="{% url 'accounting:voucher_entry_edit' pk=journal.id %}">Edit</a>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header">Header</div>
+    <div class="card-body row g-3">
+      <div class="col-md-3"><strong>Reference</strong><div>{{ journal.reference }}</div></div>
+      <div class="col-md-3"><strong>Status</strong><div class="text-capitalize">{{ journal.status }}</div></div>
+      <div class="col-md-3"><strong>Period</strong><div>{{ journal.period }}</div></div>
+      <div class="col-md-3"><strong>Currency</strong><div>{{ journal.currency_code }}</div></div>
+      <div class="col-12"><strong>Description</strong><div>{{ journal.description|default:"—" }}</div></div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span>Lines ({{ line_count }})</span>
+      <span class="text-muted">Debit {{ total_debit|floatformat:2 }} / Credit {{ total_credit|floatformat:2 }}</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Account</th>
+            <th>Description</th>
+            <th class="text-end">Debit</th>
+            <th class="text-end">Credit</th>
+            <th>Department</th>
+            <th>Project</th>
+            <th>Cost Center</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for line in lines %}
+            <tr>
+              <td>{{ line.line_number }}</td>
+              <td>{{ line.account }}</td>
+              <td>{{ line.description|default:"—" }}</td>
+              <td class="text-end">{{ line.debit_amount|default_if_none:""|floatformat:2 }}</td>
+              <td class="text-end">{{ line.credit_amount|default_if_none:""|floatformat:2 }}</td>
+              <td>{{ line.department|default:"—" }}</td>
+              <td>{{ line.project|default:"—" }}</td>
+              <td>{{ line.cost_center|default:"—" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="8" class="text-center text-muted py-3">No lines</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -740,6 +740,7 @@ class ChartOfAccount(models.Model):
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='updated_accounts')
     rowversion = models.BinaryField(editable=False, null=True, blank=True, help_text="For MSSQL: ROWVERSION for optimistic concurrency.")
     archived_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='archived_accounts')
+    udf_data = models.JSONField(default=dict, blank=True, help_text="User-defined field values stored as JSON")
 
     objects = models.Manager()
     active_accounts = ActiveAccountManager()

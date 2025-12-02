@@ -1,6 +1,8 @@
 {% load widget_tweaks %}
-<tr id="form-{{ forloop.counter0 }}-row" class="journal-line-row">
-    <td data-label="#">{{ forloop.counter }}</td>
+{% with row_index=form_index|default:forloop.counter0 %}
+{% with display_index=forloop.counter|default:row_index|default_if_none:0 %}
+<tr id="form-{{ row_index }}-row" class="journal-line-row">
+    <td data-label="#">{{ display_index|add:1 }}</td>
     <td data-label="Drag"><i class="fas fa-grip-vertical"></i></td>
     <td data-label="Account">{% render_field form.account class="form-select grid-cell" aria-label="Account" %}</td>
     <td data-label="Description">{% render_field form.description class="form-control grid-cell" aria-label="Description" %}</td>
@@ -28,3 +30,5 @@
         <button type="button" class="btn btn-sm btn-danger remove-row"><i class="fas fa-trash"></i></button>
     </td>
 </tr>
+{% endwith %}
+{% endwith %}

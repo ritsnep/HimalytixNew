@@ -794,13 +794,73 @@ def get_next_account_code_view(self, request):
         return JsonResponse({'error': str(e)}, status=400)
 
 class ChartOfAccountFormFieldsView(LoginRequiredMixin, View):
-    """HTMX view for dynamic form fields."""
+    """HTMX view for dynamic form fields.
+    
+    Supports both create (no instance) and edit (with instance_id parameter) modes.
+    When instance_id is provided, loads the existing account to populate form with current values.
+    Also fetches and renders UDF definitions applicable to ChartOfAccount.
+    """
     template_name = "accounting/chart_of_accounts_form_fields.html"
 
     @method_decorator(require_htmx)
     def get(self, request, *args, **kwargs):
-        form = ChartOfAccountForm(organization=request.user.organization)
-        return render(request, self.template_name, {'form': form})
+        from django.contrib.contenttypes.models import ContentType
+        from accounting.models import UDFDefinition
+        
+        instance = None
+        instance_id = request.GET.get('instance_id')
+        
+        # Load existing instance if provided (edit mode)
+        if instance_id:
+            try:
+                instance = ChartOfAccount.objects.get(
+                    account_id=instance_id,
+                    organization=request.user.organization
+                )
+            except ChartOfAccount.DoesNotExist:
+                # Instance not found or doesn't belong to user's organization
+                instance = None
+        
+        # Create form with instance context if available
+        form = ChartOfAccountForm(
+            instance=instance,
+            organization=request.user.organization
+        )
+        
+        # Fetch UDF definitions for ChartOfAccount
+        try:
+            coa_content_type = ContentType.objects.get_for_model(ChartOfAccount)
+            udf_definitions = UDFDefinition.objects.filter(
+                organization=request.user.organization,
+                content_type=coa_content_type,
+                is_active=True
+            ).order_by('field_name')
+            
+            # Build UDF values dict from instance if available
+            udf_values = {}
+            if instance and instance.udf_data:
+                udf_values = instance.udf_data
+            
+            # Pre-compute UDF values for template rendering (avoids needing 'get' filter)
+            for udf in udf_definitions:
+                udf.computed_value = udf_values.get(udf.field_name, '')
+            
+            context = {
+                'form': form,
+                'udf_definitions': udf_definitions,
+                'udf_values': udf_values,
+                'instance': instance,
+            }
+        except Exception as e:
+            logger.error(f"Error loading UDF definitions: {str(e)}")
+            context = {
+                'form': form,
+                'udf_definitions': [],
+                'udf_values': {},
+                'instance': instance,
+            }
+        
+        return render(request, self.template_name, context)
 
 @login_required
 @require_POST

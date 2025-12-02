@@ -118,6 +118,7 @@ class VoucherDetailView(VoucherDetailMixin, BaseVoucherView, DetailView):
             'line_count': line_count,
             'total_debit': total_debit,
             'total_credit': total_credit,
+            'total_balance': total_debit - total_credit,
             'is_balanced': total_debit == total_credit,
             'audit_trail': audit_trail,
             'available_actions': actions,
@@ -154,7 +155,7 @@ class VoucherDetailView(VoucherDetailMixin, BaseVoucherView, DetailView):
             'edit': {
                 'label': 'Edit',
                 'url': reverse(
-                    'accounting:journal_edit',
+                    'accounting:voucher_entry_edit',
                     kwargs={'pk': journal.id}
                 ),
                 'available': journal.status in ['draft', 'pending'],
@@ -343,7 +344,7 @@ class VoucherPostView(VoucherDetailActionView):
                 request,
                 f"Cannot post a {journal.status} journal entry."
             )
-            return redirect('accounting:journal_detail', pk=journal.id)
+            return redirect('accounting:voucher_entry_detail', pk=journal.id)
 
         try:
             journal.status = 'posted'
@@ -357,7 +358,7 @@ class VoucherPostView(VoucherDetailActionView):
             logger.exception(f"Error posting journal: {e}")
             messages.error(request, "Error posting journal entry.")
 
-        return redirect('accounting:journal_detail', pk=journal.id)
+        return redirect('accounting:voucher_entry_detail', pk=journal.id)
 
 
 class VoucherDeleteView(VoucherDetailActionView):
@@ -381,7 +382,7 @@ class VoucherDeleteView(VoucherDetailActionView):
                 request,
                 f"Cannot delete a {journal.status} journal entry."
             )
-            return redirect('accounting:journal_detail', pk=journal.id)
+            return redirect('accounting:voucher_entry_detail', pk=journal.id)
 
         try:
             journal_id = journal.id
@@ -460,14 +461,14 @@ class VoucherDuplicateView(VoucherDetailActionView):
                 )
 
                 return redirect(
-                    'accounting:journal_edit',
+                    'accounting:voucher_entry_edit',
                     pk=new_journal.id
                 )
 
         except Exception as e:
             logger.exception(f"Error duplicating journal: {e}")
             messages.error(request, "Error duplicating journal entry.")
-            return redirect('accounting:journal_detail', pk=journal.id)
+            return redirect('accounting:voucher_entry_detail', pk=journal.id)
 
 
 class VoucherReverseView(VoucherDetailActionView):
@@ -495,7 +496,7 @@ class VoucherReverseView(VoucherDetailActionView):
                 request,
                 f"Cannot reverse a {journal.status} journal entry."
             )
-            return redirect('accounting:journal_detail', pk=journal.id)
+            return redirect('accounting:voucher_entry_detail', pk=journal.id)
 
         try:
             with transaction.atomic():
@@ -539,11 +540,11 @@ class VoucherReverseView(VoucherDetailActionView):
                 )
 
                 return redirect(
-                    'accounting:journal_detail',
+                    'accounting:voucher_entry_detail',
                     pk=reverse_journal.id
                 )
 
         except Exception as e:
             logger.exception(f"Error reversing journal: {e}")
             messages.error(request, "Error reversing journal entry.")
-            return redirect('accounting:journal_detail', pk=journal.id)
+            return redirect('accounting:voucher_entry_detail', pk=journal.id)

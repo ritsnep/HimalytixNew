@@ -1,0 +1,28 @@
+{% load widget_tweaks %}
+{{ line_formset.management_form }}
+<div class="table-responsive">
+  <table class="table table-sm align-middle mb-0">
+    <thead class="table-light">
+      <tr>
+        <th scope="col" style="width:3%">#</th>
+        <th scope="col" style="width:20%">Account</th>
+        <th scope="col" style="width:25%">Description</th>
+        <th scope="col" style="width:10%" class="text-end">Debit</th>
+        <th scope="col" style="width:10%" class="text-end">Credit</th>
+        <th scope="col" style="width:12%">Department</th>
+        <th scope="col" style="width:12%">Project</th>
+        <th scope="col" style="width:12%">Cost Center</th>
+        <th scope="col" style="width:6%"></th>
+      </tr>
+    </thead>
+    <tbody id="journal-lines">
+      {% for form in line_formset.forms %}
+        {% include 'accounting/partials/journal_line_form.html' with form=form %}
+      {% empty %}
+        <tr>
+          <td colspan="9" class="text-center text-muted py-3">No lines yet. Use "Add Line" to start.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

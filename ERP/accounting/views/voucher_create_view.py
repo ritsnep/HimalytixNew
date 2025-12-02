@@ -72,6 +72,7 @@ class VoucherCreateView(BaseVoucherView):
             line_formset=line_formset,
             is_create=True
         )
+        context.update(self.calculate_totals_from_formset(line_formset))
 
         logger.debug(
             f"VoucherCreateView GET - User: {request.user.username}, "
@@ -138,6 +139,7 @@ class VoucherCreateView(BaseVoucherView):
                 is_create=True,
                 errors=errors
             )
+            context.update(self.calculate_totals_from_formset(line_formset))
             return self.render_to_response(context, status=400)
 
         # Perform business rule validation
@@ -168,6 +170,7 @@ class VoucherCreateView(BaseVoucherView):
                     is_create=True,
                     errors=validation_errors
                 )
+                context.update(self.calculate_totals_from_formset(line_formset))
                 return self.render_to_response(context, status=400)
 
             # Save journal and lines
@@ -206,7 +209,7 @@ class VoucherCreateView(BaseVoucherView):
 
             # Redirect to detail view
             return redirect(
-                'accounting:journal_detail',
+                'accounting:voucher_entry_detail',
                 pk=journal.id
             )
 
@@ -220,6 +223,7 @@ class VoucherCreateView(BaseVoucherView):
                 is_create=True,
                 errors={'validation': str(e)}
             )
+            context.update(self.calculate_totals_from_formset(line_formset))
             return self.render_to_response(context, status=400)
 
         except Exception as e:
@@ -235,6 +239,7 @@ class VoucherCreateView(BaseVoucherView):
                 is_create=True,
                 errors={'general': 'An unexpected error occurred'}
             )
+            context.update(self.calculate_totals_from_formset(line_formset))
             return self.render_to_response(context, status=500)
 
     def _save_journal(

@@ -1,0 +1,16 @@
+{% with debit=total_debit|default:"0.00" credit=total_credit|default:"0.00" balance=total_balance|default:"0.00" %}
+<div class="d-flex justify-content-end gap-4 align-items-center">
+  <div>
+    <span class="text-muted">Total Debit</span>
+    <div class="fw-semibold" id="total-debit">{{ debit }}</div>
+  </div>
+  <div>
+    <span class="text-muted">Total Credit</span>
+    <div class="fw-semibold" id="total-credit">{{ credit }}</div>
+  </div>
+  <div>
+    <span class="text-muted">Balance</span>
+    <div class="fw-semibold" id="total-balance">{{ balance }}</div>
+  </div>
+</div>
+{% endwith %}

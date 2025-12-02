@@ -29,28 +29,19 @@
         
         <div class="col-md-4">
             <div class="mb-3">
-                <label for="id_account_code" class="form-label">Account Code</label>
-                <input type="text" name="account_code" id="id_account_code" 
-                       class="form-control{% if form.account_code.errors %} is-invalid{% endif %}"
-                       value="{{ form.account_code.value|default:'' }}"
-                       placeholder="Auto-generated">
+                <label for="{{ form.account_code.id_for_label }}" class="form-label">Account Code</label>
+                {{ form.account_code }}
                 {% if form.account_code.errors %}
                 <div class="error-message">{{ form.account_code.errors|first }}</div>
                 {% endif %}
-                <small class="text-muted">Auto-generated from Parent/Type</small>
+                <small class="text-muted">Auto-generated from Parent/Type unless custom code is enabled.</small>
             </div>
         </div>
         
         <div class="col-md-4">
             <div class="mb-3">
-                <label for="id_account_name" class="form-label required-field">Account Name</label>
-                <input type="text" name="account_name" id="id_account_name" 
-                       class="form-control{% if form.account_name.errors %} is-invalid{% endif %}"
-                       value="{{ form.account_name.value|default:'' }}"
-                       placeholder="Enter account name"
-                       required
-                       data-pristine-required-message="Account name is required"
-                       autofocus>
+                <label for="{{ form.account_name.id_for_label }}" class="form-label required-field">Account Name</label>
+                {{ form.account_name }}
                 {% if form.account_name.errors %}
                 <div class="error-message">{{ form.account_name.errors|first }}</div>
                 {% endif %}
@@ -60,8 +51,9 @@
         <div class="col-md-4">
             <div class="mb-3">
                 <label for="id_account_type" class="form-label required-field">Account Type</label>
-                <select name="account_type" id="id_account_type" 
-                        class="form-select{% if form.account_type.errors %} is-invalid{% endif %}"
+                {% with form.account_type as field %}
+                <select name="{{ field.html_name }}" id="id_account_type" 
+                        class="form-select{% if field.errors %} is-invalid{% endif %}"
                         required
                         data-pristine-required-message="Account type is required"
                         hx-get="{% url 'accounting:chart_of_accounts_form_fields' %}"
@@ -69,12 +61,13 @@
                         hx-target="#parent-account-container"
                         hx-swap="innerHTML">
                     <option value="">Select Type</option>
-                    {% if form.account_type.field.choices %}
-                        {% for value, label in form.account_type.field.choices %}
-                            <option value="{{ value }}"{% if value == form.account_type.value %} selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    {% endif %}
+                    {% for option_value, option_label in field.field.choices %}
+                        {% if option_value %}
+                            <option value="{{ option_value }}"{% if option_value|stringformat:"s" == field.value|stringformat:"s" %} selected{% endif %}>{{ option_label }}</option>
+                        {% endif %}
+                    {% endfor %}
                 </select>
+                {% endwith %}
                 {% if form.account_type.errors %}
                 <div class="error-message">{{ form.account_type.errors|first }}</div>
                 {% endif %}
@@ -82,6 +75,35 @@
         </div>
     </div>
     
+    <!-- Custom Code Options -->
+    <div class="row mb-4 align-items-end">
+        <div class="col-md-4">
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" name="use_custom_code" id="id_use_custom_code"
+                       {% if form.use_custom_code.value %}checked{% endif %}>
+                <label class="form-check-label" for="id_use_custom_code">Use Custom Code</label>
+            </div>
+            {% if form.use_custom_code.errors %}
+            <div class="error-message">{{ form.use_custom_code.errors|first }}</div>
+            {% endif %}
+            <small class="text-muted">Enable to override the generated account code.</small>
+        </div>
+        <div class="col-md-4" id="custom-code-wrapper"{% if not form.use_custom_code.value %} style="display:none;"{% endif %}>
+            <div class="mb-3">
+                <label for="id_custom_code" class="form-label">Custom Code</label>
+                <input type="text" name="custom_code" id="id_custom_code"
+                       class="form-control{% if form.custom_code.errors %} is-invalid{% endif %}"
+                       value="{{ form.custom_code.value|default:'' }}"
+                       placeholder="Enter custom code"
+                       {% if not form.use_custom_code.value %}disabled{% endif %}>
+                {% if form.custom_code.errors %}
+                <div class="error-message">{{ form.custom_code.errors|first }}</div>
+                {% endif %}
+                <small class="text-muted">Code must be unique per organization.</small>
+            </div>
+        </div>
+    </div>
+
     <!-- Parent & Hierarchy -->
     <div class="row mb-4">
         <div class="col-12">
@@ -107,14 +129,72 @@
         
         <div class="col-md-6">
             <div class="mb-3">
-                <label for="id_currency" class="form-label">Currency</label>
-                <select name="currency" id="id_currency" class="form-select">
-                    <option value="USD">USD - US Dollar</option>
-                    <option value="EUR">EUR - Euro</option>
-                    <option value="GBP">GBP - British Pound</option>
-                    <option value="NPR">NPR - Nepalese Rupee</option>
-                    <option value="INR">INR - Indian Rupee</option>
-                </select>
+                <label for="{{ form.currency.id_for_label }}" class="form-label">Currency</label>
+                {{ form.currency }}
+                {% if form.currency.errors %}
+                <div class="error-message">{{ form.currency.errors|first }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Balances & Tracking -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5 class="text-primary mb-3"><i class="bx bx-pie-chart-alt"></i> Balances & Tracking</h5>
+        </div>
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label for="{{ form.opening_balance.id_for_label }}" class="form-label">Opening Balance</label>
+                {{ form.opening_balance }}
+                {% if form.opening_balance.errors %}
+                <div class="error-message">{{ form.opening_balance.errors|first }}</div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label for="{{ form.current_balance.id_for_label }}" class="form-label">Current Balance</label>
+                {{ form.current_balance }}
+                {% if form.current_balance.errors %}
+                <div class="error-message">{{ form.current_balance.errors|first }}</div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label for="{{ form.reconciled_balance.id_for_label }}" class="form-label">Reconciled Balance</label>
+                {{ form.reconciled_balance }}
+                {% if form.reconciled_balance.errors %}
+                <div class="error-message">{{ form.reconciled_balance.errors|first }}</div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label for="{{ form.last_reconciled_date.id_for_label }}" class="form-label">Last Reconciled Date</label>
+                {{ form.last_reconciled_date }}
+                {% if form.last_reconciled_date.errors %}
+                <div class="error-message">{{ form.last_reconciled_date.errors|first }}</div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label for="{{ form.account_level.id_for_label }}" class="form-label">Account Level</label>
+                {{ form.account_level }}
+                {% if form.account_level.errors %}
+                <div class="error-message">{{ form.account_level.errors|first }}</div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label for="{{ form.display_order.id_for_label }}" class="form-label">Display Order</label>
+                {{ form.display_order }}
+                {% if form.display_order.errors %}
+                <div class="error-message">{{ form.display_order.errors|first }}</div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -157,8 +237,13 @@
         
         <div class="col-md-3">
             <div class="form-check form-switch mb-3">
-                <input class="form-check-input" type="checkbox" name="bank_account" id="id_bank_account">
-                <label class="form-check-label" for="id_bank_account">
+                <input class="form-check-input" type="checkbox" name="is_bank_account" id="id_is_bank_account"
+                       hx-get="{% url 'accounting:chart_of_accounts_form_fields' %}"
+                       hx-trigger="change"
+                       hx-target="#dynamic-fields-container"
+                       hx-swap="innerHTML"
+                       {% if form.is_bank_account.value %}checked{% endif %}>
+                <label class="form-check-label" for="id_is_bank_account">
                     Bank Account
                 </label>
             </div>
@@ -166,10 +251,74 @@
         
         <div class="col-md-3">
             <div class="form-check form-switch mb-3">
-                <input class="form-check-input" type="checkbox" name="control_account" id="id_control_account">
-                <label class="form-check-label" for="id_control_account">
+                <input class="form-check-input" type="checkbox" name="is_control_account" id="id_is_control_account"
+                       hx-get="{% url 'accounting:chart_of_accounts_form_fields' %}"
+                       hx-trigger="change"
+                       hx-target="#dynamic-fields-container"
+                       hx-swap="innerHTML"
+                       {% if form.is_control_account.value %}checked{% endif %}>
+                <label class="form-check-label" for="id_is_control_account">
                     Control Account
                 </label>
+            </div>
+        </div>
+    </div>
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" name="require_cost_center" id="id_require_cost_center"
+                       {% if form.require_cost_center.value %}checked{% endif %}>
+                <label class="form-check-label" for="id_require_cost_center">
+                    Require Cost Center
+                </label>
+            </div>
+            {% if form.require_cost_center.errors %}
+            <div class="error-message">{{ form.require_cost_center.errors|first }}</div>
+            {% endif %}
+        </div>
+        <div class="col-md-3">
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" name="require_project" id="id_require_project"
+                       {% if form.require_project.value %}checked{% endif %}>
+                <label class="form-check-label" for="id_require_project">
+                    Require Project
+                </label>
+            </div>
+            {% if form.require_project.errors %}
+            <div class="error-message">{{ form.require_project.errors|first }}</div>
+            {% endif %}
+        </div>
+        <div class="col-md-3">
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" name="require_department" id="id_require_department"
+                       {% if form.require_department.value %}checked{% endif %}>
+                <label class="form-check-label" for="id_require_department">
+                    Require Department
+                </label>
+            </div>
+            {% if form.require_department.errors %}
+            <div class="error-message">{{ form.require_department.errors|first }}</div>
+            {% endif %}
+        </div>
+        <div class="col-md-3">
+            <div class="mb-3">
+                <label for="{{ form.default_tax_code.id_for_label }}" class="form-label">Default Tax Code</label>
+                {{ form.default_tax_code }}
+                {% if form.default_tax_code.errors %}
+                <div class="error-message">{{ form.default_tax_code.errors|first }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Dynamic Fields Section (loaded via HTMX) -->
+    <div class="row mb-4 mt-2">
+        <div class="col-12">
+            <div id="dynamic-fields-container"
+                 hx-get="{% url 'accounting:chart_of_accounts_form_fields' %}"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+                <!-- Fields will load here via HTMX -->
             </div>
         </div>
     </div>
@@ -201,3 +350,30 @@
         </div>
     </div>
 </form>
+
+<script>
+(function() {
+    var toggle = document.getElementById('id_use_custom_code');
+    var wrapper = document.getElementById('custom-code-wrapper');
+    var input = document.getElementById('id_custom_code');
+
+    function syncCustomCodeField() {
+        if (!toggle || !wrapper || !input) { return; }
+        if (toggle.checked) {
+            wrapper.style.display = '';
+            input.removeAttribute('disabled');
+        } else {
+            wrapper.style.display = 'none';
+            input.setAttribute('disabled', 'disabled');
+        }
+    }
+
+    syncCustomCodeField();
+    document.addEventListener('DOMContentLoaded', syncCustomCodeField);
+    document.body.addEventListener('change', function(evt) {
+        if (evt.target === toggle) {
+            syncCustomCodeField();
+        }
+    });
+})();
+</script>

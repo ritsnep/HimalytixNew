@@ -12,6 +12,7 @@ entry views inherit from. It handles:
 """
 
 import logging
+from decimal import Decimal
 from typing import Optional, Dict, Any, Type, Union
 
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -190,6 +191,42 @@ class BaseVoucherView(UserOrganizationMixin, View):
             )
         
         return formset_class(**self.get_formset_kwargs())
+
+    def calculate_totals_from_formset(self, formset) -> Dict[str, Decimal]:
+        """
+        Calculate debit/credit totals from a journal line formset.
+
+        Args:
+            formset: Formset containing line forms
+
+        Returns:
+            dict: Totals dictionary with debit, credit, and balance
+        """
+        total_debit = Decimal('0.00')
+        total_credit = Decimal('0.00')
+
+        for form in getattr(formset, 'forms', []):
+            data = getattr(form, 'cleaned_data', None) if form.is_bound else None
+            if not data:
+                data = form.initial or {}
+            if data.get('DELETE'):
+                continue
+
+            try:
+                debit = Decimal(data.get('debit_amount') or 0)
+                credit = Decimal(data.get('credit_amount') or 0)
+            except Exception:
+                debit = Decimal('0')
+                credit = Decimal('0')
+
+            total_debit += debit
+            total_credit += credit
+
+        return {
+            'total_debit': total_debit,
+            'total_credit': total_credit,
+            'total_balance': total_debit - total_credit,
+        }
 
     def is_htmx_request(self) -> bool:
         """
