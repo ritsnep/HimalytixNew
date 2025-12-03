@@ -360,6 +360,21 @@
                     </ul>
                 </li>
 
+                <!-- Purchasing Section -->
+                <li>
+                    <a
+                        href="{% url 'purchasing:workspace' %}"
+                        hx-get="{% url 'purchasing:workspace' %}"
+                        hx-target="#main-container"
+                        hx-swap="innerHTML"
+                        hx-push-url="true"
+                        class="nav-link"
+                    >
+                        <i data-feather="shopping-bag"></i>
+                        <span>Purchasing Workspace</span>
+                    </a>
+                </li>
+
                 <!-- Enterprise Section -->
                 <li>
                     <a href="javascript: void(0);" class="has-arrow">

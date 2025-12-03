@@ -1,20 +1,53 @@
-from django.core.cache import cache
 from functools import wraps
+from urllib.parse import quote
+
+from django.contrib import messages
+from django.core.cache import cache
 from django.http import HttpResponseForbidden, HttpResponseRedirect
 from django.urls import reverse_lazy
-from django.contrib import messages
 
 from usermanagement.models import Permission, UserPermission
 
 
-def permission_required(permission_codename):
-    """Decorator that checks a user's Django permission by codename."""
+def permission_required(permission, *, require_organization: bool = True):
+    """
+    Organization-aware permission decorator.
+
+    Supports either a tuple of (module, entity, action) for the custom RBAC
+    system or a plain permission codename string. Automatically redirects
+    unauthenticated users to login and users without an active organization
+    to the organization selector.
+    """
+
     def decorator(view_func):
+        @wraps(view_func)
         def wrapper(request, *args, **kwargs):
-            if not request.user.has_perm(permission_codename):
-                return HttpResponseForbidden()
+            user = getattr(request, "user", None)
+            if not user or not user.is_authenticated:
+                return HttpResponseRedirect(
+                    f"{reverse_lazy('login')}?next={quote(request.get_full_path())}"
+                )
+
+            organization = getattr(request, "organization", None) or user.get_active_organization()
+            if require_organization and not organization:
+                messages.warning(request, "Select an organization to continue.")
+                return HttpResponseRedirect(
+                    f"{reverse_lazy('select_organization')}?next={quote(request.get_full_path())}"
+                )
+
+            if isinstance(permission, tuple):
+                allowed = PermissionUtils.has_permission(user, organization, *permission)
+                permission_label = "_".join(permission)
+            else:
+                allowed = PermissionUtils.has_codename(user, organization, permission)
+                permission_label = permission
+
+            if not allowed:
+                return HttpResponseForbidden(f"Permission '{permission_label}' is required.")
             return view_func(request, *args, **kwargs)
+
         return wrapper
+
     return decorator
 
 class PermissionUtils:
@@ -68,11 +101,15 @@ class PermissionUtils:
         return role_permissions
 
     @staticmethod
-    def has_permission(user, organization, module, entity, action):
-        if not user or not user.is_authenticated:
+    def has_codename(user, organization, permission_codename: str):
+        """Check a permission codename against the scoped Role/Permission matrix."""
+        if not user or not getattr(user, "is_authenticated", False):
             return False
-        if getattr(user, 'role', None) == 'superadmin' or getattr(user, 'is_superuser', False):
+        if getattr(user, "role", None) == "superadmin" or getattr(user, "is_superuser", False):
             return True
+
+        if permission_codename and "." in permission_codename:
+            return user.has_perm(permission_codename)
 
         if not organization:
             return False
@@ -81,8 +118,12 @@ class PermissionUtils:
         if permissions == ['*']:  # Handle super admin case
             return True
 
+        return permission_codename in permissions
+
+    @staticmethod
+    def has_permission(user, organization, module, entity, action):
         codename = f"{module}_{entity}_{action}"
-        return codename in permissions
+        return PermissionUtils.has_codename(user, organization, codename)
 
     @staticmethod
     def invalidate_cache(user_id, organization_id):

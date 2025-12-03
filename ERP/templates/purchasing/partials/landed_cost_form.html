@@ -1,0 +1,143 @@
+{% load widget_tweaks %}
+<form
+  id="landed-cost-form"
+  method="post"
+  hx-post="{{ form_action }}"
+  hx-target="#purchasing-detail-panel"
+  hx-swap="innerHTML"
+  novalidate
+>
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+  <div class="alert alert-danger">
+    {% for error in form.non_field_errors %}{{ error }}<br>{% endfor %}
+  </div>
+  {% endif %}
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+          <h4 class="mb-1">Allocate Landed Cost</h4>
+          <p class="text-muted mb-0">{{ invoice }} · {{ invoice.supplier.display_name }} · {{ invoice.invoice_date }}</p>
+        </div>
+        <span class="badge bg-light text-dark">Invoice Total {{ invoice.currency.currency_code }} {{ invoice.total_amount }}</span>
+      </div>
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label small text-uppercase text-muted" for="{{ form.document_date.id_for_label }}">Document Date</label>
+          {% render_field form.document_date class+="form-control form-control-sm" %}
+          {% for error in form.document_date.errors %}
+          <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small text-uppercase text-muted" for="{{ form.basis.id_for_label }}">Allocation Basis</label>
+          {% render_field form.basis class+="form-select form-select-sm" %}
+          {% for error in form.basis.errors %}
+          <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small text-uppercase text-muted" for="{{ form.note.id_for_label }}">Memo</label>
+          {% render_field form.note class+="form-control form-control-sm" %}
+          {% for error in form.note.errors %}
+          <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h5 class="mb-1">Cost Components</h5>
+          <p class="text-muted mb-0">Capture freight, insurance, and duties before applying.</p>
+        </div>
+        <button class="btn btn-outline-primary btn-sm" type="button" data-cost-add>
+          <i class="mdi mdi-plus"></i> Add cost
+        </button>
+      </div>
+      {% if line_formset.non_form_errors %}
+      <div class="alert alert-danger">
+        {% for error in line_formset.non_form_errors %}{{ error }}<br>{% endfor %}
+      </div>
+      {% endif %}
+      <div class="table-responsive">
+        {{ line_formset.management_form }}
+        <table class="table table-sm align-middle mb-0">
+          <thead class="table-light text-muted">
+            <tr>
+              <th>Description</th>
+              <th class="text-end" style="width: 180px;">Amount</th>
+              <th>GL Account</th>
+              <th class="text-center" style="width: 60px;"></th>
+            </tr>
+          </thead>
+          <tbody id="landed-cost-body">
+            {% for line_form in line_formset %}
+              {% include "purchasing/partials/_landed_cost_line_row.html" with form=line_form row_index=forloop.counter0 %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="d-flex justify-content-between">
+    <button
+      type="button"
+      class="btn btn-outline-secondary"
+      hx-get="{% url 'purchasing:invoice-detail' invoice.pk %}"
+      hx-target="#purchasing-detail-panel"
+      hx-swap="innerHTML"
+    >
+      Cancel
+    </button>
+    <button type="submit" class="btn btn-primary">Save Landed Cost</button>
+  </div>
+</form>
+<script type="text/template" id="landed-cost-empty-form">
+{% with line_form=line_formset.empty_form %}
+{% include "purchasing/partials/_landed_cost_line_row.html" with form=line_form row_index="__prefix__" %}
+{% endwith %}
+</script>
+<script>
+(function () {
+  const formEl = document.getElementById("landed-cost-form");
+  const body = document.getElementById("landed-cost-body");
+  const template = document.getElementById("landed-cost-empty-form");
+  const totalInput = document.getElementById("id_{{ line_formset.prefix }}-TOTAL_FORMS");
+  if (!formEl || !body || !template || !totalInput) {
+    return;
+  }
+  const addCost = () => {
+    const nextIndex = parseInt(totalInput.value, 10);
+    const html = template.innerHTML.replace(/__prefix__/g, nextIndex);
+    body.insertAdjacentHTML("beforeend", html);
+    totalInput.value = nextIndex + 1;
+  };
+  const removeCost = (button) => {
+    const row = button.closest("tr");
+    if (!row) {
+      return;
+    }
+    const deleteInput = row.querySelector('input[name$="-DELETE"]');
+    if (deleteInput) {
+      deleteInput.checked = true;
+    }
+    row.classList.add("d-none");
+    row.setAttribute("aria-hidden", "true");
+  };
+  formEl.addEventListener("click", function (event) {
+    if (event.target.closest("[data-cost-add]")) {
+      event.preventDefault();
+      addCost();
+    }
+    const removeBtn = event.target.closest("[data-cost-remove]");
+    if (removeBtn) {
+      event.preventDefault();
+      removeCost(removeBtn);
+    }
+  });
+})();
+</script>

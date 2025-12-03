@@ -1,0 +1,160 @@
+{% load humanize %}
+{% if alert_message %}
+<div class="alert alert-{{ alert_level }} alert-dismissible fade show" role="alert">
+  {{ alert_message }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+<div class="d-flex justify-content-between align-items-start mb-3">
+  <div>
+    <h4 class="mb-1">PI-{{ invoice.number|default:invoice.pk }}</h4>
+    <p class="text-muted mb-1">{{ invoice.supplier.display_name }} · {{ invoice.invoice_date }}</p>
+    <span class="badge bg-light text-uppercase text-dark">{{ invoice.status }}</span>
+  </div>
+  <div class="btn-group" role="group">
+    <button
+      class="btn btn-outline-secondary btn-sm"
+      type="button"
+      {% if invoice.status == invoice.Status.POSTED %}disabled{% endif %}
+      hx-get="{% url 'purchasing:invoice-edit' invoice.pk %}"
+      hx-target="#purchasing-detail-panel"
+      hx-swap="innerHTML">
+      <i class="mdi mdi-pencil"></i> Edit
+    </button>
+    <form
+      method="post"
+      hx-post="{% url 'purchasing:invoice-post' invoice.pk %}"
+      hx-target="#purchasing-detail-panel"
+      hx-swap="innerHTML">
+      {% csrf_token %}
+      <button
+        class="btn btn-success btn-sm"
+        type="submit"
+        {% if invoice.status == invoice.Status.POSTED %}disabled{% endif %}>
+        <i class="mdi mdi-upload"></i> Post
+      </button>
+    </form>
+  </div>
+</div>
+<div class="row mb-3 g-3">
+  <div class="col-sm-4">
+    <div class="p-3 rounded bg-light">
+      <p class="text-muted mb-1">Subtotal</p>
+      <h5 class="mb-0">{{ invoice.currency.currency_code }} {{ invoice.subtotal|floatformat:2 }}</h5>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="p-3 rounded bg-light">
+      <p class="text-muted mb-1">Tax</p>
+      <h5 class="mb-0">{{ invoice.currency.currency_code }} {{ invoice.tax_amount|floatformat:2 }}</h5>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="p-3 rounded bg-light">
+      <p class="text-muted mb-1">Total</p>
+      <h5 class="mb-0">{{ invoice.currency.currency_code }} {{ invoice.total_amount|floatformat:2 }}</h5>
+    </div>
+  </div>
+</div>
+<div class="table-responsive mb-4">
+  <table class="table table-sm align-middle mb-0">
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Warehouse</th>
+        <th class="text-end">Qty</th>
+        <th class="text-end">Unit Price</th>
+        <th class="text-end">VAT %</th>
+        <th class="text-end">Line Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in invoice.lines.select_related('product', 'warehouse') %}
+      <tr>
+        <td>{{ line.product.name }}<br><small class="text-muted">{{ line.description }}</small></td>
+        <td>{{ line.warehouse.name }}</td>
+        <td class="text-end">{{ line.quantity }}</td>
+        <td class="text-end">{{ line.unit_price }}</td>
+        <td class="text-end">{{ line.vat_rate|default:0 }}</td>
+        <td class="text-end">{{ line.line_total }}</td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="6" class="text-center text-muted">No lines captured.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="border rounded p-3">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <div>
+      <h5 class="mb-1">Landed Cost</h5>
+      <p class="text-muted mb-0">Allocate freight, insurance, and duties after posting.</p>
+    </div>
+    <div class="d-flex gap-2">
+      {% if landed_doc %}
+        <button
+          class="btn btn-outline-secondary btn-sm"
+          hx-get="{% url 'purchasing:landed-cost-edit' invoice.pk landed_doc.pk %}"
+          hx-target="#purchasing-detail-panel"
+          hx-swap="innerHTML">
+          <i class="mdi mdi-pencil"></i> Edit
+        </button>
+        {% if landed_doc.is_applied %}
+          <span class="badge bg-success align-self-center">Applied {{ landed_doc.applied_at|date:"M d, Y" }}</span>
+        {% else %}
+          <form
+            method="post"
+            hx-post="{% url 'purchasing:landed-cost-apply' landed_doc.pk %}"
+            hx-target="#purchasing-detail-panel"
+            hx-swap="innerHTML">
+            {% csrf_token %}
+            <button class="btn btn-success btn-sm" type="submit">
+              <i class="mdi mdi-upload"></i> Apply
+            </button>
+          </form>
+        {% endif %}
+      {% else %}
+        <button
+          class="btn btn-outline-primary btn-sm"
+          type="button"
+          {% if invoice.status != invoice.Status.POSTED %}disabled{% endif %}
+          hx-get="{% url 'purchasing:landed-cost-create' invoice.pk %}"
+          hx-target="#purchasing-detail-panel"
+          hx-swap="innerHTML">
+          <i class="mdi mdi-plus"></i> New Document
+        </button>
+      {% endif %}
+    </div>
+  </div>
+  {% if landed_doc %}
+  <div class="table-responsive mb-2">
+    <table class="table table-sm mb-0">
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th class="text-end">Amount</th>
+          <th>GL Account</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cost in landed_doc.cost_lines.select_related('gl_account') %}
+        <tr>
+          <td>{{ cost.description }}</td>
+          <td class="text-end">{{ cost.amount }}</td>
+          <td>{{ cost.gl_account.account_code }} — {{ cost.gl_account.account_name }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="3" class="text-center text-muted">No components captured.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <small class="text-muted">Basis: {{ landed_doc.get_basis_display }} · Document date {{ landed_doc.document_date }}</small>
+  {% else %}
+  <small class="text-muted">Create a landed cost document after posting to add freight or duty into inventory valuation.</small>
+  {% endif %}
+</div>

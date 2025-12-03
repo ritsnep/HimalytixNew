@@ -152,6 +152,13 @@ class IRDLog(models.Model):
         blank=True,
         related_name="ird_logs",
     )
+    sales_invoice = models.ForeignKey(
+        "accounting.SalesInvoice",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="ird_logs",
+    )
     credit_note = models.ForeignKey(
         CreditNote,
         on_delete=models.CASCADE,
@@ -170,8 +177,12 @@ class IRDLog(models.Model):
         verbose_name_plural = "IRD API Logs"
 
     def __str__(self) -> str:
-        target = self.invoice or self.credit_note
+        target = self.sales_invoice or self.invoice or self.credit_note
         if target:
-            label = "Invoice" if self.invoice else "Credit Note"
+            label = (
+                "Sales Invoice"
+                if self.sales_invoice
+                else ("Invoice" if self.invoice else "Credit Note")
+            )
             return f"IRDLog for {label} {target}"
         return "IRDLog (no target)"

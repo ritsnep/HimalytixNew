@@ -244,7 +244,11 @@ class ChartOfAccountCreateView(AdvancedFormMixin, PermissionRequiredMixin, UserO
         logger.error(f"Form validation errors: {form.errors}")
         if self.request.headers.get('HX-Request'):
             from django.template.loader import render_to_string
-            html = render_to_string(self.template_name, self.get_context_data(form=form), request=self.request)
+            html = render_to_string(
+                'accounting/partials/coa_single_entry_form.html',
+                self.get_context_data(form=form),
+                request=self.request
+            )
             return HttpResponse(html, status=400)
         return super().form_invalid(form)
 

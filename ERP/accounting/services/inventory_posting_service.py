@@ -7,7 +7,7 @@ from typing import Optional
 from django.db import transaction
 from django.utils import timezone
 
-from Inventory.models import InventoryItem, Product, StockLedger, Warehouse
+from inventory.models import InventoryItem, Product, StockLedger, Warehouse
 from accounting.models import ChartOfAccount, JournalLine
 
 

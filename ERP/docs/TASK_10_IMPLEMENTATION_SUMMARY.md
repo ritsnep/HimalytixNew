@@ -5,7 +5,7 @@
 ### 1. Forms (Bootstrap Pattern) - 100% COMPLETE
 All forms now follow the `BootstrapFormMixin` pattern with proper widget classes:
 
-#### Inventory App (`Inventory/forms.py`) - ✅ COMPLETE
+#### Inventory App (`inventory/forms.py`) - ✅ COMPLETE
 - ✅ ProductCategoryForm, ProductForm, WarehouseForm, LocationForm
 - ✅ PriceListForm, PriceListItemForm, PromotionRuleForm
 - ✅ PickListForm, PickListLineForm, ShipmentForm, RMAForm
@@ -30,7 +30,7 @@ All forms now follow the `BootstrapFormMixin` pattern with proper widget classes
 
 ### 2. Views (Class-Based Pattern) - 100% COMPLETE
 
-#### Inventory App (`Inventory/views/`) - ✅ COMPLETE
+#### Inventory App (`inventory/views/`) - ✅ COMPLETE
 - ✅ `base_views.py` - BaseListView with organization filtering & permissions (46 lines)
 - ✅ `views_list.py` - 9 ListView classes with pagination & create_url context (122 lines)
 - ✅ `views_create.py` - 9 CreateView classes with AutoIncrementCodeGenerator (227 lines)
@@ -122,8 +122,8 @@ $(document).ready(function() {
 ```
 
 **Required Files:**
-- `Inventory/templates/Inventory/_list_base.html`
-- `Inventory/templates/Inventory/_form_base.html`
+- `inventory/templates/Inventory/_list_base.html`
+- `inventory/templates/Inventory/_form_base.html`
 - `billing/templates/billing/_list_base.html`
 - `billing/templates/billing/_form_base.html`
 - `service_management/templates/service_management/_list_base.html`
@@ -166,7 +166,7 @@ Wire up all views to URLs in each app's `urls.py`:
 
 **Example URL Pattern (Inventory):**
 ```python
-# Inventory/urls.py
+# inventory/urls.py
 from django.urls import path
 from .views import (
     ProductCategoryListView, ProductCategoryCreateView, ProductCategoryUpdateView, ProductCategoryDetailView,
@@ -194,7 +194,7 @@ urlpatterns = [
 ```
 
 **Required URL Files:**
-- Update `Inventory/urls.py` (36 URL patterns)
+- Update `inventory/urls.py` (36 URL patterns)
 - Create/update `billing/urls.py` (24 URL patterns)
 - Create/update `service_management/urls.py` (24 URL patterns)
 
@@ -203,10 +203,10 @@ urlpatterns = [
 ## 📊 Implementation Statistics
 
 ### Files Created (This Session):
-1. `Inventory/forms.py` - Replaced with Bootstrap pattern (340 lines)
+1. `inventory/forms.py` - Replaced with Bootstrap pattern (340 lines)
 2. `billing/forms.py` - New file (223 lines)
 3. `service_management/forms.py` - New file (246 lines)
-4. `Inventory/views/` - 6 files (661 lines total)
+4. `inventory/views/` - 6 files (661 lines total)
 5. `billing/views/` - 5 files (406 lines total)
 6. `service_management/views/` - 5 files (431 lines total)
 

@@ -16,6 +16,7 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import time
 from dataclasses import dataclass
 from datetime import date
@@ -28,8 +29,11 @@ from django.utils import timezone
 # Known IRD gateways. `ofird` is the public test sandbox; `cbms` is production.
 DEFAULT_IRD_TEST_ENDPOINT = "https://ofird.ird.gov.np/api/bill"
 DEFAULT_IRD_PROD_ENDPOINT = "https://cbms.ird.gov.np/api/bill"
+DEFAULT_IRD_CREDIT_NOTE_ENDPOINT = "https://cbapi.ird.gov.np/api/billreturn"
 
 DEFAULT_SIGNING_METHOD = "hmac"  # "hmac" (test) or "rsa" (production)
+
+logger = logging.getLogger(__name__)
 
 
 def _serialize_date(value: Any) -> Optional[str]:
@@ -65,6 +69,21 @@ def _decimal_to_float(value: Any) -> float:
         return 0.0
 
 
+def _get_ird_settings():
+    """
+    Best-effort fetch of the persisted IRD settings (seller PAN + credentials).
+
+    The import is lazy to avoid hard coupling the accounting module to the
+    optional ird_integration app during test runs.
+    """
+    try:
+        from ird_integration.models import IRDSettings
+
+        return IRDSettings.objects.first()
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _derive_fiscal_year_code(invoice: Any) -> Optional[str]:
     """Attempt to derive a fiscal year code without tightly coupling to models."""
     explicit_code = _safe_getattr(invoice, "ird_fiscal_year_code") or _safe_getattr(invoice, "fiscal_year_code")
@@ -93,7 +112,7 @@ def _derive_fiscal_year_code(invoice: Any) -> Optional[str]:
     return None
 
 
-def build_ird_invoice_payload(invoice: Any) -> Dict[str, Any]:
+def build_ird_invoice_payload(invoice: Any, ird_settings: Any | None = None) -> Dict[str, Any]:
     """
     Build an IRD CBMS-style payload from an invoice-like object.
 
@@ -113,9 +132,11 @@ def build_ird_invoice_payload(invoice: Any) -> Dict[str, Any]:
     digital_payment_amount = _safe_getattr(invoice, "ird_digital_payment_amount", None)
     digital_payment_txn_id = _safe_getattr(invoice, "ird_digital_payment_txn_id", None)
 
+    seller_pan = _safe_getattr(ird_settings, "seller_pan") or _safe_getattr(organization, "tax_id")
+
     payload: Dict[str, Any] = {
         # CBMS-required fields
-        "seller_pan": _safe_getattr(organization, "tax_id"),
+        "seller_pan": seller_pan,
         "seller_name": _safe_getattr(organization, "legal_name") or _safe_getattr(organization, "name"),
         "buyer_pan": _safe_getattr(customer, "tax_id"),
         "buyer_name": _safe_getattr(customer, "name") or _safe_getattr(customer, "customer_display_name"),
@@ -172,6 +193,68 @@ def build_ird_invoice_payload(invoice: Any) -> Dict[str, Any]:
         )
 
     return payload
+
+
+def build_ird_credit_note_payload(credit_note: Any, ird_settings: Any | None = None) -> Dict[str, Any]:
+    """Build a payload for credit note submission to IRD."""
+    ref_invoice = _safe_getattr(credit_note, "ref_invoice")
+    seller_pan = _safe_getattr(ird_settings, "seller_pan")
+
+    return {
+        "username": _safe_getattr(ird_settings, "username"),
+        "password": _safe_getattr(ird_settings, "password"),
+        "seller_pan": seller_pan,
+        "buyer_pan": _safe_getattr(credit_note, "buyer_pan"),
+        "buyer_name": _safe_getattr(credit_note, "buyer_name"),
+        "fiscal_year": _safe_getattr(credit_note, "fiscal_year"),
+        "credit_note_number": _safe_getattr(credit_note, "credit_note_number"),
+        "credit_note_date": _serialize_date(_safe_getattr(credit_note, "credit_note_date")),
+        "ref_invoice_number": _safe_getattr(ref_invoice, "invoice_number"),
+        "ref_invoice_date": _serialize_date(_safe_getattr(ref_invoice, "invoice_date")),
+        "reason_for_return": _safe_getattr(credit_note, "reason_for_return"),
+        "isrealtime": True,
+        "datetimeClient": timezone.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "total_sales": _decimal_to_float(_safe_getattr(credit_note, "total_sales")),
+        "taxable_sales_vat": _decimal_to_float(_safe_getattr(credit_note, "taxable_sales_vat")),
+        "vat": _decimal_to_float(_safe_getattr(credit_note, "vat")),
+        "excisable_amount": _decimal_to_float(_safe_getattr(credit_note, "excisable_amount")),
+        "excise": _decimal_to_float(_safe_getattr(credit_note, "excise")),
+        "taxable_sales_hst": _decimal_to_float(_safe_getattr(credit_note, "taxable_sales_hst")),
+        "hst": _decimal_to_float(_safe_getattr(credit_note, "hst")),
+        "amount_for_esf": _decimal_to_float(_safe_getattr(credit_note, "amount_for_esf")),
+        "esf": _decimal_to_float(_safe_getattr(credit_note, "esf")),
+        "export_sales": _decimal_to_float(_safe_getattr(credit_note, "export_sales")),
+        "tax_exempted_sales": _decimal_to_float(_safe_getattr(credit_note, "tax_exempted_sales")),
+    }
+
+
+def _log_ird_submission(
+    *,
+    invoice: Any | None,
+    credit_note: Any | None = None,
+    payload: Dict[str, Any],
+    response: Any,
+    success: bool,
+) -> None:
+    """Persist request/response pairs for traceability; failures are non-fatal."""
+    try:
+        from ird_integration.models import IRDLog
+    except Exception:  # noqa: BLE001
+        logger.info("ird.log.skipped_no_model")
+        return
+
+    try:
+        IRDLog.objects.create(
+            sales_invoice=getattr(invoice, "pk", None) and invoice,
+            credit_note=credit_note,
+            request_payload=json.dumps(payload, default=str),
+            response_payload=json.dumps(response, default=str)
+            if isinstance(response, (dict, list))
+            else str(response),
+            success=success,
+        )
+    except Exception:  # noqa: BLE001
+        logger.exception("ird.log.write_failed", extra={"invoice_id": getattr(invoice, "pk", None)})
 
 
 def _sign_with_hmac(payload: Dict[str, Any], secret: str) -> str:
@@ -298,8 +381,9 @@ def submit_invoice_to_ird(
     signing_secret = signing_secret or getattr(settings, "IRD_SIGNING_SECRET", "")
     rsa_private_key = rsa_private_key or getattr(settings, "IRD_RSA_PRIVATE_KEY", None)
     rsa_passphrase = rsa_passphrase or getattr(settings, "IRD_RSA_PRIVATE_KEY_PASSPHRASE", None)
+    settings_obj = _get_ird_settings()
 
-    payload = build_ird_invoice_payload(invoice)
+    payload = build_ird_invoice_payload(invoice, settings_obj)
     signature = sign_payload(
         payload,
         method=signing_method,
@@ -315,8 +399,8 @@ def submit_invoice_to_ird(
     }
     if api_key := api_key or getattr(settings, "IRD_API_KEY", None):
         headers["Authorization"] = f"Bearer {api_key}"
-    if auth_username := auth_username or getattr(settings, "IRD_USERNAME", None):
-        auth_password = auth_password or getattr(settings, "IRD_PASSWORD", "")
+    if auth_username := auth_username or _safe_getattr(settings_obj, "username") or getattr(settings, "IRD_USERNAME", None):
+        auth_password = auth_password or _safe_getattr(settings_obj, "password") or getattr(settings, "IRD_PASSWORD", "")
         headers["Authorization"] = _basic_auth_header(auth_username, auth_password)
 
     last_exc: Optional[Exception] = None
@@ -329,6 +413,12 @@ def submit_invoice_to_ird(
         except Exception as exc:  # noqa: BLE001
             last_exc = exc
             if attempt >= max_retries:
+                _log_ird_submission(
+                    invoice=invoice,
+                    payload=payload,
+                    response=str(exc),
+                    success=False,
+                )
                 raise
             time.sleep(backoff_seconds * attempt)
 
@@ -344,13 +434,22 @@ def submit_invoice_to_ird(
         or body.get("billNo")
     )
 
+    _log_ird_submission(
+        invoice=invoice,
+        payload=payload,
+        response=body or getattr(response, "text", ""),
+        success=bool(response and response.ok),
+    )
+
+    status_value = body.get("status") or body.get("responseStatus") or ("synced" if ack_id else None)
+
     updates = {
         "ird_signature": signature,
         "ird_ack_id": ack_id,
         "ird_last_payload": payload,
         "ird_last_response": body,
         "ird_last_submitted_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "ird_status": body.get("status") or body.get("responseStatus"),
+        "ird_status": status_value,
     }
     for attr, value in updates.items():
         if hasattr(invoice, attr):
@@ -363,6 +462,113 @@ def submit_invoice_to_ird(
             pass
 
     _update_invoice_metadata(invoice, updates)
+
+    return IRDSubmissionResult(
+        payload=payload,
+        signature=signature,
+        ack_id=ack_id,
+        response=body,
+    )
+
+
+def submit_credit_note_to_ird(
+    credit_note: Any,
+    *,
+    session: Optional[requests.Session] = None,
+    endpoint: Optional[str] = None,
+    api_key: Optional[str] = None,
+    signing_secret: Optional[str] = None,
+    signing_method: Optional[str] = None,
+    rsa_private_key: Optional[str] = None,
+    rsa_passphrase: Optional[str] = None,
+    auth_username: Optional[str] = None,
+    auth_password: Optional[str] = None,
+    timeout: int = 10,
+    max_retries: int = 3,
+    backoff_seconds: float = 1.0,
+) -> IRDSubmissionResult:
+    """Submit a credit note to the IRD bill return endpoint."""
+    session = session or requests.Session()
+    endpoint = endpoint or getattr(settings, "IRD_CREDIT_NOTE_ENDPOINT", DEFAULT_IRD_CREDIT_NOTE_ENDPOINT)
+    signing_method = signing_method or getattr(settings, "IRD_SIGNING_METHOD", DEFAULT_SIGNING_METHOD)
+    signing_secret = signing_secret or getattr(settings, "IRD_SIGNING_SECRET", "")
+    rsa_private_key = rsa_private_key or getattr(settings, "IRD_RSA_PRIVATE_KEY", None)
+    rsa_passphrase = rsa_passphrase or getattr(settings, "IRD_RSA_PRIVATE_KEY_PASSPHRASE", None)
+    settings_obj = _get_ird_settings()
+
+    payload = build_ird_credit_note_payload(credit_note, settings_obj)
+    signature = sign_payload(
+        payload,
+        method=signing_method,
+        hmac_secret=signing_secret,
+        rsa_private_key=rsa_private_key,
+        rsa_passphrase=rsa_passphrase,
+    )
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-Signature": signature,
+        "X-Signature-Method": signing_method,
+    }
+    if api_key := api_key or getattr(settings, "IRD_API_KEY", None):
+        headers["Authorization"] = f"Bearer {api_key}"
+    if auth_username := auth_username or _safe_getattr(settings_obj, "username") or getattr(settings, "IRD_USERNAME", None):
+        auth_password = auth_password or _safe_getattr(settings_obj, "password") or getattr(settings, "IRD_PASSWORD", "")
+        headers["Authorization"] = _basic_auth_header(auth_username, auth_password)
+
+    last_exc: Optional[Exception] = None
+    response = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = session.post(endpoint, json=payload, headers=headers, timeout=timeout)
+            response.raise_for_status()
+            break
+        except Exception as exc:  # noqa: BLE001
+            last_exc = exc
+            if attempt >= max_retries:
+                _log_ird_submission(
+                    invoice=None,
+                    credit_note=credit_note,
+                    payload=payload,
+                    response=str(exc),
+                    success=False,
+                )
+                raise
+            time.sleep(backoff_seconds * attempt)
+
+    try:
+        body = response.json() if response else {}
+    except ValueError:
+        body = {}
+
+    ack_id = (
+        body.get("ack_id")
+        or body.get("referenceNo")
+        or body.get("reference")
+        or body.get("billNo")
+    )
+
+    success = bool(response and response.ok)
+    _log_ird_submission(
+        invoice=None,
+        credit_note=credit_note,
+        payload=payload,
+        response=body or getattr(response, "text", ""),
+        success=success,
+    )
+
+    if hasattr(credit_note, "status"):
+        credit_note.status = "success" if success else "failed"
+        update_fields = ["status"]
+        if hasattr(credit_note, "error_message"):
+            credit_note.error_message = "" if success else str(body)
+            update_fields.append("error_message")
+        if hasattr(credit_note, "updated_at"):
+            update_fields.append("updated_at")
+        try:
+            credit_note.save(update_fields=update_fields)
+        except Exception:  # noqa: BLE001
+            logger.warning("ird.credit_note.save_failed", exc_info=True)
 
     return IRDSubmissionResult(
         payload=payload,

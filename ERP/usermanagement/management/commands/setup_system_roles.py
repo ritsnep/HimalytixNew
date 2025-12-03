@@ -76,6 +76,124 @@ SPECIAL_PERMISSION_DEFINITIONS = [
     },
 ]
 
+JOURNAL_META_PERMISSION_MAP = [
+    {
+        'module': 'accounting',
+        'entity': 'journal',
+        'action': 'add',
+        'name': 'Can add voucher entry',
+        'description': 'Allows creating voucher entries.',
+    },
+    {
+        'module': 'accounting',
+        'entity': 'journal',
+        'action': 'change',
+        'name': 'Can change voucher entry',
+        'description': 'Allows editing voucher entries.',
+    },
+    {
+        'module': 'accounting',
+        'entity': 'journal',
+        'action': 'delete',
+        'name': 'Can delete voucher entry',
+        'description': 'Allows deleting voucher entries.',
+    },
+    {
+        'module': 'accounting',
+        'entity': 'journal',
+        'action': 'view',
+        'name': 'Can view voucher entry',
+        'description': 'Allows viewing voucher entries.',
+    },
+    {
+        'module': 'accounting',
+        'entity': 'journal',
+        'action': 'submit_journal',
+        'name': 'Can submit journal for approval',
+        'description': 'Allows submitting journals for approval.',
+    },
+    {
+        'module': 'accounting',
+        'entity': 'journal',
+        'action': 'approve_journal',
+        'name': 'Can approve journal',
+        'description': 'Allows approving journals.',
+    },
+    {
+        'module': 'accounting',
+        'entity': 'journal',
+        'action': 'post_journal',
+        'name': 'Can post journal',
+        'description': 'Allows posting journals.',
+    },
+    {
+        'module': 'accounting',
+        'entity': 'journal',
+        'action': 'reverse_journal',
+        'name': 'Can reverse journal',
+        'description': 'Allows reversing journals.',
+    },
+    {
+        'module': 'accounting',
+        'entity': 'journal',
+        'action': 'reject_journal',
+        'name': 'Can reject journal',
+        'description': 'Allows rejecting journals.',
+    },
+    {
+        'module': 'accounting',
+        'entity': 'journal',
+        'action': 'change',
+        'name': 'Can edit journal',
+        'description': 'Allows editing journals.',
+    },
+    {
+        'module': 'accounting',
+        'entity': 'accountingperiod',
+        'action': 'reopen_period',
+        'name': 'Can reopen accounting period',
+        'description': 'Allows reopening accounting periods.',
+    },
+]
+
+PURCHASING_PERMISSION_DEFINITIONS = [
+    {
+        'module': 'purchasing',
+        'entity': 'purchaseinvoice',
+        'action': 'view',
+        'name': 'Can view purchase invoices',
+        'description': 'Allows viewing purchase invoices.',
+    },
+    {
+        'module': 'purchasing',
+        'entity': 'purchaseinvoice',
+        'action': 'add',
+        'name': 'Can add purchase invoices',
+        'description': 'Allows creating purchase invoices.',
+    },
+    {
+        'module': 'purchasing',
+        'entity': 'purchaseinvoice',
+        'action': 'change',
+        'name': 'Can change purchase invoices',
+        'description': 'Allows editing purchase invoices and landed cost documents.',
+    },
+    {
+        'module': 'purchasing',
+        'entity': 'purchaseinvoice',
+        'action': 'delete',
+        'name': 'Can delete purchase invoices',
+        'description': 'Allows deleting purchase invoices.',
+    },
+    {
+        'module': 'purchasing',
+        'entity': 'purchaseinvoice',
+        'action': 'post',
+        'name': 'Can post purchase invoices',
+        'description': 'Allows posting purchase invoices and applying landed costs.',
+    },
+]
+
 
 ROLE_DEFINITIONS = {
     'ADMIN': {
@@ -108,6 +226,18 @@ class Command(BaseCommand):
                 'description': 'Accounting module',
             },
         )
+        purchasing_module, _ = Module.objects.get_or_create(
+            code='purchasing',
+            defaults={
+                'name': 'Purchasing',
+                'description': 'Purchasing and procurement',
+            },
+        )
+
+        module_map = {
+            'accounting': accounting_module,
+            'purchasing': purchasing_module,
+        }
 
         # Ensure required entities exist
         required_entities = {
@@ -116,9 +246,10 @@ class Command(BaseCommand):
             'fiscalyear': 'Fiscal Year management',
         }
         entities = {}
-        for code, description in required_entities.items():
+
+        def _get_entity(module, code, description):
             entity, _ = Entity.objects.get_or_create(
-                module=accounting_module,
+                module=module,
                 code=code,
                 defaults={
                     'name': code.replace('_', ' ').title(),
@@ -126,12 +257,22 @@ class Command(BaseCommand):
                     'is_active': True,
                 },
             )
-            entities[code] = entity
+            return entity
+
+        for code, description in required_entities.items():
+            entities[('accounting', code)] = _get_entity(accounting_module, code, description)
+
+        # Purchasing module entities
+        entities[('purchasing', 'purchaseinvoice')] = _get_entity(
+            purchasing_module,
+            'purchaseinvoice',
+            'Purchase invoice management',
+        )
 
         # Ensure custom permissions exist
-        for definition in SPECIAL_PERMISSION_DEFINITIONS:
-            module = Module.objects.get(code=definition['module'])
-            entity = Entity.objects.get(module=module, code=definition['entity'])
+        def _ensure_permission(definition):
+            module = module_map[definition['module']]
+            entity = entities[(definition['module'], definition['entity'])]
             Permission.objects.get_or_create(
                 module=module,
                 entity=entity,
@@ -142,6 +283,15 @@ class Command(BaseCommand):
                     'is_active': True,
                 },
             )
+
+        for definition in SPECIAL_PERMISSION_DEFINITIONS:
+            _ensure_permission(definition)
+
+        for definition in JOURNAL_META_PERMISSION_MAP:
+            _ensure_permission(definition)
+
+        for definition in PURCHASING_PERMISSION_DEFINITIONS:
+            _ensure_permission(definition)
 
         organizations = Organization.objects.all()
         all_permissions = Permission.objects.filter(is_active=True)
@@ -154,7 +304,7 @@ class Command(BaseCommand):
         journal_crud_permissions = set(
             Permission.objects.filter(
             module=accounting_module,
-            entity=entities['journal'],
+            entity=entities[('accounting', 'journal')],
             action__in=['view', 'add', 'change', 'delete'],
             is_active=True,
         ))
@@ -162,23 +312,66 @@ class Command(BaseCommand):
         clerk_extra_permissions = set(
             Permission.objects.filter(
             module=accounting_module,
-            entity=entities['journal'],
+            entity=entities[('accounting', 'journal')],
             action='submit_journal',
         ))
 
-        manager_special_permissions = set(
+        manager_special_permissions = (
+            set(
+                Permission.objects.filter(
+                    module=accounting_module,
+                    entity=entities[('accounting', 'journal')],
+                    action__in=['approve_journal', 'reject_journal', 'post_journal', 'reverse_journal'],
+                )
+            )
+            | set(
+                Permission.objects.filter(
+                    module=accounting_module,
+                    entity=entities[('accounting', 'accountingperiod')],
+                    action__in=['close_period', 'reopen_period'],
+                )
+            )
+            | set(
+                Permission.objects.filter(
+                    module=accounting_module,
+                    entity=entities[('accounting', 'fiscalyear')],
+                    action__in=['close_fiscalyear', 'reopen_fiscalyear'],
+                )
+            )
+        )
+
+        purchasing_view_permissions = set(
             Permission.objects.filter(
-            codename__in=[
-                'accounting_journal_approve_journal',
-                'accounting_journal_reject_journal',
-                'accounting_journal_post_journal',
-                'accounting_journal_reverse_journal',
-                'accounting_accountingperiod_close_period',
-                'accounting_accountingperiod_reopen_period',
-                'accounting_fiscalyear_close_fiscalyear',
-                'accounting_fiscalyear_reopen_fiscalyear',
-            ]
-        ))
+                module=purchasing_module,
+                entity=entities[('purchasing', 'purchaseinvoice')],
+                action='view',
+                is_active=True,
+            )
+        )
+        purchasing_edit_permissions = set(
+            Permission.objects.filter(
+                module=purchasing_module,
+                entity=entities[('purchasing', 'purchaseinvoice')],
+                action__in=['add', 'change'],
+                is_active=True,
+            )
+        )
+        purchasing_delete_permissions = set(
+            Permission.objects.filter(
+                module=purchasing_module,
+                entity=entities[('purchasing', 'purchaseinvoice')],
+                action='delete',
+                is_active=True,
+            )
+        )
+        purchasing_post_permissions = set(
+            Permission.objects.filter(
+                module=purchasing_module,
+                entity=entities[('purchasing', 'purchaseinvoice')],
+                action='post',
+                is_active=True,
+            )
+        )
 
         auditor_permissions = set(accounting_view_permissions)
 
@@ -206,7 +399,13 @@ class Command(BaseCommand):
                         'is_active': True,
                     },
                 )
-                clerk_permissions = accounting_view_permissions | journal_crud_permissions | clerk_extra_permissions
+                clerk_permissions = (
+                    accounting_view_permissions
+                    | journal_crud_permissions
+                    | clerk_extra_permissions
+                    | purchasing_view_permissions
+                    | purchasing_edit_permissions
+                )
                 clerk_role.permissions.set(clerk_permissions)
 
                 manager_role, _ = Role.objects.update_or_create(
@@ -219,7 +418,16 @@ class Command(BaseCommand):
                         'is_active': True,
                     },
                 )
-                manager_permissions = accounting_view_permissions | journal_crud_permissions | manager_special_permissions
+                manager_permissions = (
+                    accounting_view_permissions
+                    | journal_crud_permissions
+                    | clerk_extra_permissions
+                    | manager_special_permissions
+                    | purchasing_view_permissions
+                    | purchasing_edit_permissions
+                    | purchasing_post_permissions
+                    | purchasing_delete_permissions
+                )
                 manager_role.permissions.set(manager_permissions)
 
                 auditor_role, _ = Role.objects.update_or_create(
@@ -232,7 +440,7 @@ class Command(BaseCommand):
                         'is_active': True,
                     },
                 )
-                auditor_role.permissions.set(auditor_permissions)
+                auditor_role.permissions.set(auditor_permissions | purchasing_view_permissions)
 
             self.stdout.write(
                 self.style.SUCCESS(

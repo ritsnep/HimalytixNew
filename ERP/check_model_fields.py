@@ -9,7 +9,7 @@ sys.path.insert(0, os.getcwd())
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ERP.settings')
 django.setup()
 
-from Inventory.models import (
+from inventory.models import (
     ProductCategory, Product, Warehouse, Location,
     PriceList, PriceListItem, CustomerPriceList, PromotionRule,
     PickList, PickListLine, PackingSlip, Shipment, Backorder, RMA

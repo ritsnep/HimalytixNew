@@ -1,0 +1,47 @@
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <form
+    class="flex-grow-1 me-2"
+    hx-get="{% url 'purchasing:invoice-list' %}"
+    hx-target="#purchasing-list-panel"
+    hx-swap="innerHTML">
+    <input
+      type="search"
+      name="q"
+      class="form-control form-control-sm"
+      placeholder="Search by invoice # or supplier"
+      value="{{ query }}"
+      autocomplete="off">
+  </form>
+  <button
+    class="btn btn-outline-primary btn-sm"
+    type="button"
+    hx-get="{% url 'purchasing:invoice-create' %}"
+    hx-target="#purchasing-detail-panel"
+    hx-swap="innerHTML">
+    <i class="mdi mdi-plus"></i>
+  </button>
+</div>
+<div class="list-group list-group-flush shadow-none">
+  {% for invoice in invoices %}
+  <button
+    type="button"
+    class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+    hx-get="{% url 'purchasing:invoice-detail' invoice.pk %}"
+    hx-target="#purchasing-detail-panel"
+    hx-swap="innerHTML">
+    <div class="text-start">
+      <div class="fw-semibold">PI-{{ invoice.number|default:invoice.pk }}</div>
+      <small class="text-muted">{{ invoice.invoice_date }} · {{ invoice.supplier.display_name }}</small>
+    </div>
+    <div class="text-end">
+      <div class="fw-semibold">{{ invoice.currency.currency_code }} {{ invoice.total_amount }}</div>
+      <span class="badge bg-light text-dark text-uppercase">{{ invoice.status }}</span>
+    </div>
+  </button>
+  {% empty %}
+  <div class="text-center text-muted py-5">
+    <p class="mb-1">No purchase invoices yet.</p>
+    <small>Use the + button to create the first one.</small>
+  </div>
+  {% endfor %}
+</div>

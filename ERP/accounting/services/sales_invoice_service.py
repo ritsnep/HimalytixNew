@@ -15,6 +15,7 @@ from accounting.models import (
     ARReceiptLine,
     Journal,
     JournalLine,
+    CurrencyExchangeRate,
     SalesInvoice,
     SalesInvoiceLine,
 )
@@ -22,7 +23,7 @@ from accounting.services.posting_service import PostingService
 from accounting.services.inventory_posting_service import InventoryPostingService
 from accounting.services.ird_submission_service import IRDSubmissionService
 from accounting.utils.event_utils import emit_integration_event
-from Inventory.models import Product, Warehouse
+from inventory.models import Product, Warehouse
 
 
 @dataclass
@@ -46,6 +47,27 @@ class SalesInvoiceService:
             return payment_term.calculate_due_date(invoice_date)
         return invoice_date
 
+    def _resolve_exchange_rate(self, organization, currency, document_date) -> Decimal:
+        """Pull the latest active FX rate to the organization's base currency."""
+        if not currency or currency.currency_code == getattr(organization, "base_currency_code", None):
+            return Decimal('1')
+        rate_value = (
+            CurrencyExchangeRate.objects.filter(
+                organization=organization,
+                from_currency=currency,
+                to_currency__currency_code=getattr(organization, "base_currency_code", None),
+                rate_date__lte=document_date,
+                is_active=True,
+            )
+            .order_by("-rate_date")
+            .values_list("exchange_rate", flat=True)
+            .first()
+        )
+        try:
+            return Decimal(str(rate_value)) if rate_value is not None else Decimal('1')
+        except Exception:  # noqa: BLE001
+            return Decimal('1')
+
     @transaction.atomic
     def create_invoice(
         self,
@@ -58,13 +80,14 @@ class SalesInvoiceService:
         lines: Iterable[dict],
         payment_term=None,
         due_date=None,
-        exchange_rate: Decimal = Decimal('1'),
+        exchange_rate: Optional[Decimal] = None,
         metadata: Optional[dict] = None,
     ) -> SalesInvoice:
         if customer.accounts_receivable_account_id is None:
             raise ValidationError("Customer is missing an Accounts Receivable account.")
 
         payment_term = payment_term or getattr(customer, 'payment_term', None)
+        exchange_rate = exchange_rate or self._resolve_exchange_rate(organization, currency, invoice_date)
         metadata = metadata or {}
 
         invoice = SalesInvoice.objects.create(
@@ -122,11 +145,22 @@ class SalesInvoiceService:
         """Determine whether to submit the invoice to IRD based on override or settings."""
         if submit_to_ird is not None:
             return submit_to_ird
+        try:
+            from ird_integration.models import IRDSettings  # Lazy import to avoid circulars
+
+            if IRDSettings.objects.exists():
+                return True
+        except Exception:  # noqa: BLE001
+            pass
         return getattr(settings, "IRD_ENABLE_AUTO_SUBMIT", False)
 
     def _enqueue_ird_submission(self, invoice: SalesInvoice) -> None:
         try:
-            self.ird_submission_service.enqueue_invoice(invoice)
+            task = self.ird_submission_service.enqueue_invoice(invoice)
+            if invoice.ird_status != "pending":
+                invoice.ird_status = "pending"
+                invoice.save(update_fields=["ird_status", "updated_at"])
+            return task
         except Exception as exc:  # noqa: BLE001
             self.logger.warning(
                 "IRD submission queue failure for invoice %s: %s",

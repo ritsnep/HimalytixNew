@@ -1,4 +1,6 @@
 # inventory/models.py  – Django 4.2+
+from decimal import Decimal
+
 from django.db import models
 from django.utils import timezone
 from mptt.models import MPTTModel, TreeForeignKey          # pip install django-mptt
@@ -33,9 +35,11 @@ class Product(models.Model):
     income_account     = models.ForeignKey(ChartOfAccount, null=True, blank=True,
                                            related_name="income_products", on_delete=models.PROTECT)
     expense_account    = models.ForeignKey(ChartOfAccount, null=True, blank=True,
-                                           related_name="expense_products", on_delete=models.PROTECT)
+                                           related_name="expense_products", on_delete=models.PROTECT,
+                                           help_text="COGS account for inventory items")
     inventory_account  = models.ForeignKey(ChartOfAccount, null=True, blank=True,
-                                           related_name="inventory_products", on_delete=models.PROTECT)
+                                           related_name="inventory_products", on_delete=models.PROTECT,
+                                           help_text="Asset account for inventory items")
     is_inventory_item  = models.BooleanField(default=False)
     min_order_quantity = models.DecimalField(max_digits=15, decimal_places=4, default=1)
     reorder_level      = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
@@ -44,9 +48,25 @@ class Product(models.Model):
     sku                = models.CharField(max_length=100, blank=True)
     created_at         = models.DateTimeField(default=timezone.now)
     updated_at         = models.DateTimeField(auto_now=True)
-    class Meta: unique_together = ('organization', 'code')
+    
+    class Meta: 
+        unique_together = ('organization', 'code')
+    
     def __str__(self):
         return f"{self.organization.name} - {self.name} ({self.code})"
+    
+    def clean(self):
+        """Validate that inventory items have required GL accounts."""
+        super().clean()
+        if self.is_inventory_item:
+            from django.core.exceptions import ValidationError
+            errors = {}
+            if not self.inventory_account:
+                errors['inventory_account'] = 'Inventory account is required for inventory items.'
+            if not self.expense_account:
+                errors['expense_account'] = 'COGS (expense) account is required for inventory items.'
+            if errors:
+                raise ValidationError(errors)
 
 # ---------- Warehouse structure ----------
 class Warehouse(models.Model):
@@ -92,8 +112,8 @@ class InventoryItem(models.Model):
     warehouse     = models.ForeignKey(Warehouse, on_delete=models.PROTECT)
     location      = models.ForeignKey(Location, null=True, blank=True, on_delete=models.PROTECT)
     batch         = models.ForeignKey(Batch, null=True, blank=True, on_delete=models.PROTECT)
-    quantity_on_hand = models.DecimalField(max_digits=15, decimal_places=4, default=0)
-    unit_cost        = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    quantity_on_hand = models.DecimalField(max_digits=15, decimal_places=4, default=Decimal("0"))
+    unit_cost        = models.DecimalField(max_digits=19, decimal_places=4, default=Decimal("0"))
     updated_at       = models.DateTimeField(auto_now=True)
     class Meta:
         unique_together = ('organization', 'product', 'warehouse', 'location', 'batch')
@@ -112,16 +132,31 @@ class StockLedger(models.Model):
     txn_type     = models.CharField(max_length=30)         # purchase, sale, transfer, adj …
     reference_id = models.CharField(max_length=100)        # PO, SO, etc.
     txn_date     = models.DateTimeField()
-    qty_in       = models.DecimalField(max_digits=15, decimal_places=4, default=0)
-    qty_out      = models.DecimalField(max_digits=15, decimal_places=4, default=0)
-    unit_cost    = models.DecimalField(max_digits=19, decimal_places=4, default=0)  # moving-avg
+    qty_in       = models.DecimalField(max_digits=15, decimal_places=4, default=Decimal("0"))
+    qty_out      = models.DecimalField(max_digits=15, decimal_places=4, default=Decimal("0"))
+    unit_cost    = models.DecimalField(max_digits=19, decimal_places=4, default=Decimal("0"))  # moving-avg
     created_at   = models.DateTimeField(default=timezone.now)
     class Meta:
         indexes = [models.Index(fields=['organization', 'product', 'warehouse'])]
+        ordering = ('-txn_date', '-id')
     def __str__(self):
         loc_code = self.location.code if self.location else 'N/A'
         batch_num = self.batch.batch_number if self.batch else 'N/A'
         return f"{self.organization.name} - {self.txn_type} {self.product.code} @ {self.warehouse.code}/{loc_code} ({batch_num}): +{self.qty_in}/-{self.qty_out}"
+
+
+class StockLedgerReport(StockLedger):
+    class Meta:
+        proxy = True
+        verbose_name = "Stock Ledger Report"
+        verbose_name_plural = "Stock Ledger Report"
+
+
+class StockSummary(InventoryItem):
+    class Meta:
+        proxy = True
+        verbose_name = "Stock Summary"
+        verbose_name_plural = "Stock Summary"
 
 
 # ---------- Pricing & Promotions ----------
@@ -471,4 +506,3 @@ class RMALine(models.Model):
     
     def __str__(self):
         return f"RMA {self.rma.rma_number} - Line {self.line_number}: {self.product.code}"
-

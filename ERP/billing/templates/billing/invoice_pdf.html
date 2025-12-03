@@ -20,12 +20,12 @@
       <tr><th>#</th><th>Description</th><th>Qty</th><th>Unit</th><th>Unit Price</th><th>Total</th></tr>
     </thead>
     <tbody>
-      {% for line in invoice.lines.all %}
+      {% for line in lines %}
       <tr>
         <td>{{ forloop.counter }}</td>
         <td>{{ line.description }}</td>
         <td>{{ line.quantity }}</td>
-        <td>{% if line.product %}{{ line.product.uom }}{% endif %}</td>
+        <td>{% if line.product_code %}{{ line.product_code }}{% endif %}</td>
         <td>{{ line.unit_price }}</td>
         <td>{{ line.line_total }}</td>
       </tr>

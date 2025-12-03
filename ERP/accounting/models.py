@@ -1356,6 +1356,22 @@ class PurchaseInvoice(models.Model):
         blank=True,
         related_name='purchase_invoices',
     )
+    warehouse = models.ForeignKey(
+        'Inventory.Warehouse',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='purchase_invoices',
+        help_text='Warehouse for receiving inventory items',
+    )
+    grir_account = models.ForeignKey(
+        'ChartOfAccount',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='purchase_invoice_grir',
+        help_text='Goods Receipt/Invoice Receipt clearing account',
+    )
     metadata = models.JSONField(default=dict, blank=True)
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -1552,6 +1568,104 @@ class PurchaseInvoiceMatch(models.Model):
 
     def __str__(self):
         return f"Match result for {self.invoice.invoice_number}"
+
+
+class LandedCostBasis(models.TextChoices):
+    BY_VALUE = "value", "Allocate by line value"
+    BY_QUANTITY = "quantity", "Allocate by quantity"
+
+
+class LandedCostDocument(models.Model):
+    """Captures freight/duty allocations that should be capitalised into inventory."""
+
+    landed_cost_id = models.BigAutoField(primary_key=True)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.PROTECT,
+        related_name="accounting_landed_cost_documents",
+    )
+    purchase_invoice = models.OneToOneField(
+        PurchaseInvoice,
+        on_delete=models.PROTECT,
+        related_name="landed_cost_document",
+    )
+    document_date = models.DateField()
+    currency = models.ForeignKey(
+        "Currency",
+        on_delete=models.PROTECT,
+        related_name="landed_cost_documents",
+    )
+    exchange_rate = models.DecimalField(max_digits=19, decimal_places=6, default=1)
+    basis = models.CharField(
+        max_length=16,
+        choices=LandedCostBasis.choices,
+        default=LandedCostBasis.BY_VALUE,
+    )
+    note = models.CharField(max_length=255, blank=True)
+    is_applied = models.BooleanField(default=False)
+    applied_at = models.DateTimeField(null=True, blank=True)
+    journal = models.ForeignKey(
+        "Journal",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="accounting_landed_cost_documents",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-document_date", "-landed_cost_id")
+
+    def __str__(self) -> str:
+        return f"Landed cost for {self.purchase_invoice}"
+
+    @property
+    def total_cost(self) -> Decimal:
+        return self.cost_lines.aggregate(total=Sum("amount")).get("total") or Decimal("0")
+
+
+class LandedCostLine(models.Model):
+    """Individual landed cost component (freight, duty, insurance)."""
+
+    landed_cost_line_id = models.BigAutoField(primary_key=True)
+    document = models.ForeignKey(
+        LandedCostDocument,
+        on_delete=models.CASCADE,
+        related_name="cost_lines",
+    )
+    description = models.CharField(max_length=255)
+    amount = models.DecimalField(max_digits=19, decimal_places=4)
+    credit_account = models.ForeignKey(
+        ChartOfAccount,
+        on_delete=models.PROTECT,
+        related_name="accounting_landed_cost_lines",
+        help_text="Source account for this cost (freight expense, duty payable, etc.)",
+    )
+
+    def __str__(self) -> str:
+        return f"{self.description} - {self.amount}"
+
+
+class LandedCostAllocation(models.Model):
+    """Represents how a landed cost document is spread across purchase lines."""
+
+    landed_cost_allocation_id = models.BigAutoField(primary_key=True)
+    document = models.ForeignKey(
+        LandedCostDocument,
+        on_delete=models.CASCADE,
+        related_name="allocations",
+    )
+    purchase_line = models.ForeignKey(
+        PurchaseInvoiceLine,
+        on_delete=models.CASCADE,
+        related_name="landed_cost_allocations",
+    )
+    amount = models.DecimalField(max_digits=19, decimal_places=4)
+    factor = models.DecimalField(max_digits=19, decimal_places=8, default=Decimal("0"))
+
+    def __str__(self) -> str:
+        return f"{self.purchase_line} -> {self.amount}"
 
 
 class BankAccount(models.Model):
@@ -2436,6 +2550,14 @@ class SalesInvoice(models.Model):
         null=True,
         blank=True,
         related_name='sales_invoices',
+    )
+    warehouse = models.ForeignKey(
+        'Inventory.Warehouse',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='sales_invoices',
+        help_text='Warehouse for inventory items in this invoice',
     )
     # IRD E-Billing fields
     ird_signature = models.TextField(null=True, blank=True)

@@ -186,7 +186,7 @@ def retailer_category_performance(request):
     
     Returns GMROI and sell-through for all categories
     """
-    from Inventory.models import ProductCategory
+    from inventory.models import ProductCategory
     
     organization = request.user.organization
     metrics = RetailerMetrics(organization)

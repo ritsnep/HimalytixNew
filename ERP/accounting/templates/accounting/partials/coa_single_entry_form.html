@@ -2,12 +2,14 @@
 <form id="coa-single-form" method="post" novalidate
       hx-post="{% url 'accounting:chart_of_accounts_create' %}"
       hx-trigger="submit"
-      hx-target="#form-response"
-      hx-swap="innerHTML"
-      hx-indicator=".htmx-indicator">
+      hx-target="#coa-single-form"
+      hx-swap="outerHTML"
+      hx-indicator=".htmx-indicator"
+      data-next-code-url="{% url 'accounting:get_next_account_code' %}"
+      data-org-id="{{ form.organization.value|default:'' }}"
+      data-is-edit="{% if form.instance.pk %}1{% else %}0{% endif %}">
     {% csrf_token %}
-    
-    <div id="form-response"></div>
+    {{ form.organization }}
     
     {% if form.non_field_errors %}
     <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -29,12 +31,22 @@
         
         <div class="col-md-4">
             <div class="mb-3">
-                <label for="{{ form.account_code.id_for_label }}" class="form-label">Account Code</label>
+                <div class="d-flex justify-content-between align-items-center">
+                    <label for="{{ form.account_code.id_for_label }}" class="form-label mb-0">Account Code</label>
+                    <div class="form-check form-switch mb-0">
+                        {{ form.use_custom_code }}
+                        <label class="form-check-label small ms-1 mb-0" for="{{ form.use_custom_code.id_for_label }}">Use Custom Code</label>
+                    </div>
+                </div>
                 {{ form.account_code }}
+                {{ form.custom_code.as_hidden }}
                 {% if form.account_code.errors %}
                 <div class="error-message">{{ form.account_code.errors|first }}</div>
                 {% endif %}
-                <small class="text-muted">Auto-generated from Parent/Type unless custom code is enabled.</small>
+                {% if form.use_custom_code.errors %}
+                <div class="error-message">{{ form.use_custom_code.errors|first }}</div>
+                {% endif %}
+                <small class="text-muted">Auto-generated from Parent/Type. Enable custom to edit manually.</small>
             </div>
         </div>
         
@@ -55,11 +67,7 @@
                 <select name="{{ field.html_name }}" id="id_account_type" 
                         class="form-select{% if field.errors %} is-invalid{% endif %}"
                         required
-                        data-pristine-required-message="Account type is required"
-                        hx-get="{% url 'accounting:chart_of_accounts_form_fields' %}"
-                        hx-trigger="change"
-                        hx-target="#parent-account-container"
-                        hx-swap="innerHTML">
+                        data-pristine-required-message="Account type is required">
                     <option value="">Select Type</option>
                     {% for option_value, option_label in field.field.choices %}
                         {% if option_value %}
@@ -71,35 +79,6 @@
                 {% if form.account_type.errors %}
                 <div class="error-message">{{ form.account_type.errors|first }}</div>
                 {% endif %}
-            </div>
-        </div>
-    </div>
-    
-    <!-- Custom Code Options -->
-    <div class="row mb-4 align-items-end">
-        <div class="col-md-4">
-            <div class="form-check form-switch mb-2">
-                <input class="form-check-input" type="checkbox" name="use_custom_code" id="id_use_custom_code"
-                       {% if form.use_custom_code.value %}checked{% endif %}>
-                <label class="form-check-label" for="id_use_custom_code">Use Custom Code</label>
-            </div>
-            {% if form.use_custom_code.errors %}
-            <div class="error-message">{{ form.use_custom_code.errors|first }}</div>
-            {% endif %}
-            <small class="text-muted">Enable to override the generated account code.</small>
-        </div>
-        <div class="col-md-4" id="custom-code-wrapper"{% if not form.use_custom_code.value %} style="display:none;"{% endif %}>
-            <div class="mb-3">
-                <label for="id_custom_code" class="form-label">Custom Code</label>
-                <input type="text" name="custom_code" id="id_custom_code"
-                       class="form-control{% if form.custom_code.errors %} is-invalid{% endif %}"
-                       value="{{ form.custom_code.value|default:'' }}"
-                       placeholder="Enter custom code"
-                       {% if not form.use_custom_code.value %}disabled{% endif %}>
-                {% if form.custom_code.errors %}
-                <div class="error-message">{{ form.custom_code.errors|first }}</div>
-                {% endif %}
-                <small class="text-muted">Code must be unique per organization.</small>
             </div>
         </div>
     </div>
@@ -115,13 +94,13 @@
                 <label for="id_parent_account" class="form-label">Parent Account</label>
                 <select name="parent_account" id="id_parent_account" class="form-select">
                     <option value="">None (Root Level)</option>
-                    {% if form.parent_account.field.choices %}
-                        {% for value, label in form.parent_account.field.choices %}
-                            {% if value %}
-                            <option value="{{ value }}"{% if value == form.parent_account.value %} selected{% endif %}>{{ label }}</option>
-                            {% endif %}
+                    {% with selected_parent=form.parent_account.value|stringformat:"s" %}
+                        {% for account in form.parent_account.field.queryset %}
+                            <option value="{{ account.pk }}" data-account-type="{{ account.account_type_id }}"{% if account.pk|stringformat:"s" == selected_parent %} selected{% endif %}>
+                                {{ account.account_code }} - {{ account.account_name }}
+                            </option>
                         {% endfor %}
-                    {% endif %}
+                    {% endwith %}
                 </select>
                 <small class="text-muted">Optional - Leave blank for root level account</small>
             </div>
@@ -353,27 +332,122 @@
 
 <script>
 (function() {
-    var toggle = document.getElementById('id_use_custom_code');
-    var wrapper = document.getElementById('custom-code-wrapper');
-    var input = document.getElementById('id_custom_code');
+    const form = document.getElementById('coa-single-form');
+    if (!form) { return; }
+    const accountCodeInput = document.getElementById('id_account_code');
+    const accountTypeSelect = document.getElementById('id_account_type');
+    const parentSelect = document.getElementById('id_parent_account');
+    const useCustomToggle = document.getElementById('id_use_custom_code');
+    const hiddenCustomCode = document.querySelector('input[name="custom_code"]');
+    const nextCodeUrl = form.dataset.nextCodeUrl || '';
+    const orgInput = document.getElementById('id_organization');
+    const orgId = form.dataset.orgId || (orgInput ? orgInput.value : '');
+    const isEdit = form.dataset.isEdit === '1';
 
-    function syncCustomCodeField() {
-        if (!toggle || !wrapper || !input) { return; }
-        if (toggle.checked) {
-            wrapper.style.display = '';
-            input.removeAttribute('disabled');
-        } else {
-            wrapper.style.display = 'none';
-            input.setAttribute('disabled', 'disabled');
+    // Cache all parent options for client-side filtering by account type
+    const parentOptions = parentSelect ? Array.from(parentSelect.options).map(opt => ({
+        value: opt.value,
+        text: opt.textContent,
+        type: opt.getAttribute('data-account-type') || ''
+    })) : [];
+
+    function setCode(value) {
+        const code = (value || '').trim();
+        if (accountCodeInput) {
+            accountCodeInput.value = code;
+        }
+        if (hiddenCustomCode) {
+            hiddenCustomCode.value = code;
         }
     }
 
-    syncCustomCodeField();
-    document.addEventListener('DOMContentLoaded', syncCustomCodeField);
-    document.body.addEventListener('change', function(evt) {
-        if (evt.target === toggle) {
-            syncCustomCodeField();
+    function syncCustomToggle() {
+        if (!useCustomToggle || !accountCodeInput) { return; }
+        const enabled = !!useCustomToggle.checked;
+        accountCodeInput.readOnly = !enabled;
+        accountCodeInput.classList.toggle('bg-light', !enabled);
+        if (!enabled && !isEdit) {
+            setCode('');
+            fetchNextCode();
         }
-    });
+        if (enabled) {
+            accountCodeInput.focus();
+        }
+    }
+
+    function filterParents() {
+        if (!parentSelect) { return; }
+        const selectedType = accountTypeSelect?.value || '';
+        const currentValue = parentSelect.value;
+        parentSelect.innerHTML = '';
+        const rootOpt = document.createElement('option');
+        rootOpt.value = '';
+        rootOpt.textContent = 'None (Root Level)';
+        parentSelect.appendChild(rootOpt);
+        let currentStillValid = currentValue === '';
+        parentOptions.forEach((optData) => {
+            if (!optData.value) { return; }
+            if (selectedType && optData.type && optData.type !== selectedType) { return; }
+            const opt = document.createElement('option');
+            opt.value = optData.value;
+            opt.textContent = optData.text;
+            if (optData.type) {
+                opt.setAttribute('data-account-type', optData.type);
+            }
+            if (currentValue && optData.value === currentValue) {
+                opt.selected = true;
+                currentStillValid = true;
+            }
+            parentSelect.appendChild(opt);
+        });
+        if (!currentStillValid) {
+            parentSelect.value = '';
+        }
+    }
+
+    async function fetchNextCode() {
+        if (isEdit || !accountCodeInput || !nextCodeUrl || !orgId) { return; }
+        if (useCustomToggle && useCustomToggle.checked) { return; }
+        const parent = parentSelect?.value || '';
+        const acctType = accountTypeSelect?.value || '';
+        if (!parent && !acctType) {
+            setCode('');
+            return;
+        }
+        try {
+            const url = new URL(nextCodeUrl, window.location.origin);
+            url.searchParams.set('organization', orgId);
+            if (parent) { url.searchParams.set('parent_account', parent); }
+            if (acctType) { url.searchParams.set('account_type', acctType); }
+            const resp = await fetch(url, { headers: { 'HX-Request': 'true' } });
+            const data = await resp.json();
+            if (typeof data.next_code !== 'undefined') {
+                setCode(data.next_code || '');
+            }
+        } catch (err) {
+            console.warn('Unable to fetch next account code', err);
+        }
+    }
+
+    if (accountCodeInput) {
+        accountCodeInput.addEventListener('blur', () => setCode(accountCodeInput.value));
+    }
+    if (useCustomToggle) {
+        useCustomToggle.addEventListener('change', syncCustomToggle);
+    }
+    if (accountTypeSelect) {
+        accountTypeSelect.addEventListener('change', () => {
+            filterParents();
+            fetchNextCode();
+        });
+    }
+    if (parentSelect) {
+        parentSelect.addEventListener('change', fetchNextCode);
+    }
+
+    // Initial sync on load
+    filterParents();
+    syncCustomToggle();
+    fetchNextCode();
 })();
 </script>

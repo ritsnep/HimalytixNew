@@ -15,6 +15,10 @@ from .views import (
 app_name = 'inventory'
 
 urlpatterns = [
+    # Stock Reports
+    path('stock/', views.stock_report, name='stock_report'),
+    path('ledger/', views.ledger_report, name='ledger_report'),
+    
     # Legacy function-based views - commented out until implemented
     # path('dashboard/', views.dashboard, name='dashboard'),
     # path('stock-movements/', views.stock_movements, name='stock_movements'),

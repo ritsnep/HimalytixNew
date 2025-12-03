@@ -17,7 +17,7 @@ from . import invoice_entry_htmx
 
 # Sales invoice pages and actions (one-off invoices)
 from .invoice_entry_htmx import (
-    invoice_list, invoice_pdf, submit_to_ird, cancel_invoice, export_tally
+    invoice_list, invoice_pdf, submit_to_ird, post_invoice, cancel_invoice, export_tally
 )
 
 # router = DefaultRouter()  # API router commented out until viewsets are created
@@ -29,6 +29,7 @@ urlpatterns = [
     # One-off sales invoice list and actions
     path('invoices/', invoice_list, name='invoice_list'),
     path('invoices/<int:invoice_id>/pdf/', invoice_pdf, name='invoice_pdf'),
+    path('invoices/<int:invoice_id>/post/', post_invoice, name='post_invoice'),
     path('invoices/<int:invoice_id>/submit-ird/', submit_to_ird, name='submit_to_ird'),
     path('invoices/<int:invoice_id>/cancel/', cancel_invoice, name='cancel_invoice'),
     path('invoices/export/tally/', export_tally, name='export_tally'),

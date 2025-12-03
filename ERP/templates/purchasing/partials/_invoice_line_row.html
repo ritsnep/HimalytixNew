@@ -1,0 +1,68 @@
+{% load widget_tweaks %}
+<tr class="align-top" data-form-index="{{ row_index|default:form.prefix|default_if_none:"" }}">
+  <td style="min-width: 180px;">
+    <label class="form-label small text-uppercase text-muted" for="{{ form.product.id_for_label }}">Product</label>
+    {% render_field form.product class+="form-select form-select-sm" %}
+    {% for error in form.product.errors %}
+      <div class="text-danger small">{{ error }}</div>
+    {% endfor %}
+  </td>
+  <td style="min-width: 160px;">
+    <label class="form-label small text-uppercase text-muted" for="{{ form.warehouse.id_for_label }}">Warehouse</label>
+    {% render_field form.warehouse class+="form-select form-select-sm" %}
+    {% for error in form.warehouse.errors %}
+      <div class="text-danger small">{{ error }}</div>
+    {% endfor %}
+  </td>
+  <td style="min-width: 220px;">
+    <label class="form-label small text-uppercase text-muted" for="{{ form.description.id_for_label }}">Description</label>
+    {% render_field form.description class+="form-control form-control-sm" %}
+    {% for error in form.description.errors %}
+      <div class="text-danger small">{{ error }}</div>
+    {% endfor %}
+  </td>
+  <td class="text-end" style="min-width: 120px;">
+    <label class="form-label small text-uppercase text-muted" for="{{ form.quantity.id_for_label }}">Qty</label>
+    {% render_field form.quantity class+="form-control form-control-sm text-end" %}
+    {% for error in form.quantity.errors %}
+      <div class="text-danger small">{{ error }}</div>
+    {% endfor %}
+  </td>
+  <td class="text-end" style="min-width: 140px;">
+    <label class="form-label small text-uppercase text-muted" for="{{ form.unit_price.id_for_label }}">Unit Cost</label>
+    {% render_field form.unit_price class+="form-control form-control-sm text-end" %}
+    {% for error in form.unit_price.errors %}
+      <div class="text-danger small">{{ error }}</div>
+    {% endfor %}
+  </td>
+  <td class="text-end" style="min-width: 120px;">
+    <label class="form-label small text-uppercase text-muted" for="{{ form.vat_rate.id_for_label }}">VAT %</label>
+    {% render_field form.vat_rate class+="form-control form-control-sm text-end" %}
+    {% for error in form.vat_rate.errors %}
+      <div class="text-danger small">{{ error }}</div>
+    {% endfor %}
+  </td>
+  <td style="min-width: 200px;">
+    <label class="form-label small text-uppercase text-muted" for="{{ form.expense_account.id_for_label }}">Expense Account</label>
+    {% render_field form.expense_account class+="form-select form-select-sm" %}
+    {% for error in form.expense_account.errors %}
+      <div class="text-danger small">{{ error }}</div>
+    {% endfor %}
+  </td>
+  <td style="min-width: 200px;">
+    <label class="form-label small text-uppercase text-muted" for="{{ form.input_vat_account.id_for_label }}">Input VAT Account</label>
+    {% render_field form.input_vat_account class+="form-select form-select-sm" %}
+    {% for error in form.input_vat_account.errors %}
+      <div class="text-danger small">{{ error }}</div>
+    {% endfor %}
+  </td>
+  <td class="text-center align-middle" style="width: 60px;">
+    <button class="btn btn-link text-danger p-0" type="button" data-line-remove title="Remove line">
+      <i class="mdi mdi-close-circle"></i>
+    </button>
+  </td>
+  <td class="d-none">
+    {{ form.id }}
+    {{ form.DELETE }}
+  </td>
+</tr>

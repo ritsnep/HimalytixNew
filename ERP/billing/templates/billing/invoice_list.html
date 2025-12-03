@@ -7,14 +7,83 @@
   <a href="{% url 'billing:invoice_create' %}" class="btn btn-primary btn-sm">New Invoice</a>
 {% endblock %}
 
+{% block extra_content %}
+<!-- Filters -->
+<div class="card mb-3">
+  <div class="card-header">
+    <h6 class="mb-0">Filters</h6>
+  </div>
+  <div class="card-body">
+    <form method="get" action="{% url 'billing:invoice_list' %}">
+      <div class="row g-3">
+        <div class="col-md-2">
+          <label for="status" class="form-label">Status</label>
+          <select name="status" id="status" class="form-select form-select-sm">
+            <option value="">All</option>
+            {% for value, label in status_choices %}
+            <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label for="ird_status" class="form-label">IRD Status</label>
+          <select name="ird_status" id="ird_status" class="form-select form-select-sm">
+            <option value="">All</option>
+            {% for value, label in ird_status_choices %}
+            <option value="{{ value }}" {% if current_ird_status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="customer" class="form-label">Customer</label>
+          <select name="customer" id="customer" class="form-select form-select-sm">
+            <option value="">All Customers</option>
+            {% for cust in customers %}
+            <option value="{{ cust.customer_id }}" {% if current_customer|stringformat:"s" == cust.customer_id|stringformat:"s" %}selected{% endif %}>
+              {{ cust.display_name }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label for="currency" class="form-label">Currency</label>
+          <select name="currency" id="currency" class="form-select form-select-sm">
+            <option value="">All</option>
+            {% for curr in currencies %}
+            <option value="{{ curr.currency_code }}" {% if current_currency == curr.currency_code %}selected{% endif %}>
+              {{ curr.currency_code }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label for="date_from" class="form-label">From Date</label>
+          <input type="date" name="date_from" id="date_from" class="form-control form-control-sm" value="{{ current_date_from }}">
+        </div>
+        <div class="col-md-2">
+          <label for="date_to" class="form-label">To Date</label>
+          <input type="date" name="date_to" id="date_to" class="form-control form-control-sm" value="{{ current_date_to }}">
+        </div>
+        <div class="col-md-12">
+          <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
+          <a href="{% url 'billing:invoice_list' %}" class="btn btn-secondary btn-sm">Clear</a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
 {% block table_head %}
   <thead>
     <tr>
       <th>Number</th>
       <th>Date</th>
       <th>Customer</th>
+      <th>Currency</th>
       <th>Total</th>
       <th>Status</th>
+      <th>IRD Status</th>
       <th>Actions</th>
     </tr>
   </thead>
@@ -24,18 +93,28 @@
   <tbody>
     {% for inv in invoices %}
     <tr>
-      <td>{{ inv.invoice_number }}</td>
+      <td><a href="{% url 'billing:invoice_detail' inv.invoice_id %}">{{ inv.invoice_number }}</a></td>
       <td>{{ inv.invoice_date }}</td>
       <td>{{ inv.customer_display_name }}</td>
-      <td>{{ inv.total }}</td>
-      <td>{{ inv.status }}</td>
+      <td>{{ inv.currency.currency_code }}</td>
+      <td class="text-end">{{ inv.total }}</td>
+      <td>
+        <span class="badge bg-{% if inv.status == 'posted' %}success{% elif inv.status == 'draft' %}secondary{% elif inv.status == 'validated' %}info{% elif inv.status == 'paid' %}primary{% else %}danger{% endif %}">
+          {{ inv.get_status_display }}
+        </span>
+      </td>
+      <td>
+        <span class="badge bg-{% if inv.ird_status == 'synced' %}success{% elif inv.ird_status == 'pending' %}warning{% elif inv.ird_status == 'failed' %}danger{% else %}secondary{% endif %}">
+          {{ inv.get_ird_status_display|default:"N/A" }}
+        </span>
+      </td>
       <td>
         <a href="{% url 'billing:invoice_detail' inv.invoice_id %}" class="btn btn-sm btn-outline-primary">View</a>
-        <a href="{% url 'billing:invoice_pdf' inv.invoice_id %}" class="btn btn-sm btn-outline-secondary">PDF</a>
+        <a href="{% url 'billing:invoice_pdf' inv.invoice_id %}" class="btn btn-sm btn-outline-secondary" target="_blank">PDF</a>
       </td>
     </tr>
     {% empty %}
-    <tr><td colspan="6">No invoices found.</td></tr>
+    <tr><td colspan="8" class="text-center">No invoices found.</td></tr>
     {% endfor %}
   </tbody>
 {% endblock %}

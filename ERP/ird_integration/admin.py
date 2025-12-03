@@ -24,10 +24,11 @@ class CreditNoteAdmin(admin.ModelAdmin):
 
 @admin.register(IRDLog)
 class IRDLogAdmin(admin.ModelAdmin):
-    list_display = ("timestamp", "invoice", "credit_note", "success")
+    list_display = ("timestamp", "sales_invoice", "invoice", "credit_note", "success")
     list_filter = ("success",)
     search_fields = (
         "invoice__invoice_number",
+        "sales_invoice__invoice_number",
         "credit_note__credit_note_number",
         "request_payload",
         "response_payload",

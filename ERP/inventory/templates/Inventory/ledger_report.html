@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Stock Ledger - {{ organization.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-0">Stock Ledger</h1>
+            <p class="text-muted">Complete history of all stock movements</p>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="warehouse" class="form-label">Warehouse</label>
+                    <select name="warehouse" id="warehouse" class="form-select">
+                        <option value="">All Warehouses</option>
+                        {% for warehouse in warehouses %}
+                            <option value="{{ warehouse.id }}" {% if selected_warehouse == warehouse.id|stringformat:"s" %}selected{% endif %}>
+                                {{ warehouse.name }} ({{ warehouse.code }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="product" class="form-label">Product</label>
+                    <select name="product" id="product" class="form-select">
+                        <option value="">All Products</option>
+                        {% for product in products %}
+                            <option value="{{ product.id }}" {% if selected_product == product.id|stringformat:"s" %}selected{% endif %}>
+                                {{ product.name }} ({{ product.code }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="txn_type" class="form-label">Transaction Type</label>
+                    <select name="txn_type" id="txn_type" class="form-select">
+                        <option value="">All Types</option>
+                        {% for type in txn_types %}
+                            <option value="{{ type }}" {% if selected_txn_type == type %}selected{% endif %}>
+                                {{ type }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="date_from" class="form-label">From Date</label>
+                    <input type="date" name="date_from" id="date_from" class="form-control" value="{{ date_from }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="date_to" class="form-label">To Date</label>
+                    <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to }}">
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-funnel"></i> Filter
+                    </button>
+                    <a href="{% url 'inventory:ledger_report' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Clear
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Ledger Table -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Reference</th>
+                            <th>Product</th>
+                            <th>Warehouse</th>
+                            <th>Location</th>
+                            <th>Batch</th>
+                            <th class="text-end">Qty In</th>
+                            <th class="text-end">Qty Out</th>
+                            <th class="text-end">Unit Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in ledger_entries %}
+                        <tr>
+                            <td>{{ entry.txn_date|date:"Y-m-d H:i" }}</td>
+                            <td>
+                                <span class="badge {% if entry.txn_type == 'receipt' %}bg-success{% elif entry.txn_type == 'issue' %}bg-danger{% elif 'transfer' in entry.txn_type %}bg-info{% else %}bg-secondary{% endif %}">
+                                    {{ entry.txn_type }}
+                                </span>
+                            </td>
+                            <td><small>{{ entry.reference_id }}</small></td>
+                            <td>
+                                <strong>{{ entry.product.code }}</strong>
+                                <small class="text-muted d-block">{{ entry.product.name|truncatewords:5 }}</small>
+                            </td>
+                            <td>{{ entry.warehouse.code }}</td>
+                            <td>{{ entry.location.code|default:"—" }}</td>
+                            <td>{{ entry.batch.batch_number|default:"—" }}</td>
+                            <td class="text-end">
+                                {% if entry.qty_in > 0 %}
+                                    <span class="text-success">+{{ entry.qty_in|floatformat:2 }}</span>
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                {% if entry.qty_out > 0 %}
+                                    <span class="text-danger">-{{ entry.qty_out|floatformat:2 }}</span>
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td class="text-end">{{ entry.unit_cost|floatformat:4 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="10" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox"></i> No ledger entries found
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if ledger_entries.count == 100 %}
+            <div class="alert alert-info mt-3">
+                <i class="bi bi-info-circle"></i> Showing most recent 100 entries. Use filters to narrow down results.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

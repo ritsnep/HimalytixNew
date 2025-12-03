@@ -1,0 +1,47 @@
+{% extends "admin/change_list.html" %}
+{% load i18n %}
+
+{% block content_title %}
+<h1>{% trans "Stock Summary" %}</h1>
+{% endblock %}
+
+{% block result_list %}
+<div class="results">
+    <table id="result_list">
+        <thead>
+            <tr>
+                <th scope="col">{% trans "Organization" %}</th>
+                <th scope="col">{% trans "Product" %}</th>
+                <th scope="col">{% trans "Warehouse" %}</th>
+                <th scope="col" class="numeric">{% trans "Qty On Hand" %}</th>
+                <th scope="col" class="numeric">{% trans "Unit Cost" %}</th>
+                <th scope="col" class="numeric">{% trans "Total Value" %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in summary_rows %}
+            <tr class="{% cycle 'row1' 'row2' %}">
+                <td>{{ row.organization }}</td>
+                <td>{{ row.product }}</td>
+                <td>{{ row.warehouse }}</td>
+                <td class="numeric">{{ row.quantity_on_hand|floatformat:4 }}</td>
+                <td class="numeric">{{ row.unit_cost|floatformat:4 }}</td>
+                <td class="numeric">{{ row.total_value|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6">{% trans "No inventory data available." %}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="3" scope="row">{% trans "Totals" %}</th>
+                <th class="numeric">{{ summary_total_qty|floatformat:4 }}</th>
+                <th class="numeric"></th>
+                <th class="numeric">{{ summary_total_value|floatformat:2 }}</th>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+{% endblock %}

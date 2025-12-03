@@ -247,7 +247,7 @@ Content-Type: application/json
 ### Basic ATP Calculation
 
 ```python
-from Inventory.services.allocation_service import AllocationService
+from inventory.services.allocation_service import AllocationService
 
 # Initialize service
 service = AllocationService(organization)
@@ -269,7 +269,7 @@ for atp in atp_results:
 ### Allocate Inventory with Strategy
 
 ```python
-from Inventory.services.allocation_service import (
+from inventory.services.allocation_service import (
     AllocationService, AllocationRequest,
     AllocationPriority, AllocationStrategy
 )
@@ -329,7 +329,7 @@ for product, available in availability.items():
 ### Get Fulfillment Options
 
 ```python
-from Inventory.services.allocation_service import AllocationPriority
+from inventory.services.allocation_service import AllocationPriority
 from decimal import Decimal
 
 service = AllocationService(organization)
@@ -452,7 +452,7 @@ if atp_results and atp_results[0].available < reorder_point:
 ## Safety Stock Calculations
 
 ```python
-from Inventory.services.allocation_service import SafetyStockService
+from inventory.services.allocation_service import SafetyStockService
 
 safety_service = SafetyStockService(organization)
 

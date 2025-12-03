@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load billing_filters %}
 
 {% block title %}Invoice {{ invoice.invoice_number }}{% endblock %}
 
@@ -7,36 +8,228 @@
 <div class="container-fluid">
   <div class="row">
     <div class="col-12">
-      <h1>Invoice {{ invoice.invoice_number }}</h1>
-      <p><strong>Customer:</strong> {{ invoice.customer_display_name }}</p>
-      <p><strong>Date:</strong> {{ invoice.invoice_date }}</p>
-      <p><strong>Status:</strong> {{ invoice.status }}</p>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Invoice {{ invoice.invoice_number }}</h1>
+        <div>
+          <a href="{% url 'billing:invoice_list' %}" class="btn btn-secondary btn-sm">Back to List</a>
+          <a href="{% url 'billing:invoice_pdf' invoice.invoice_id %}" class="btn btn-info btn-sm" target="_blank">
+            <i class="bi bi-file-pdf"></i> Download PDF
+          </a>
+        </div>
+      </div>
 
-      <h4>Lines</h4>
-      <table class="table table-sm table-bordered">
-        <thead>
-          <tr><th>#</th><th>Description</th><th>Qty</th><th>Unit</th><th>Unit Price</th><th>Total</th></tr>
-        </thead>
-        <tbody>
-          {% for line in invoice.lines.all %}
-          <tr>
-            <td>{{ forloop.counter }}</td>
-            <td>{{ line.description }}</td>
-            <td>{{ line.quantity }}</td>
-            <td>{% if line.product %}{{ line.product.uom }}{% endif %}</td>
-            <td>{{ line.unit_price }}</td>
-            <td>{{ line.line_total }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      <!-- Invoice Status and Actions -->
+      <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Invoice Information</h5>
+          <div>
+            <span class="badge bg-{% if invoice.status == 'posted' %}success{% elif invoice.status == 'draft' %}secondary{% elif invoice.status == 'validated' %}info{% elif invoice.status == 'paid' %}primary{% else %}danger{% endif %}">
+              {{ invoice.get_status_display }}
+            </span>
+            {% if invoice.ird_status %}
+            <span class="badge bg-{% if invoice.ird_status == 'synced' %}success{% elif invoice.ird_status == 'pending' %}warning{% elif invoice.ird_status == 'failed' %}danger{% else %}secondary{% endif %}">
+              IRD: {{ invoice.get_ird_status_display }}
+            </span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <p><strong>Customer:</strong> {{ invoice.customer_display_name }}</p>
+              <p><strong>Invoice Date:</strong> {{ invoice.invoice_date }}</p>
+              <p><strong>Due Date:</strong> {{ invoice.due_date }}</p>
+              {% if invoice.reference_number %}
+              <p><strong>Reference:</strong> {{ invoice.reference_number }}</p>
+              {% endif %}
+            </div>
+            <div class="col-md-6">
+              <p><strong>Currency:</strong> {{ invoice.currency.currency_code }}</p>
+              <p><strong>Exchange Rate:</strong> {{ invoice.exchange_rate }}</p>
+              {% if invoice.journal %}
+              <p><strong>Journal:</strong> <a href="{% url 'accounting:journal_detail' invoice.journal.pk %}">{{ invoice.journal.journal_number }}</a></p>
+              {% endif %}
+              {% if invoice.payment_term %}
+              <p><strong>Payment Term:</strong> {{ invoice.payment_term.name }}</p>
+              {% endif %}
+            </div>
+          </div>
+          
+          {% if invoice.notes %}
+          <div class="mt-2">
+            <strong>Notes:</strong>
+            <p class="text-muted">{{ invoice.notes }}</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
 
-      <div class="mt-3 text-end">
-        <strong>Subtotal:</strong> {{ invoice.subtotal }}<br>
-        <strong>Tax:</strong> {{ invoice.tax_total }}<br>
-        <strong>Total:</strong> {{ invoice.total }}
+      <!-- Action Buttons -->
+      {% if invoice.status == 'draft' or invoice.status == 'validated' %}
+      <div class="card mb-3 border-primary">
+        <div class="card-header bg-primary text-white">
+          <h6 class="mb-0">Actions</h6>
+        </div>
+        <div class="card-body">
+          <form method="post" action="{% url 'billing:post_invoice' invoice.invoice_id %}" class="d-inline">
+            {% csrf_token %}
+            <div class="row">
+              <div class="col-md-6 mb-2">
+                <label for="journal_type" class="form-label">Journal Type</label>
+                <select name="journal_type" id="journal_type" class="form-select">
+                  {% for jt in journal_types %}
+                  <option value="{{ jt.journal_type_id }}" {% if 'sales' in jt.code.lower %}selected{% endif %}>{{ jt.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-6 mb-2">
+                <label class="form-label d-block">&nbsp;</label>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="submit_to_ird" value="true" id="submit_to_ird" checked>
+                  <label class="form-check-label" for="submit_to_ird">
+                    Auto-submit to IRD after posting
+                  </label>
+                </div>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-success">
+              <i class="bi bi-check-circle"></i> Post Invoice
+            </button>
+          </form>
+          
+          <form method="post" action="{% url 'billing:cancel_invoice' invoice.invoice_id %}" class="d-inline ms-2">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to cancel this invoice?')">
+              <i class="bi bi-x-circle"></i> Cancel Invoice
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- IRD Submission Status -->
+      {% if invoice.status == 'posted' %}
+      <div class="card mb-3 {% if invoice.ird_status == 'failed' %}border-danger{% elif invoice.ird_status == 'synced' %}border-success{% endif %}">
+        <div class="card-header {% if invoice.ird_status == 'failed' %}bg-danger text-white{% elif invoice.ird_status == 'synced' %}bg-success text-white{% else %}bg-info text-white{% endif %}">
+          <h6 class="mb-0">IRD E-Billing Status</h6>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <p><strong>IRD Status:</strong> 
+                <span class="badge bg-{% if invoice.ird_status == 'synced' %}success{% elif invoice.ird_status == 'pending' %}warning{% elif invoice.ird_status == 'failed' %}danger{% else %}secondary{% endif %}">
+                  {{ invoice.get_ird_status_display|default:"Not Submitted" }}
+                </span>
+              </p>
+              {% if invoice.ird_ack_id %}
+              <p><strong>IRD Acknowledgment ID:</strong> {{ invoice.ird_ack_id }}</p>
+              {% endif %}
+              {% if invoice.ird_last_submitted_at %}
+              <p><strong>Last Submitted:</strong> {{ invoice.ird_last_submitted_at }}</p>
+              {% endif %}
+            </div>
+            <div class="col-md-6">
+              {% if invoice.ird_signature %}
+              <p><strong>IRD Signature:</strong> <code class="small">{{ invoice.ird_signature|truncatechars:50 }}</code></p>
+              {% endif %}
+              {% if invoice.ird_fiscal_year_code %}
+              <p><strong>Fiscal Year:</strong> {{ invoice.ird_fiscal_year_code }}</p>
+              {% endif %}
+            </div>
+          </div>
+          
+          {% if invoice.ird_status != 'synced' %}
+          <form method="post" action="{% url 'billing:submit_to_ird' invoice.invoice_id %}" class="mt-2">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary btn-sm">
+              <i class="bi bi-cloud-upload"></i> {% if invoice.ird_status == 'failed' %}Retry IRD{% else %}Submit to IRD{% endif %}
+            </button>
+          </form>
+          {% endif %}
+          
+          {% if invoice.ird_last_response and invoice.ird_status == 'failed' %}
+          <div class="alert alert-danger mt-2">
+            <strong>Error:</strong> {{ invoice.ird_last_response.error|default:"Unknown error occurred during IRD submission" }}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Line Items -->
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">Line Items</h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+              <thead class="table-light">
+                <tr>
+                  <th>#</th>
+                  <th>Description</th>
+                  <th>Product Code</th>
+                  <th>Revenue Account</th>
+                  <th>Quantity</th>
+                  <th>Unit Price</th>
+                  <th>Subtotal</th>
+                  <th>Tax Code</th>
+                  <th>Tax Amount</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for line in lines %}
+                <tr>
+                  <td>{{ line.line_number }}</td>
+                  <td>{{ line.description }}</td>
+                  <td>{{ line.product_code|default:"-" }}</td>
+                  <td>{{ line.revenue_account.account_name }}</td>
+                  <td class="text-end">{{ line.quantity }}</td>
+                  <td class="text-end">{{ line.unit_price }}</td>
+                  <td class="text-end">{{ line.quantity|mul:line.unit_price }}</td>
+                  <td>{{ line.tax_code.name|default:"-" }}</td>
+                  <td class="text-end">{{ line.tax_amount }}</td>
+                  <td class="text-end"><strong>{{ line.line_total }}</strong></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="10" class="text-center">No line items</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="row mt-3">
+            <div class="col-md-8"></div>
+            <div class="col-md-4">
+              <table class="table table-sm">
+                <tr>
+                  <td class="text-end"><strong>Subtotal:</strong></td>
+                  <td class="text-end">{{ invoice.currency.currency_code }} {{ invoice.subtotal }}</td>
+                </tr>
+                <tr>
+                  <td class="text-end"><strong>Tax Total:</strong></td>
+                  <td class="text-end">{{ invoice.currency.currency_code }} {{ invoice.tax_total }}</td>
+                </tr>
+                <tr class="table-primary">
+                  <td class="text-end"><strong>Grand Total:</strong></td>
+                  <td class="text-end"><strong>{{ invoice.currency.currency_code }} {{ invoice.total }}</strong></td>
+                </tr>
+                {% if invoice.exchange_rate != 1 %}
+                <tr class="table-info">
+                  <td class="text-end">Base Currency Total:</td>
+                  <td class="text-end">{{ invoice.base_currency_total }}</td>
+                </tr>
+                {% endif %}
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </div>
+
+<!-- Bootstrap Icons (if not already included in base.html) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
 {% endblock %}

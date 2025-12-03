@@ -83,12 +83,16 @@ class IRDEBillingService:
                     invoice.ird_status = 'synced'
                     invoice.ird_last_response = response
                     invoice.ird_last_submitted_at = timezone.now()
+                    invoice.ird_qr_data = qr_data  # Store QR data string
+                    invoice.ird_fiscal_year_code = self.config.get_fiscal_year_code(invoice.invoice_date)
                     invoice.save(update_fields=[
                         'ird_signature',
                         'ird_ack_id', 
                         'ird_status',
                         'ird_last_response',
-                        'ird_last_submitted_at'
+                        'ird_last_submitted_at',
+                        'ird_qr_data',
+                        'ird_fiscal_year_code'
                     ])
                 
                 return {

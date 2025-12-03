@@ -146,11 +146,11 @@
                                     <input type="text" 
                                            class="form-control" 
                                            id="customerSearch"
+                                           name="q"
                                            placeholder="Search customer by name, phone, or PAN"
                                              hx-get="{% url 'billing:customer_search' %}"
                                            hx-trigger="keyup changed delay:300ms"
                                            hx-target="#customerResults"
-                                           hx-include="[name='q']"
                                            autocomplete="off">
                                     <input type="hidden" name="customer_id" id="customerId">
                                     <input type="hidden" name="customer_name" id="customerName">
@@ -177,13 +177,59 @@
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <div class="form-group">
                                     <label>Reference Number</label>
                                     <input type="text" 
                                            class="form-control" 
                                            name="reference_number"
                                            placeholder="PO number or reference">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Payment Term</label>
+                                    <select name="payment_term" class="form-control">
+                                        <option value="">Use customer default</option>
+                                        {% for term in payment_terms %}
+                                        <option value="{{ term.payment_term_id }}">{{ term.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Journal Type</label>
+                                    <select name="journal_type" class="form-control">
+                                        {% for jt in journal_types %}
+                                        <option value="{{ jt.journal_type_id }}">{{ jt.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Currency *</label>
+                                    <select name="currency" class="form-control">
+                                        {% for currency in currencies %}
+                                        <option value="{{ currency.currency_code }}"
+                                            {% if default_currency and currency.currency_code == default_currency.currency_code %}selected{% endif %}>
+                                            {{ currency.currency_code }} - {{ currency.currency_name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Exchange Rate</label>
+                                    <input type="number"
+                                           step="0.0001"
+                                           class="form-control"
+                                           name="exchange_rate"
+                                           value="1">
                                 </div>
                             </div>
                         </div>

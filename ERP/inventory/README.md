@@ -4,19 +4,19 @@ This Django app provides core inventory management functionality, including mast
 
 ## Integration Steps
 
-1.  **Place the App:** Copy the `Inventory` directory into your Django project's apps directory (e.g., `ERP/apps/`).
+1.  **Place the App:** Copy the `inventory` directory into your Django project's apps directory (e.g., `ERP/apps/`).
 
-2.  **Add to `INSTALLED_APPS`:** Add `'Inventory'` to your `INSTALLED_APPS` setting in `ERP/dashboard/settings.py`:
+2.  **Add to `INSTALLED_APPS`:** Add `'inventory'` to your `INSTALLED_APPS` setting in `ERP/dashboard/settings.py`:
 
     ```python
     INSTALLED_APPS = [
         # ... other apps
-        'mptt', # Ensure django-mptt is installed and added BEFORE Inventory
-        'Inventory',
+        'mptt', # Ensure django-mptt is installed and added before the inventory app
+        'inventory',
         # ...
     ]
     ```
-    *Note: Ensure `mptt` is installed (`pip install django-mptt`) and listed before `Inventory`.*
+    *Note: Ensure `mptt` is installed (`pip install django-mptt`) and listed before the inventory app.*
 
 3.  **Include URLs:** Include the app's URLs in your main `urls.py` (`ERP/dashboard/urls.py`):
 
@@ -27,7 +27,7 @@ This Django app provides core inventory management functionality, including mast
     urlpatterns = [
         path('admin/', admin.site.urls),
         path('accounts/', include('allauth.urls')), # Assuming allauth is used
-        path('inventory/', include('Inventory.urls', namespace='inventory')),
+        path('inventory/', include('inventory.urls', namespace='inventory')),
         # ... other urls
     ]
     ```
@@ -35,7 +35,7 @@ This Django app provides core inventory management functionality, including mast
 4.  **Run Migrations:** Apply the database migrations for the new models:
 
     ```bash
-    python manage.py migrate Inventory
+    python manage.py migrate inventory
     ```
 
 5.  **Ensure Dependencies:**
@@ -45,7 +45,7 @@ This Django app provides core inventory management functionality, including mast
     *   Ensure `django-crispy-forms` is installed (`pip install django-crispy-forms`) and configured (e.g., `CRISPY_TEMPLATE_PACK` in settings).
     *   Ensure your base template (`erp_base.html` in the example) exists and includes necessary static files (Tailwind CSS, etc.) and renders the `content` block.
 
-6.  **Configure Tailwind CSS:** Ensure Tailwind CSS is set up in your project and configured to scan the `Inventory/templates/Inventory/` directory for classes.
+6.  **Configure Tailwind CSS:** Ensure Tailwind CSS is set up in your project and configured to scan the `inventory/templates/Inventory/` directory for classes.
 
 7.  **Admin Integration:** The models are automatically registered in `admin.py`. You can access them via the Django admin interface.
 

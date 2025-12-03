@@ -1,14 +1,14 @@
 {% if customers %}
     {% for customer in customers %}
-    <div class="customer-item" onclick="selectCustomer('{{ customer.customer_id }}', '{{ customer.customer_name }}')">
+    <div class="customer-item" onclick="selectCustomer('{{ customer.customer_id }}', '{{ customer.display_name }}')">
         <div>
-            <strong>{{ customer.customer_name }}</strong>
+            <strong>{{ customer.display_name }}</strong>
             {% if customer.tax_id %}
             <span class="badge badge-secondary ms-2">PAN: {{ customer.tax_id }}</span>
             {% endif %}
         </div>
         <small class="text-muted">
-            {% if customer.phone %}{{ customer.phone }}{% endif %}
+            {% if customer.phone_number %}{{ customer.phone_number }}{% endif %}
             {% if customer.email %} • {{ customer.email }}{% endif %}
         </small>
     </div>

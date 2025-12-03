@@ -106,7 +106,8 @@ class SalesInvoiceCreateView(PermissionRequiredMixin, View):
             )
             invoice.reference_number = form.cleaned_data.get("reference_number") or ""
             invoice.notes = form.cleaned_data.get("notes") or ""
-            invoice.save(update_fields=["reference_number", "notes"])
+            invoice.warehouse = form.cleaned_data.get("warehouse")
+            invoice.save(update_fields=["reference_number", "notes", "warehouse"])
         except ValidationError as exc:
             form.add_error(None, exc)
             return render(request, self.template_name, context)

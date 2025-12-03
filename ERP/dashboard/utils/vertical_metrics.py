@@ -51,7 +51,7 @@ class DistributorMetrics:
                 'partial_deliveries': 15
             }
         """
-        from Inventory.models import Shipment
+        from inventory.models import Shipment
         
         shipments = Shipment.objects.filter(
             organization=self.organization,
@@ -114,7 +114,7 @@ class DistributorMetrics:
                 'days_inventory': 42.9
             }
         """
-        from Inventory.models import StockLedger, InventoryItem
+        from inventory.models import StockLedger, InventoryItem
         
         # Calculate COGS from stock ledger (outbound transactions)
         cogs = StockLedger.objects.filter(
@@ -157,7 +157,7 @@ class DistributorMetrics:
         
         Fill Rate % = (Lines shipped complete / Total order lines) × 100
         """
-        from Inventory.models import PickList, PickListLine
+        from inventory.models import PickList, PickListLine
         
         pick_lists = PickList.objects.filter(
             organization=self.organization,
@@ -192,7 +192,7 @@ class DistributorMetrics:
     
     def _get_inventory_value_at_date(self, target_date: date) -> Decimal:
         """Get total inventory value at a specific date"""
-        from Inventory.models import InventoryItem
+        from inventory.models import InventoryItem
         
         # This is simplified - production would need point-in-time snapshot
         items = InventoryItem.objects.filter(
@@ -240,7 +240,7 @@ class RetailerMetrics:
                 'average_inventory_cost': 100000
             }
         """
-        from Inventory.models import StockLedger, InventoryItem, Product
+        from inventory.models import StockLedger, InventoryItem, Product
         
         # Get sales transactions
         sales = StockLedger.objects.filter(
@@ -295,7 +295,7 @@ class RetailerMetrics:
         
         Sell-Through % = (Units Sold / Units Received) × 100
         """
-        from Inventory.models import StockLedger
+        from inventory.models import StockLedger
         
         # Units sold
         sold = StockLedger.objects.filter(
@@ -345,7 +345,7 @@ class RetailerMetrics:
         limit: int = 10
     ) -> List[Dict]:
         """Get top selling products by revenue"""
-        from Inventory.models import StockLedger
+        from inventory.models import StockLedger
         
         sales = StockLedger.objects.filter(
             organization=self.organization,

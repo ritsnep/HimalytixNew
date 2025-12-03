@@ -1,0 +1,60 @@
+{% extends 'partials/base.html' %}
+{% block content %}
+<div class="main-content">
+  <div class="page-content">
+    <div class="container-fluid">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h4 class="mb-0">Procurement Workspace</h4>
+          <p class="text-muted mb-0">Capture vendor bills, receive stock, and spread landed costs with the same HTMX workflow used across Himalytix.</p>
+        </div>
+        <div>
+          <a
+            class="btn btn-primary btn-sm"
+            hx-get="{% url 'purchasing:invoice-create' %}"
+            hx-target="#purchasing-detail-panel"
+            hx-swap="innerHTML">
+            <i class="mdi mdi-plus me-1"></i>
+            New Purchase Invoice
+          </a>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-xl-5">
+          <div class="card h-100">
+            <div
+              class="card-body"
+              id="purchasing-list-panel"
+              hx-get="{% url 'purchasing:invoice-list' %}"
+              hx-trigger="load, purchaseInvoiceChanged from:body"
+              hx-target="#purchasing-list-panel"
+              hx-swap="innerHTML">
+              <div class="text-center text-muted py-5">
+                <div class="spinner-border text-primary mb-3" role="status"></div>
+                <p class="mb-0">Loading purchase invoices…</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-7">
+          <div class="card h-100">
+            <div class="card-body" id="purchasing-detail-panel">
+              <div class="text-center text-muted py-5">
+                <h5>Select or create a purchase invoice</h5>
+                <p class="mb-3">Use the list on the left to open an invoice, or start a new one below.</p>
+                <a
+                  class="btn btn-outline-primary"
+                  hx-get="{% url 'purchasing:invoice-create' %}"
+                  hx-target="#purchasing-detail-panel"
+                  hx-swap="innerHTML">
+                  Launch Purchase Form
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -19,7 +19,7 @@ from accounting.models import (
 from accounting.services.inventory_posting_service import InventoryPostingService
 from accounting.services.purchase_invoice_service import PurchaseInvoiceService
 from accounting.services.sales_invoice_service import SalesInvoiceService
-from Inventory.models import InventoryItem, Product, Warehouse
+from inventory.models import InventoryItem, Product, Warehouse
 from usermanagement.models import CustomUser, Organization
 
 

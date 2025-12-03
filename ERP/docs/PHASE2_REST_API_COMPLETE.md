@@ -14,7 +14,7 @@ Successfully implemented comprehensive REST API coverage for all vertical-specif
 
 **File Structure:**
 ```
-Inventory/api/
+inventory/api/
 ├── __init__.py
 ├── serializers.py  (20 serializers)
 ├── views.py        (18 viewsets)
@@ -113,7 +113,7 @@ service_management/api/
 
 **Main URL Configuration** (`dashboard/urls.py`):
 ```python
-path("api/inventory/", include("Inventory.api.urls")),
+path("api/inventory/", include("inventory.api.urls")),
 path("api/billing/", include("billing.api.urls")),
 path("api/service-management/", include("service_management.api.urls")),
 ```

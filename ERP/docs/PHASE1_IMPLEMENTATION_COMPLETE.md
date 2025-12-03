@@ -11,7 +11,7 @@
 
 ### 1. PRICING & PROMOTIONS (Distributors & Retailers) ✅
 
-**New Models in `Inventory/models.py`:**
+**New Models in `inventory/models.py`:**
 - `PriceList` - Multi-tier pricing lists (standard, wholesale, retail, distributor)
 - `PriceListItem` - Product prices with quantity breaks and MOQ enforcement
 - `CustomerPriceList` - Customer-specific pricing assignments with priority
@@ -28,7 +28,7 @@
 
 ### 2. FULFILLMENT WORKFLOW (Distributors & Retailers) ✅
 
-**New Models in `Inventory/models.py`:**
+**New Models in `inventory/models.py`:**
 - `TransitWarehouse` - Virtual warehouse for goods in transit
 - `PickList` + `PickListLine` - Warehouse picking operations
 - `PackingSlip` - Packing operations with package tracking
@@ -36,7 +36,7 @@
 - `Backorder` - Partial fulfillment and backorder management
 - `RMA` + `RMALine` - Return Merchandise Authorization workflow
 
-**New Services in `Inventory/services/fulfillment_service.py`:**
+**New Services in `inventory/services/fulfillment_service.py`:**
 - `PickPackShipService` - Complete pick→pack→ship workflow
   - Create pick lists
   - Record picked quantities
@@ -143,7 +143,7 @@
 
 ### 6. AUTOMATION TASKS (All Verticals) ✅
 
-**Inventory Tasks (`Inventory/tasks.py`):**
+**Inventory Tasks (`inventory/tasks.py`):**
 1. `check_low_stock_alerts` - Daily low stock notifications
 2. `generate_replenishment_suggestions` - Daily procurement suggestions
 3. `process_backorder_fulfillment` - Auto-fulfill backorders (every 4 hours)
@@ -311,8 +311,8 @@
 ## Files Created/Modified
 
 ### New Files:
-1. `Inventory/services/fulfillment_service.py` (550 lines)
-2. `Inventory/tasks.py` (250 lines)
+1. `inventory/services/fulfillment_service.py` (550 lines)
+2. `inventory/tasks.py` (250 lines)
 3. `billing/models/subscription.py` (450 lines)
 4. `billing/tasks.py` (300 lines)
 5. `enterprise/tasks.py` (200 lines)
@@ -323,7 +323,7 @@
 10. `service_management/admin.py`
 
 ### Modified Files:
-1. `Inventory/models.py` (+350 lines - pricing & fulfillment models)
+1. `inventory/models.py` (+350 lines - pricing & fulfillment models)
 2. `enterprise/models.py` (+280 lines - manufacturing enhancements)
 
 **Total Lines of Code Added: ~3,330 lines**

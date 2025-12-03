@@ -53,7 +53,7 @@ class InventoryService:
             warehouse=warehouse,
             location=location, # Include location in unique key for granular tracking
             batch=batch,       # Include batch in unique key
-            defaults={'quantity_on_hand': 0, 'unit_cost': unit_cost}
+            defaults={'quantity_on_hand': Decimal('0'), 'unit_cost': unit_cost}
         )
 
         quantity_delta = qty_in - qty_out

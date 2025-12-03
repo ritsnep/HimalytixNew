@@ -142,18 +142,23 @@
                         </span>
                     </div>
                     <div class="action-buttons">
-                        <a href="{% url 'invoice_list' %}" class="btn btn-secondary">
+                        <a href="{% url 'billing:invoice_list' %}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left"></i> Back to List
                         </a>
-                        {% if invoice.status == 'draft' %}
-                        <a href="{% url 'invoice_edit' invoice.invoice_id %}" class="btn btn-primary">
-                            <i class="fas fa-edit"></i> Edit
+                        {% if invoice.status == 'posted' and invoice.ird_status != 'synced' %}
+                        <a href="{% url 'billing:submit_to_ird' invoice.invoice_id %}" class="btn btn-outline-primary">
+                            Submit to IRD
+                        </a>
+                        {% endif %}
+                        {% if invoice.status == 'posted' %}
+                        <a href="{% url 'accounting:ar_receipt_create' %}?invoice={{ invoice.invoice_id }}" class="btn btn-outline-success">
+                            Record Receipt
                         </a>
                         {% endif %}
                         <button onclick="window.print()" class="btn btn-primary">
                             <i class="fas fa-print"></i> Print
                         </button>
-                        <a href="{% url 'invoice_pdf' invoice.invoice_id %}" class="btn btn-success">
+                        <a href="{% url 'billing:invoice_pdf' invoice.invoice_id %}" class="btn btn-success">
                             <i class="fas fa-file-pdf"></i> Download PDF
                         </a>
                     </div>
@@ -166,7 +171,6 @@
                     <div class="company-info">
                         <h2>{{ invoice.organization.name }}</h2>
                         <p>{{ invoice.organization.address }}</p>
-                        <p>Phone: {{ invoice.organization.phone }}</p>
                         <p>PAN: {{ invoice.organization.tax_id }}</p>
                     </div>
                     <div class="text-right">
@@ -185,11 +189,9 @@
                         <h4>Bill To</h4>
                         <p><strong>{{ invoice.customer_display_name }}</strong></p>
                         {% if invoice.customer %}
-                        <p>{{ invoice.customer.address }}</p>
-                        <p>Phone: {{ invoice.customer.phone }}</p>
-                        {% if invoice.customer.tax_id %}
-                        <p>PAN: {{ invoice.customer.tax_id }}</p>
-                        {% endif %}
+                        {% if invoice.customer.phone_number %}<p>Phone: {{ invoice.customer.phone_number }}</p>{% endif %}
+                        {% if invoice.customer.email %}<p>Email: {{ invoice.customer.email }}</p>{% endif %}
+                        {% if invoice.customer.tax_id %}<p>PAN: {{ invoice.customer.tax_id }}</p>{% endif %}
                         {% endif %}
                     </div>
                     <div class="detail-section text-right">
@@ -197,10 +199,10 @@
                         {% if invoice.reference_number %}
                         <p>Reference: {{ invoice.reference_number }}</p>
                         {% endif %}
-                        <p>Fiscal Year: {{ invoice.fiscal_year.name }}</p>
-                        {% if invoice.posted_by %}
-                        <p>Posted by: {{ invoice.posted_by.get_full_name }}</p>
+                        {% if invoice.currency %}
+                        <p>Currency: {{ invoice.currency.currency_code }}</p>
                         {% endif %}
+                        <p>Status: {{ invoice.get_status_display }}</p>
                     </div>
                 </div>
 
@@ -217,7 +219,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for line in invoice.lines.all %}
+                        {% for line in lines %}
                         <tr>
                             <td>{{ line.line_number }}</td>
                             <td>
@@ -227,16 +229,27 @@
                                 {% endif %}
                             </td>
                             <td class="text-right">{{ line.quantity }}</td>
-                            <td class="text-right">NPR {{ line.unit_price|floatformat:2 }}</td>
                             <td class="text-right">
-                                {% if line.tax_percent > 0 %}
-                                {{ line.tax_percent }}%<br>
-                                <small>NPR {{ line.tax_amount|floatformat:2 }}</small>
+                                {% if invoice.currency %}{{ invoice.currency.currency_code }}{% endif %}
+                                {{ line.unit_price|floatformat:2 }}
+                            </td>
+                            <td class="text-right">
+                                {% if line.tax_code and line.tax_code.rate %}
+                                {{ line.tax_code.rate }}%<br>
+                                <small>
+                                    {% if invoice.currency %}{{ invoice.currency.currency_code }}{% endif %}
+                                    {{ line.tax_amount|floatformat:2 }}
+                                </small>
                                 {% else %}
                                 -
                                 {% endif %}
                             </td>
-                            <td class="text-right"><strong>NPR {{ line.line_total|floatformat:2 }}</strong></td>
+                            <td class="text-right">
+                                <strong>
+                                    {% if invoice.currency %}{{ invoice.currency.currency_code }}{% endif %}
+                                    {{ line.line_total|floatformat:2 }}
+                                </strong>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -246,39 +259,38 @@
                 <div class="invoice-totals">
                     <div class="totals-row">
                         <span>Subtotal:</span>
-                        <span>NPR {{ invoice.subtotal|floatformat:2 }}</span>
+                        <span>
+                            {% if invoice.currency %}{{ invoice.currency.currency_code }}{% endif %}
+                            {{ invoice.subtotal|floatformat:2 }}
+                        </span>
                     </div>
-                    {% if invoice.discount_amount > 0 %}
-                    <div class="totals-row">
-                        <span>Discount:</span>
-                        <span>- NPR {{ invoice.discount_amount|floatformat:2 }}</span>
-                    </div>
-                    {% endif %}
                     <div class="totals-row">
                         <span>Tax (VAT):</span>
-                        <span>NPR {{ invoice.tax_total|floatformat:2 }}</span>
+                        <span>
+                            {% if invoice.currency %}{{ invoice.currency.currency_code }}{% endif %}
+                            {{ invoice.tax_total|floatformat:2 }}
+                        </span>
                     </div>
                     <div class="totals-row grand-total">
                         <span>TOTAL:</span>
-                        <span>NPR {{ invoice.total|floatformat:2 }}</span>
+                        <span>
+                            {% if invoice.currency %}{{ invoice.currency.currency_code }}{% endif %}
+                            {{ invoice.total|floatformat:2 }}
+                        </span>
                     </div>
                 </div>
 
                 <!-- IRD Information -->
-                {% if invoice.ird_status == 'synced' %}
+                {% if invoice.ird_status %}
                 <div class="ird-info">
-                    <h4><i class="fas fa-check-circle"></i> IRD Verified Invoice</h4>
-                    <p><strong>Acknowledgment ID:</strong> {{ invoice.ird_ack_id }}</p>
-                    <p><strong>IRD Signature:</strong> {{ invoice.ird_signature|truncatechars:50 }}</p>
-                    <p><strong>Submitted:</strong> {{ invoice.ird_last_submitted_at|date:"d M, Y H:i" }}</p>
-                    
-                    {% if invoice.ird_qr_data %}
-                    <div class="qr-code">
-                        <img src="data:image/png;base64,{{ invoice.ird_qr_code_base64 }}" 
-                             alt="IRD QR Code"
-                             style="max-width: 150px;">
-                        <p class="small text-muted mt-2">Scan to verify on IRD portal</p>
-                    </div>
+                    <h4><i class="fas fa-check-circle"></i> IRD Submission</h4>
+                    <p><strong>Status:</strong> {{ invoice.ird_status }}</p>
+                    {% if invoice.ird_ack_id %}<p><strong>Acknowledgment ID:</strong> {{ invoice.ird_ack_id }}</p>{% endif %}
+                    {% if invoice.ird_signature %}<p><strong>IRD Signature:</strong> {{ invoice.ird_signature|truncatechars:80 }}</p>{% endif %}
+                    {% if invoice.ird_last_submitted_at %}<p><strong>Submitted:</strong> {{ invoice.ird_last_submitted_at|date:"d M, Y H:i" }}</p>{% endif %}
+                    {% if invoice.ird_last_response %}
+                    <p class="small text-muted mb-0">Last response:</p>
+                    <pre class="small bg-light p-2">{{ invoice.ird_last_response }}</pre>
                     {% endif %}
                 </div>
                 {% endif %}

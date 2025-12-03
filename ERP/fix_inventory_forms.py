@@ -63,7 +63,7 @@ replacements = [
     )
 ]
 
-with open('Inventory/forms.py', 'r', encoding='utf-8') as f:
+with open('inventory/forms.py', 'r', encoding='utf-8') as f:
     content = f.read()
 
 for old, new in replacements:
@@ -73,7 +73,7 @@ for old, new in replacements:
     else:
         print(f"Pattern not found - may already be fixed")
 
-with open('Inventory/forms.py', 'w', encoding='utf-8') as f:
+with open('inventory/forms.py', 'w', encoding='utf-8') as f:
     f.write(content)
 
 print("Forms fixed!")

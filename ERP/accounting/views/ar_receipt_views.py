@@ -67,13 +67,34 @@ class ARReceiptCreateView(PermissionRequiredMixin, View):
 
     def get(self, request):
         organization = self.get_organization()
+        invoice = self._get_invoice_from_request(organization, request.GET.get("invoice"))
+        initial = {"organization": organization}
+        if invoice:
+            initial.update(
+                {
+                    "customer": invoice.customer,
+                    "currency": invoice.currency,
+                    "amount": invoice.total,
+                    "reference": invoice.invoice_number,
+                }
+            )
+
         form = ARReceiptForm(
             organization=organization,
-            initial={"organization": organization},
+            initial=initial,
         )
         if organization:
             form.instance.organization = organization
-        formset = self._build_formset(organization=organization, customer=None)
+        formset_initial = []
+        if invoice:
+            formset_initial.append(
+                {
+                    "invoice": invoice,
+                    "applied_amount": invoice.total,
+                    "discount_taken": Decimal("0"),
+                }
+            )
+        formset = self._build_formset(organization=organization, customer=invoice.customer if invoice else None, initial=formset_initial)
         context = self._build_context(form, formset)
         return render(request, self.template_name, context)
 
@@ -125,12 +146,13 @@ class ARReceiptCreateView(PermissionRequiredMixin, View):
         messages.success(request, f"Receipt {receipt.receipt_number} recorded.")
         return redirect(reverse("accounting:ar_receipt_list"))
 
-    def _build_formset(self, *, organization, customer, data=None):
+    def _build_formset(self, *, organization, customer, data=None, initial=None):
         return ARReceiptLineFormSet(
             data=data or None,
             prefix="lines",
             organization=organization,
             customer=customer,
+            initial=initial,
         )
 
     def _build_context(self, form, formset):
@@ -148,6 +170,18 @@ class ARReceiptCreateView(PermissionRequiredMixin, View):
         try:
             return Customer.objects.get(pk=customer_pk, organization=organization)
         except Customer.DoesNotExist:
+            return None
+
+    def _get_invoice_from_request(self, organization, invoice_pk):
+        if not organization or not invoice_pk:
+            return None
+        try:
+            return SalesInvoice.objects.get(
+                pk=invoice_pk,
+                organization=organization,
+                status="posted",
+            )
+        except SalesInvoice.DoesNotExist:
             return None
 
     def _build_allocations(self, formset):

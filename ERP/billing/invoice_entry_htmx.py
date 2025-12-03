@@ -3,57 +3,74 @@
 Sales Invoice Entry Views with HTMX
 Interactive invoice creation with real-time calculations and customer search
 """
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse, JsonResponse
-from django.contrib.auth.decorators import login_required
+from datetime import date, datetime
+from decimal import Decimal
+
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q
-from decimal import Decimal
-from datetime import date, datetime
-import uuid
-
-from accounting.models import (
-    SalesInvoice, SalesInvoiceLine, Customer, 
-    ChartOfAccount, TaxCode, Organization
-)
-from Inventory.models import Product
-from accounting.services.ird_ebilling import IRDEBillingService
-from django.core.paginator import Paginator
-from django.utils import timezone
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
-from weasyprint import HTML
 from django.views.decorators.http import require_POST
-from django.http import HttpResponseRedirect
-from django.urls import reverse
-from django.http import HttpResponse
-from django.contrib.auth.decorators import permission_required
+from weasyprint import HTML
+
+from inventory.models import Product
+from accounting.ird_service import record_invoice_print
+from accounting.models import (
+    ChartOfAccount,
+    Currency,
+    Customer,
+    JournalType,
+    PaymentTerm,
+    SalesInvoice,
+    SalesInvoiceLine,
+    TaxCode,
+)
+from accounting.services.ird_submission_service import IRDSubmissionService
+from accounting.services.sales_invoice_service import SalesInvoiceService
 
 
 @login_required
 def invoice_create(request):
     """Main invoice creation page"""
     organization = request.user.organization
-    
-    # Get default accounts for dropdown
+
     revenue_accounts = ChartOfAccount.objects.filter(
         organization=organization,
-        account_type__nature='income',
-        is_active=True
-    ).order_by('account_name')
-    
+        account_type__nature="income",
+        is_active=True,
+    ).order_by("account_name")
+
     tax_rates = TaxCode.objects.filter(
         organization=organization,
-        is_active=True
-    ).order_by('rate')
-    
+        is_active=True,
+    ).order_by("rate")
+
+    currencies = Currency.objects.filter(is_active=True).order_by("currency_code")
+    default_currency = currencies.filter(currency_code=organization.base_currency_code).first() or currencies.first()
+
+    payment_terms = PaymentTerm.objects.filter(
+        organization=organization,
+        is_active=True,
+        term_type__in=["ar", "both"],
+    ).order_by("name")
+
+    journal_types = JournalType.objects.filter(organization=organization, is_active=True).order_by("name")
+
     context = {
-        'revenue_accounts': revenue_accounts,
-        'tax_rates': tax_rates,
-        'today': date.today(),
+        "revenue_accounts": revenue_accounts,
+        "tax_rates": tax_rates,
+        "currencies": currencies,
+        "default_currency": default_currency,
+        "payment_terms": payment_terms,
+        "journal_types": journal_types,
+        "today": date.today(),
     }
-    
-    return render(request, 'billing/invoice_create.html', context)
+
+    return render(request, "billing/invoice_create.html", context)
 
 
 @login_required
@@ -69,9 +86,9 @@ def customer_search(request):
         organization=organization,
         is_active=True
     ).filter(
-        Q(customer_name__icontains=query) |
-        Q(contact_person__icontains=query) |
-        Q(phone__icontains=query) |
+        Q(display_name__icontains=query) |
+        Q(legal_name__icontains=query) |
+        Q(phone_number__icontains=query) |
         Q(tax_id__icontains=query)
     )[:10]
     
@@ -85,6 +102,7 @@ def product_search(request):
     """HTMX endpoint: Search products for invoice line"""
     query = request.GET.get('q', '').strip()
     organization = request.user.organization
+    line_index = request.GET.get('line_index', '')
     
     if len(query) < 2:
         return HttpResponse('')
@@ -98,7 +116,8 @@ def product_search(request):
     )[:10]
     
     return render(request, 'billing/partials/product_results.html', {
-        'products': products
+        'products': products,
+        'line_index': line_index,
     })
 
 
@@ -132,7 +151,13 @@ def calculate_line_total(request):
     """HTMX endpoint: Calculate line total when quantity/price changes"""
     quantity = Decimal(request.POST.get('quantity', 0))
     unit_price = Decimal(request.POST.get('unit_price', 0))
-    tax_rate = Decimal(request.POST.get('tax_rate', 0))
+    tax_code_id = request.POST.get('tax_rate')
+    tax_rate = Decimal(
+        TaxCode.objects.filter(
+            tax_code_id=tax_code_id,
+            organization=request.user.organization,
+        ).values_list('rate', flat=True).first() or 0
+    )
     line_index = request.POST.get('line_index', 0)
     
     # Calculate amounts
@@ -160,7 +185,13 @@ def calculate_invoice_total(request):
     for idx in line_indices:
         quantity = Decimal(request.POST.get(f'quantity_{idx}', 0) or 0)
         unit_price = Decimal(request.POST.get(f'unit_price_{idx}', 0) or 0)
-        tax_rate = Decimal(request.POST.get(f'tax_rate_{idx}', 0) or 0)
+        tax_code_id = request.POST.get(f'tax_rate_{idx}', '') or None
+        tax_rate = Decimal(
+            TaxCode.objects.filter(
+                tax_code_id=tax_code_id,
+                organization=request.user.organization,
+            ).values_list('rate', flat=True).first() or 0
+        )
         
         line_subtotal = quantity * unit_price
         line_tax = (line_subtotal * tax_rate) / 100
@@ -189,134 +220,181 @@ def invoice_save(request):
         return redirect('invoice_create')
     
     organization = request.user.organization
-    action = request.POST.get('action')  # 'save_draft' or 'post'
-    
+    action = request.POST.get('action', 'save_draft')  # 'save_draft' or 'post'
+
+    customer_id = request.POST.get('customer_id')
+    if not customer_id:
+        messages.error(request, "Select a customer before saving the invoice.")
+        return redirect('billing:invoice_create')
+
+    try:
+        customer = Customer.objects.get(pk=customer_id, organization=organization)
+    except Customer.DoesNotExist:
+        messages.error(request, "Invalid customer selected.")
+        return redirect('billing:invoice_create')
+
+    try:
+        invoice_date = datetime.fromisoformat(request.POST.get('invoice_date')).date()
+    except Exception:
+        messages.error(request, "Invoice date is required.")
+        return redirect('billing:invoice_create')
+
+    due_date_input = request.POST.get('due_date') or None
+    due_date = None
+    if due_date_input:
+        try:
+            due_date = datetime.fromisoformat(due_date_input).date()
+        except Exception:
+            messages.warning(request, "Could not parse due date; using payment term defaults.")
+
+    currency_code = request.POST.get('currency') or organization.base_currency_code
+    currency = Currency.objects.filter(currency_code=currency_code).first()
+    if not currency:
+        messages.error(request, "Please configure at least one currency before creating invoices.")
+        return redirect('billing:invoice_create')
+
+    payment_term = None
+    payment_term_id = request.POST.get('payment_term')
+    if payment_term_id:
+        payment_term = PaymentTerm.objects.filter(
+            payment_term_id=payment_term_id,
+            organization=organization,
+            is_active=True,
+        ).first()
+    if not payment_term:
+        payment_term = getattr(customer, 'payment_term', None)
+
+    try:
+        exchange_rate = Decimal(request.POST.get('exchange_rate') or "1")
+    except Exception:
+        exchange_rate = Decimal("1")
+
+    line_indices = [int(idx) for idx in request.POST.getlist('line_index[]') if idx]
+    line_indices.sort()
+    lines = []
+    for idx in line_indices:
+        description = (request.POST.get(f'description_{idx}', '') or '').strip()
+        if not description:
+            continue
+
+        revenue_account_id = request.POST.get(f'revenue_account_{idx}')
+        revenue_account = ChartOfAccount.objects.filter(
+            account_id=revenue_account_id,
+            organization=organization,
+        ).first()
+        if not revenue_account:
+            messages.error(request, "Each line needs a revenue account.")
+            return redirect('billing:invoice_create')
+
+        quantity = Decimal(request.POST.get(f'quantity_{idx}', 0) or 0)
+        unit_price = Decimal(request.POST.get(f'unit_price_{idx}', 0) or 0)
+        tax_code_id = request.POST.get(f'tax_rate_{idx}')
+        tax_code = TaxCode.objects.filter(
+            tax_code_id=tax_code_id,
+            organization=organization,
+        ).first()
+        tax_rate = Decimal(tax_code.rate or 0) if tax_code else Decimal("0")
+        line_subtotal = quantity * unit_price
+        tax_amount = (line_subtotal * tax_rate) / Decimal("100")
+
+        lines.append(
+            {
+                "description": description,
+                "product_code": request.POST.get(f'product_code_{idx}', '') or '',
+                "quantity": quantity,
+                "unit_price": unit_price,
+                "discount_amount": Decimal("0"),
+                "revenue_account": revenue_account,
+                "tax_code": tax_code,
+                "tax_amount": tax_amount,
+            }
+        )
+
+    if not lines:
+        messages.error(request, "Add at least one invoice line.")
+        return redirect('billing:invoice_create')
+
+    service = SalesInvoiceService(request.user)
+
     try:
         with transaction.atomic():
-            # Create invoice header
-            invoice = SalesInvoice()
-            invoice.organization = organization
-            invoice.invoice_date = request.POST.get('invoice_date')
-            invoice.due_date = request.POST.get('due_date')
-            
-            # Customer
-            customer_id = request.POST.get('customer_id')
-            if customer_id:
-                invoice.customer = Customer.objects.get(pk=customer_id)
-                invoice.customer_display_name = invoice.customer.customer_name
-            else:
-                invoice.customer_display_name = request.POST.get('customer_name')
-            
-            # Reference and notes
-            invoice.reference_number = request.POST.get('reference_number', '')
-            invoice.notes = request.POST.get('notes', '')
-            
-            # Amounts (will recalculate from lines)
-            invoice.subtotal = Decimal(0)
-            invoice.tax_total = Decimal(0)
-            invoice.discount_amount = Decimal(request.POST.get('discount_amount', 0) or 0)
-            
-            # Status
+            invoice = service.create_invoice(
+                organization=organization,
+                customer=customer,
+                invoice_number=None,
+                invoice_date=invoice_date,
+                currency=currency,
+                lines=lines,
+                payment_term=payment_term,
+                due_date=due_date,
+                exchange_rate=exchange_rate,
+                metadata={},
+            )
+            invoice.reference_number = request.POST.get('reference_number', '') or ''
+            invoice.notes = request.POST.get('notes', '') or ''
+            invoice.save(update_fields=['reference_number', 'notes'])
+
             if action == 'post':
-                invoice.status = 'posted'
-                invoice.posted_at = datetime.now()
-                invoice.posted_by = request.user
+                service.validate_invoice(invoice)
+                requested_journal_type = request.POST.get('journal_type')
+                journal_type = (
+                    JournalType.objects.filter(
+                        journal_type_id=requested_journal_type,
+                        organization=organization,
+                    ).first()
+                    if requested_journal_type
+                    else JournalType.objects.filter(
+                        organization=organization, code__icontains="sales"
+                    ).order_by('journal_type_id').first()
+                ) or JournalType.objects.filter(organization=organization).order_by('journal_type_id').first()
+
+                if not journal_type:
+                    messages.error(request, "No journal type is configured for posting sales invoices.")
+                    return redirect('billing:invoice_detail', invoice_id=invoice.invoice_id)
+
+                service.post_invoice(invoice, journal_type, submit_to_ird=True)
+                messages.success(
+                    request,
+                    "Invoice posted. IRD submission has been queued.",
+                )
             else:
-                invoice.status = 'draft'
-            
-            invoice.save()
-            
-            # Generate invoice number
-            invoice.invoice_number = f"INV-{invoice.invoice_date.year}-{invoice.invoice_id:06d}"
-            invoice.save(update_fields=['invoice_number'])
-            
-            # Create invoice lines
-            line_indices = request.POST.getlist('line_index[]')
-            
-            for idx in line_indices:
-                description = request.POST.get(f'description_{idx}')
-                if not description:
-                    continue
-                
-                line = SalesInvoiceLine()
-                line.invoice = invoice
-                line.line_number = int(idx)
-                line.description = description
-                line.quantity = Decimal(request.POST.get(f'quantity_{idx}', 0))
-                line.unit_price = Decimal(request.POST.get(f'unit_price_{idx}', 0))
-                
-                # Product if selected
-                product_id = request.POST.get(f'product_id_{idx}')
-                if product_id:
-                    line.product = Product.objects.get(pk=product_id)
-                    line.product_code = line.product.code
-                
-                # Revenue account
-                account_id = request.POST.get(f'revenue_account_{idx}')
-                if account_id:
-                    line.revenue_account = ChartOfAccount.objects.get(pk=account_id)
-                
-                # Tax
-                tax_rate_id = request.POST.get(f'tax_rate_{idx}')
-                if tax_rate_id:
-                    from accounting.models import TaxCode
-                    line.tax_rate = TaxCode.objects.get(pk=tax_rate_id)
-                    line.tax_percent = line.tax_rate.rate
-                
-                # Calculate line amounts
-                line_subtotal = line.quantity * line.unit_price
-                line.tax_amount = (line_subtotal * line.tax_percent) / 100
-                line.line_total = line_subtotal + line.tax_amount
-                
-                line.save()
-                
-                # Update invoice totals
-                invoice.subtotal += line_subtotal
-                invoice.tax_total += line.tax_amount
-            
-            # Final total
-            invoice.total = invoice.subtotal - invoice.discount_amount + invoice.tax_total
-            invoice.save(update_fields=['subtotal', 'tax_total', 'total'])
-            
-            # If posted, submit to IRD
-            if action == 'post':
-                ird_service = IRDEBillingService(organization)
-                ird_result = ird_service.submit_invoice(invoice)
-                
-                if ird_result['success']:
-                    messages.success(
-                        request,
-                        f'Invoice {invoice.invoice_number} created and submitted to IRD. '
-                        f'Acknowledgment ID: {ird_result["ack_id"]}'
-                    )
-                else:
-                    messages.warning(
-                        request,
-                        f'Invoice {invoice.invoice_number} created but IRD submission failed: '
-                        f'{ird_result["error"]}'
-                    )
-            else:
-                messages.success(request, f'Draft invoice {invoice.invoice_number} saved.')
-            
-            return redirect('billing:invoice_detail', invoice_id=invoice.invoice_id)
-    
-    except Exception as e:
-        messages.error(request, f'Error creating invoice: {str(e)}')
+                messages.success(request, "Draft invoice saved.")
+    except Exception as exc:  # noqa: BLE001
+        messages.error(request, f'Error creating invoice: {exc}')
         return redirect('billing:invoice_create')
+
+    return redirect('billing:invoice_detail', invoice_id=invoice.invoice_id)
 
 
 @login_required
 def invoice_detail(request, invoice_id):
     """View invoice details"""
-    invoice = get_object_or_404(
-        SalesInvoice,
-        invoice_id=invoice_id,
-        organization=request.user.organization
+    invoice = (
+        SalesInvoice.objects.select_related('customer', 'currency', 'journal')
+        .prefetch_related('lines')
+        .filter(invoice_id=invoice_id, organization=request.user.organization)
+        .first()
     )
+    if not invoice:
+        return redirect('billing:invoice_list')
+
+    lines = invoice.lines.select_related('tax_code', 'revenue_account').all()
     
-    return render(request, 'billing/invoice_detail.html', {
-        'invoice': invoice
-    })
+    # Get available journal types for posting
+    journal_types = JournalType.objects.filter(
+        organization=request.user.organization,
+        is_active=True
+    ).order_by('name')
+    
+    return render(
+        request,
+        'billing/invoice_detail.html',
+        {
+            'invoice': invoice,
+            'lines': lines,
+            'journal_types': journal_types,
+        },
+    )
 
 
 @login_required
@@ -325,47 +403,108 @@ def invoice_list(request):
     organization = request.user.organization
     invoices = SalesInvoice.objects.filter(
         organization=organization
-    ).select_related('customer').order_by('-invoice_date')
+    ).select_related('customer', 'currency').order_by('-invoice_date')
 
+    # Status filter
     status = request.GET.get('status')
     if status:
         invoices = invoices.filter(status=status)
+    
+    # Date range filters
     date_from = request.GET.get('date_from')
     if date_from:
         invoices = invoices.filter(invoice_date__gte=date_from)
     date_to = request.GET.get('date_to')
     if date_to:
         invoices = invoices.filter(invoice_date__lte=date_to)
+    
+    # Customer filter
+    customer_id = request.GET.get('customer')
+    if customer_id:
+        invoices = invoices.filter(customer_id=customer_id)
+    
+    # Currency filter
+    currency_code = request.GET.get('currency')
+    if currency_code:
+        invoices = invoices.filter(currency__currency_code=currency_code)
+    
+    # IRD status filter
+    ird_status = request.GET.get('ird_status')
+    if ird_status:
+        invoices = invoices.filter(ird_status=ird_status)
 
     paginator = Paginator(invoices, 25)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+    
+    # Get filter options for dropdowns
+    customers = Customer.objects.filter(
+        organization=organization,
+        is_active=True
+    ).order_by('display_name')
+    
+    currencies = Currency.objects.filter(is_active=True).order_by('currency_code')
 
     return render(request, 'billing/invoice_list.html', {
         'invoices': page_obj,
         'status_choices': SalesInvoice.STATUS_CHOICES,
+        'ird_status_choices': [
+            ('pending', 'Pending'),
+            ('synced', 'Synced'),
+            ('failed', 'Failed'),
+            ('cancelled', 'Cancelled'),
+        ],
+        'customers': customers,
+        'currencies': currencies,
+        # Pass current filter values for maintaining form state
+        'current_status': status or '',
+        'current_customer': customer_id or '',
+        'current_currency': currency_code or '',
+        'current_ird_status': ird_status or '',
+        'current_date_from': date_from or '',
+        'current_date_to': date_to or '',
     })
 
 
 @login_required
 def invoice_pdf(request, invoice_id):
-    invoice = get_object_or_404(
-        SalesInvoice,
-        invoice_id=invoice_id,
-        organization=request.user.organization
+    """Generate PDF with QR code for IRD-synced invoices"""
+    invoice = (
+        SalesInvoice.objects.select_related('customer', 'currency')
+        .prefetch_related('lines')
+        .filter(invoice_id=invoice_id, organization=request.user.organization)
+        .first()
     )
+    if not invoice:
+        return redirect('billing:invoice_list')
 
+    # Generate QR code if invoice is synced with IRD
     qr_base64 = None
     if invoice.ird_status == 'synced' and invoice.ird_qr_data:
-        ird_service = IRDEBillingService(invoice.organization)
-        qr_image = ird_service.generate_qr_code_image(invoice.ird_qr_data)
-        import base64
-        qr_base64 = base64.b64encode(qr_image.getvalue()).decode()
+        try:
+            import qrcode
+            from io import BytesIO
+            import base64
+            
+            qr = qrcode.QRCode(version=1, box_size=10, border=4)
+            qr.add_data(invoice.ird_qr_data)
+            qr.make(fit=True)
+            
+            img = qr.make_image(fill_color="black", back_color="white")
+            buffer = BytesIO()
+            img.save(buffer, format='PNG')
+            qr_base64 = base64.b64encode(buffer.getvalue()).decode()
+        except Exception:
+            pass  # QR generation failed, continue without it
 
-    html_string = render_to_string('billing/invoice_pdf.html', {
-        'invoice': invoice,
-        'qr_base64': qr_base64
-    })
+    html_string = render_to_string(
+        'billing/invoice_pdf.html',
+        {
+            'invoice': invoice,
+            'lines': invoice.lines.all(),
+            'qr_base64': qr_base64,
+        },
+    )
 
     html = HTML(string=html_string)
     pdf = html.write_pdf()
@@ -373,12 +512,11 @@ def invoice_pdf(request, invoice_id):
     response = HttpResponse(pdf, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="Invoice-{invoice.invoice_number}.pdf"'
 
-    # Log print to IRD
-    ird_service = IRDEBillingService(invoice.organization)
     try:
-        ird_service.print_invoice(invoice)
-    except Exception:
-        pass
+        record_invoice_print(invoice)
+    except Exception:  # noqa: BLE001
+        logger = __import__("logging").getLogger(__name__)
+        logger.warning("ird.print_log_failed", exc_info=True)
 
     return response
 
@@ -395,13 +533,132 @@ def submit_to_ird(request, invoice_id):
         messages.warning(request, 'Invoice already submitted to IRD')
         return redirect('billing:invoice_detail', invoice_id=invoice_id)
 
-    ird_service = IRDEBillingService(invoice.organization)
-    result = ird_service.submit_invoice(invoice)
+    if invoice.status != 'posted':
+        messages.error(request, 'Only posted invoices can be sent to IRD.')
+        return redirect('billing:invoice_detail', invoice_id=invoice_id)
 
-    if result.get('success'):
-        messages.success(request, f'Invoice submitted to IRD successfully. Ack ID: {result.get("ack_id")}')
+    service = IRDSubmissionService(request.user)
+    task = service.enqueue_invoice(invoice)
+    if invoice.ird_status != 'pending':
+        invoice.ird_status = 'pending'
+        invoice.save(update_fields=['ird_status', 'updated_at'])
+    messages.success(
+        request,
+        f'Invoice queued for IRD submission (task #{task.submission_id}).',
+    )
+
+    return redirect('billing:invoice_detail', invoice_id=invoice_id)
+
+
+@login_required
+@require_POST
+def post_invoice(request, invoice_id):
+    """Post a draft or validated invoice"""
+    invoice = get_object_or_404(
+        SalesInvoice,
+        invoice_id=invoice_id,
+        organization=request.user.organization
+    )
+    
+    if invoice.status not in ['draft', 'validated']:
+        messages.error(request, 'Only draft or validated invoices can be posted.')
+        return redirect('billing:invoice_detail', invoice_id=invoice_id)
+    
+    organization = request.user.organization
+    
+    # Get journal type from request or use default
+    journal_type_id = request.POST.get('journal_type')
+    if journal_type_id:
+        journal_type = JournalType.objects.filter(
+            journal_type_id=journal_type_id,
+            organization=organization,
+            is_active=True
+        ).first()
     else:
-        messages.error(request, f'IRD submission failed: {result.get("error")}')
+        # Try to find a sales-related journal type
+        journal_type = JournalType.objects.filter(
+            organization=organization,
+            code__icontains='sales',
+            is_active=True
+        ).first()
+    
+    if not journal_type:
+        # Fallback to any active journal type
+        journal_type = JournalType.objects.filter(
+            organization=organization,
+            is_active=True
+        ).first()
+    
+    if not journal_type:
+        messages.error(request, 'No journal type configured for posting.')
+        return redirect('billing:invoice_detail', invoice_id=invoice_id)
+    
+    # Get warehouse if needed for inventory items
+    from inventory.models import Warehouse
+    warehouse = Warehouse.objects.filter(
+        organization=organization,
+        is_active=True
+    ).first()
+    
+    # Determine whether to auto-submit to IRD
+    submit_to_ird = request.POST.get('submit_to_ird') == 'true'
+    
+    try:
+        service = SalesInvoiceService(request.user)
+        
+        # Validate first if not already validated
+        if invoice.status == 'draft':
+            service.validate_invoice(invoice)
+        
+        # Post the invoice
+        journal = service.post_invoice(
+            invoice,
+            journal_type,
+            submit_to_ird=submit_to_ird,
+            warehouse=warehouse
+        )
+        
+        messages.success(
+            request,
+            f'Invoice #{invoice.invoice_number} posted successfully. Journal #{journal.journal_number} created.'
+        )
+        
+        if submit_to_ird and invoice.ird_status == 'pending':
+            messages.info(request, 'Invoice has been queued for IRD submission.')
+            
+    except ValidationError as e:
+        messages.error(request, f'Validation error: {e.message}')
+    except Exception as e:
+        messages.error(request, f'Error posting invoice: {str(e)}')
+    
+    return redirect('billing:invoice_detail', invoice_id=invoice_id)
+
+
+@login_required
+def send_to_ird(request, invoice_id):
+    invoice = get_object_or_404(
+        SalesInvoice,
+        invoice_id=invoice_id,
+        organization=request.user.organization
+    )
+
+    if invoice.ird_status == 'synced':
+        messages.warning(request, 'Invoice already submitted to IRD')
+        return redirect('billing:invoice_detail', invoice_id=invoice_id)
+
+    if invoice.status != 'posted':
+        messages.error(request, 'Only posted invoices can be sent to IRD.')
+        return redirect('billing:invoice_detail', invoice_id=invoice_id)
+
+    service = IRDSubmissionService(request.user)
+    task = service.enqueue_invoice(invoice)
+    if invoice.ird_status != 'pending':
+        invoice.ird_status = 'pending'
+        invoice.save(update_fields=['ird_status', 'updated_at'])
+    messages.success(
+        request,
+        f'Invoice queued for IRD submission (task #{task.submission_id}).',
+    )
 
     return redirect('billing:invoice_detail', invoice_id=invoice_id)
 
@@ -420,19 +677,15 @@ def cancel_invoice(request, invoice_id):
     reason = request.POST.get('reason', '')
 
     if invoice.ird_status == 'synced':
-        ird_service = IRDEBillingService(invoice.organization)
-        result = ird_service.cancel_invoice(invoice, reason)
-        if not result.get('success'):
-            messages.error(request, f'IRD cancellation failed: {result.get("error")}')
-            return redirect('billing:invoice_detail', invoice_id=invoice_id)
+        invoice.ird_status = 'cancelled'
+        messages.warning(request, 'Marked IRD status as cancelled. Please ensure the cancellation is reflected on the IRD portal if required.')
 
     invoice.status = 'cancelled'
-    invoice.cancelled_at = timezone.now()
-    invoice.cancelled_by = request.user
-    invoice.cancellation_reason = reason
-    invoice.save()
+    if reason:
+        invoice.notes = f"{invoice.notes}\nCancelled: {reason}".strip()
+    invoice.save(update_fields=['status', 'notes', 'ird_status', 'updated_at'])
 
-    messages.success(request, 'Invoice cancelled successfully')
+    messages.success(request, 'Invoice cancelled.')
     return redirect('billing:invoice_detail', invoice_id=invoice_id)
 
 

@@ -468,15 +468,33 @@ class ChartOfAccountForm(BootstrapFormMixin, forms.ModelForm):
             if name in initial:
                 field.initial = initial[name]
 
+        # Determine selected account type early for filtering
+        selected_account_type = None
+        raw_account_type = None
+        try:
+            raw_account_type = self.data.get('account_type') if hasattr(self, 'data') else None
+        except Exception:
+            raw_account_type = None
+        if raw_account_type not in (None, ''):
+            try:
+                selected_account_type = int(raw_account_type)
+            except (TypeError, ValueError):
+                selected_account_type = raw_account_type
+        if not selected_account_type:
+            selected_account_type = initial.get('account_type') or getattr(self.instance, 'account_type_id', None)
+
         if self.organization:
             self.fields['organization'].initial = self.organization.pk
-            self.fields['parent_account'].queryset = ChartOfAccount.active_accounts.filter(
+            parent_qs = ChartOfAccount.active_accounts.filter(
                 organization=self.organization,
                 is_active=True,
             )
+            self.fields['parent_account'].queryset = parent_qs
             self.fields['account_type'].queryset = AccountType.objects.filter(
                 archived_at__isnull=True
             )
+            if selected_account_type:
+                self.fields['account_type'].initial = selected_account_type
             currency_choices = [(currency.currency_code, f"{currency.currency_code} - {currency.currency_name}")
                                for currency in Currency.objects.filter(is_active=True)]
             self.fields['currency'].widget = forms.Select(attrs={'class': 'form-select'})
@@ -510,7 +528,8 @@ class ChartOfAccountForm(BootstrapFormMixin, forms.ModelForm):
                 self.fields['account_code'].initial = generated_code
 
     def clean_account_code(self):
-        value = self.cleaned_data.get('account_code') or self.initial.get('account_code', '')
+        value = (self.cleaned_data.get('account_code') or self.initial.get('account_code', '') or '').strip()
+        self.cleaned_data['account_code'] = value
         import re
         if value and not re.match(r'^[0-9]+(\.[0-9]{2})*$', value):
             raise forms.ValidationError('Account code must be numeric, optionally with dot and two digits for children.')
@@ -559,22 +578,26 @@ class ChartOfAccountForm(BootstrapFormMixin, forms.ModelForm):
         if not cleaned_data.get('account_code') and not self.instance.pk:
             cleaned_data['account_code'] = self.initial.get('account_code', '')
 
-        # Handle custom code override
+        # Handle custom code override (account_code doubles as custom entry field)
         use_custom = cleaned_data.get('use_custom_code')
-        custom_code = (cleaned_data.get('custom_code') or '').strip()
+        account_code_value = (cleaned_data.get('account_code') or '').strip()
+        cleaned_data['account_code'] = account_code_value
+        cleaned_data['custom_code'] = (cleaned_data.get('custom_code') or '').strip()
         if use_custom:
-            if not custom_code:
-                self.add_error('custom_code', 'Please enter a custom code or turn off "Use Custom Code".')
+            if not account_code_value:
+                self.add_error('account_code', 'Please enter an account code or turn off "Use Custom Code".')
             else:
                 # Validate uniqueness inside the organization
                 org_id = getattr(self, 'organization', None) and self.organization.id
                 if org_id:
-                    qs = ChartOfAccount.objects.filter(organization_id=org_id, account_code=custom_code)
+                    qs = ChartOfAccount.objects.filter(organization_id=org_id, account_code=account_code_value)
                     if self.instance.pk:
                         qs = qs.exclude(pk=self.instance.pk)
                     if qs.exists():
-                        self.add_error('custom_code', 'This code already exists in your organization.')
-                cleaned_data['account_code'] = custom_code
+                        self.add_error('account_code', 'This code already exists in your organization.')
+                cleaned_data['custom_code'] = account_code_value
+        else:
+            cleaned_data['custom_code'] = None
 
         # Set default values for required fields if not provided
         if not cleaned_data.get('opening_balance'):
@@ -1594,6 +1617,14 @@ class DimensionValueForm(BootstrapFormMixin, forms.ModelForm):
 
 
 class SalesInvoiceForm(BootstrapFormMixin, forms.ModelForm):
+    # Declare warehouse field manually to avoid circular import at class definition time
+    warehouse = forms.ModelChoiceField(
+        queryset=None,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        help_text='Required when selling inventory items'
+    )
+    
     class Meta:
         model = SalesInvoice
         fields = (
@@ -1628,6 +1659,11 @@ class SalesInvoiceForm(BootstrapFormMixin, forms.ModelForm):
         if self.organization:
             self.fields['customer'].queryset = self.fields['customer'].queryset.filter(
                 organization=self.organization
+            )
+            # Filter warehouses by organization
+            from inventory.models import Warehouse
+            self.fields['warehouse'].queryset = Warehouse.objects.filter(
+                organization=self.organization, is_active=True
             )
 
     def clean(self):
@@ -1784,7 +1820,7 @@ class ARReceiptLineForm(BootstrapFormMixin, forms.ModelForm):
         if self.organization:
             queryset = SalesInvoice.objects.filter(
                 organization=self.organization,
-                status__in=['posted', 'validated'],
+                status__in=['posted'],
             )
         if self.customer:
             queryset = queryset.filter(customer=self.customer)

@@ -23,6 +23,7 @@ from .views_detail import (
     PriceListDetailView, PickListDetailView, ShipmentDetailView, RMADetailView,
     BillOfMaterialDetailView
 )
+from .reports import stock_report, ledger_report
 
 __all__ = [
     'BaseListView',
@@ -42,4 +43,6 @@ __all__ = [
     'ProductCategoryDetailView', 'ProductDetailView', 'WarehouseDetailView', 'LocationDetailView',
     'PriceListDetailView', 'PickListDetailView', 'ShipmentDetailView', 'RMADetailView',
     'BillOfMaterialDetailView',
+    # Report views
+    'stock_report', 'ledger_report',
 ]

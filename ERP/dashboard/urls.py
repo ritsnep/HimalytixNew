@@ -49,8 +49,9 @@ urlpatterns = [
     # Dashboard
     path('manage/', include('usermanagement.urls')),
     path('account/', include('account.urls')),
-    path('inventory/', include('Inventory.urls')),
+    path('inventory/', include('inventory.urls')),
     path('billing/', include('billing.urls', namespace='billing')),
+    path('purchasing/', include(('purchasing.urls', 'purchasing'), namespace='purchasing')),
     path('ird/', include('ird_integration.urls', namespace='ird_integration')),
     path('service-management/', include('service_management.urls', namespace='service_management')),
     
@@ -90,7 +91,7 @@ urlpatterns = [
     path("api/v1/", include("api.v1.urls")),
     
     # Vertical-specific API endpoints
-    path("api/inventory/", include("Inventory.api.urls")),
+    path("api/inventory/", include("inventory.api.urls")),
     path("api/billing/", include("billing.api.urls")),
     path("api/service-management/", include("service_management.api.urls")),
     

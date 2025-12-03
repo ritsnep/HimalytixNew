@@ -102,6 +102,13 @@ from .views import ar_receipt_views
 from .views import commerce_views
 from .views import wizard
 from .views import views_api
+from .views.manual_journal_view import (
+    ManualJournalListView,
+    ManualJournalCreateView,
+    ManualJournalUpdateView,
+    ManualJournalDetailView,
+    ManualJournalPostView,
+)
 
 app_name = "accounting"
 
@@ -172,6 +179,13 @@ urlpatterns = [
     path('recurring-journals/create/', recurring_journal_views.RecurringJournalCreateView.as_view(), name='recurring-journal-create'),
     path('recurring-journals/<int:pk>/update/', recurring_journal_views.RecurringJournalUpdateView.as_view(), name='recurring-journal-update'),
     path('recurring-journals/<int:pk>/delete/', recurring_journal_views.RecurringJournalDeleteView.as_view(), name='recurring-journal-delete'),
+    
+    # Manual Journal Entry URLs (Simple Interface)
+    path('manual-journals/', ManualJournalListView.as_view(), name='manual_journal_list'),
+    path('manual-journals/create/', ManualJournalCreateView.as_view(), name='manual_journal_create'),
+    path('manual-journals/<int:pk>/', ManualJournalDetailView.as_view(), name='manual_journal_detail'),
+    path('manual-journals/<int:pk>/edit/', ManualJournalUpdateView.as_view(), name='manual_journal_update'),
+    path('manual-journals/<int:pk>/post/', ManualJournalPostView.as_view(), name='manual_journal_post'),
     
     # General Ledger URLs
     path('general-ledger/', GeneralLedgerListView.as_view(), name='general_ledger_list'),

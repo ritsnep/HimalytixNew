@@ -1,0 +1,184 @@
+{% load widget_tweaks %}
+<form
+  id="purchase-invoice-form"
+  method="post"
+  hx-post="{{ form_action }}"
+  hx-target="#purchasing-detail-panel"
+  hx-swap="innerHTML"
+  novalidate
+>
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+  <div class="alert alert-danger">
+    {% for error in form.non_field_errors %}{{ error }}<br>{% endfor %}
+  </div>
+  {% endif %}
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+          <h4 class="mb-1">{% if is_edit %}Edit{% else %}New{% endif %} Purchase Invoice</h4>
+          <p class="text-muted mb-0">Capture supplier, document dates, and pricing before posting.</p>
+        </div>
+        <span class="badge bg-light text-dark">Draft</span>
+      </div>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label small text-uppercase text-muted" for="{{ form.supplier.id_for_label }}">Supplier</label>
+          {% render_field form.supplier class+="form-select form-select-sm" %}
+          {% for error in form.supplier.errors %}
+          <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small text-uppercase text-muted" for="{{ form.number.id_for_label }}">Invoice #</label>
+          {% render_field form.number class+="form-control form-control-sm" %}
+          {% for error in form.number.errors %}
+          <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small text-uppercase text-muted" for="{{ form.currency.id_for_label }}">Currency</label>
+          {% render_field form.currency class+="form-select form-select-sm" %}
+          {% for error in form.currency.errors %}
+          <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="row g-3 mt-1">
+        <div class="col-md-3">
+          <label class="form-label small text-uppercase text-muted" for="{{ form.invoice_date.id_for_label }}">Invoice Date</label>
+          {% render_field form.invoice_date class+="form-control form-control-sm" %}
+          {% for error in form.invoice_date.errors %}
+          <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small text-uppercase text-muted" for="{{ form.due_date.id_for_label }}">Due Date</label>
+          {% render_field form.due_date class+="form-control form-control-sm" %}
+          {% for error in form.due_date.errors %}
+          <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small text-uppercase text-muted" for="{{ form.exchange_rate.id_for_label }}">Exchange Rate</label>
+          {% render_field form.exchange_rate class+="form-control form-control-sm text-end" %}
+          {% for error in form.exchange_rate.errors %}
+          <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h5 class="mb-1">Line Items</h5>
+          <p class="text-muted mb-0">Quantities hit inventory while expense accounts handle services.</p>
+        </div>
+        <button class="btn btn-outline-primary btn-sm" type="button" data-line-add>
+          <i class="mdi mdi-plus"></i> Add line
+        </button>
+      </div>
+      {% if line_formset.non_form_errors %}
+      <div class="alert alert-danger">
+        {% for error in line_formset.non_form_errors %}{{ error }}<br>{% endfor %}
+      </div>
+      {% endif %}
+      <div class="table-responsive">
+        {{ line_formset.management_form }}
+        <table class="table table-sm align-middle mb-0">
+          <thead class="table-light text-muted">
+            <tr>
+              <th>Product</th>
+              <th>Warehouse</th>
+              <th>Description</th>
+              <th class="text-end">Qty</th>
+              <th class="text-end">Unit Cost</th>
+              <th class="text-end">VAT %</th>
+              <th>Expense Account</th>
+              <th>Input VAT Account</th>
+              <th class="text-center" style="width: 60px;"></th>
+            </tr>
+          </thead>
+          <tbody id="purchase-line-body">
+            {% for line_form in line_formset %}
+              {% include "purchasing/partials/_invoice_line_row.html" with form=line_form row_index=forloop.counter0 %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="d-flex justify-content-between">
+    {% if is_edit %}
+    <button
+      type="button"
+      class="btn btn-outline-secondary"
+      hx-get="{% url 'purchasing:invoice-detail' form.instance.pk %}"
+      hx-target="#purchasing-detail-panel"
+      hx-swap="innerHTML"
+    >
+      Cancel
+    </button>
+    {% else %}
+    <button type="button" class="btn btn-outline-secondary" data-clear-panel>Cancel</button>
+    {% endif %}
+    <button type="submit" class="btn btn-primary">Save Invoice</button>
+  </div>
+</form>
+<script type="text/template" id="purchase-line-empty-form">
+{% with line_form=line_formset.empty_form %}
+{% include "purchasing/partials/_invoice_line_row.html" with form=line_form row_index="__prefix__" %}
+{% endwith %}
+</script>
+<script>
+(function () {
+  const formEl = document.getElementById("purchase-invoice-form");
+  const body = document.getElementById("purchase-line-body");
+  const template = document.getElementById("purchase-line-empty-form");
+  const totalInput = document.getElementById("id_{{ line_formset.prefix }}-TOTAL_FORMS");
+  if (!formEl || !body || !template || !totalInput) {
+    return;
+  }
+  const addLine = () => {
+    const nextIndex = parseInt(totalInput.value, 10);
+    const html = template.innerHTML.replace(/__prefix__/g, nextIndex);
+    body.insertAdjacentHTML("beforeend", html);
+    totalInput.value = nextIndex + 1;
+  };
+  const removeLine = (button) => {
+    const row = button.closest("tr");
+    if (!row) {
+      return;
+    }
+    const deleteInput = row.querySelector('input[name$="-DELETE"]');
+    if (deleteInput) {
+      deleteInput.checked = true;
+    }
+    row.classList.add("d-none");
+    row.setAttribute("aria-hidden", "true");
+  };
+  formEl.addEventListener("click", function (event) {
+    if (event.target.closest("[data-line-add]")) {
+      event.preventDefault();
+      addLine();
+    }
+    const removeBtn = event.target.closest("[data-line-remove]");
+    if (removeBtn) {
+      event.preventDefault();
+      removeLine(removeBtn);
+    }
+  });
+  formEl.querySelectorAll('[data-clear-panel]').forEach((button) => {
+    button.addEventListener('click', function (event) {
+      event.preventDefault();
+      const panel = document.getElementById('purchasing-detail-panel');
+      if (panel) {
+        panel.innerHTML = '<div class="text-center text-muted py-5"><p class="mb-0">Select a purchase invoice to begin.</p></div>';
+      }
+    });
+  });
+})();
+</script>

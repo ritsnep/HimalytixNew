@@ -47,10 +47,10 @@ This guide covers the migration process for the new vertical ERP features.
 python manage.py makemigrations Inventory
 
 # Review migration file
-# File will be in: Inventory/migrations/000X_auto_YYYYMMDD_HHMM.py
+# File will be in: inventory/migrations/000X_auto_YYYYMMDD_HHMM.py
 
 # Apply migration
-python manage.py migrate Inventory
+python manage.py migrate inventory
 
 # Verify tables created
 python manage.py dbshell
@@ -220,7 +220,7 @@ python manage.py shell
 ```
 
 ```python
-from Inventory.models import PriceList, PromotionRule
+from inventory.models import PriceList, PromotionRule
 from billing.models.subscription import Subscription
 from service_management.models import DeviceLifecycle
 
@@ -242,7 +242,7 @@ python manage.py shell
 
 ```python
 from usermanagement.models import Organization
-from Inventory.models import PriceList
+from inventory.models import PriceList
 from billing.models.subscription import SubscriptionPlan
 from service_management.models import DeviceCategory
 
@@ -284,24 +284,24 @@ print(f"Created: {cat}")
 ### Rollback to specific migration:
 ```bash
 # Find migration number
-python manage.py showmigrations Inventory
+python manage.py showmigrations inventory
 
 # Rollback to previous
-python manage.py migrate Inventory 0003
+python manage.py migrate inventory 0003
 
 # Rollback all
-python manage.py migrate Inventory zero
+python manage.py migrate inventory zero
 ```
 
 ### Delete migration files:
 ```bash
 # Windows
-Remove-Item Inventory\migrations\0004_*.py
+Remove-Item inventory\migrations\0004_*.py
 Remove-Item billing\migrations\0002_*.py
 Remove-Item service_management\migrations\0001_*.py
 
 # Linux/Mac
-rm Inventory/migrations/0004_*.py
+rm inventory/migrations/0004_*.py
 rm billing/migrations/0002_*.py
 rm service_management/migrations/0001_*.py
 ```
@@ -320,7 +320,7 @@ python manage.py shell
 from django.utils import timezone
 from decimal import Decimal
 from usermanagement.models import Organization
-from Inventory.models import (
+from inventory.models import (
     PriceList, PriceListItem, Product, PromotionRule,
     Warehouse, Location
 )
@@ -376,7 +376,7 @@ print("Sample data created successfully!")
 The models include index definitions. Verify they were created:
 
 ```bash
-python manage.py sqlmigrate Inventory 0004
+python manage.py sqlmigrate inventory 0004
 ```
 
 ### Analyze Tables (PostgreSQL)

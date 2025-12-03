@@ -990,7 +990,7 @@ def seed_default_vendor(org, superuser, account_map):
 def seed_inventory_data(org, superuser):
     """Seed inventory base data (warehouse, categories)."""
     try:
-        from Inventory.models import Warehouse, ProductCategory
+        from inventory.models import Warehouse, ProductCategory
         
         # Default warehouse
         wh, created = Warehouse.objects.get_or_create(

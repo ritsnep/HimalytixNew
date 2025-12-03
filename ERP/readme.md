@@ -132,7 +132,7 @@ Visit: **http://localhost:8000**
 - Enhancements: .datepicker fields automatically use Bootstrap Datepicker, .flatpickr variants use Flatpickr, and Pristine.js validates any form marked 
 ovalidate unless you set orm_track_dirty=False.
 
-Inventory is the pilot module already running on these shared components. Other apps can migrate gradually by switching their {% extends %} directives to components/base/list_base.html / components/base/form_base.html, filling the documented blocks, and (optionally) dropping per-page JS in favour of the new helpers.
+The inventory app is the pilot module already running on these shared components. Other apps can migrate gradually by switching their {% extends %} directives to components/base/list_base.html / components/base/form_base.html, filling the documented blocks, and (optionally) dropping per-page JS in favour of the new helpers.
 
 ## 📊 Architecture
 
@@ -144,7 +144,7 @@ Inventory is the pilot module already running on these shared components. Other 
 | `usermanagement` | Authentication, organizations, roles | `CustomUser`, `Organization`, `Role` |
 | `tenancy` | Multi-tenant middleware, tenant isolation | `Tenant`, `Domain` |
 | `accounting` | Chart of Accounts, journals, ledgers | `FiscalYear`, `ChartOfAccount`, `JournalEntry` |
-| `Inventory` | Stock management, purchase/sales orders | `Item`, `StockMovement`, `PurchaseOrder` |
+| `inventory` | Stock management, purchase/sales orders | `Item`, `StockMovement`, `PurchaseOrder` |
 | `api` | REST API endpoints (v1) | - |
 | `forms_designer` | Dynamic form builder | `Form`, `Field` |
 
@@ -347,11 +347,11 @@ See [PHASE_4_ROADMAP.md](PHASE_4_ROADMAP.md) and [PHASE_5_ROADMAP.md](PHASE_5_RO
    ```bash
    python manage.py migrate
    ```
-3. Initialize the system and create the default admin account:
+3. Seed baseline data (superuser, roles, permissions, demo ledgers, inventory, LPG, etc.):
    ```bash
-   python manage.py initialize_system
+   python manage.py seed_database
    ```
-   This command generates permissions, sets up the default roles and creates the initial administrator.
+   This management command wraps `scripts/seed_database.py` and is idempotent, so it can be safely re-run to refresh defaults.
 4. Start the development server:
    ```bash
    python manage.py runserver
@@ -359,12 +359,12 @@ See [PHASE_4_ROADMAP.md](PHASE_4_ROADMAP.md) and [PHASE_5_ROADMAP.md](PHASE_5_RO
 
 ## Default Roles and Permissions
 
-`setup_default_roles` creates two organization‑level roles:
+`python manage.py seed_database` provisions the baseline organization-level roles defined in `scripts/seed_database.py`:
 
-- **Administrator** – assigned all generated permissions providing full access to every module.
-- **User** – granted only the `view` actions for each entity.
+- **Administrator** – receives the full generated permission set for every module.
+- **User** – limited to the `view` actions for each entity.
 
-The built‑in `Super Admin` role on `CustomUser` bypasses normal permission checks. Users are linked to organizations through the `UserRole` model and inherit permissions from their assigned roles.
+The built-in `Super Admin` flag on `CustomUser` still bypasses normal permission checks. Users link to organizations through `UserRole` records and inherit permissions from their assigned roles.
 
 
 ## Overview

@@ -19,6 +19,14 @@ from accounting.models import (
 
 
 class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
+    # Declare warehouse fields manually to avoid circular import at class definition time
+    warehouse = forms.ModelChoiceField(
+        queryset=None,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        help_text='Required when receiving inventory items'
+    )
+    
     class Meta:
         model = PurchaseInvoice
         fields = (
@@ -33,6 +41,7 @@ class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
             'exchange_rate',
             'po_number',
             'receipt_reference',
+            'grir_account',
             'notes',
         )
         widgets = {
@@ -45,6 +54,7 @@ class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
             'exchange_rate': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.000001'}),
             'po_number': forms.TextInput(attrs={'class': 'form-control'}),
             'receipt_reference': forms.TextInput(attrs={'class': 'form-control'}),
+            'grir_account': forms.Select(attrs={'class': 'form-select'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
 
@@ -54,9 +64,20 @@ class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
         self.fields['invoice_number'].required = False
         self.fields['invoice_number'].widget.attrs.setdefault('placeholder', 'Auto-generated')
         self.fields['invoice_number'].widget.attrs['readonly'] = True
+        self.fields['grir_account'].required = False
+        self.fields['grir_account'].help_text = 'GR/IR clearing account for inventory receipts'
         if self.organization:
             self.fields['vendor'].queryset = self.fields['vendor'].queryset.filter(
                 organization=self.organization
+            )
+            # Filter warehouses by organization
+            from inventory.models import Warehouse
+            self.fields['warehouse'].queryset = Warehouse.objects.filter(
+                organization=self.organization, is_active=True
+            )
+            # Filter GL accounts by organization
+            self.fields['grir_account'].queryset = ChartOfAccount.objects.filter(
+                organization=self.organization, is_active=True
             )
 
     def clean(self):

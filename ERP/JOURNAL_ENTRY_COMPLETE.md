@@ -102,13 +102,13 @@ All requested features for the journal entry UI have been implemented successful
 ## ⚠️ Known Issue: Migration Conflicts
 
 Your database has duplicate column errors in multiple migrations:
-- `Inventory_batch.organization_id` already exists (in `Inventory/migrations/0002_initial.py`)
+- `Inventory_batch.organization_id` already exists (in `inventory/migrations/0002_initial.py`)
 - `accounting_accountingperiod.closed_by_id` already exists
 
 **This is NOT related to the journal entry UI work.** These are pre-existing issues with your migration history.
 
 ### Temporary Fix Applied
-- Commented out duplicate `AddField` in `Inventory/migrations/0002_initial.py`
+- Commented out duplicate `AddField` in `inventory/migrations/0002_initial.py`
 - This allows the main app to run but tests still fail
 
 ### Recommended Solution
@@ -120,7 +120,7 @@ Your database has duplicate column errors in multiple migrations:
 ```powershell
 # Option 1: Fake problematic migrations
 python manage.py migrate accounting --fake
-python manage.py migrate Inventory --fake
+python manage.py migrate inventory --fake
 
 # Option 2: Drop test DB and recreate (for tests only)
 dropdb test_erpdb
@@ -169,7 +169,7 @@ Since automated tests can't run, manually verify:
 ## 🎯 Next Steps
 
 1. **Fix migrations** (unrelated to this work)
-   - Review `Inventory/migrations/0002_initial.py`
+  - Review `inventory/migrations/0002_initial.py`
    - Review `accounting` migrations for duplicate fields
    - Fake or remove duplicates
 

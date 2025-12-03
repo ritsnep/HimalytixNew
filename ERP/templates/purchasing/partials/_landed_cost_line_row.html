@@ -1,0 +1,33 @@
+{% load widget_tweaks %}
+<tr class="align-top" data-form-index="{{ row_index|default:form.prefix|default_if_none:"" }}">
+  <td>
+    <label class="form-label small text-uppercase text-muted" for="{{ form.description.id_for_label }}">Description</label>
+    {% render_field form.description class+="form-control form-control-sm" %}
+    {% for error in form.description.errors %}
+      <div class="text-danger small">{{ error }}</div>
+    {% endfor %}
+  </td>
+  <td class="text-end" style="width: 180px;">
+    <label class="form-label small text-uppercase text-muted" for="{{ form.amount.id_for_label }}">Amount</label>
+    {% render_field form.amount class+="form-control form-control-sm text-end" %}
+    {% for error in form.amount.errors %}
+      <div class="text-danger small">{{ error }}</div>
+    {% endfor %}
+  </td>
+  <td style="min-width: 240px;">
+    <label class="form-label small text-uppercase text-muted" for="{{ form.gl_account.id_for_label }}">GL Account</label>
+    {% render_field form.gl_account class+="form-select form-select-sm" %}
+    {% for error in form.gl_account.errors %}
+      <div class="text-danger small">{{ error }}</div>
+    {% endfor %}
+  </td>
+  <td class="text-center align-middle" style="width: 60px;">
+    <button class="btn btn-link text-danger p-0" type="button" data-cost-remove title="Remove cost">
+      <i class="mdi mdi-close-circle"></i>
+    </button>
+  </td>
+  <td class="d-none">
+    {{ form.id }}
+    {{ form.DELETE }}
+  </td>
+</tr>

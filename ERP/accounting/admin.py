@@ -5,6 +5,7 @@ from django.utils import timezone
 
 from accounting.services.ird_submission_service import IRDSubmissionService
 from accounting.tasks import process_ird_submission
+from accounting.services.landed_cost_service import LandedCostService
 
 from .models import (
     FiscalYear,
@@ -41,6 +42,9 @@ from .models import (
     PurchaseInvoice,
     PurchaseInvoiceLine,
     PurchaseInvoiceMatch,
+    LandedCostDocument,
+    LandedCostLine,
+    LandedCostAllocation,
     SalesInvoice,
     SalesInvoiceLine,
     ARReceipt,
@@ -131,11 +135,194 @@ class CurrencyAdmin(admin.ModelAdmin):
     list_filter = ('is_active',)
 
 
-admin.site.register(CurrencyExchangeRate)
-admin.site.register(JournalType)
-admin.site.register(JournalLine)
+@admin.register(CurrencyExchangeRate)
+class CurrencyExchangeRateAdmin(admin.ModelAdmin):
+    list_display = (
+        'organization',
+        'from_currency',
+        'to_currency',
+        'rate_date',
+        'exchange_rate',
+        'is_average_rate',
+        'is_active',
+        'source',
+    )
+    list_filter = ('organization', 'from_currency', 'to_currency', 'is_average_rate', 'is_active')
+    search_fields = (
+        'organization__name',
+        'from_currency__currency_code',
+        'to_currency__currency_code',
+        'source',
+    )
+    date_hierarchy = 'rate_date'
+    autocomplete_fields = ('organization', 'from_currency', 'to_currency')
+
+
+@admin.register(JournalType)
+class JournalTypeAdmin(admin.ModelAdmin):
+    """Admin interface for Journal Types."""
+    list_display = ['code', 'name', 'organization', 'is_system_type', 'requires_approval', 'is_active']
+    list_filter = ['organization', 'is_system_type', 'requires_approval', 'is_active']
+    search_fields = ['code', 'name', 'description']
+    ordering = ['organization', 'code']
+
+# admin.site.register(JournalLine)  # Registered as inline with Journal
 admin.site.register(Attachment)
 admin.site.register(Approval)
+
+
+class JournalLineInline(admin.TabularInline):
+    """Inline admin for JournalLine within Journal admin."""
+    model = JournalLine
+    extra = 1
+    fields = [
+        'line_number', 'account', 'description', 
+        'debit_amount', 'credit_amount', 
+        'department', 'project', 'cost_center',
+        'tax_code', 'tax_rate', 'memo'
+    ]
+    autocomplete_fields = ['account', 'department', 'project', 'cost_center', 'tax_code']
+    ordering = ['line_number']
+
+
+@admin.register(Journal)
+class JournalAdmin(admin.ModelAdmin):
+    """Admin interface for Journal entries with inline lines."""
+    
+    list_display = [
+        'journal_number', 'journal_type', 'journal_date', 
+        'description_short', 'total_debit', 'total_credit', 
+        'status', 'created_by', 'created_at'
+    ]
+    
+    list_filter = [
+        'status', 'journal_type', 'period', 'organization',
+        'journal_date', 'created_at'
+    ]
+    
+    search_fields = [
+        'journal_number', 'description', 'reference',
+        'created_by__username'
+    ]
+    
+    readonly_fields = [
+        'journal_number', 'total_debit', 'total_credit', 
+        'posted_at', 'posted_by', 'approved_at', 'approved_by',
+        'created_at', 'updated_at', 'created_by', 'updated_by',
+        'imbalance_display'
+    ]
+    
+    fieldsets = (
+        ('Journal Information', {
+            'fields': (
+                'organization', 'journal_type', 'period', 
+                'journal_number', 'journal_date', 'reference'
+            )
+        }),
+        ('Details', {
+            'fields': ('description', 'currency_code', 'exchange_rate')
+        }),
+        ('Totals', {
+            'fields': ('total_debit', 'total_credit', 'imbalance_display'),
+            'classes': ('collapse',)
+        }),
+        ('Status & Workflow', {
+            'fields': (
+                'status', 'is_locked', 
+                ('posted_at', 'posted_by'),
+                ('approved_at', 'approved_by')
+            )
+        }),
+        ('Audit Information', {
+            'fields': (
+                ('created_at', 'created_by'),
+                ('updated_at', 'updated_by')
+            ),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    inlines = [JournalLineInline]
+    
+    autocomplete_fields = ['organization', 'journal_type', 'period']
+    
+    date_hierarchy = 'journal_date'
+    
+    def description_short(self, obj):
+        """Truncated description for list display."""
+        if obj.description:
+            return obj.description[:50] + '...' if len(obj.description) > 50 else obj.description
+        return '-'
+    description_short.short_description = 'Description'
+    
+    def imbalance_display(self, obj):
+        """Display imbalance with color coding."""
+        imbalance = obj.imbalance
+        if imbalance == 0:
+            return f"✓ Balanced (0.00)"
+        return f"⚠ Imbalance: {imbalance}"
+    imbalance_display.short_description = 'Balance Check'
+    
+    def save_model(self, request, obj, form, change):
+        """Auto-populate created_by and updated_by fields."""
+        if not change:  # Creating new object
+            obj.created_by = request.user
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
+    
+    def save_formset(self, request, form, formset, change):
+        """Save inline formset and update totals."""
+        instances = formset.save(commit=False)
+        for instance in instances:
+            if not instance.pk:  # New line
+                instance.created_by = request.user
+            instance.updated_by = request.user
+            instance.save()
+        
+        for obj in formset.deleted_objects:
+            obj.delete()
+        
+        # Update journal totals after saving lines
+        form.instance.update_totals()
+        form.instance.save(update_fields=['total_debit', 'total_credit'])
+    
+    def get_queryset(self, request):
+        """Optimize queries with select_related."""
+        qs = super().get_queryset(request)
+        return qs.select_related(
+            'organization', 'journal_type', 'period',
+            'created_by', 'posted_by', 'approved_by'
+        )
+    
+    actions = ['recalculate_totals', 'mark_as_draft']
+    
+    def recalculate_totals(self, request, queryset):
+        """Admin action to recalculate totals for selected journals."""
+        count = 0
+        for journal in queryset:
+            if journal.status == 'draft':  # Only for draft journals
+                journal.update_totals()
+                journal.save(update_fields=['total_debit', 'total_credit'])
+                count += 1
+        
+        self.message_user(
+            request, 
+            f"Successfully recalculated totals for {count} journal(s).",
+            messages.SUCCESS
+        )
+    recalculate_totals.short_description = "Recalculate totals (draft only)"
+    
+    def mark_as_draft(self, request, queryset):
+        """Admin action to mark journals as draft (if allowed)."""
+        count = queryset.filter(
+            status__in=['rejected']
+        ).update(status='draft')
+        
+        self.message_user(
+            request,
+            f"Successfully marked {count} journal(s) as draft.",
+            messages.SUCCESS
+        )
 @admin.register(TaxAuthority)
 class TaxAuthorityAdmin(admin.ModelAdmin):
     search_fields = ('name', 'code')
@@ -312,6 +499,53 @@ class PurchaseInvoiceAdmin(admin.ModelAdmin):
     inlines = [PurchaseInvoiceLineInline, PurchaseInvoiceMatchInline]
     list_select_related = ('vendor', 'organization')
 
+
+class LandedCostLineInline(admin.TabularInline):
+    model = LandedCostLine
+    extra = 0
+    fields = ('description', 'amount', 'credit_account')
+    autocomplete_fields = ('credit_account',)
+
+
+class LandedCostAllocationInline(admin.TabularInline):
+    model = LandedCostAllocation
+    extra = 0
+    fields = ('purchase_line', 'amount', 'factor')
+    readonly_fields = fields
+    can_delete = False
+
+
+@admin.register(LandedCostDocument)
+class LandedCostDocumentAdmin(admin.ModelAdmin):
+    list_display = (
+        'purchase_invoice',
+        'document_date',
+        'basis',
+        'total_cost',
+        'is_applied',
+    )
+    list_filter = ('basis', 'is_applied', 'organization')
+    search_fields = ('purchase_invoice__invoice_number', 'purchase_invoice__vendor__display_name')
+    readonly_fields = ('applied_at', 'journal')
+    inlines = [LandedCostLineInline, LandedCostAllocationInline]
+    actions = ['apply_selected']
+
+    @admin.action(description="Apply landed cost")
+    def apply_selected(self, request, queryset):
+        service = LandedCostService(request.user)
+        applied = 0
+        for doc in queryset.select_related("purchase_invoice", "organization"):
+            try:
+                service.apply(doc)
+                applied += 1
+            except Exception as exc:  # noqa: BLE001 - surface failure to admin
+                self.message_user(request, f"{doc}: {exc}", level=messages.ERROR)
+        if applied:
+            self.message_user(
+                request,
+                f"Applied landed cost on {applied} document(s).",
+                level=messages.SUCCESS,
+            )
 
 class SalesInvoiceLineInline(admin.TabularInline):
     model = SalesInvoiceLine

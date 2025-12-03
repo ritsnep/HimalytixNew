@@ -7,7 +7,7 @@ import pytest
 
 from accounting.services.inventory_posting_service import InventoryPostingService
 from accounting.services.journal_entry_service import JournalEntryService
-from Inventory.models import InventoryItem
+from inventory.models import InventoryItem
 
 pytestmark = pytest.mark.django_db
 

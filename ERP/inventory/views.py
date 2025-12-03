@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum, Count
+from django.db.models import Sum, Count, F
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
@@ -16,6 +16,119 @@ from .models import (
     StockLedger,
 )
 from .services import InventoryService
+
+
+@login_required
+def stock_report(request):
+    """Display current stock levels across all warehouses."""
+    organization = _get_request_organization(request)
+    if organization is None:
+        messages.error(request, 'Select an organization to view stock.')
+        return redirect('dashboard')
+    
+    # Get filters
+    selected_warehouse = request.GET.get('warehouse', '')
+    selected_product = request.GET.get('product', '')
+    
+    # Build queryset
+    stock_items = InventoryItem.objects.filter(
+        organization=organization
+    ).select_related(
+        'product', 'warehouse', 'location', 'batch'
+    ).annotate(
+        total_value=F('quantity_on_hand') * F('unit_cost')
+    ).order_by('product__code', 'warehouse__code')
+    
+    # Apply filters
+    if selected_warehouse:
+        stock_items = stock_items.filter(warehouse_id=selected_warehouse)
+    if selected_product:
+        stock_items = stock_items.filter(product_id=selected_product)
+    
+    # Get filter options
+    warehouses = Warehouse.objects.filter(
+        organization=organization, is_active=True
+    ).order_by('name')
+    
+    products = Product.objects.filter(
+        organization=organization, is_inventory_item=True
+    ).order_by('name')
+    
+    context = {
+        'organization': organization,
+        'stock_items': stock_items,
+        'warehouses': warehouses,
+        'products': products,
+        'selected_warehouse': selected_warehouse,
+        'selected_product': selected_product,
+    }
+    return render(request, 'inventory/stock_report.html', context)
+
+
+@login_required
+def ledger_report(request):
+    """Display stock ledger movements with filtering."""
+    organization = _get_request_organization(request)
+    if organization is None:
+        messages.error(request, 'Select an organization to view ledger.')
+        return redirect('dashboard')
+    
+    # Get filters
+    selected_warehouse = request.GET.get('warehouse', '')
+    selected_product = request.GET.get('product', '')
+    selected_txn_type = request.GET.get('txn_type', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    
+    # Build queryset
+    ledger_entries = StockLedger.objects.filter(
+        organization=organization
+    ).select_related(
+        'product', 'warehouse', 'location', 'batch'
+    ).order_by('-txn_date', '-id')
+    
+    # Apply filters
+    if selected_warehouse:
+        ledger_entries = ledger_entries.filter(warehouse_id=selected_warehouse)
+    if selected_product:
+        ledger_entries = ledger_entries.filter(product_id=selected_product)
+    if selected_txn_type:
+        ledger_entries = ledger_entries.filter(txn_type=selected_txn_type)
+    if date_from:
+        ledger_entries = ledger_entries.filter(txn_date__gte=date_from)
+    if date_to:
+        ledger_entries = ledger_entries.filter(txn_date__lte=date_to)
+    
+    # Limit to 100 for performance
+    ledger_entries = ledger_entries[:100]
+    
+    # Get filter options
+    warehouses = Warehouse.objects.filter(
+        organization=organization, is_active=True
+    ).order_by('name')
+    
+    products = Product.objects.filter(
+        organization=organization, is_inventory_item=True
+    ).order_by('name')
+    
+    txn_types = StockLedger.objects.filter(
+        organization=organization
+    ).values_list('txn_type', flat=True).distinct().order_by('txn_type')
+    
+    context = {
+        'organization': organization,
+        'ledger_entries': ledger_entries,
+        'warehouses': warehouses,
+        'products': products,
+        'txn_types': txn_types,
+        'selected_warehouse': selected_warehouse,
+        'selected_product': selected_product,
+        'selected_txn_type': selected_txn_type,
+        'date_from': date_from,
+        'date_to': date_to,
+    }
+    return render(request, 'inventory/ledger_report.html', context)
+
 
 @login_required
 def dashboard(request):
@@ -293,3 +406,133 @@ def stock_issue_create(request):
         'form_id': 'stock-issue-form',
     }
     return render(request, 'Inventory/stock_transaction_form.html', context)
+
+
+@login_required
+def stock_report(request):
+    \"\"\"Display current stock levels across all warehouses.\"\"\"
+    organization = _get_request_organization(request)
+    if organization is None:
+        messages.error(request, 'Select an organization to view stock.')
+        return redirect('dashboard')
+
+    # Get filter parameters
+    warehouse_id = request.GET.get('warehouse')
+    product_id = request.GET.get('product')
+    
+    # Base queryset
+    stock_items = InventoryItem.objects.filter(
+        organization=organization
+    ).select_related(
+        'product', 'warehouse', 'location', 'batch'
+    ).order_by('product__code', 'warehouse__code')
+
+    # Apply filters
+    if warehouse_id:
+        stock_items = stock_items.filter(warehouse_id=warehouse_id)
+    if product_id:
+        stock_items = stock_items.filter(product_id=product_id)
+
+    # Calculate total value
+    from django.db.models import DecimalField, ExpressionWrapper, F
+    stock_items = stock_items.annotate(
+        total_value=ExpressionWrapper(
+            F('quantity_on_hand') * F('unit_cost'),
+            output_field=DecimalField(max_digits=24, decimal_places=4)
+        )
+    )
+
+    # Get warehouses and products for filter dropdowns
+    warehouses = Warehouse.objects.filter(
+        organization=organization, is_active=True
+    ).order_by('name')
+    
+    products = Product.objects.filter(
+        organization=organization, is_inventory_item=True
+    ).order_by('name')
+
+    context = {
+        'organization': organization,
+        'stock_items': stock_items,
+        'warehouses': warehouses,
+        'products': products,
+        'selected_warehouse': warehouse_id,
+        'selected_product': product_id,
+    }
+    return render(request, 'inventory/stock_report.html', context)
+
+
+@login_required
+def ledger_report(request):
+    \"\"\"Display stock movement history with filters.\"\"\"
+    organization = _get_request_organization(request)
+    if organization is None:
+        messages.error(request, 'Select an organization to view ledger.')
+        return redirect('dashboard')
+
+    # Get filter parameters
+    warehouse_id = request.GET.get('warehouse')
+    product_id = request.GET.get('product')
+    txn_type = request.GET.get('txn_type')
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+    
+    # Base queryset
+    ledger_entries = StockLedger.objects.filter(
+        organization=organization
+    ).select_related(
+        'product', 'warehouse', 'location', 'batch'
+    ).order_by('-txn_date', '-id')
+
+    # Apply filters
+    if warehouse_id:
+        ledger_entries = ledger_entries.filter(warehouse_id=warehouse_id)
+    if product_id:
+        ledger_entries = ledger_entries.filter(product_id=product_id)
+    if txn_type:
+        ledger_entries = ledger_entries.filter(txn_type=txn_type)
+    if date_from:
+        try:
+            from datetime import datetime
+            date_from_obj = datetime.strptime(date_from, '%Y-%m-%d').date()
+            ledger_entries = ledger_entries.filter(txn_date__gte=date_from_obj)
+        except ValueError:
+            messages.warning(request, 'Invalid date format for start date.')
+    if date_to:
+        try:
+            from datetime import datetime
+            date_to_obj = datetime.strptime(date_to, '%Y-%m-%d').date()
+            ledger_entries = ledger_entries.filter(txn_date__lte=date_to_obj)
+        except ValueError:
+            messages.warning(request, 'Invalid date format for end date.')
+
+    # Limit to recent 100 entries for performance
+    ledger_entries = ledger_entries[:100]
+
+    # Get filter options
+    warehouses = Warehouse.objects.filter(
+        organization=organization, is_active=True
+    ).order_by('name')
+    
+    products = Product.objects.filter(
+        organization=organization, is_inventory_item=True
+    ).order_by('name')
+
+    # Transaction types
+    txn_types = StockLedger.objects.filter(
+        organization=organization
+    ).values_list('txn_type', flat=True).distinct()
+
+    context = {
+        'organization': organization,
+        'ledger_entries': ledger_entries,
+        'warehouses': warehouses,
+        'products': products,
+        'txn_types': sorted(txn_types),
+        'selected_warehouse': warehouse_id,
+        'selected_product': product_id,
+        'selected_txn_type': txn_type,
+        'date_from': date_from,
+        'date_to': date_to,
+    }
+    return render(request, 'inventory/ledger_report.html', context)

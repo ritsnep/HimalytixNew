@@ -1,104 +1,143 @@
-# Voucher-Entry Cleanup Plan & Reference Map
+# Journal-Entry Consolidation Plan & Reference Map
 
-This file lists duplicated voucher/journal entry endpoints, templates, views, and all tests/templates/docs that reference the legacy HTMX `journal_entry` UI. Use this when archiving legacy files and updating references so the project has one canonical `voucher-entry` UI.
+This document outlines the plan to consolidate all voucher/journal entry functionality under the `journal-entry` UI, making `http://127.0.0.1:8000/accounting/journal-entry/` the canonical endpoint. All `voucher-entry` related components will be removed, archived, or migrated to support the `journal-entry` flow.
 
-## Duplicated endpoints / views / templates (candidates to archive)
+## Canonical Endpoint
 
-- `ERP/accounting/templates/accounting/journal_entry.html`  — HTMX spreadsheet-like journal UI (archive)
-- `ERP/accounting/templates/accounting/_journal_line_row.html` — HTMX row fragment (archive)
-- `ERP/accounting/templates/accounting/partials/line_empty_form.html` — HTMX empty row fragment (archive)
-- `journal_entry_replace_pack/` (entire directory) — drop-in replacement bundle with duplicate `journal_entry.html` and static assets (archive)
-- `ERP/accounting/templates/accounting/voucher_entry_backup.html` — preserved backup (move to archive)
-- Duplicate `VoucherEntryView` classes:
-  - `ERP/accounting/views/views.py::VoucherEntryView`
-  - `ERP/accounting/views/voucher.py::VoucherEntryView`
-  (review and keep the canonical implementation; archive the duplicate)
-- Static duplicates inside the replace-pack:
-  - `journal_entry_replace_pack/.../static/accounting/js/voucher_entry.js`
-  - `journal_entry_replace_pack/.../static/accounting/css/voucher_entry.css`
+The canonical endpoint for all journal/voucher entry functionality is:
+- `http://127.0.0.1:8000/accounting/journal-entry/` (name=`accounting:journal_entry`)
 
-## Journal/HTMX endpoints (legacy) referenced in `ERP/accounting/urls.py`
+## Duplicated Endpoints / Views / Templates (Candidates for Archival/Removal)
 
-These routes are part of the HTMX journal flow and are candidates for removal / consolidation if you want only the `voucher-entry` UI:
+The following files and components are identified as `voucher-entry` related and should be archived or removed. Features from these components should be migrated to the `journal-entry` UI as needed.
 
-- `/accounting/journal-entry/` (name=`accounting:journal_entry`) and supporting endpoints:
-  - `/accounting/journal-entry/save-draft/` (`journal_save_draft`)
-  - `/accounting/journal-entry/submit/` (`journal_submit`)
-  - `/accounting/journal-entry/approve/` (`journal_approve`)
-  - `/accounting/journal-entry/reject/` (`journal_reject`)
-  - `/accounting/journal-entry/post/` (`journal_post`)
-  - `/accounting/journal-entry/htmx/get_row_template/` (row template)
-  - `/accounting/journal-entry/lookup/accounts/` and similar lookups
-  - attachment, prefs, payment-terms endpoints used by the HTMX UI
+### Templates
+- `ERP/accounting/templates/accounting/voucher_entry.html`
+- `ERP/accounting/templates/accounting/voucher_entry_new.html`
+- `ERP/accounting/templates/accounting/voucher_entry_backup.html`
+- `ERP/accounting/templates/accounting/partials/voucher_line_row.html` (if specific to voucher-entry)
 
-If you consolidate to `voucher-entry` these endpoints should be either removed or re-pointed to voucher-specific handlers.
+### Views
+- `ERP/accounting/views/views.py::VoucherEntryView` (This is a duplicate of the one in `voucher.py`. The one in `voucher.py` seems more feature-rich with schema resolution and custom validation rules. We need to decide which one to keep and rename it to `JournalEntryView` or similar, or consolidate their functionalities.)
+- `ERP/accounting/views/voucher.py::VoucherEntryView` (See above. This is likely the one to keep and adapt for `journal-entry`.)
+- `ERP/accounting/views/voucher_create_view.py::VoucherCreateView`
+- `ERP/accounting/views/voucher_create_view.py::VoucherCreateHtmxView`
+- `ERP/accounting/views/voucher_create_view.py::VoucherAccountLookupHtmxView`
+- `ERP/accounting/views/voucher_create_view.py::VoucherTaxCalculationHtmxView`
+- `ERP/accounting/views/voucher_edit_view.py::VoucherEditView`
+- `ERP/accounting/views/voucher_detail_view.py::VoucherDetailView`
+- `ERP/accounting/views/voucher_list_view.py::VoucherListView`
+- `ERP/accounting/views/voucher_crud_views.py::VoucherListView`
+- `ERP/accounting/views/voucher_crud_views.py::VoucherCreateView`
+- `ERP/accounting/views/voucher_crud_views.py::VoucherDetailView`
+- `ERP/accounting/views/voucher_crud_views.py::VoucherUpdateView`
+- `ERP/accounting/views/voucher_crud_views.py::VoucherDeleteView`
+- `ERP/accounting/views/voucher_crud_views.py::VoucherDuplicateView`
+- `ERP/accounting/views/voucher_crud_views.py::VoucherPostView`
+- `ERP/accounting/views/voucher_htmx_handlers.py` (entire file, if all handlers are voucher-specific)
+- `ERP/accounting/views/voucher_views.py` (entire file, if all views are legacy voucher-specific)
 
-## Tests, templates, and code references to update after archival
+### URLs (from `ERP/accounting/urls.py`)
+- `/accounting/voucher-entry/` (name=`accounting:voucher_entry_list`)
+- `/accounting/voucher-entry/create/` (name=`accounting:voucher_entry_create`)
+- `/accounting/voucher-entry/create/<str:journal_type>/` (name=`accounting:voucher_entry_create_typed`)
+- `/accounting/voucher-entry/<int:pk>/` (name=`accounting:voucher_entry_detail`)
+- `/accounting/voucher-entry/<int:pk>/edit/` (name=`accounting:voucher_entry_edit`)
+- `/accounting/voucher-entry/htmx/add-line/` (name=`accounting:voucher_entry_add_line_hx`)
+- `/accounting/voucher-entry/htmx/account-lookup/` (name=`accounting:voucher_entry_account_lookup_hx`)
+- `/accounting/voucher-entry/htmx/tax-calculation/` (name=`accounting:voucher_entry_tax_calculation_hx`)
+- `/accounting/voucher-entry/` (name=`accounting:voucher_entry`) - *This is a duplicate entry in urls.py, needs to be removed.*
+- `/accounting/voucher-entry/<int:config_id>/` (name=`accounting:voucher_entry_config`) - *This is a duplicate entry in urls.py, needs to be removed.*
+- All URLs under `path('vouchers/', ...)` and `path('vouchers/htmx/', ...)` related to `voucher_crud_views` and `voucher_htmx_handlers`.
 
-Search results for `accounting:journal_entry` show the following files referencing the legacy route — each should be updated to point to `accounting:voucher_entry` or adjusted as appropriate:
+### Models/Migrations
+- `ERP/accounting/models.py` (references to `scope="voucher_entry"` in `VoucherUIPreference` and permissions like `add_voucher_entry`)
+- `ERP/accounting/migrations/0025_alter_journal_options_alter_fiscalyear_id.py` (permissions related to `voucher_entry`)
+- `ERP/accounting/migrations/0048_alter_journal_options_and_more.py` (permissions related to `voucher_entry`)
+- `ERP/accounting/migrations/0146_alter_fiscalyear_id_voucheruipreference.py` (references to `scope='voucher_entry'`)
 
-- `journal_entry_replace_pack/journal_entry_replace_pack/sidebar_snippet.html`
-- `journal_entry_replace_pack/journal_entry_replace_pack/README-INSTALL.md`
-- `ERP/tests/test_journal_entry_api.py` (references `accounting:journal_entry_data`) — update tests to use voucher endpoints or mock appropriately
-- `ERP/templates/partials/left-sidebar.html` (sidebar link)
-- `ERP/billing/templates/billing/invoice_create_template.html` (button/link to journal_entry)
-- `ERP/accounting/views/journal_entry_view.py` (internal redirects; may reference `journal_entry_new`)
-- `ERP/accounting/views/journal_entry.py` (uses `reverse('accounting:journal_entry_data')`)
-- `ERP/accounting/services/report_service.py` (calls `reverse('accounting:journal_entry_detail', args=[journal_id])`)
-- `ERP/accounting/tests/test_journal_entry_ui.py` (reverse('accounting:journal_entry'))
-- `ERP/accounting/templates/accounting/journal_select_config.html` (JS `URL('{% url 'accounting:journal_entry' %}')`)
-- `ERP/accounting/templates/accounting/partials/journal_grid_footer.html` (HX actions interacting with journal grid)
-- `ERP/accounting/templates/accounting/voucher_list.html` (links: `href="{% url 'accounting:journal_entry' %}?voucher_id={{ voucher.pk }}`)
-- `ERP/accounting/templates/accounting/journal_entry_grid.html` (data-add-row-url etc.)
-- `ERP/accounting/management/commands/test_ui_interactions.py` (placeholder reverse calls to `accounting:journal_entry`)
+### Static Assets
+- `ERP/accounting/templates/accounting/journal_entry.html` (references `voucher_entry.css` and `voucher_entry.js`)
+- `ERP/accounting/css/voucher_entry.css`
+- `ERP/accounting/css/voucher_entry_dason.css`
+- `ERP/accounting/js/voucher_entry.js`
 
-Also update documentation references and flow docs that mention the HTMX UI and fragments:
+## References to Update
 
-- `ERP/accounting/JOURNAL_ENTRY_FLOW.md`
-- `ERP/VOUCHER_ENTRY_FINALIZATION_REPORT.md` and other `ERP/VOUCHER_ENTRY_*` docs that show `journal_entry` examples
-- `Docs/consolidated_todo_register.md` (mentions HTMX fragment templates)
+All references to `voucher_entry` in templates, views, and tests should be updated to point to the canonical `journal_entry` endpoints or removed if the functionality is no longer needed.
 
-## HTMX fragment includes to update or remove
+- `ERP/accounting/views/voucher_detail_view.py` (redirects to `voucher_entry_edit`, `voucher_entry_detail`)
+- `ERP/accounting/views/voucher_edit_view.py` (redirects to `voucher_entry_detail`)
+- `ERP/accounting/views/voucher_crud_views.py` (references `voucher_entry_new`, `voucher_entry_page`, `cancel_url` to `voucher_detail`)
+- `ERP/accounting/views/voucher_create_view.py` (redirects to `voucher_entry_detail`)
+- `ERP/accounting/views/journal_entry.py` (references `voucher_entry_page`, `scope="voucher_entry"`)
+- `ERP/accounting/tests/test_views.py` (tests for `voucher_entry`, `voucher_entry_config`)
+- `ERP/accounting/tests/test_voucher_view.py` (tests for `voucher_entry_config`)
+- `ERP/accounting/templates/accounting/base_voucher.html` (links to `voucher_entry_list`, `voucher_entry_add_line_hx`)
+- `ERP/accounting/templates/accounting/base.html` (links to `voucher_entry_list`, `voucher_entry_create`)
+- `ERP/accounting/templates/accounting/journal_entry_detail.html` (links to `voucher_entry_list`, `voucher_entry_edit`)
+- `ERP/accounting/templates/accounting/journal_entry_list.html` (links to `voucher_entry_create`, `voucher_entry_detail`)
+- `ERP/accounting/templates/accounting/voucher_entry.html` (contains `voucher-entry-container`, `voucher-entry-form`)
+- `ERP/accounting/templates/accounting/vouchers/voucher_header.html` (redirects to `/accounting/voucher-entry/` + configId)
 
-If you archive the HTMX journal UI you'll need to remove or migrate these fragment templates and the views that render them:
+## Migration of Features
 
-- `ERP/accounting/templates/accounting/partials/line_empty_form.html` (rendered by `JournalEntryRowTemplateView`)
-- `ERP/accounting/templates/accounting/_journal_line_row.html` (rendered by various journal views)
-- Views producing fragments:
-  - `ERP/accounting/views/journal_entry_view.py::JournalEntryRowTemplateView`
-  - `ERP/accounting/views/journal_views.py` (renders `_journal_line_row.html`)
-  - `ERP/accounting/views/journal_entry_view.py::JournalValidateLineView` (line validation)
+The following features from `voucher-entry` components should be carefully reviewed and migrated to the canonical `journal-entry` UI and its supporting views (e.g., `ERP/accounting/views/views.py::JournalEntryView` or a new dedicated `JournalEntryView`):
 
-## Suggested git move commands (example)
+### From `ERP/accounting/views/voucher.py::VoucherEntryView`
+- **Schema Resolution and Dynamic Form Building:** The `_get_voucher_schema` and `_create_voucher_forms` methods in `ERP/accounting/views/voucher.py` provide robust schema-driven form generation, including:
+    - Dynamic inclusion/exclusion of dimensional fields (department, project, cost_center) based on `VoucherModeConfig`.
+    - Dynamic inclusion/exclusion of tax details.
+    - Enforcement of required line descriptions.
+    - Handling of multi-currency fields.
+    - Injection of User-Defined Fields (UDFs) into header and line schemas.
+- **Custom Validation Rules:** Implementation of custom validation rules defined in `VoucherModeConfig` (e.g., `max_lines`, `debit_accounts_only`, `no_tax_without_account`).
+- **Single-Entry Auto-Balancing:** The logic for automatically balancing single-entry vouchers using a default ledger account.
 
-Create a branch and archive folder, then `git mv` the legacy files into it. Example (PowerShell):
+### From `ERP/accounting/templates/accounting/voucher_entry.html` and `voucher_entry_new.html`
+- **Dynamic UI Rendering:** The ability to dynamically render form fields and sections based on the `VoucherModeConfig` and its associated schema.
+- **HTMX-driven Interactions:** Any advanced HTMX interactions for adding/removing lines, account lookups, tax calculations, and real-time validation should be integrated.
+- **Client-side Validation:** JavaScript-based validation for debit/credit balance and other immediate feedback.
+- **Voucher Configuration Selection:** The mechanism for users to select different voucher configurations to change the form's behavior and appearance.
+
+### From `ERP/accounting/views/voucher_crud_views.py` and `voucher_htmx_handlers.py`
+- **CRUD Operations:** Ensure that the `journal-entry` flow supports comprehensive Create, Read, Update, and Delete (CRUD) operations for journal entries and their lines, potentially incorporating robust error handling and messaging.
+- **HTMX Handlers:** Migrate essential HTMX handlers for dynamic line management, account lookups, tax calculations, and status validations to support the `journal-entry` UI.
+
+## Suggested Git Move Commands (Example)
+
+Create a branch and an archive folder, then `git mv` the legacy files into it. Example (PowerShell):
 
 ```powershell
-git checkout -b cleanup/consolidate-voucher-entry
-mkdir -Force ERP\accounting\archive
-git mv ERP\accounting\templates\accounting\journal_entry.html ERP\accounting\archive\journal_entry.html
-git mv ERP\accounting\templates\accounting\_journal_line_row.html ERP\accounting\archive\_journal_line_row.html
-git mv ERP\accounting\templates\accounting\partials\line_empty_form.html ERP\accounting\archive\line_empty_form.html
-git mv ERP\accounting\templates\accounting\voucher_entry_backup.html ERP\accounting\archive\voucher_entry_backup.html
-git mv journal_entry_replace_pack ERP\accounting\archive\journal_entry_replace_pack
+git checkout -b cleanup/consolidate-journal-entry
+mkdir -Force ERP\accounting\archive\voucher_entry
+git mv ERP\accounting\templates\accounting\voucher_entry.html ERP\accounting\archive\voucher_entry\voucher_entry.html
+git mv ERP\accounting\templates\accounting\voucher_entry_new.html ERP\accounting\archive\voucher_entry\voucher_entry_new.html
+git mv ERP\accounting\templates\accounting\voucher_entry_backup.html ERP\accounting\archive\voucher_entry\voucher_entry_backup.html
+git mv ERP\accounting\templates\accounting\partials\voucher_line_row.html ERP\accounting\archive\voucher_entry\partials\voucher_line_row.html
+git mv ERP\accounting\views\voucher.py ERP\accounting\archive\voucher_entry\voucher.py
+git mv ERP\accounting\views\voucher_create_view.py ERP\accounting\archive\voucher_entry\voucher_create_view.py
+git mv ERP\accounting\views\voucher_edit_view.py ERP\accounting\archive\voucher_entry\voucher_edit_view.py
+git mv ERP\accounting\views\voucher_detail_view.py ERP\accounting\archive\voucher_entry\voucher_detail_view.py
+git mv ERP\accounting\views\voucher_list_view.py ERP\accounting\archive\voucher_entry\voucher_list_view.py
+git mv ERP\accounting\views\voucher_crud_views.py ERP\accounting\archive\voucher_entry\voucher_crud_views.py
+git mv ERP\accounting\views\voucher_htmx_handlers.py ERP\accounting\archive\voucher_entry\voucher_htmx_handlers.py
+git mv ERP\accounting\views\voucher_views.py ERP\accounting\archive\voucher_entry\voucher_views.py
+git mv ERP\accounting\css\voucher_entry.css ERP\accounting\archive\voucher_entry\voucher_entry.css
+git mv ERP\accounting\css\voucher_entry_dason.css ERP\accounting\archive\voucher_entry\voucher_entry_dason.css
+git mv ERP\accounting\js\voucher_entry.js ERP\accounting\archive\voucher_entry\voucher_entry.js
 git add -A
-git commit -m "chore: archive legacy journal-entry HTMX templates and duplicate static assets"
+git commit -m "chore: archive legacy voucher-entry templates, views, and static assets"
 ```
 
-After moves, update references listed above, run tests, and manually smoke-test `/accounting/voucher-entry/`.
+## Quick Checklist for Updates
 
-## Quick checklist to update references
-
-- Replace `{% url 'accounting:journal_entry' %}` occurrences with `{% url 'accounting:voucher_entry' %}` where appropriate.
-- Update tests that `reverse('accounting:journal_entry')` to use voucher routes or to target API endpoints used by voucher-entry flows.
-- Remove or update sidebar/navigation snippets that point to journal_entry.
-- Ensure voucher list/detail pages link to voucher-entry endpoints instead of journal-entry.
-
----
-
-If you want, I can now:
-
-- Produce an automated `git mv` script with the exact files I found in this repo and open a branch with those moves (I will not commit without your approval). 
-- Run a repo-wide replacement preview for `accounting:journal_entry` → `accounting:voucher_entry` and list proposed changes.
-
-Tell me which action to take next.
+- **URLs:** Remove all `voucher-entry` related paths from `ERP/accounting/urls.py`.
+- **Templates:** Update all `{% url 'accounting:voucher_entry_...' %}` occurrences to `{% url 'accounting:journal_entry_...' %}` or `{% url 'accounting:journal_...' %}` where appropriate.
+- **Views:**
+    - Consolidate `VoucherEntryView` implementations. The one in `ERP/accounting/views/voucher.py` appears more feature-rich and should be considered for integration into `ERP/accounting/views/views.py::JournalEntryView` or a new dedicated `JournalEntryView`.
+    - Update any redirects or `reverse()` calls in views that currently point to `voucher-entry` URLs.
+    - Migrate any unique logic from `voucher-entry` views to `journal-entry` views.
+- **Tests:** Update tests that `reverse('accounting:voucher_entry')` or similar to use `journal-entry` routes or to target API endpoints used by `journal-entry` flows.
+- **Models/Migrations:** Review and update `VoucherUIPreference` scope and permissions related to `voucher_entry` to `journal_entry`.
+- **Static Assets:** Remove `voucher_entry.css`, `voucher_entry_dason.css`, and `voucher_entry.js` after ensuring their functionalities are either no longer needed or have been migrated to `journal-entry` specific assets.

@@ -14,7 +14,7 @@
 
 ### Create a Price List
 ```python
-from Inventory.models import PriceList, PriceListItem, Product
+from inventory.models import PriceList, PriceListItem, Product
 
 # Create price list
 price_list = PriceList.objects.create(
@@ -56,7 +56,7 @@ PriceListItem.objects.create(
 
 ### Assign Price List to Customer
 ```python
-from Inventory.models import CustomerPriceList
+from inventory.models import CustomerPriceList
 
 CustomerPriceList.objects.create(
     organization=org,
@@ -69,7 +69,7 @@ CustomerPriceList.objects.create(
 
 ### Create Promotional Campaign
 ```python
-from Inventory.models import PromotionRule
+from inventory.models import PromotionRule
 from django.utils import timezone
 
 promo = PromotionRule.objects.create(
@@ -94,8 +94,8 @@ promo.apply_to_products.add(product)
 
 ### Pick → Pack → Ship Workflow
 ```python
-from Inventory.services.fulfillment_service import PickPackShipService
-from Inventory.models import Warehouse, Product
+from inventory.services.fulfillment_service import PickPackShipService
+from inventory.models import Warehouse, Product
 
 service = PickPackShipService(organization=org)
 warehouse = Warehouse.objects.get(code='WH-01')
@@ -155,7 +155,7 @@ service.update_shipment_status(
 
 ### Backorder Management
 ```python
-from Inventory.services.fulfillment_service import BackorderService
+from inventory.services.fulfillment_service import BackorderService
 
 service = BackorderService(organization=org)
 
@@ -183,7 +183,7 @@ if available_qty > 0:
 
 ### RMA Processing
 ```python
-from Inventory.services.fulfillment_service import RMAService
+from inventory.services.fulfillment_service import RMAService
 
 service = RMAService(organization=org)
 
@@ -505,19 +505,19 @@ from celery.schedules import crontab
 app.conf.beat_schedule = {
     # Inventory tasks
     'check-low-stock-daily': {
-        'task': 'Inventory.tasks.check_low_stock_alerts',
+        'task': 'inventory.tasks.check_low_stock_alerts',
         'schedule': crontab(hour=8, minute=0),  # 8 AM daily
     },
     'generate-replenishment-daily': {
-        'task': 'Inventory.tasks.generate_replenishment_suggestions',
+        'task': 'inventory.tasks.generate_replenishment_suggestions',
         'schedule': crontab(hour=9, minute=0),  # 9 AM daily
     },
     'process-backorders': {
-        'task': 'Inventory.tasks.process_backorder_fulfillment',
+        'task': 'inventory.tasks.process_backorder_fulfillment',
         'schedule': crontab(minute='*/240'),  # Every 4 hours
     },
     'apply-promotions-hourly': {
-        'task': 'Inventory.tasks.apply_promotional_pricing',
+        'task': 'inventory.tasks.apply_promotional_pricing',
         'schedule': crontab(minute=0),  # Every hour
     },
     
@@ -572,7 +572,7 @@ app.conf.beat_schedule = {
 ### Run Tasks Manually
 ```python
 # Immediate execution
-from Inventory.tasks import check_low_stock_alerts
+from inventory.tasks import check_low_stock_alerts
 result = check_low_stock_alerts.delay()
 
 # Get result
