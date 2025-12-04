@@ -444,6 +444,10 @@
     
     // Initialize on DOM Ready
     document.addEventListener('DOMContentLoaded', function() {
+        // Ensure the first tab stays visible (some custom scripts/styles may clear active state)
+        if (FORM_CONFIG.enableTabs) {
+            showTab('single');
+        }
         
         // Initialize Datepickers
         if (typeof $.fn.datepicker !== 'undefined') {
@@ -508,6 +512,10 @@
 
     // HTMX Event Handlers
     document.body.addEventListener('htmx:afterSwap', function(event) {
+        // Re-assert tab state after HTMX swaps to prevent accidental blank tab panes
+        if (FORM_CONFIG.enableTabs) {
+            showTab('single');
+        }
         // Reinitialize components after HTMX swap
         if (typeof $.fn.datepicker !== 'undefined') {
             $('.datepicker').datepicker({

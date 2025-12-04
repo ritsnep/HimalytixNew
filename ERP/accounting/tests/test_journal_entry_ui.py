@@ -209,7 +209,7 @@ class JournalEntryIntegrationTests(TestCase):
     def test_login_select_org_and_save_journal(self):
         self.assertTrue(self.client.login(username="flow-user", password="pass123"))
 
-        select_url = reverse("select_organization")
+        select_url = reverse("usermanagement:select_organization")
         response = self.client.post(select_url, {"organization": self.organization.pk})
         self.assertEqual(response.status_code, 302)
 

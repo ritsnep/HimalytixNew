@@ -1,0 +1,21 @@
+{{ form.non_field_errors }}
+<div class="row g-3">
+  <div class="col-md-6">
+    <label class="form-label">Code</label>
+    {{ form.code }} {{ form.code.errors }}
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Name</label>
+    {{ form.name }} {{ form.name.errors }}
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Parent Category</label>
+    {{ form.parent }} {{ form.parent.errors }}
+  </div>
+  <div class="col-md-6">
+    <div class="form-check mt-4">
+      {{ form.is_active }} {{ form.is_active.errors }}
+      <label class="form-check-label ms-1">Is Active?</label>
+    </div>
+  </div>
+</div>

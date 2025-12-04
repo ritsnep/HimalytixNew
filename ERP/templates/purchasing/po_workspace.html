@@ -1,0 +1,66 @@
+{% extends 'partials/base.html' %}
+{% block content %}
+<div class="main-content">
+  <div class="page-content">
+    <div class="container-fluid">
+      <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+        <div>
+          <h4 class="mb-0">Purchase Orders</h4>
+          <p class="text-muted mb-0">Create, approve, send, and receive purchase orders.</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <ol class="breadcrumb m-0 d-none d-md-flex">
+            <li class="breadcrumb-item">Procurement</li>
+            <li class="breadcrumb-item active">Purchase Orders</li>
+          </ol>
+          <a
+            class="btn btn-success btn-sm"
+            hx-get="{% url 'purchasing:po_create' %}"
+            hx-target="#po-detail-panel"
+            hx-swap="innerHTML">
+            <i class="mdi mdi-plus me-1"></i>
+            New PO
+          </a>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-xl-5">
+          <div class="card h-100">
+            <div
+              class="card-body"
+              id="po-list-panel"
+              hx-get="{% url 'purchasing:po_list' %}"
+              hx-trigger="load, purchaseOrderChanged from:body"
+              hx-target="#po-list-panel"
+              hx-swap="innerHTML">
+              <div class="text-center text-muted py-5">
+                <div class="spinner-border text-primary mb-3" role="status"></div>
+                <p class="mb-0">Loading purchase orders...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-xl-7">
+          <div class="card h-100">
+            <div class="card-body" id="po-detail-panel">
+              <div class="text-center text-muted py-5">
+                <h5>Select or create a purchase order</h5>
+                <p class="mb-3">Use the list on the left to open a PO, or start a new one below.</p>
+                <a
+                  class="btn btn-outline-primary"
+                  hx-get="{% url 'purchasing:po_create' %}"
+                  hx-target="#po-detail-panel"
+                  hx-swap="innerHTML">
+                  Launch PO Form
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

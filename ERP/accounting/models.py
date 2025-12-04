@@ -782,6 +782,68 @@ class ChartOfAccount(models.Model):
     def balance(self):
         return self.current_balance
 
+    @classmethod
+    def get_next_code(cls, org_id, parent_id, account_type_id):
+        """Generate the next account code based on parent/type within an organization."""
+        from django.db import transaction
+        if not org_id:
+            return None
+        with transaction.atomic():
+            if parent_id:
+                try:
+                    parent = cls.objects.get(pk=parent_id)
+                except cls.DoesNotExist:
+                    return None
+                siblings = cls.objects.filter(parent_account=parent, organization_id=org_id)
+                sibling_codes = siblings.values_list('account_code', flat=True)
+                base_code = parent.account_code
+                max_suffix = 0
+                for code in sibling_codes:
+                    if code.startswith(base_code + "."):
+                        try:
+                            suffix = int(code.replace(base_code + ".", ""))
+                            if suffix > max_suffix:
+                                max_suffix = suffix
+                        except ValueError:
+                            continue
+                next_suffix = max_suffix + 1
+                while cls.objects.filter(organization_id=org_id, account_code=f"{base_code}.{next_suffix:02d}").exists():
+                    next_suffix += 1
+                if next_suffix > MAX_COA_SIBLINGS:
+                    raise ValidationError(
+                        f"Maximum number of child accounts ({MAX_COA_SIBLINGS}) reached for this parent."
+                    )
+                return f"{base_code}.{next_suffix:02d}"
+            else:
+                try:
+                    at = AccountType.objects.get(pk=account_type_id)
+                except AccountType.DoesNotExist:
+                    return None
+                root_code = at.nature
+                root_prefix = at.root_code_prefix or cls.NATURE_ROOT_CODE.get(root_code, '9000')
+                step = at.root_code_step or cls.ROOT_STEP
+                top_levels = cls.objects.filter(
+                    parent_account__isnull=True,
+                    organization_id=org_id,
+                    account_code__startswith=root_prefix
+                )
+                max_code = 0
+                for acc in top_levels:
+                    try:
+                        acc_num = int(acc.account_code)
+                        if str(acc_num).startswith(root_prefix) and acc_num > max_code:
+                            max_code = acc_num
+                    except ValueError:
+                        continue
+                if max_code >= int(root_prefix):
+                    next_code = max_code + step
+                else:
+                    next_code = int(root_prefix)
+                # Ensure uniqueness: bump by step until free
+                while cls.objects.filter(organization_id=org_id, account_code=str(next_code).zfill(len(root_prefix))).exists():
+                    next_code = next_code + step
+                return str(next_code).zfill(len(root_prefix))
+
     def clean(self):
         # Circular reference check
         if self.parent_account:
@@ -3130,63 +3192,6 @@ class DimensionValue(models.Model):
 
     def __str__(self):
         return f"{self.dimension.code}:{self.code}"
-    @classmethod
-    def get_next_code(cls, org_id, parent_id, account_type_id):
-        from django.db.models import Q
-        from django.db import transaction
-        if not org_id:
-            return None
-        with transaction.atomic():
-            if parent_id:
-                try:
-                    parent = cls.objects.get(pk=parent_id)
-                except cls.DoesNotExist:
-                    return None
-                siblings = cls.objects.filter(parent_account=parent, organization_id=org_id)
-                sibling_codes = siblings.values_list('account_code', flat=True)
-                base_code = parent.account_code
-                max_suffix = 0
-                for code in sibling_codes:
-                    if code.startswith(base_code + "."):
-                        try:
-                            suffix = int(code.replace(base_code + ".", ""))
-                            if suffix > max_suffix:
-                                max_suffix = suffix
-                        except ValueError:
-                            continue
-                next_suffix = max_suffix + 1
-                if next_suffix > MAX_COA_SIBLINGS:
-                    raise ValidationError(
-                        f"Maximum number of child accounts ({MAX_COA_SIBLINGS}) reached for this parent."
-                    )
-                return f"{base_code}.{next_suffix:02d}"
-            else:
-                from .models import AccountType
-                try:
-                    at = AccountType.objects.get(pk=account_type_id)
-                except AccountType.DoesNotExist:
-                    return None
-                root_code = at.nature
-                root_prefix = at.root_code_prefix or cls.NATURE_ROOT_CODE.get(root_code, '9000')
-                step = at.root_code_step or cls.ROOT_STEP
-                top_levels = cls.objects.filter(
-                    parent_account__isnull=True,
-                    organization_id=org_id,
-                    account_code__startswith=root_prefix
-                )
-                max_code = 0
-                for acc in top_levels:
-                    try:
-                        acc_num = int(acc.account_code)
-                        if str(acc_num).startswith(root_prefix) and acc_num > max_code:
-                            max_code = acc_num
-                    except ValueError:
-                        continue
-                if max_code >= int(root_prefix):
-                    next_code = max_code + step
-                else:
-                    next_code = int(root_prefix)
-                return str(next_code).zfill(len(root_prefix))
 
 
 # Backwards-compatibility alias

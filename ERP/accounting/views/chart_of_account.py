@@ -3,7 +3,7 @@ from django.urls import reverse, reverse_lazy
 from django.utils.decorators import method_decorator
 from django.contrib import messages
 from django.http import HttpResponse, HttpResponseRedirect
-from django.db import transaction
+from django.db import transaction, ProgrammingError, OperationalError
 import logging
 
 from accounting.mixins import PermissionRequiredMixin
@@ -139,6 +139,11 @@ class ChartOfAccountDeleteView(PermissionRequiredMixin, DeleteView):
 
     def get_queryset(self):
         return ChartOfAccount.objects.filter(organization_id=self.request.user.organization.id)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs.pop('organization', None)
+        return kwargs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

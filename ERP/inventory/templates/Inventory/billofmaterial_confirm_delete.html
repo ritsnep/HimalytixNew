@@ -1,0 +1,9 @@
+{% extends "components/base/confirm_delete.html" %}
+{% load static %}
+
+{% block title %}Delete Bill of Material - {{ object.bom_number }}?{% endblock %}
+{% block delete_title %}Delete Bill of Material?{% endblock %}
+{% block delete_message %}
+  Are you sure you want to delete the BOM <strong>{{ object.bom_number }}</strong>?
+  This action cannot be undone.
+{% endblock %}

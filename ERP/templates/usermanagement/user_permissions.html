@@ -77,15 +77,15 @@
                                     {% for role in roles %}
                                     <td>
                                         {% for action in 'view,create,edit,delete'.split %}
-                                        {% with permission=entity.entitypermission_set.filter(role=role, action=action).first %}
-                                        {% if permission %}
-                                        <span class="badge badge-{{ permission.is_active|yesno:'success,danger' }}">
+                                        {% with permission=role.permissions.filter(entity=entity, action=action).first %}
+                                        {% if permission and permission.is_active %}
+                                        <span class="badge badge-success">
                                             {{ action }}
                                         </span>
                                         {% endif %}
                                         {% endwith %}
                                         {% endfor %}
-                                        {% if perms.usermanagement.change_entitypermission %}
+                                        {% if perms.usermanagement.change_permission %}
                                         <button type="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#permissionModal{{ entity.id }}_{{ role.id }}">
                                             <i class="fas fa-edit"></i>
                                         </button>
@@ -153,8 +153,8 @@
             <form method="post" action="{% url 'usermanagement:entity_permission_update' entity.id role.id %}">
                 {% csrf_token %}
                 <div class="modal-body">
-                    {% for action in 'view,create,edit,delete'.split %}
-                    {% with permission=entity.entitypermission_set.filter(role=role, action=action).first %}
+                                        {% for action in 'view,create,edit,delete'.split %}
+                                        {% with permission=role.permissions.filter(entity=entity, action=action).first %}
                     <div class="custom-control custom-switch">
                         <input type="checkbox" class="custom-control-input" id="permission{{ entity.id }}_{{ role.id }}_{{ action }}" name="actions" value="{{ action }}"
                             {% if permission and permission.is_active %}checked{% endif %}>

@@ -10,7 +10,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.forms import AuthenticationForm
 from django import forms
 
-class DasonLoginForm(AuthenticationForm):
+class HimalytixLoginForm(AuthenticationForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['username'].widget = forms.TextInput(attrs={
@@ -57,6 +57,9 @@ class LoginForm(forms.Form):
         if not user:
             raise forms.ValidationError('Invalid username or password')
         return self.cleaned_data
+
+# Backwards compat alias for imports that still reference the old DasonLoginForm name
+DasonLoginForm = HimalytixLoginForm
 class CustomUserCreationForm(UserCreationForm):
     class Meta:
         model = CustomUser

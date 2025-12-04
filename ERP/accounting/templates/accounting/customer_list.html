@@ -7,11 +7,26 @@
     <tr>
         <th>Code</th>
         <th>Name</th>
+        <th data-default-visible="false">Legal Name</th>
         <th>Status</th>
+        <th data-default-visible="false">On Credit Hold</th>
         <th>Email</th>
         <th>Phone</th>
+        <th data-default-visible="false">Website</th>
         <th>Credit Limit</th>
-        <th>Actions</th>
+        <th data-default-visible="false">Credit Rating</th>
+        <th data-default-visible="false">Credit Review At</th>
+        <th data-default-visible="false">Payment Term</th>
+        <th data-default-visible="false">Default Currency</th>
+        <th data-default-visible="false">AR Account</th>
+        <th data-default-visible="false">Revenue Account</th>
+        <th data-default-visible="false">Tax ID</th>
+        <th data-default-visible="false">Metadata</th>
+        <th data-default-visible="false">Created At</th>
+        <th data-default-visible="false">Updated At</th>
+        <th data-default-visible="false">Created By</th>
+        <th data-default-visible="false">Updated By</th>
+        <th class="no-search">Actions</th>
     </tr>
 </thead>
 {% endblock table_head %}
@@ -22,10 +37,25 @@
     <tr>
         <td>{{ customer.code }}</td>
         <td>{{ customer.display_name }}</td>
+        <td data-searchable="true">{{ customer.legal_name }}</td>
         <td>{{ customer.get_status_display }}</td>
+        <td>{% if customer.on_credit_hold %}<span class="badge bg-warning text-dark">On Hold</span>{% else %}<span class="badge bg-success">No</span>{% endif %}</td>
         <td>{{ customer.email }}</td>
         <td>{{ customer.phone_number }}</td>
+        <td>{{ customer.website }}</td>
         <td>{{ customer.credit_limit }}</td>
+        <td>{{ customer.credit_rating }}</td>
+        <td>{{ customer.credit_review_at }}</td>
+        <td>{{ customer.payment_term }}</td>
+        <td>{{ customer.default_currency }}</td>
+        <td>{{ customer.accounts_receivable_account }}</td>
+        <td>{{ customer.revenue_account }}</td>
+        <td>{{ customer.tax_id }}</td>
+        <td>{{ customer.metadata }}</td>
+        <td>{{ customer.created_at }}</td>
+        <td>{{ customer.updated_at }}</td>
+        <td>{{ customer.created_by }}</td>
+        <td>{{ customer.updated_by }}</td>
         <td><a class="btn btn-sm btn-primary" href="{% url 'accounting:customer_edit' customer.pk %}">Edit</a></td>
     </tr>
     {% empty %}

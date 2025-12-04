@@ -42,6 +42,7 @@ class SalesInvoiceListView(PermissionRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context["create_url"] = reverse("accounting:sales_invoice_create")
         context["create_button_text"] = "New Sales Invoice"
+        context.setdefault("page_title", "Sales Invoices")
         return context
 
 

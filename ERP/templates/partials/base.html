@@ -4,8 +4,19 @@
 
 <head>
     <meta charset="utf-8" />
-    <title>{% block title %}{% endblock title %} | Dason - Admin & Dashboard Template</title>
+    <title>{% block title %}{% endblock title %} | Himalytix </title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <script>
+        // Migrate any legacy storage keys from older Dason branding to Himalytix
+        (function(){
+          try {
+            var oldLang = localStorage.getItem('Dason-language');
+            if (oldLang && !localStorage.getItem('himalytix-language')) {
+              localStorage.setItem('himalytix-language', oldLang);
+            }
+          } catch (e) { /* ignore: localStorage may be blocked */ }
+        })();
+      </script>
     <meta content="Premium Multipurpose Admin & Dashboard Template" name="description" />
     <meta content="Themesdesign" name="author" />
     <!-- App favicon -->

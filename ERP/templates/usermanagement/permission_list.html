@@ -7,10 +7,10 @@
     <div class="page-content">
         <div class="container-fluid">
             <h2>Permissions</h2>
-            <a href="{% url 'permission_create' %}" class="btn btn-primary mb-3">Create Permission</a>
+            <a href="{% url 'usermanagement:permission_create' %}" class="btn btn-primary mb-3">Create Permission</a>
             <ul>
                 {% for perm in permissions %}
-                <li>{{ perm.name }} - <a href="{% url 'permission_update' perm.pk %}">Edit</a></li>
+                <li>{{ perm.name }} - <a href="{% url 'usermanagement:permission_update' perm.pk %}">Edit</a></li>
                 {% empty %}
                 <li>No permissions found.</li>
                 {% endfor %}

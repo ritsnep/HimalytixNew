@@ -3,5 +3,5 @@
 <form method="post">
   {% csrf_token %}
   {{ form.as_p }}
-  <button type="submit">Save</button>
+  {% include 'partials/_form_actions.html' with save_text='Create User' %}
 </form>

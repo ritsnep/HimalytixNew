@@ -7,11 +7,24 @@
     <tr>
         <th>Code</th>
         <th>Name</th>
+        <th data-default-visible="false">Legal Name</th>
         <th>Status</th>
+        <th data-default-visible="false">On Hold</th>
         <th>Email</th>
         <th>Phone</th>
+        <th data-default-visible="false">Website</th>
         <th>Payment Term</th>
-        <th>Actions</th>
+        <th data-default-visible="false">Default Currency</th>
+        <th data-default-visible="false">AP Account</th>
+        <th data-default-visible="false">Expense Account</th>
+        <th data-default-visible="false">Tax ID</th>
+        <th data-default-visible="false">Credit Limit</th>
+        <th data-default-visible="false">Notes</th>
+        <th data-default-visible="false">Created At</th>
+        <th data-default-visible="false">Updated At</th>
+        <th data-default-visible="false">Created By</th>
+        <th data-default-visible="false">Updated By</th>
+        <th class="no-search">Actions</th>
     </tr>
 </thead>
 {% endblock table_head %}
@@ -22,10 +35,23 @@
     <tr>
         <td>{{ vendor.code }}</td>
         <td>{{ vendor.display_name }}</td>
+        <td data-searchable="true">{{ vendor.legal_name }}</td>
         <td>{{ vendor.get_status_display }}</td>
+        <td>{% if vendor.on_hold %}<span class="badge bg-warning text-dark">On Hold</span>{% else %}<span class="badge bg-success">No</span>{% endif %}</td>
         <td>{{ vendor.email }}</td>
         <td>{{ vendor.phone_number }}</td>
+        <td>{{ vendor.website }}</td>
         <td>{{ vendor.payment_term }}</td>
+        <td>{{ vendor.default_currency }}</td>
+        <td>{{ vendor.accounts_payable_account }}</td>
+        <td>{{ vendor.expense_account }}</td>
+        <td>{{ vendor.tax_id }}</td>
+        <td>{{ vendor.credit_limit }}</td>
+        <td>{{ vendor.notes }}</td>
+        <td>{{ vendor.created_at }}</td>
+        <td>{{ vendor.updated_at }}</td>
+        <td>{{ vendor.created_by }}</td>
+        <td>{{ vendor.updated_by }}</td>
         <td><a class="btn btn-sm btn-primary" href="{% url 'accounting:vendor_edit' vendor.pk %}">Edit</a></td>
     </tr>
     {% empty %}
@@ -33,3 +59,9 @@
     {% endfor %}
 </tbody>
 {% endblock table_body %}
+
+{% block create_button %}
+<a href="{% url 'accounting:vendor_create' %}" class="btn btn-success btn-sm ms-2">
+    <i class="mdi mdi-plus me-1"></i> New Vendor
+</a>
+{% endblock %}

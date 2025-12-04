@@ -125,7 +125,7 @@
     {% else %}
     <button type="button" class="btn btn-outline-secondary" data-clear-panel>Cancel</button>
     {% endif %}
-    <button type="submit" class="btn btn-primary">Save Invoice</button>
+        {% include 'partials/_form_actions.html' with save_text='Save Invoice' %}
   </div>
 </form>
 <script type="text/template" id="purchase-line-empty-form">

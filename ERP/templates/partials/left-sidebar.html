@@ -357,6 +357,16 @@
                         <li><a href="{% url 'inventory:picklist_list' %}">Pick Lists</a></li>
                         <li><a href="{% url 'inventory:shipment_list' %}">Shipments</a></li>
                         <li><a href="{% url 'inventory:rma_list' %}">RMAs</a></li>
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i class="fas fa-chart-bar"></i>
+                                <span>Reports</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                <li><a href="{% url 'inventory:stock_report' %}">Stock Report</a></li>
+                                <li><a href="{% url 'inventory:ledger_report' %}">Stock Ledger</a></li>
+                            </ul>
+                        </li>
                     </ul>
                 </li>
 
@@ -735,7 +745,7 @@
                 </li>
                 <li class="menu-title" data-key="t-settings">Settings</li>
                 <li>
-                    <a href="{% url 'permission_list' %}">
+                    <a href="{% url 'usermanagement:permission_list' %}">
                         <i data-feather="shield"></i>
                         <span data-key="t-permissions">Permissions</span>
                     </a>

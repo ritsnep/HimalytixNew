@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
 from django.utils.decorators import method_decorator  # Add this import for method_decorator
 from usermanagement.utils import require_permission   # Add this import for require_permission
+from django.db import ProgrammingError, OperationalError
 from accounting.models import VoucherUDFConfig
 from accounting.models import JournalType
 from accounting.models import VoucherModeConfig
@@ -53,6 +54,12 @@ class ChartOfAccountDeleteView(PermissionRequiredMixin, LoginRequiredMixin, Dele
     def get_queryset(self):
         return ChartOfAccount.objects.filter(organization_id=self.request.user.organization.id)
 
+    def get_form_kwargs(self):
+        """Avoid passing organization to the default delete confirmation form."""
+        kwargs = super().get_form_kwargs()
+        kwargs.pop('organization', None)
+        return kwargs
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         obj = self.get_object()
@@ -69,7 +76,26 @@ class ChartOfAccountDeleteView(PermissionRequiredMixin, LoginRequiredMixin, Dele
         if ChartOfAccount.objects.filter(parent_account_id=self.object.pk).exists():
             messages.error(request, "Cannot delete an account that has sub-accounts. Please remove or reassign its children first.")
             return redirect(self.success_url)
-        return super().delete(request, *args, **kwargs)
+        from django.db import connection
+        missing_tables = []
+        if "accounting_landedcostline" not in connection.introspection.table_names():
+            missing_tables.append("accounting_landedcostline")
+        if missing_tables:
+            messages.error(
+                request,
+                f"Delete blocked [COA_DELETE_DB_MISSING]: missing tables {', '.join(missing_tables)}. "
+                "Please run pending migrations."
+            )
+            return redirect(self.success_url)
+        try:
+            return super().delete(request, *args, **kwargs)
+        except (ProgrammingError, OperationalError) as exc:
+            logger.exception("ChartOfAccount delete failed due to database error", exc_info=exc)
+            messages.error(
+                request,
+                f"Delete failed [COA_DELETE_DB]: {exc}. Please contact support or run pending migrations."
+            )
+            return redirect(self.success_url)
 
     def handle_no_permission(self):
         logger.warning(f"User {self.request.user} denied permission to delete ChartOfAccount {self.get_object().pk if self.get_object() else ''}")

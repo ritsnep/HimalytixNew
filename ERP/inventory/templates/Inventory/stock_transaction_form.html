@@ -1,14 +1,30 @@
-{% extends "Inventory/base.html" %}
-{% load crispy_forms_tags %}
+{% extends "components/base/form_base.html" %}
+{% load static %}
 
-{% block inventory_title %}{{ page_title }}{% endblock %}
+{% block title %}{{ page_title|default:"Stock Transaction" }}{% endblock %}
+{% block form_title_text %}{{ page_title|default:"Stock Transaction" }}{% endblock %}
 
-{% block inventory_content %}
-    {% include "Inventory/_form_card.html" with title=card_title subtitle=card_subtitle form=form cancel_url=cancel_url form_id=form_id %}
-    <div class="mt-6 bg-blue-50 border border-blue-100 rounded-md p-4 text-sm text-blue-900">
-        <p class="font-semibold">Need a reminder?</p>
-        <p class="mt-2">
-            Receipts increase on-hand balances and issues decrease them immediately using the moving-average cost that is maintained on each inventory item. Use the reference field to tie the ledger entry back to paperwork or an approval trail.
-        </p>
+{% block form_fields %}
+  {% include 'components/inventory/forms/stock_transaction_form_fields.html' %}
+{% endblock %}
+
+{% block form_actions %}
+  <div class="d-flex gap-2 ms-auto">
+    <a href="{% url 'inventory:stock_report' %}" class="btn btn-outline-secondary">Cancel</a>
+    <button type="submit" class="btn btn-primary" data-form-submit>Save Transaction</button>
+  </div>
+{% endblock %}
+
+{% block extra_content %}
+<div class="row mt-4">
+  <div class="col-lg-12">
+    <div class="alert alert-info alert-dismissible fade show" role="alert">
+      <h5 class="alert-heading"><i class="mdi mdi-information"></i> Stock Movement Information</h5>
+      <p class="mb-0">
+        Receipts increase on-hand balances and issues decrease them immediately using the moving-average cost that is maintained on each inventory item. Use the reference field to tie the ledger entry back to paperwork or an approval trail.
+      </p>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
+  </div>
+</div>
 {% endblock %}

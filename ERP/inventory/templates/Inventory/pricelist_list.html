@@ -1,0 +1,54 @@
+{% extends "components/base/list_base.html" %}
+{% load static %}
+
+{% block title %}Price Lists{% endblock %}
+{% block list_page_title %}Price Lists{% endblock %}
+{% block list_title %}Price List Management{% endblock %}
+
+{% block list_actions %}
+  <div class="d-flex flex-wrap gap-2">
+    {% if can_add and create_url %}
+      <a href="{{ create_url }}" class="btn btn-success btn-sm">
+        <i class="mdi mdi-plus"></i> Create Price List
+      </a>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block table_head %}
+  <tr>
+    <th>Code</th>
+    <th>Name</th>
+    <th>Currency</th>
+    <th>Effective Date</th>
+    <th>Status</th>
+    <th style="width:150px;">Actions</th>
+  </tr>
+{% endblock %}
+
+{% block table_body %}
+  {% for pricelist in object_list %}
+    <tr>
+      <td class="fw-semibold">{{ pricelist.code }}</td>
+      <td>{{ pricelist.name }}</td>
+      <td>{{ pricelist.currency }}</td>
+      <td>{{ pricelist.effective_date|date:"SHORT_DATE_FORMAT" }}</td>
+      <td>
+        {% if pricelist.is_active %}
+          <span class="badge bg-success">Active</span>
+        {% else %}
+          <span class="badge bg-secondary">Inactive</span>
+        {% endif %}
+      </td>
+      <td>
+        <div class="btn-group btn-group-sm" role="group">
+          <a href="{% url 'inventory:pricelist_detail' pricelist.pk %}" class="btn btn-outline-info">View</a>
+          {% if can_change %}<a href="{% url 'inventory:pricelist_update' pricelist.pk %}" class="btn btn-outline-primary">Edit</a>{% endif %}
+          {% if can_delete %}<a href="{% url 'inventory:pricelist_delete' pricelist.pk %}" class="btn btn-outline-danger">Delete</a>{% endif %}
+        </div>
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="6" class="text-center text-muted py-3">No price lists found.</td></tr>
+  {% endfor %}
+{% endblock %}

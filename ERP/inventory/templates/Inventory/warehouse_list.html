@@ -25,25 +25,42 @@
 {% endblock %}
 
 {% block table_body %}
-  {% for warehouse in warehouses %}
+  {% for warehouse in object_list %}
     <tr>
-      <td class="fw-semibold">{{ warehouse.code }}</td>
+      <td class="fw-semibold"><code>{{ warehouse.code }}</code></td>
       <td>{{ warehouse.name }}</td>
       <td>{{ warehouse.city }}</td>
       <td>{{ warehouse.country_code }}</td>
       <td>
         {% if warehouse.is_active %}
-          <span class="badge bg-success">Yes</span>
+          <span class="badge bg-success">Active</span>
         {% else %}
-          <span class="badge bg-secondary">No</span>
+          <span class="badge bg-secondary">Inactive</span>
         {% endif %}
       </td>
       <td>
         <div class="btn-group btn-group-sm" role="group">
-          <a href="{% url 'inventory:warehouse_update' warehouse.pk %}" class="btn btn-outline-primary">Edit</a>
-          <a href="{% url 'inventory:warehouse_delete' warehouse.pk %}" class="btn btn-outline-danger">Delete</a>
-          <a href="{% url 'inventory:location_list' %}" class="btn btn-outline-info">Locations</a>
+          <a href="{% url 'inventory:warehouse_detail' warehouse.pk %}" class="btn btn-outline-info" title="View">
+            <i class="mdi mdi-eye"></i>
+          </a>
+          {% if can_change %}
+            <a href="{% url 'inventory:warehouse_update' warehouse.pk %}" class="btn btn-outline-primary" title="Edit">
+              <i class="mdi mdi-pencil"></i>
+            </a>
+          {% endif %}
+          {% if can_delete %}
+            <a href="{% url 'inventory:warehouse_delete' warehouse.pk %}" class="btn btn-outline-danger" title="Delete">
+              <i class="mdi mdi-trash-can"></i>
+            </a>
+          {% endif %}
         </div>
+      </td>
+    </tr>
+  {% empty %}
+    <tr>
+      <td colspan="6" class="text-center text-muted py-4">
+        No warehouses found.
+        {% if can_add %}<a href="{% url 'inventory:warehouse_create' %}">Create one</a>{% endif %}
       </td>
     </tr>
   {% endfor %}

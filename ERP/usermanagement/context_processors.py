@@ -1,3 +1,18 @@
+def active_organization(request):
+    """Add the user's active organization to the template context.
+    This makes `organization` accessible in header templates without requiring
+    every view to use the UserOrganizationMixin explicitly.
+    """
+    org = None
+    user = getattr(request, 'user', None)
+    if user and getattr(user, 'is_authenticated', False):
+        getter = getattr(user, 'get_active_organization', None)
+        if callable(getter):
+            try:
+                org = getter()
+            except Exception:
+                org = None
+    return {'organization': org}
 from usermanagement.models import Entity, Module
 from usermanagement.utils import PermissionUtils
 

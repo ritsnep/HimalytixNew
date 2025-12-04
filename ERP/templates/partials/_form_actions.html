@@ -1,0 +1,9 @@
+{% comment %}
+Shared form actions partial.
+Usage:
+  {% include 'partials/_form_actions.html' with save_text='Save Invoice' %}
+  Or default to 'Save' with no parameter.
+{% endcomment %}
+{% with btn_text=save_text|default:"Save" %}
+  <button type="submit" class="btn btn-primary">{{ btn_text }}</button>
+{% endwith %}

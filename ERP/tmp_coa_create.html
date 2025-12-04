@@ -1,0 +1,3311 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Create Chart of Account | Himalytix - Admin & Dashboard Template</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta content="Premium Multipurpose Admin & Dashboard Template" name="description" />
+    <meta content="Themesdesign" name="author" />
+    <!-- App favicon -->
+    <link rel="shortcut icon" href="/static/images/favicon.ico?v=20251203145647">
+
+    
+    
+
+    
+<link rel="stylesheet" href="/static/libs/flatpickr/dist/flatpickr.min.css?v=20251203145647">
+<link href="/static/libs/bootstrap-datepicker/dist/css/bootstrap-datepicker.min.css?v=20251203145647" rel="stylesheet">
+<link href="/static/libs/pristinejs/dist/pristine.min.css?v=20251203145647" rel="stylesheet">
+<style>
+    /* Universal Advanced Form Styles */
+    .advanced-form { position: relative; }
+    .coa-enhanced-form { position: relative; }  /* Backward compatibility */
+    
+    /* Tab Styles */
+    .form-tabs, .coa-tabs { border-bottom: 2px solid #e9ecef; margin-bottom: 1.5rem; }
+    .form-tabs .nav-link, .coa-tabs .nav-link { border: none; border-bottom: 2px solid transparent; padding: 0.75rem 1.5rem; }
+    .form-tabs .nav-link.active, .coa-tabs .nav-link.active { border-bottom-color: #556ee6; color: #556ee6; font-weight: 600; }
+    .form-tabs .nav-link:hover, .coa-tabs .nav-link:hover { border-bottom-color: #748ffc; }
+    
+    /* Bulk Import Styles */
+    .bulk-import-container { background: #f8f9fa; border: 2px dashed #dee2e6; border-radius: 0.5rem; padding: 2rem; text-align: center; transition: all 0.3s; }
+    .bulk-import-container.dragover { background: #e7f1ff; border-color: #556ee6; }
+    .bulk-import-container textarea { font-family: 'Consolas', 'Monaco', monospace; font-size: 0.875rem; }
+    
+    /* Template/Demo Data Styles */
+    .template-card, .demo-card { border: 1px solid #e9ecef; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem; transition: all 0.2s; cursor: pointer; }
+    .template-card:hover, .demo-card:hover { border-color: #556ee6; background: #f8f9fa; transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .template-card.selected, .demo-card.selected { border-color: #556ee6; background: #e7f1ff; }
+    
+    /* Keyboard Shortcuts Panel */
+    .shortcuts-panel { position: fixed; right: 20px; bottom: 20px; z-index: 1050; max-width: 350px; }
+    .shortcuts-panel .card { box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .shortcut-key { display: inline-block; padding: 0.25rem 0.5rem; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 0.25rem; font-family: monospace; font-size: 0.75rem; margin-right: 0.25rem; }
+    
+    /* Preview Table */
+    .preview-table { font-size: 0.875rem; }
+    .preview-table th { background: #f8f9fa; font-weight: 600; }
+    .preview-row-valid { background: #d1f2eb; }
+    .preview-row-error { background: #f8d7da; }
+    
+    /* Quick Action Buttons */
+    .quick-actions { position: sticky; top: 70px; z-index: 100; background: white; padding: 1rem 0; margin-bottom: 1rem; border-bottom: 1px solid #e9ecef; }
+    
+    /* Loading State */
+    .htmx-indicator { display: none; }
+    .htmx-request .htmx-indicator { display: inline-block; }
+    .htmx-request button { opacity: 0.7; pointer-events: none; }
+    .htmx-swapping { opacity: 0.5; transition: opacity 200ms ease-in; }
+    .htmx-settling { opacity: 1; transition: opacity 200ms ease-out; }
+    
+    /* Disabled State */
+    button:disabled, .btn:disabled { cursor: not-allowed; opacity: 0.6; }
+    
+    /* Smooth Transitions */
+    .form-control, .form-select { transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out; }
+    .btn { transition: all 0.15s ease-in-out; }
+    
+    /* Validation Styles */
+    .error-message { color: #dc3545; font-size: 0.875rem; margin-top: 0.25rem; display: block; }
+    .is-invalid { border-color: #dc3545 !important; }
+    .is-invalid:focus { box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25); }
+    .is-valid { border-color: #198754 !important; }
+    .is-valid:focus { box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25); }
+    .required-field::after { content: " *"; color: #dc3545; }
+    
+    /* Form Group Styles */
+    .form-group.has-danger .form-control { border-color: #dc3545; }
+    .form-group.has-success .form-control { border-color: #198754; }
+    .form-group .text-danger { color: #dc3545; font-size: 0.875rem; margin-top: 0.25rem; }
+    
+    /* Animation */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-in { animation: fadeIn 0.3s ease-out; }
+    
+    
+</style>
+
+    <!-- preloader css -->
+    <link rel="stylesheet" href="/static/css/preloader.min.css?v=20251203145647" type="text/css" />
+
+    <!-- Bootstrap Css -->
+    <link href="/static/css/bootstrap.min.css?v=20251203145647" id="bootstrap-style" rel="stylesheet" type="text/css" />
+    <!-- Icons Css -->
+    <link href="/static/css/icons.min.css?v=20251203145647" rel="stylesheet" type="text/css" />
+    <!-- App Css-->
+    <link href="/static/css/app.min.css?v=20251203145647" id="app-style" rel="stylesheet" type="text/css" />
+    <!-- Toastr CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet" type="text/css" />
+    
+
+</head>
+
+<body  data-topbar="dark">
+  
+  <div id="layout-guard" style="display:none">
+    <input type="checkbox" id="layout-horizontal" />
+    <input type="checkbox" id="layout-vertical" />
+    <input type="checkbox" id="layout-mode-dark" />
+    <input type="checkbox" id="layout-mode-light" />
+    <input type="checkbox" id="layout-width-boxed" />
+    <input type="checkbox" id="layout-width-fuild" />
+    <input type="checkbox" id="layout-position-scrollable" />
+    <input type="checkbox" id="layout-position-fixed" />
+    <input type="checkbox" id="topbar-color-dark" />
+    <input type="checkbox" id="topbar-color-light" />
+    <input type="checkbox" id="sidebar-size-small" />
+    <input type="checkbox" id="sidebar-size-compact" />
+    <input type="checkbox" id="sidebar-size-default" />
+    <input type="checkbox" id="sidebar-color-brand" />
+    <input type="checkbox" id="sidebar-color-dark" />
+    <input type="checkbox" id="sidebar-color-light" />
+    <input type="checkbox" id="layout-direction-rtl" />
+    <input type="checkbox" id="layout-direction-ltr" />
+  </div>
+    <!-- Begin page -->
+    <div id="layout-wrapper">
+        
+         
+<header id="page-topbar">
+  <div class="navbar-header">
+    <div class="d-flex">
+      <!-- LOGO -->
+      <div class="navbar-brand-box">
+        <a href="/" class="logo logo-dark">
+          <span class="logo-sm">
+            <img src="/static/images/himalytix-sm.svg?v=20251203145647" alt="" height="30" />
+          </span>
+          <span class="logo-lg">
+            <img src="/static/images/himalytix-sm.svg?v=20251203145647" alt="" height="24" />
+            <span class="logo-txt">Himalytix</span>
+          </span>
+        </a>
+
+        <a href="/" class="logo logo-light">
+          <span class="logo-sm">
+            <img src="/static/images/himalytix-sm.svg?v=20251203145647" alt="" height="30" />
+          </span>
+          <span class="logo-lg">
+            <img src="/static/images/himalytix-sm.svg?v=20251203145647" alt="" height="24" />
+            <span class="logo-txt">Himalytix</span>
+          </span>
+        </a>
+      </div>
+
+      <button
+        type="button"
+        class="btn btn-sm px-3 font-size-16 header-item"
+        id="vertical-menu-btn"
+      >
+        <i class="fa fa-fw fa-bars"></i>
+      </button>
+
+      <!-- App Search-->
+      <form class="app-search d-none d-lg-block">
+        <div class="position-relative">
+          <input type="text" class="form-control" placeholder="Search..." />
+          <button class="btn btn-primary" type="button" aria-label="Search">
+            <i class="bx bx-search-alt align-middle"></i>
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div class="d-flex">
+      <div class="dropdown d-inline-block d-lg-none ms-2">
+        <button
+          type="button"
+          class="btn header-item"
+          id="page-header-search-dropdown"
+          data-bs-toggle="dropdown"
+          aria-haspopup="true"
+          aria-expanded="false"
+        >
+          <i data-feather="search" class="icon-lg"></i>
+        </button>
+        <div
+          class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0"
+          aria-labelledby="page-header-search-dropdown"
+        >
+          <form class="p-3">
+            <div class="form-group m-0">
+              <div class="input-group">
+                <input
+                  type="text"
+                  class="form-control"
+                  placeholder="Search ..."
+                  aria-label="Search Result"
+                />
+
+                <button class="btn btn-primary" type="submit">
+                  <i class="mdi mdi-magnify"></i>
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="dropdown d-none d-sm-inline-block">
+        <button
+          type="button"
+          class="btn header-item"
+          data-bs-toggle="dropdown"
+          aria-haspopup="true"
+          aria-expanded="false"
+        >
+          <img
+            id="header-lang-img"
+            src="/static/images/flags/us.jpg?v=20251203145647"
+            alt="Header Language"
+            height="16"
+          />
+        </button>
+        <div class="dropdown-menu dropdown-menu-end">
+          <h6 class="dropdown-header">Language</h6>
+          <a href="/i18n/set-language/?lang=en" class="dropdown-item notify-item">
+            <img src="/static/images/flags/us.jpg?v=20251203145647" alt="English" class="me-1" height="12" />
+            <span class="align-middle">English</span>
+          </a>
+          <a href="/i18n/set-language/?lang=ne" class="dropdown-item notify-item">
+            <span class="align-middle">नेपाली (Nepali)</span>
+          </a>
+          <div class="dropdown-divider"></div>
+          <h6 class="dropdown-header">Region</h6>
+          <a href="/i18n/set-region/?region=US" class="dropdown-item">United States</a>
+          <a href="/i18n/set-region/?region=GB" class="dropdown-item">United Kingdom</a>
+          <a href="/i18n/set-region/?region=IN" class="dropdown-item">India</a>
+          <a href="/i18n/set-region/?region=EU" class="dropdown-item">Europe</a>
+        </div>
+      </div>
+      <div class="dropdown d-none d-sm-inline-block">
+        <button type="button" class="btn header-item" id="mode-setting-btn">
+          <i data-feather="moon" class="icon-lg layout-mode-dark"></i>
+          <i data-feather="sun" class="icon-lg layout-mode-light"></i>
+        </button>
+      </div>
+      <div class="dropdown d-none d-lg-inline-block ms-1">
+        <button
+          type="button"
+          class="btn header-item"
+          data-bs-toggle="dropdown"
+          aria-haspopup="true"
+          aria-expanded="false"
+        >
+          <i data-feather="grid" class="icon-lg"></i>
+        </button>
+        <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end">
+          <div class="p-2">
+            <div class="row g-0">
+              <div class="col">
+                <a class="dropdown-icon-item" href="#">
+                  <img
+                    src="/static/images/brands/github.png?v=20251203145647"
+                    alt="Github"
+                  />
+                  <span>GitHub</span>
+                </a>
+              </div>
+              <div class="col">
+                <a class="dropdown-icon-item" href="#">
+                  <img
+                    src="/static/images/brands/bitbucket.png?v=20251203145647"
+                    alt="bitbucket"
+                  />
+                  <span>Bitbucket</span>
+                </a>
+              </div>
+              <div class="col">
+                <a class="dropdown-icon-item" href="#">
+                  <img
+                    src="/static/images/brands/dribbble.png?v=20251203145647"
+                    alt="dribbble"
+                  />
+                  <span>Dribbble</span>
+                </a>
+              </div>
+            </div>
+
+            <div class="row g-0">
+              <div class="col">
+                <a class="dropdown-icon-item" href="#">
+                  <img
+                    src="/static/images/brands/dropbox.png?v=20251203145647"
+                    alt="dropbox"
+                  />
+                  <span>Dropbox</span>
+                </a>
+              </div>
+              <div class="col">
+                <a class="dropdown-icon-item" href="#">
+                  <img
+                    src="/static/images/brands/mail_chimp.png?v=20251203145647"
+                    alt="mail_chimp"
+                  />
+                  <span>Mail Chimp</span>
+                </a>
+              </div>
+              <div class="col">
+                <a class="dropdown-icon-item" href="#">
+                  <img
+                    src="/static/images/brands/slack.png?v=20251203145647"
+                    alt="slack"
+                  />
+                  <span>Slack</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dropdown d-inline-block">
+        <button
+          type="button"
+          class="btn header-item noti-icon position-relative"
+          id="page-header-notifications-dropdown"
+          data-bs-toggle="dropdown"
+          aria-haspopup="true"
+          aria-expanded="false"
+        >
+          <i data-feather="bell" class="icon-lg"></i>
+          <span class="badge bg-danger rounded-pill">5</span>
+        </button>
+        <div
+          class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0"
+          aria-labelledby="page-header-notifications-dropdown"
+        >
+          <div class="p-3">
+            <div class="row align-items-center">
+              <div class="col">
+                <h6 class="m-0">Notifications</h6>
+              </div>
+              <div class="col-auto">
+                <a href="#!" class="small text-reset text-decoration-underline">
+                  Unread (3)</a
+                >
+              </div>
+            </div>
+          </div>
+          <div data-simplebar style="max-height: 230px">
+            <a href="#!" class="text-reset notification-item">
+              <div class="d-flex">
+                <div class="flex-shrink-0 me-3">
+                  <img
+                    src="/static/images/users/avatar-3.jpg?v=20251203145647"
+                    class="rounded-circle avatar-sm"
+                    alt="user-pic"
+                  />
+                </div>
+                <div class="flex-grow-1">
+                  <h6 class="mb-1">James Lemire</h6>
+                  <div class="font-size-13 text-muted">
+                    <p class="mb-1">It will seem like simplified English.</p>
+                    <p class="mb-0">
+                      <i class="mdi mdi-clock-outline"></i>
+                      <span>1 hour ago</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </a>
+            <a href="#!" class="text-reset notification-item">
+              <div class="d-flex">
+                <div class="flex-shrink-0 avatar-sm me-3">
+                  <span
+                    class="avatar-title bg-primary rounded-circle font-size-16"
+                  >
+                    <i class="bx bx-cart"></i>
+                  </span>
+                </div>
+                <div class="flex-grow-1">
+                  <h6 class="mb-1">Your order is placed</h6>
+                  <div class="font-size-13 text-muted">
+                    <p class="mb-1">
+                      If several languages coalesce the grammar
+                    </p>
+                    <p class="mb-0">
+                      <i class="mdi mdi-clock-outline"></i>
+                      <span>3 min ago</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </a>
+            <a href="#!" class="text-reset notification-item">
+              <div class="d-flex">
+                <div class="flex-shrink-0 avatar-sm me-3">
+                  <span
+                    class="avatar-title bg-success rounded-circle font-size-16"
+                  >
+                    <i class="bx bx-badge-check"></i>
+                  </span>
+                </div>
+                <div class="flex-grow-1">
+                  <h6 class="mb-1">Your item is shipped</h6>
+                  <div class="font-size-13 text-muted">
+                    <p class="mb-1">
+                      If several languages coalesce the grammar
+                    </p>
+                    <p class="mb-0">
+                      <i class="mdi mdi-clock-outline"></i>
+                      <span>3 min ago</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </a>
+
+            <a href="#!" class="text-reset notification-item">
+              <div class="d-flex">
+                <div class="flex-shrink-0 me-3">
+                  <img
+                    src="/static/images/users/avatar-6.jpg?v=20251203145647"
+                    class="rounded-circle avatar-sm"
+                    alt="user-pic"
+                  />
+                </div>
+                <div class="flex-grow-1">
+                  <h6 class="mb-1">Salena Layfield</h6>
+                  <div class="font-size-13 text-muted">
+                    <p class="mb-1">
+                      As a skeptical Cambridge friend of mine occidental.
+                    </p>
+                    <p class="mb-0">
+                      <i class="mdi mdi-clock-outline"></i>
+                      <span>1 hour ago</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </a>
+          </div>
+          <div class="p-2 border-top d-grid">
+            <a
+              class="btn btn-sm btn-link font-size-14 text-center"
+              href="javascript:void(0)"
+            >
+              <i class="mdi mdi-arrow-right-circle me-1"></i>
+              <span>View More..</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="dropdown d-inline-block">
+        <button type="button" class="btn header-item right-bar-toggle me-2">
+          <i data-feather="settings" class="icon-lg"></i>
+        </button>
+      </div>
+
+      <div class="dropdown d-inline-block">
+        <button
+          type="button"
+          class="btn header-item bg-soft-light border-start border-end"
+          id="page-header-user-dropdown"
+          data-bs-toggle="dropdown"
+          aria-haspopup="true"
+          aria-expanded="false"
+        >
+          <img
+            class="rounded-circle header-profile-user"
+            src="/static/images/users/avatar-1.jpg?v=20251203145647"
+            alt="Header Avatar"
+          />
+          <span class="d-none d-xl-inline-block ms-1 fw-medium"
+            >admin</span
+          >
+          <i class="mdi mdi-chevron-down d-none d-xl-inline-block"></i>
+        </button>
+        <div class="dropdown-menu dropdown-menu-end">
+          <!-- item-->
+          <a class="dropdown-item" href="/apps/contacts/profile/"
+            ><i class="mdi mdi-face-profile font-size-16 align-middle me-1"></i>
+            Profile</a
+          >
+          <a
+            class="dropdown-item"
+            href="/pages/authentication/lock-screen/"
+            ><i class="mdi mdi-lock font-size-16 align-middle me-1"></i> Lock
+            screen</a
+          >
+          <div class="dropdown-divider"></div>
+          
+          <a class="dropdown-item" href="/settings"
+            ><i class="mdi mdi-cog font-size-16 align-middle me-1"></i>
+            Settings</a
+          >
+          <a class="dropdown-item" href="/accounts/logout/"
+            ><i class="mdi mdi-logout font-size-16 align-middle me-1"></i>
+            Logout</a
+          >
+          
+        </div>
+      </div>
+      
+    </div>
+  </div>
+</header>
+
+
+        
+
+        
+        
+
+
+<!-- ========== Left Sidebar Start ========== -->
+<nav class="vertical-menu">
+
+    <div data-simplebar class="h-100">
+
+        <!--- Sidemenu -->
+        <div id="sidebar-menu">
+            <!-- Left Menu Start -->
+            <ul class="metismenu list-unstyled" id="side-menu">
+                <li class="menu-title" data-key="t-menu">Menu</li>
+
+                <li>
+                    <a href="/">
+                    
+                        <i data-feather="home"></i>
+                        <span class="badge rounded-pill bg-soft-success text-success float-end">9+</span>
+                        <span data-key="t-dashboard">Dashboard</span>
+                    </a>
+                </li>
+
+                <li class="menu-title" data-key="t-lpg">LPG / PFG</li>
+                <li>
+                    <a href="/api/lpg/spa/"
+                       hx-get="/api/lpg/spa/"
+                       hx-target="#main-container"
+                       hx-swap="innerHTML"
+                       hx-push-url="true"
+                       class="nav-link">
+                        <i data-feather="droplet"></i>
+                        <span data-key="t-lpg-module">LPG Vertical</span>
+                    </a>
+                </li>
+  <!-- Accounting Section -->
+  <li>
+    <a href="javascript: void(0);" class="has-arrow">
+        <i data-feather="book"></i>
+        <span data-key="t-accounting">Accounting</span>
+    </a>
+    <ul class="sub-menu" aria-expanded="false">
+        <!-- Chart of Accounts -->
+        <li>
+            <a href="/accounting/chart-of-accounts/">
+            
+                <span>Chart of Accounts</span>
+            </a>
+        </li>
+        <!-- Account Types -->
+        <li>
+            <a href="/accounting/account-types/">
+            
+                <span>Account Types</span>
+            </a>
+        </li>
+        <!-- Currencies -->
+        <li>
+            <a href="/accounting/currencies/" >
+                <span>Currencies</span>
+            </a>
+        </li>
+        <!-- Exchange Rates -->
+        <li>
+            <a href="/accounting/exchange-rates/" >
+                <span>Exchange Rates</span>
+            </a>
+        </li>
+        <!-- Fiscal Years -->
+        <li>
+            <a href="/accounting/fiscal_year/list/" >
+                <span>Fiscal Years</span>
+            </a>
+        </li>
+        <!-- Cost Centers -->
+        <li>
+            <a href="/accounting/cost-centers/">
+                <span>Cost Centers</span>
+            </a>
+        </li>
+        <!-- Departments -->
+        <li>
+            <a href="/accounting/departments/">
+                <span>Departments</span>
+            </a>
+        </li>
+        <!-- Journals -->
+        <li>
+            <a href="/accounting/journals/" >
+                <span>Journals</span>
+            </a>
+        </li>
+        
+        <li>
+            <a href="/accounting/sales-invoices/">
+                <span>Sales Invoices</span>
+            </a>
+        </li>
+        
+        
+        <li>
+            <a href="/accounting/ar-receipts/">
+                <span>AR Receipts</span>
+            </a>
+        </li>
+        
+        
+        <li>
+            <a href="/accounting/ap-payments/">
+                <span>AP Payments</span>
+            </a>
+        </li>
+        
+        
+        <li>
+            <a href="/accounting/customers/">
+                <span>Customers</span>
+            </a>
+        </li>
+        
+        
+        <li>
+            <a href="/accounting/vendors/">
+                <span>Vendors</span>
+            </a>
+        </li>
+        
+        <!-- Journal Entry -->
+        <li>
+            <a href="/accounting/journal-entry/">
+                <span>Journal Entry</span>
+            </a>
+        </li>
+        <!-- Voucher Management -->
+        <li>
+            <a href="javascript: void(0);" class="has-arrow">
+                <i class="fas fa-file-invoice"></i>
+                <span>Vouchers</span>
+            </a>
+            <ul class="sub-menu" aria-expanded="false">
+                
+                <li>
+                    <a href="/accounting/vouchers/new/">
+                        <i class="fas fa-plus-circle"></i>
+                        <span>Create New Voucher</span>
+                    </a>
+                </li>
+                
+                <li>
+                    <a href="/accounting/vouchers/">
+                        <i class="fas fa-list"></i>
+                        <span>View All Vouchers</span>
+                    </a>
+                </li>
+            </ul>
+        </li>
+        <!-- Voucher Configurations -->
+        <li>
+            <a href="/accounting/voucher-configs/">
+                <span>Voucher Configurations</span>
+            </a>
+        </li>
+        <!-- Voucher Settings -->
+        <li>
+            <a href="/accounting/voucher-settings/">
+                <span>Voucher Settings</span>
+            </a>
+        </li>
+        <li>
+            <a href="javascript: void(0);" class="has-arrow">
+                <i class="fas fa-file-invoice-dollar"></i>
+                <span>Accounts Payable</span>
+            </a>
+            <ul class="sub-menu" aria-expanded="false">
+                
+                <li>
+                    <a href="/accounting/vendor-bills/new/">
+                        <i class="fas fa-pen-square"></i>
+                        <span>Vendor Bill Entry</span>
+                    </a>
+                </li>
+                
+                
+                <li>
+                    <a href="/accounting/vendor-payments/scheduler/">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>Payment Scheduler</span>
+                    </a>
+                </li>
+                
+                
+                <li>
+                    <a href="/accounting/vendor-payments/statement/">
+                        <i class="fas fa-file-alt"></i>
+                        <span>Vendor Statement</span>
+                    </a>
+                </li>
+                
+            </ul>
+        </li>
+        <li>
+            <a href="javascript: void(0);" class="has-arrow">
+                <i class="fas fa-file-invoice"></i>
+                <span>Accounts Receivable</span>
+            </a>
+            <ul class="sub-menu" aria-expanded="false">
+                
+                <li>
+                    <a href="/accounting/sales-invoices/">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                        <span>Sales Invoices</span>
+                    </a>
+                </li>
+                
+                
+                <li>
+                    <a href="/accounting/ar-receipts/">
+                        <i class="fas fa-money-check-alt"></i>
+                        <span>Customer Receipts</span>
+                    </a>
+                </li>
+                
+                
+                <li>
+                    <a href="/accounting/customer-payments/statement/">
+                        <i class="fas fa-file-alt"></i>
+                        <span>Customer Statement</span>
+                    </a>
+                </li>
+                
+            </ul>
+        </li>
+        <!-- Tax Configuration -->
+        <li>
+            <a href="javascript: void(0);" class="has-arrow">
+                <i class="fas fa-receipt"></i>
+                <span>Tax Configuration</span>
+            </a>
+            <ul class="sub-menu" aria-expanded="false">
+                <li>
+                    <a href="/accounting/tax-authorities/">
+                        <span>Tax Authorities</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/accounting/tax-types/">
+                        <span>Tax Types</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/accounting/tax-codes/">
+                        <span>Tax Codes</span>
+                    </a>
+                </li>
+            </ul>
+        </li>
+        <!-- Projects -->
+        <li>
+            <a href="/accounting/projects/" >
+                <span>Projects</span>
+            </a>
+        </li>
+         <!-- Accounting Periods -->
+        <li>
+            <a href="/accounting/accounting-periods/">
+                <span>Accounting Periods</span>
+            </a>
+        </li>
+        <!-- Journal Types -->
+        <li>
+            <a href="/accounting/journal-types/">
+                <span>Journal Types</span>
+            </a>
+        </li>
+        <!-- Financial Reports -->
+        <li>
+            <a href="javascript: void(0);" class="has-arrow">
+                <i class="fas fa-chart-pie"></i>
+                <span>Financial Reports</span>
+            </a>
+            <ul class="sub-menu" aria-expanded="false">
+                <li>
+                    <a href="/accounting/reports/">
+                        <span>Standard Reports</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/accounting/advanced-reports/">
+                        <span>Advanced Reports Hub</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/accounting/advanced-reports/general-ledger/">
+                        <span>General Ledger</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/accounting/advanced-reports/trial-balance/">
+                        <span>Trial Balance</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/accounting/advanced-reports/profit-loss/">
+                        <span>Profit &amp; Loss</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/accounting/advanced-reports/balance-sheet/">
+                        <span>Balance Sheet</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/accounting/advanced-reports/cash-flow/">
+                        <span>Cash Flow</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/accounting/advanced-reports/ar-aging/">
+                        <span>A/R Aging</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/accounting/advanced-reports/ap-aging/">
+                        <span>A/P Aging</span>
+                    </a>
+                </li>
+            </ul>
+        </li>
+    </ul>
+</li>
+
+                <!-- Account Section -->
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="user"></i>
+                        <span data-key="t-account">Account</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="/account/profile/">Profile</a></li>
+                        <li><a href="/account/security/">Security</a></li>
+                        <li><a href="/account/billing/">Billing</a></li>
+                    </ul>
+                </li>
+
+                <!-- Inventory Section -->
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="archive"></i>
+                        <span data-key="t-inventory">Inventory</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="/inventory/products/">Products</a></li>
+                        <li><a href="/inventory/categories/">Categories</a></li>
+                        <li><a href="/inventory/warehouses/">Warehouses</a></li>
+                        <li><a href="/inventory/locations/">Locations</a></li>
+                        <li><a href="/inventory/pricelists/">Price Lists</a></li>
+                        <li><a href="/inventory/picklists/">Pick Lists</a></li>
+                        <li><a href="/inventory/shipments/">Shipments</a></li>
+                        <li><a href="/inventory/rmas/">RMAs</a></li>
+                    </ul>
+                </li>
+
+                <!-- Purchasing Section -->
+                <li>
+                    <a
+                        href="/purchasing/"
+                        hx-get="/purchasing/"
+                        hx-target="#main-container"
+                        hx-swap="innerHTML"
+                        hx-push-url="true"
+                        class="nav-link"
+                    >
+                        <i data-feather="shopping-bag"></i>
+                        <span>Purchasing Workspace</span>
+                    </a>
+                </li>
+
+                <!-- Enterprise Section -->
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="briefcase"></i>
+                        <span data-key="t-enterprise">Enterprise</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="/enterprise/departments/">Departments</a></li>
+                        <li><a href="/enterprise/positions/">Positions</a></li>
+                        <li><a href="/enterprise/employees/">Employees</a></li>
+                        <li><a href="/enterprise/pay-components/">Pay Components</a></li>
+                        <li><a href="/enterprise/payroll-runs/">Payroll Runs</a></li>
+                        <li><a href="/enterprise/payroll-run-lines/">Payroll Lines</a></li>
+                        <li><a href="/enterprise/payroll-cycles/">Payroll Cycles</a></li>
+                        <li><a href="/enterprise/payroll-entries/">Payroll Entries</a></li>
+                        <li><a href="/enterprise/assets/">Fixed Assets</a></li>
+                        <li><a href="/enterprise/assets/depreciation/">Depreciation Schedules</a></li>
+                        <li><a href="/enterprise/assets/depreciation-report/">Depreciation Report</a></li>
+                        <li><a href="/enterprise/manufacturing/boms/">Bills of Material</a></li>
+                        <li><a href="/enterprise/manufacturing/work-centers/">Work Centers</a></li>
+                        <li><a href="/enterprise/manufacturing/routings/">Routings</a></li>
+                        <li><a href="/enterprise/manufacturing/work-orders/">Work Orders</a></li>
+                        <li><a href="/enterprise/manufacturing/work-order-operations/">Work Order Operations</a></li>
+                        <li><a href="/enterprise/manufacturing/mrp-suggestions/">MRP Suggestions</a></li>
+                        <li><a href="/enterprise/crm/leads/">Leads</a></li>
+                        <li><a href="/enterprise/crm/opportunities/">Opportunities</a></li>
+                        <li><a href="/enterprise/budgeting/budgets/">Budgets</a></li>
+                        <li><a href="/enterprise/budgeting/variance/">Budget Variance</a></li>
+                        <li><a href="/enterprise/integrations/endpoints/">Integrations</a></li>
+                        <li><a href="/enterprise/integrations/credentials/">Credentials</a></li>
+                        <li><a href="/enterprise/integrations/webhooks/">Webhooks</a></li>
+                        <li><a href="/enterprise/observability/">Observability</a></li>
+                        <li><a href="/enterprise/localization/">Localization &amp; Tax</a></li>
+                    </ul>
+                </li>
+
+                <!-- Billing Section -->
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="credit-card"></i>
+                        <span data-key="t-billing">Billing</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="/billing/plans/">Subscription Plans</a></li>
+                        <li><a href="/billing/subscriptions/">Subscriptions</a></li>
+                        <li><a href="/billing/invoices/">Invoices</a></li>
+                        <li><a href="/billing/deferred-revenue/">Deferred Revenue</a></li>
+                        <li><a href="/billing/milestones/">Milestone Revenue</a></li>
+                        <li><a href="/billing/usage/">Usage Tracking</a></li>
+                    </ul>
+                </li>
+
+                <!-- Service Management Section -->
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="tool"></i>
+                        <span data-key="t-service">Service Management</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="/service-management/tickets/">Service Tickets</a></li>
+                        <li><a href="/service-management/contracts/">Service Contracts</a></li>
+                        <li><a href="/service-management/devices/">Device Lifecycle</a></li>
+                        <li><a href="/service-management/warranties/">Warranty Pool</a></li>
+                        <li><a href="/service-management/rmas/">RMA Hardware</a></li>
+                    </ul>
+                </li>
+
+                <li class="menu-title" data-key="t-apps">Apps</li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="shopping-cart"></i>
+                        <span data-key="t-ecommerce">Ecommerce</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="/apps/ecommerce/products/" key="t-products">Products</a></li>
+                        <li><a href="/apps/ecommerce/product-detail/" data-key="t-product-detail">Product
+                                Detail</a></li>
+                        <li><a href="/apps/ecommerce/orders/" data-key="t-orders">Orders</a></li>
+                        <li><a href="/apps/ecommerce/customers/" data-key="t-customers">Customers</a></li>
+                        <li><a href="/apps/ecommerce/cart/" data-key="t-cart">Cart</a></li>
+                        <li><a href="/apps/ecommerce/checkout/" data-key="t-checkout">Checkout</a></li>
+                        <li><a href="/apps/ecommerce/shops/" data-key="t-shops">Shops</a></li>
+                        <li><a href="/apps/ecommerce/add-product/" data-key="t-add-product">Add Product</a>
+                        </li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a href="/apps/chat/">
+                        <i data-feather="message-square"></i>
+                        <span data-key="t-chat">Chat</span>
+                    </a>
+                </li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="mail"></i>
+                        <span data-key="t-email">Email</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="/apps/email/inbox/" data-key="t-inbox">Inbox</a></li>
+                        <li><a href="/apps/emial/read_email/" data-key="t-read-email">Read Email</a></li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a href="/apps/calendar/">
+                        <i data-feather="calendar"></i>
+                        <span data-key="t-calendar">Calendar</span>
+                    </a>
+                </li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="users"></i>
+                        <span data-key="t-contacts">Contacts</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="/apps/contacts/user_grid/" data-key="t-user-grid">User Grid</a></li>
+                        <li><a href="/apps/contacts/user_list/" data-key="t-user-list">User List</a></li>
+                        <li><a href="/apps/contacts/profile/" data-key="t-profile">Profile</a></li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="trello"></i>
+                        <span data-key="t-tasks">Tasks</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="/apps/tasks/list/" key="t-task-list">Task List</a></li>
+                        <li><a href="/apps/tasks/kanban/" key="t-kanban-board">Kanban Board</a></li>
+                        <li><a href="/apps/tasks/create-task/" key="t-create-task">Create Task</a></li>
+                    </ul>
+                </li>
+
+                <li class="menu-title" data-key="t-pages">Pages</li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="layers"></i>
+                        <span data-key="t-authentication">Authentication</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="/pages/authentication/login" data-key="t-login">Login</a></li>
+                        <li><a href="/pages/authentication/register/" data-key="t-register">Register</a>
+                        </li>
+                        <li><a href="/pages/authentication/recoverpw/"
+                                data-key="t-recover-password">Recover Password</a></li>
+                        <li><a href="/pages/authentication/lock-screen/" data-key="t-lock-screen">Lock
+                                Screen</a></li>
+                        <li><a href="/pages/authentication/logout/" data-key="t-logout">Log Out</a></li>
+                        <li><a href="/pages/authentication/confirm_mail/"
+                                data-key="t-confirm-mail">Confirm Mail</a></li>
+                        <li><a href="/pages/forms/email_verification/"
+                                data-key="t-email-verification">Email Verification</a></li>
+                        <li><a href="/pages/forms/two_step_verification/"
+                                data-key="t-two-step-verification">Two Step Verification</a></li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="file-text"></i>
+                        <span data-key="t-pages">Pages</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="/pages/starter-page/" data-key="t-starter-page">Starter Page</a>
+                        </li>
+                        <li><a href="/pages/maintenance/" data-key="t-maintenance">Maintenance</a></li>
+                        <li><a href="/pages/comingsoon/" data-key="t-coming-soon">Coming Soon</a></li>
+                        <li><a href="/pages/timeline/" data-key="t-timeline">Timeline</a></li>
+                        <li><a href="/pages/faqs/" data-key="t-faqs">FAQs</a></li>
+                        <li><a href="/pages/pricing/" data-key="t-pricing">Pricing</a></li>
+                        <li><a href="/pages/error-404/" data-key="t-error-404">Error 404</a></li>
+                        <li><a href="/pages/error-500/" data-key="t-error-500">Error 500</a></li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a href="/pages/layout/horizontal/">
+                        <i data-feather="layout"></i>
+                        <span data-key="t-horizontal">Horizontal</span>
+                    </a>
+                </li>
+
+                <li class="menu-title mt-2" data-key="t-components">Components</li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="briefcase"></i>
+                        <span data-key="t-components">Bootstrap</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="/components/bootstrap/alerts/" data-key="t-alerts">Alerts</a>
+                        </li>
+                        <li><a href="/components/bootstrap/buttons"
+                                data-key="t-buttons">Buttons</a></li>
+                        <li><a href="/components/bootstrap/cards" data-key="t-cards">Cards</a>
+                        </li>
+                        <li><a href="/components/bootstrap/carousel"
+                                data-key="t-carousel">Carousel</a></li>
+                        <li><a href="/components/bootstrap/dropdowns"
+                                data-key="t-dropdowns">Dropdowns</a></li>
+                        <li><a href="/components/bootstrap/grid" data-key="t-grid">Grid</a></li>
+                        <li><a href="/components/bootstrap/images" data-key="t-images">Images</a>
+                        </li>
+                        <li><a href="/components/bootstrap/modals" data-key="t-modals">Modals</a>
+                        </li>
+                        <li><a href="/components/bootstrap/offcanvas"
+                                data-key="t-offcanvas">Offcanvas</a></li>
+                        <li><a href="/components/bootstrap/progressbars"
+                                data-key="t-progress-bars">Progress Bars</a></li>
+                        <li><a href="/components/bootstrap/placeholders"
+                                data-key="t-progress-bars">Placeholders</a></li>
+                        <li><a href="/components/bootstrap/tabs" data-key="t-tabs-accordions">Tabs
+                                & Accordions</a></li>
+                        <li><a href="/components/bootstrap/typography"
+                                data-key="t-typography">Typography</a></li>
+                        <li><a href="/components/bootstrap/video" data-key="t-video">Video</a>
+                        </li>
+                        <li><a href="/components/bootstrap/general"
+                                data-key="t-general">General</a></li>
+                        <li><a href="/components/bootstrap/colors" data-key="t-colors">Colors</a>
+                        </li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="gift"></i>
+                        <span data-key="t-ui-elements">Extended</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="/components/extended/lightbox"
+                                data-key="t-lightbox">Lightbox</a></li>
+                        <li><a href="/components/extended/rangeslider"
+                                data-key="t-range-slider">Range Slider</a></li>
+                        <li><a href="/components/extended/sweetalerts2"
+                                data-key="t-sweet-alert">SweetAlert 2</a></li>
+                        <li><a href="/components/extended/session-timeout"
+                                data-key="t-session-timeout">Session Timeout</a></li>
+                        <li><a href="/components/extended/rating" data-key="t-rating">Rating</a>
+                        </li>
+                        <li><a href="/components/extended/notifications"
+                                data-key="t-notifications">Notifications</a></li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a href="javascript: void(0);">
+                        <i data-feather="box"></i>
+                        <span class="badge rounded-pill bg-soft-danger text-danger float-end">7</span>
+                        <span data-key="t-forms">Forms</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="/components/forms/basic_elements"
+                                data-key="t-form-elements">Basic Elements</a></li>
+                        <li><a href="/components/forms/validation"
+                                data-key="t-form-validation">Validation</a></li>
+                        <li><a href="/components/forms/advancedplugins"
+                                data-key="t-form-advanced">Advanced Plugins</a></li>
+                        <li><a href="/components/forms/editors"
+                                data-key="t-form-editors">Editors</a></li>
+                        <li><a href="/components/forms/fileupload" data-key="t-form-upload">File
+                                Upload</a></li>
+                        <li><a href="/components/forms/wizard" data-key="t-form-wizard">Wizard</a>
+                        </li>
+                        <li><a href="/components/forms/mask" data-key="t-form-mask">Mask</a></li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="sliders"></i>
+                        <span data-key="t-tables">Tables</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="/components/tables/bootstrapbasic"
+                                data-key="t-basic-tables">Bootstrap Basic</a></li>
+                        <li><a href="/components/tables/datatables"
+                                data-key="t-data-tables">DataTables</a></li>
+                        <li><a href="/components/tables/responsive_tables"
+                                data-key="t-responsive-table">Responsive</a></li>
+                        <li><a href="/components/tables/editable_tables"
+                                data-key="t-editable-table">Editable</a></li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="pie-chart"></i>
+                        <span data-key="t-charts">Charts</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="/components/charts/apexcharts"
+                                data-key="t-apex-charts">Apexcharts</a></li>
+                        <li><a href="/components/charts/echarts" data-key="t-e-charts">Echarts</a>
+                        </li>
+                        <li><a href="/components/charts/chartjs"
+                                data-key="t-chartjs-charts">Chartjs</a></li>
+                        <li><a href="/components/charts/knob" data-key="t-knob-charts">Jquery
+                                Knob</a></li>
+                        <li><a href="/components/charts/sparkline"
+                                data-key="t-sparkline-charts">Sparkline</a></li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="cpu"></i>
+                        <span data-key="t-icons">Icons</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="/components/icons/feather" data-key="t-feather">Feather</a>
+                        </li>
+                        <li><a href="/components/icons/boxicons"
+                                data-key="t-boxicons">Boxicons</a></li>
+                        <li><a href="/components/icons/materialdesign"
+                                data-key="t-material-design">Material Design</a></li>
+                        <li><a href="/components/icons/dripicons"
+                                data-key="t-dripicons">Dripicons</a></li>
+                        <li><a href="/components/icons/fontawesome" data-key="t-font-awesome">Font
+                                Awesome 5</a></li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="map"></i>
+                        <span data-key="t-maps">Maps</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="/components/maps/googlemaps" data-key="t-g-maps">Google</a>
+                        </li>
+                        <li><a href="/components/maps/vectormaps" data-key="t-v-maps">Vector</a>
+                        </li>
+                        <li><a href="/components/maps/leaflet" data-key="t-l-maps">Leaflet</a>
+                        </li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="share-2"></i>
+                        <span data-key="t-multi-level">Multi Level</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="true">
+                        <li><a href="javascript: void(0);" data-key="t-level-1-1">Level 1.1</a></li>
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow" data-key="t-level-1-2">Level 1.2</a>
+                            <ul class="sub-menu" aria-expanded="true">
+                                <li><a href="javascript: void(0);" data-key="t-level-2-1">Level 2.1</a></li>
+                                <li><a href="javascript: void(0);" data-key="t-level-2-2">Level 2.2</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+                <li class="menu-title" data-key="t-settings">Settings</li>
+                <li>
+                    <a href="/manage/permissions/">
+                        <i data-feather="shield"></i>
+                        <span data-key="t-permissions">Permissions</span>
+                    </a>
+                </li>
+
+            </ul>
+
+        </div>
+        <!-- Sidebar -->
+    </div>
+</nav>
+<!-- Left Sidebar End -->
+
+
+        
+
+
+        <main class="flex-grow-1" id="main-container">
+        
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <!-- Breadcrumb -->
+            
+            <div class="row">
+                <div class="col-12">
+                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                        <h4 class="mb-sm-0 font-size-18">Chart of Accounts</h4>
+                        <div class="page-title-right">
+                            <ol class="breadcrumb m-0">
+                                
+                                <li class="breadcrumb-item"><a href="/accounting/chart-of-accounts/">List</a></li>
+                                <li class="breadcrumb-item active">Create Chart of Account</li>
+                                
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+
+            
+            <!-- Quick Actions Bar -->
+            <div class="quick-actions">
+                <div class="row">
+                    <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <!-- Tab Navigation (conditional) -->
+                        
+                        <div class="btn-group" role="group" aria-label="Form tabs">
+                            
+                            <button type="button" class="btn btn-sm btn-outline-primary active" 
+                                    data-tab="single" 
+                                    onclick="showTab('single')"
+                                    aria-label="Single Entry Tab"
+                                    aria-pressed="true">
+                                <i class="bx bx-file" aria-hidden="true"></i> Single Entry
+                            </button>
+                            
+                            <button type="button" class="btn btn-sm btn-outline-primary" 
+                                    data-tab="bulk" 
+                                    onclick="showTab('bulk')"
+                                    aria-label="Bulk Import Tab"
+                                    aria-pressed="false">
+                                <i class="bx bx-spreadsheet" aria-hidden="true"></i> Bulk Import
+                            </button>
+                            
+                            
+                            <button type="button" class="btn btn-sm btn-outline-primary" 
+                                    data-tab="demo" 
+                                    onclick="showTab('demo')"
+                                    aria-label="Templates Tab"
+                                    aria-pressed="false">
+                                <i class="bx bx-data" aria-hidden="true"></i> Templates
+                            </button>
+                            
+                            
+                        </div>
+                        
+                        
+                        <!-- Action Buttons -->
+                        <div class="btn-group" role="group" aria-label="Form actions">
+                            
+                            <button type="button" 
+                                    class="btn btn-sm btn-outline-success" 
+                                    onclick="saveForm()"
+                                    aria-label="Save form"
+                                    title="Save (Ctrl+S)">
+                                <i class="bx bx-save" aria-hidden="true"></i> Save
+                            </button>
+                            
+                            <button type="button" 
+                                    class="btn btn-sm btn-outline-success" 
+                                    onclick="saveAndNew()"
+                                    aria-label="Save and create new"
+                                    title="Save & New (Ctrl+Enter)">
+                                <i class="bx bx-save" aria-hidden="true"></i> Save & New
+                            </button>
+                            
+                            
+                            <button type="button" 
+                                    class="btn btn-sm btn-outline-info" 
+                                    onclick="toggleShortcuts()"
+                                    aria-label="Toggle keyboard shortcuts"
+                                    title="Keyboard Shortcuts (Shift+?)">
+                                <i class="bx bx-keyboard" aria-hidden="true"></i> Shortcuts
+                            </button>
+                            
+                            <a href="/accounting/chart-of-accounts/" 
+                               class="btn btn-sm btn-outline-secondary"
+                               aria-label="Back to list"
+                               title="Back to list">
+                                <i class="bx bx-arrow-back" aria-hidden="true"></i> Back
+                            </a>
+                            
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+
+            <!-- Main Form Content -->
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="card coa-enhanced-form">
+                        <div class="card-body">
+                            
+<!-- Tab Content -->
+<div class="tab-content" id="coaTabContent">
+    
+    <!-- Single Entry Tab -->
+    <div class="tab-pane fade show active" id="single-entry" role="tabpanel">
+        <!-- Single Entry Form Partial -->
+<form id="coa-single-form" method="post" novalidate
+      hx-post="/accounting/chart-of-accounts/create/"
+      hx-trigger="submit"
+      hx-target="#coa-single-form"
+      hx-swap="outerHTML"
+      hx-indicator=".htmx-indicator"
+      data-next-code-url="/accounting/ajax/get-next-account-code/"
+      data-org-id="4"
+      data-is-edit="0">
+    <input type="hidden" name="csrfmiddlewaretoken" value="ej56A3p8U64TchnbN9mz0NKmInXOc9QNDjGdSoFab89glOfEMrA1lNqGmwIu6pMo">
+    <input type="hidden" name="organization" value="4" class="form-control" id="id_organization">
+    
+    
+    
+    <!-- Basic Information -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5 class="text-primary mb-3"><i class="bx bx-info-circle"></i> Basic Information</h5>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <label for="id_account_code" class="form-label mb-0">Account Code</label>
+                    <div class="form-check form-switch mb-0">
+                        <input type="checkbox" name="use_custom_code" class="form-check-input form-control" title="Check to enter a custom account code." id="id_use_custom_code">
+                        <label class="form-check-label small ms-1 mb-0" for="id_use_custom_code">Use Custom Code</label>
+                    </div>
+                </div>
+                <input type="text" name="account_code" class="form-control" readonly maxlength="50" pattern="^[0-9]+(\.[0-9]{2})*$" title="Account code must be numeric, optionally with dot and two digits for children." placeholder="Auto-generated" id="id_account_code">
+                <input type="hidden" name="custom_code" id="id_custom_code">
+                
+                
+                <small class="text-muted">Auto-generated from Parent/Type. Enable custom to edit manually.</small>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label for="id_account_name" class="form-label required-field">Account Name</label>
+                <input type="text" name="account_name" class="form-control" required maxlength="200" placeholder="Account Name" title="Enter the account name (max 200 characters)." id="id_account_name">
+                
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label for="id_account_type" class="form-label required-field">Account Type</label>
+                
+                <select name="account_type" id="id_account_type" 
+                        class="form-select"
+                        required
+                        data-pristine-required-message="Account type is required">
+                    <option value="">Select Type</option>
+                    
+                        
+                    
+                        
+                            <option value="59">EXP003 - Administrative Expenses</option>
+                        
+                    
+                        
+                            <option value="57">EXP001 - Cost of Goods Sold</option>
+                        
+                    
+                        
+                            <option value="46">AST001 - Current Assets</option>
+                        
+                    
+                        
+                            <option value="50">LIA001 - Current Liabilities</option>
+                        
+                    
+                        
+                            <option value="60">EXP004 - Financial Expenses</option>
+                        
+                    
+                        
+                            <option value="47">AST002 - Fixed Assets</option>
+                        
+                    
+                        
+                            <option value="48">AST003 - Intangible Assets</option>
+                        
+                    
+                        
+                            <option value="49">AST004 - Investments</option>
+                        
+                    
+                        
+                            <option value="51">LIA002 - Long-term Liabilities</option>
+                        
+                    
+                        
+                            <option value="58">EXP002 - Operating Expenses</option>
+                        
+                    
+                        
+                            <option value="56">INC002 - Other Income</option>
+                        
+                    
+                        
+                            <option value="54">EQT003 - Reserves</option>
+                        
+                    
+                        
+                            <option value="53">EQT002 - Retained Earnings</option>
+                        
+                    
+                        
+                            <option value="55">INC001 - Revenue</option>
+                        
+                    
+                        
+                            <option value="52">EQT001 - Share Capital</option>
+                        
+                    
+                </select>
+                
+                
+            </div>
+        </div>
+    </div>
+
+    <!-- Parent & Hierarchy -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5 class="text-primary mb-3"><i class="bx bx-sitemap"></i> Hierarchy</h5>
+        </div>
+        
+        <div class="col-md-6">
+            <div id="parent-account-container" class="mb-3">
+                <label for="id_parent_account" class="form-label">Parent Account</label>
+                <select name="parent_account" id="id_parent_account" class="form-select">
+                    <option value="">None (Root Level)</option>
+                    
+                        
+                            <option value="160" data-account-type="46">
+                                1000 - Assets
+                            </option>
+                        
+                            <option value="161" data-account-type="46">
+                                1010 - Cash in Hand
+                            </option>
+                        
+                            <option value="162" data-account-type="46">
+                                1020 - Bank Account - NPR
+                            </option>
+                        
+                            <option value="163" data-account-type="46">
+                                1021 - Bank Account - USD
+                            </option>
+                        
+                            <option value="164" data-account-type="46">
+                                1100 - Accounts Receivable
+                            </option>
+                        
+                            <option value="165" data-account-type="46">
+                                1110 - Trade Receivables
+                            </option>
+                        
+                            <option value="166" data-account-type="46">
+                                1200 - Inventory - Raw Materials
+                            </option>
+                        
+                            <option value="167" data-account-type="46">
+                                1210 - Inventory - Finished Goods
+                            </option>
+                        
+                            <option value="168" data-account-type="46">
+                                1300 - Prepaid Expenses
+                            </option>
+                        
+                            <option value="169" data-account-type="46">
+                                1310 - Advance to Suppliers
+                            </option>
+                        
+                            <option value="170" data-account-type="47">
+                                1500 - Fixed Assets
+                            </option>
+                        
+                            <option value="171" data-account-type="47">
+                                1510 - Land and Building
+                            </option>
+                        
+                            <option value="172" data-account-type="47">
+                                1520 - Office Equipment
+                            </option>
+                        
+                            <option value="173" data-account-type="47">
+                                1530 - Furniture and Fixtures
+                            </option>
+                        
+                            <option value="174" data-account-type="47">
+                                1540 - Computer and Software
+                            </option>
+                        
+                            <option value="175" data-account-type="47">
+                                1550 - Vehicle
+                            </option>
+                        
+                            <option value="176" data-account-type="47">
+                                1600 - Accumulated Depreciation
+                            </option>
+                        
+                            <option value="177" data-account-type="50">
+                                2000 - Liabilities
+                            </option>
+                        
+                            <option value="178" data-account-type="50">
+                                2010 - Accounts Payable
+                            </option>
+                        
+                            <option value="179" data-account-type="50">
+                                2020 - Trade Payables
+                            </option>
+                        
+                            <option value="180" data-account-type="50">
+                                2100 - VAT Payable
+                            </option>
+                        
+                            <option value="181" data-account-type="50">
+                                2110 - TDS Payable
+                            </option>
+                        
+                            <option value="182" data-account-type="50">
+                                2120 - Social Security Fund
+                            </option>
+                        
+                            <option value="183" data-account-type="50">
+                                2130 - Citizens Investment Trust
+                            </option>
+                        
+                            <option value="184" data-account-type="50">
+                                2140 - Provident Fund
+                            </option>
+                        
+                            <option value="185" data-account-type="50">
+                                2200 - Salary Payable
+                            </option>
+                        
+                            <option value="186" data-account-type="50">
+                                2210 - Accrued Expenses
+                            </option>
+                        
+                            <option value="187" data-account-type="51">
+                                2500 - Long-term Loans
+                            </option>
+                        
+                            <option value="188" data-account-type="52">
+                                3000 - Equity
+                            </option>
+                        
+                            <option value="189" data-account-type="52">
+                                3010 - Share Capital
+                            </option>
+                        
+                            <option value="190" data-account-type="53">
+                                3100 - Retained Earnings
+                            </option>
+                        
+                            <option value="191" data-account-type="54">
+                                3200 - General Reserve
+                            </option>
+                        
+                            <option value="192" data-account-type="53">
+                                3300 - Current Year Profit/Loss
+                            </option>
+                        
+                            <option value="193" data-account-type="55">
+                                4000 - Revenue
+                            </option>
+                        
+                            <option value="194" data-account-type="55">
+                                4010 - Sales Revenue
+                            </option>
+                        
+                            <option value="195" data-account-type="55">
+                                4020 - Service Revenue
+                            </option>
+                        
+                            <option value="196" data-account-type="55">
+                                4030 - Export Revenue
+                            </option>
+                        
+                            <option value="197" data-account-type="56">
+                                4100 - Interest Income
+                            </option>
+                        
+                            <option value="198" data-account-type="56">
+                                4200 - Other Income
+                            </option>
+                        
+                            <option value="199" data-account-type="58">
+                                5000 - Expenses
+                            </option>
+                        
+                            <option value="200" data-account-type="57">
+                                5010 - Cost of Goods Sold
+                            </option>
+                        
+                            <option value="201" data-account-type="59">
+                                5100 - Salary and Wages
+                            </option>
+                        
+                            <option value="202" data-account-type="59">
+                                5110 - Office Rent
+                            </option>
+                        
+                            <option value="203" data-account-type="59">
+                                5120 - Utilities
+                            </option>
+                        
+                            <option value="204" data-account-type="59">
+                                5130 - Office Supplies
+                            </option>
+                        
+                            <option value="205" data-account-type="59">
+                                5140 - Professional Fees
+                            </option>
+                        
+                            <option value="206" data-account-type="58">
+                                5150 - Travel and Transportation
+                            </option>
+                        
+                            <option value="207" data-account-type="59">
+                                5160 - Communication Expenses
+                            </option>
+                        
+                            <option value="208" data-account-type="58">
+                                5170 - Depreciation Expense
+                            </option>
+                        
+                            <option value="209" data-account-type="60">
+                                5180 - Bank Charges
+                            </option>
+                        
+                            <option value="210" data-account-type="58">
+                                5190 - Repair and Maintenance
+                            </option>
+                        
+                            <option value="211" data-account-type="60">
+                                5200 - Interest Expense
+                            </option>
+                        
+                            <option value="212" data-account-type="58">
+                                5300 - Bad Debt Expense
+                            </option>
+                        
+                    
+                </select>
+                <small class="text-muted">Optional - Leave blank for root level account</small>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label for="id_currency" class="form-label">Currency</label>
+                <select name="currency" class="form-select" id="id_currency">
+  <option value="EUR">EUR - Euro</option>
+
+  <option value="GBP">GBP - British Pound</option>
+
+  <option value="INR">INR - Indian Rupee</option>
+
+  <option value="NPR">NPR - Nepalese Rupee</option>
+
+  <option value="USD">USD - US Dollar</option>
+
+</select>
+                
+            </div>
+        </div>
+    </div>
+    
+    <!-- Balances & Tracking -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5 class="text-primary mb-3"><i class="bx bx-pie-chart-alt"></i> Balances & Tracking</h5>
+        </div>
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label for="id_opening_balance" class="form-label">Opening Balance</label>
+                <input type="number" name="opening_balance" value="0.0" step="0.0001" class="form-control" required id="id_opening_balance">
+                
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label for="id_current_balance" class="form-label">Current Balance</label>
+                <input type="number" name="current_balance" value="0.0" step="0.0001" class="form-control" required id="id_current_balance">
+                
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label for="id_reconciled_balance" class="form-label">Reconciled Balance</label>
+                <input type="number" name="reconciled_balance" value="0.0" step="0.0001" class="form-control" required id="id_reconciled_balance">
+                
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label for="id_last_reconciled_date" class="form-label">Last Reconciled Date</label>
+                <input type="date" name="last_reconciled_date" class="form-control" title="Last reconciled date." id="id_last_reconciled_date">
+                
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label for="id_account_level" class="form-label">Account Level</label>
+                <input type="number" name="account_level" value="1" class="form-control" required id="id_account_level">
+                
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label for="id_display_order" class="form-label">Display Order</label>
+                <input type="number" name="display_order" class="form-control" value="0" title="Display order (optional)." min="-9223372036854775808" max="9223372036854775807" id="id_display_order">
+                
+            </div>
+        </div>
+    </div>
+    
+    <!-- Description & Settings -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5 class="text-primary mb-3"><i class="bx bx-detail"></i> Details & Settings</h5>
+        </div>
+        
+        <div class="col-md-12">
+            <div class="mb-3">
+                <label for="id_description" class="form-label">Description</label>
+                <textarea name="description" id="id_description" 
+                          class="form-control" 
+                          rows="3" 
+                          placeholder="Enter account description"></textarea>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" name="is_active" id="id_is_active" 
+                       checked>
+                <label class="form-check-label" for="id_is_active">
+                    Active
+                </label>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" name="allow_manual_journal" id="id_allow_manual_journal" 
+                       checked>
+                <label class="form-check-label" for="id_allow_manual_journal">
+                    Allow Manual Journal
+                </label>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" name="is_bank_account" id="id_is_bank_account"
+                       hx-get="/accounting/chart-of-accounts/form-fields/"
+                       hx-trigger="change"
+                       hx-target="#dynamic-fields-container"
+                       hx-swap="innerHTML"
+                       >
+                <label class="form-check-label" for="id_is_bank_account">
+                    Bank Account
+                </label>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" name="is_control_account" id="id_is_control_account"
+                       hx-get="/accounting/chart-of-accounts/form-fields/"
+                       hx-trigger="change"
+                       hx-target="#dynamic-fields-container"
+                       hx-swap="innerHTML"
+                       >
+                <label class="form-check-label" for="id_is_control_account">
+                    Control Account
+                </label>
+            </div>
+        </div>
+    </div>
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" name="require_cost_center" id="id_require_cost_center"
+                       >
+                <label class="form-check-label" for="id_require_cost_center">
+                    Require Cost Center
+                </label>
+            </div>
+            
+        </div>
+        <div class="col-md-3">
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" name="require_project" id="id_require_project"
+                       >
+                <label class="form-check-label" for="id_require_project">
+                    Require Project
+                </label>
+            </div>
+            
+        </div>
+        <div class="col-md-3">
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" name="require_department" id="id_require_department"
+                       >
+                <label class="form-check-label" for="id_require_department">
+                    Require Department
+                </label>
+            </div>
+            
+        </div>
+        <div class="col-md-3">
+            <div class="mb-3">
+                <label for="id_default_tax_code" class="form-label">Default Tax Code</label>
+                <input type="text" name="default_tax_code" class="form-control" maxlength="50" placeholder="Default Tax Code" title="Default tax code (optional, max 50 characters)." id="id_default_tax_code">
+                
+            </div>
+        </div>
+    </div>
+    
+    <!-- Dynamic Fields Section (loaded via HTMX) -->
+    <div class="row mb-4 mt-2">
+        <div class="col-12">
+            <div id="dynamic-fields-container"
+                 hx-get="/accounting/chart-of-accounts/form-fields/"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+                <!-- Fields will load here via HTMX -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Form Actions -->
+    <div class="row">
+        <div class="col-12">
+            <hr class="my-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <a href="/accounting/chart-of-accounts/" class="btn btn-light">
+                    <i class="bx bx-x"></i> Cancel
+                </a>
+                <div>
+                    <button type="submit" name="save_and_new" class="btn btn-success">
+                        <i class="bx bx-save"></i> Save & New
+                        <span class="htmx-indicator spinner-border spinner-border-sm ms-1" role="status"></span>
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bx bx-save"></i> Save
+                        <span class="htmx-indicator spinner-border spinner-border-sm ms-1" role="status"></span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mt-3 text-muted small">
+                <i class="bx bx-info-circle"></i> 
+                <strong>Quick Tip:</strong> Press <kbd>Ctrl+S</kbd> to save or <kbd>Ctrl+Enter</kbd> for Save & New
+            </div>
+        </div>
+    </div>
+</form>
+
+<script>
+(function() {
+    const form = document.getElementById('coa-single-form');
+    if (!form) { return; }
+    const accountCodeInput = document.getElementById('id_account_code');
+    const accountTypeSelect = document.getElementById('id_account_type');
+    const parentSelect = document.getElementById('id_parent_account');
+    const useCustomToggle = document.getElementById('id_use_custom_code');
+    const hiddenCustomCode = document.querySelector('input[name="custom_code"]');
+    const nextCodeUrl = form.dataset.nextCodeUrl || '';
+    const orgInput = document.getElementById('id_organization');
+    const orgId = form.dataset.orgId || (orgInput ? orgInput.value : '');
+    const isEdit = form.dataset.isEdit === '1';
+
+    // Cache all parent options for client-side filtering by account type
+    const parentOptions = parentSelect ? Array.from(parentSelect.options).map(opt => ({
+        value: opt.value,
+        text: opt.textContent,
+        type: opt.getAttribute('data-account-type') || ''
+    })) : [];
+
+    function setCode(value) {
+        const code = (value || '').trim();
+        if (accountCodeInput) {
+            accountCodeInput.value = code;
+        }
+        if (hiddenCustomCode) {
+            hiddenCustomCode.value = code;
+        }
+    }
+
+    function syncCustomToggle() {
+        if (!useCustomToggle || !accountCodeInput) { return; }
+        const enabled = !!useCustomToggle.checked;
+        accountCodeInput.readOnly = !enabled;
+        accountCodeInput.classList.toggle('bg-light', !enabled);
+        if (!enabled && !isEdit) {
+            setCode('');
+            fetchNextCode();
+        }
+        if (enabled) {
+            accountCodeInput.focus();
+        }
+    }
+
+    function filterParents() {
+        if (!parentSelect) { return; }
+        const selectedType = accountTypeSelect?.value || '';
+        const currentValue = parentSelect.value;
+        parentSelect.innerHTML = '';
+        const rootOpt = document.createElement('option');
+        rootOpt.value = '';
+        rootOpt.textContent = 'None (Root Level)';
+        parentSelect.appendChild(rootOpt);
+        let currentStillValid = currentValue === '';
+        parentOptions.forEach((optData) => {
+            if (!optData.value) { return; }
+            if (selectedType && optData.type && optData.type !== selectedType) { return; }
+            const opt = document.createElement('option');
+            opt.value = optData.value;
+            opt.textContent = optData.text;
+            if (optData.type) {
+                opt.setAttribute('data-account-type', optData.type);
+            }
+            if (currentValue && optData.value === currentValue) {
+                opt.selected = true;
+                currentStillValid = true;
+            }
+            parentSelect.appendChild(opt);
+        });
+        if (!currentStillValid) {
+            parentSelect.value = '';
+        }
+    }
+
+    async function fetchNextCode() {
+        if (isEdit || !accountCodeInput || !nextCodeUrl || !orgId) { return; }
+        if (useCustomToggle && useCustomToggle.checked) { return; }
+        const parent = parentSelect?.value || '';
+        const acctType = accountTypeSelect?.value || '';
+        if (!parent && !acctType) {
+            setCode('');
+            return;
+        }
+        try {
+            const url = new URL(nextCodeUrl, window.location.origin);
+            url.searchParams.set('organization', orgId);
+            if (parent) { url.searchParams.set('parent_account', parent); }
+            if (acctType) { url.searchParams.set('account_type', acctType); }
+            const resp = await fetch(url, { headers: { 'HX-Request': 'true' } });
+            const data = await resp.json();
+            if (typeof data.next_code !== 'undefined') {
+                setCode(data.next_code || '');
+            }
+        } catch (err) {
+            console.warn('Unable to fetch next account code', err);
+        }
+    }
+
+    if (accountCodeInput) {
+        accountCodeInput.addEventListener('blur', () => setCode(accountCodeInput.value));
+    }
+    if (useCustomToggle) {
+        useCustomToggle.addEventListener('change', syncCustomToggle);
+    }
+    if (accountTypeSelect) {
+        accountTypeSelect.addEventListener('change', () => {
+            filterParents();
+            fetchNextCode();
+        });
+    }
+    if (parentSelect) {
+        parentSelect.addEventListener('change', fetchNextCode);
+    }
+
+    // Initial sync on load
+    filterParents();
+    syncCustomToggle();
+    fetchNextCode();
+})();
+</script>
+
+    </div>
+    
+    <!-- Bulk Import Tab -->
+    <div class="tab-pane fade" id="bulk-import" role="tabpanel">
+        <!-- Bulk Import Form Partial -->
+<div class="bulk-import-section">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <h5 class="alert-heading"><i class="bx bx-info-circle"></i> Bulk Import Instructions</h5>
+                <p class="mb-2">You can import multiple accounts at once using one of these methods:</p>
+                <ul class="mb-0">
+                    <li><strong>Copy from Excel:</strong> Copy rows from Excel/Google Sheets and paste into the text area below</li>
+                    <li><strong>Manual Entry:</strong> Enter tab-separated values (one account per line)</li>
+                    <li><strong>CSV Upload:</strong> Upload a CSV file with account data</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Expected Format -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h6 class="card-title"><i class="bx bx-table"></i> Expected Format</h6>
+                    <p class="mb-2">Columns (Tab-separated or comma-separated):</p>
+                    <code class="d-block p-2 bg-white border rounded">
+                        Account Code | Account Name | Account Type | Parent Code | Description | Active
+                    </code>
+                    <p class="mt-2 mb-0 small text-muted">
+                        <strong>Example:</strong><br>
+                        <code>1000 | Cash | asset | | Cash on Hand | true</code><br>
+                        <code>1100 | Accounts Receivable | asset | 1000 | Customer Receivables | true</code>
+                    </p>
+                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="downloadSampleCSV()">
+                        <i class="bx bx-download"></i> Download Sample CSV
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Paste Area -->
+    <form id="bulk-import-form" method="post" 
+          hx-post="/accounting/chart-of-accounts/bulk-create/"
+          hx-trigger="submit"
+          hx-target="#bulk-preview"
+          hx-swap="innerHTML"
+          hx-indicator=".bulk-spinner">
+        <input type="hidden" name="csrfmiddlewaretoken" value="ej56A3p8U64TchnbN9mz0NKmInXOc9QNDjGdSoFab89glOfEMrA1lNqGmwIu6pMo">
+        
+        <div class="row mb-4">
+            <div class="col-12">
+                <label for="bulk-data" class="form-label required-field">
+                    Paste Data from Excel or Enter Manually
+                </label>
+                <div class="bulk-import-container" id="pasteArea">
+                    <textarea name="bulk_data" id="bulk-data" class="form-control" rows="12" 
+                              placeholder="Paste from Excel here... (Tab-separated)&#10;&#10;Example:&#10;1000	Cash	asset		Cash on Hand	true&#10;1100	Accounts Receivable	asset	1000	Customer Receivables	true&#10;1200	Inventory	asset		Merchandise Inventory	true"
+                              required></textarea>
+                    <div class="mt-3">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearPasteArea()">
+                            <i class="bx bx-trash"></i> Clear
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="fillSampleData()">
+                            <i class="bx bx-data"></i> Load Sample Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Options -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="skip_errors" id="skip-errors" checked>
+                    <label class="form-check-label" for="skip-errors">
+                        Skip rows with errors and import valid ones
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="update_existing" id="update-existing">
+                    <label class="form-check-label" for="update-existing">
+                        Update existing accounts
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="validate_only" id="validate-only">
+                    <label class="form-check-label" for="validate-only">
+                        Validate only (don't save)
+                    </label>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bx bx-search-alt"></i> Preview & Validate
+                    <span class="bulk-spinner htmx-indicator spinner-border spinner-border-sm ms-1"></span>
+                </button>
+                <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('csv-upload').click()">
+                    <i class="bx bx-upload"></i> Upload CSV File
+                </button>
+                <input type="file" id="csv-upload" accept=".csv,.txt" style="display:none" onchange="handleFileUpload(event)">
+            </div>
+        </div>
+    </form>
+    
+    <!-- Preview Section -->
+    <div id="bulk-preview" class="mt-4">
+        <!-- Preview will be loaded here via HTMX -->
+    </div>
+    
+</div>
+
+<script>
+// Sample Data for Quick Testing
+const sampleBulkData = `1000	Cash	asset		Cash and cash equivalents	true
+1010	Petty Cash	asset	1000	Small cash fund	true
+1100	Accounts Receivable	asset		Customer receivables	true
+1200	Inventory	asset		Merchandise inventory	true
+2000	Accounts Payable	liability		Vendor payables	true
+2100	Accrued Expenses	liability		Expenses incurred but not paid	true
+3000	Owner's Equity	equity		Owner's capital account	true
+4000	Sales Revenue	revenue		Revenue from sales	true
+5000	Cost of Goods Sold	expense		Direct costs of sales	true
+5100	Salaries Expense	expense		Employee salaries	true`;
+
+function fillSampleData() {
+    document.getElementById('bulk-data').value = sampleBulkData;
+    toastr.success('Sample data loaded! Click "Preview & Validate" to continue.');
+}
+
+function clearPasteArea() {
+    document.getElementById('bulk-data').value = '';
+    document.getElementById('bulk-preview').innerHTML = '';
+}
+
+function downloadSampleCSV() {
+    const csvContent = `Account Code,Account Name,Account Type,Parent Code,Description,Active
+1000,Cash,asset,,Cash and cash equivalents,true
+1010,Petty Cash,asset,1000,Small cash fund,true
+1100,Accounts Receivable,asset,,Customer receivables,true
+1200,Inventory,asset,,Merchandise inventory,true
+2000,Accounts Payable,liability,,Vendor payables,true
+2100,Accrued Expenses,liability,,Expenses incurred but not paid,true
+3000,Owner's Equity,equity,,Owner's capital account,true
+4000,Sales Revenue,revenue,,Revenue from sales,true
+5000,Cost of Goods Sold,expense,,Direct costs of sales,true
+5100,Salaries Expense,expense,,Employee salaries,true`;
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'chart_of_accounts_sample.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    toastr.success('Sample CSV downloaded!');
+}
+
+function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const content = e.target.result;
+        // Convert CSV to tab-separated if needed
+        const converted = content.replace(/,/g, '\t');
+        document.getElementById('bulk-data').value = converted;
+        toastr.success('File loaded! Review the data and click "Preview & Validate".');
+    };
+    reader.readAsText(file);
+}
+
+// Drag and drop support
+const pasteArea = document.getElementById('pasteArea');
+if (pasteArea) {
+    pasteArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.classList.add('dragover');
+    });
+    
+    pasteArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.classList.remove('dragover');
+    });
+    
+    pasteArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            const file = files[0];
+            if (file.type === 'text/csv' || file.name.endsWith('.csv') || file.name.endsWith('.txt')) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const content = event.target.result;
+                    const converted = content.replace(/,/g, '\t');
+                    document.getElementById('bulk-data').value = converted;
+                    toastr.success('File dropped! Review and validate.');
+                };
+                reader.readAsText(file);
+            } else {
+                toastr.error('Please drop a CSV or TXT file.');
+            }
+        }
+    });
+}
+</script>
+
+    </div>
+    
+    <!-- Demo Data Tab -->
+    <div class="tab-pane fade" id="demo-data" role="tabpanel">
+        <!-- Demo Data Tab Partial -->
+<div class="demo-data-section">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-primary">
+                <h5 class="alert-heading"><i class="bx bx-data"></i> Quick Start with Demo Data</h5>
+                <p class="mb-0">Select a pre-configured chart of accounts template to get started quickly. You can customize it after import.</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Demo Templates -->
+    <div class="row">
+        
+        <!-- Basic Business Template -->
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="demo-card" onclick="selectDemoTemplate('basic-business')" data-template="basic-business">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0"><i class="bx bx-briefcase text-primary"></i> Basic Business</h5>
+                    <span class="badge bg-success">Recommended</span>
+                </div>
+                <p class="text-muted mb-3">Simple chart of accounts for small businesses and startups.</p>
+                <div class="small">
+                    <strong>Includes:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>10 Assets accounts</li>
+                        <li>5 Liability accounts</li>
+                        <li>3 Equity accounts</li>
+                        <li>8 Revenue accounts</li>
+                        <li>12 Expense accounts</li>
+                    </ul>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-primary w-100 mt-3" 
+                        onclick="previewDemo('basic-business')">
+                    <i class="bx bx-show"></i> Preview
+                </button>
+            </div>
+        </div>
+        
+        <!-- Retail Template -->
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="demo-card" onclick="selectDemoTemplate('retail')" data-template="retail">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0"><i class="bx bx-store text-info"></i> Retail Business</h5>
+                    <span class="badge bg-info">Popular</span>
+                </div>
+                <p class="text-muted mb-3">Comprehensive COA for retail and e-commerce businesses.</p>
+                <div class="small">
+                    <strong>Includes:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>15 Assets (with inventory)</li>
+                        <li>8 Liability accounts</li>
+                        <li>4 Equity accounts</li>
+                        <li>12 Revenue streams</li>
+                        <li>18 Expense categories</li>
+                    </ul>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-info w-100 mt-3" 
+                        onclick="previewDemo('retail')">
+                    <i class="bx bx-show"></i> Preview
+                </button>
+            </div>
+        </div>
+        
+        <!-- Service Company Template -->
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="demo-card" onclick="selectDemoTemplate('service')" data-template="service">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0"><i class="bx bx-wrench text-warning"></i> Service Company</h5>
+                    <span class="badge bg-warning text-dark">New</span>
+                </div>
+                <p class="text-muted mb-3">Optimized for consulting and service-based businesses.</p>
+                <div class="small">
+                    <strong>Includes:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>8 Assets (no inventory)</li>
+                        <li>6 Liability accounts</li>
+                        <li>3 Equity accounts</li>
+                        <li>10 Service revenues</li>
+                        <li>15 Operating expenses</li>
+                    </ul>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-warning w-100 mt-3" 
+                        onclick="previewDemo('service')">
+                    <i class="bx bx-show"></i> Preview
+                </button>
+            </div>
+        </div>
+        
+        <!-- Manufacturing Template -->
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="demo-card" onclick="selectDemoTemplate('manufacturing')" data-template="manufacturing">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0"><i class="bx bx-cog text-danger"></i> Manufacturing</h5>
+                    <span class="badge bg-danger">Advanced</span>
+                </div>
+                <p class="text-muted mb-3">Complete COA for manufacturing and production companies.</p>
+                <div class="small">
+                    <strong>Includes:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>20 Assets (with WIP)</li>
+                        <li>10 Liability accounts</li>
+                        <li>5 Equity accounts</li>
+                        <li>15 Revenue accounts</li>
+                        <li>25 Cost/Expense accounts</li>
+                    </ul>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger w-100 mt-3" 
+                        onclick="previewDemo('manufacturing')">
+                    <i class="bx bx-show"></i> Preview
+                </button>
+            </div>
+        </div>
+        
+        <!-- Non-Profit Template -->
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="demo-card" onclick="selectDemoTemplate('nonprofit')" data-template="nonprofit">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0"><i class="bx bx-heart text-success"></i> Non-Profit</h5>
+                    <span class="badge bg-secondary">Specialized</span>
+                </div>
+                <p class="text-muted mb-3">Chart of accounts for NGOs and non-profit organizations.</p>
+                <div class="small">
+                    <strong>Includes:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>12 Assets</li>
+                        <li>7 Liability accounts</li>
+                        <li>Net Assets (Fund accounts)</li>
+                        <li>Grants & Donations</li>
+                        <li>Program expenses</li>
+                    </ul>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-3" 
+                        onclick="previewDemo('nonprofit')">
+                    <i class="bx bx-show"></i> Preview
+                </button>
+            </div>
+        </div>
+        
+        <!-- Minimal Template -->
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="demo-card" onclick="selectDemoTemplate('minimal')" data-template="minimal">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0"><i class="bx bx-file text-secondary"></i> Minimal Starter</h5>
+                    <span class="badge bg-light text-dark">Simple</span>
+                </div>
+                <p class="text-muted mb-3">Bare minimum accounts to get started, build as you go.</p>
+                <div class="small">
+                    <strong>Includes:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>5 Basic assets</li>
+                        <li>3 Basic liabilities</li>
+                        <li>1 Equity account</li>
+                        <li>2 Revenue accounts</li>
+                        <li>5 Expense accounts</li>
+                    </ul>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-3" 
+                        onclick="previewDemo('minimal')">
+                    <i class="bx bx-show"></i> Preview
+                </button>
+            </div>
+        </div>
+        
+    </div>
+    
+    <!-- Preview Modal Target -->
+    <div id="demo-preview-container" class="mt-4">
+        <!-- Preview content will be loaded here -->
+    </div>
+    
+    <!-- Import Form -->
+    <form id="demo-import-form" method="post" style="display:none;"
+          hx-post="/accounting/chart-of-accounts/demo-import/"
+          hx-trigger="submit"
+          hx-target="#demo-result"
+          hx-swap="innerHTML"
+          hx-indicator=".demo-spinner">
+        <input type="hidden" name="csrfmiddlewaretoken" value="ej56A3p8U64TchnbN9mz0NKmInXOc9QNDjGdSoFab89glOfEMrA1lNqGmwIu6pMo">
+        <input type="hidden" name="template_type" id="selected-template" value="">
+        
+        <div id="demo-result" class="mt-4"></div>
+        
+        <div class="d-flex justify-content-between align-items-center mt-4">
+            <button type="button" class="btn btn-light" onclick="cancelDemoImport()">
+                <i class="bx bx-x"></i> Cancel
+            </button>
+            <button type="submit" class="btn btn-success">
+                <i class="bx bx-download"></i> Import Selected Template
+                <span class="demo-spinner htmx-indicator spinner-border spinner-border-sm ms-1"></span>
+            </button>
+        </div>
+    </form>
+    
+</div>
+
+<script>
+let selectedTemplate = null;
+
+function selectDemoTemplate(templateName) {
+    // Remove selection from all cards
+    document.querySelectorAll('.demo-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    
+    // Add selection to clicked card
+    const card = document.querySelector(`[data-template="${templateName}"]`);
+    if (card) {
+        card.classList.add('selected');
+    }
+    
+    selectedTemplate = templateName;
+    document.getElementById('selected-template').value = templateName;
+    document.getElementById('demo-import-form').style.display = 'block';
+    
+    toastr.success(`Selected: ${templateName.replace('-', ' ').toUpperCase()} template`);
+}
+
+function previewDemo(templateName) {
+    event.stopPropagation();
+    
+    // Make HTMX request to preview endpoint
+    htmx.ajax('GET', `/accounting/chart-of-accounts/demo-preview/?template=${templateName}`, {
+        target: '#demo-preview-container',
+        swap: 'innerHTML'
+    });
+    
+    // Scroll to preview
+    setTimeout(() => {
+        document.getElementById('demo-preview-container').scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+        });
+    }, 100);
+}
+
+function cancelDemoImport() {
+    selectedTemplate = null;
+    document.getElementById('demo-import-form').style.display = 'none';
+    document.getElementById('demo-preview-container').innerHTML = '';
+    document.querySelectorAll('.demo-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+}
+
+// Auto-select recommended template on load
+document.addEventListener('DOMContentLoaded', function() {
+    const recommendedCard = document.querySelector('[data-template="basic-business"]');
+    if (recommendedCard && !selectedTemplate) {
+        // Just highlight it, don't auto-select
+        recommendedCard.style.borderColor = '#556ee6';
+    }
+});
+</script>
+
+    </div>
+    
+</div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            
+            <!-- Keyboard Shortcuts Panel -->
+            <div class="shortcuts-panel" id="shortcuts-panel" style="display: none;">
+                <div class="card">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0"><i class="bx bx-keyboard"></i> Keyboard Shortcuts</h6>
+                        <button type="button" class="btn btn-sm btn-link text-white" onclick="toggleShortcuts()">
+                            <i class="bx bx-x"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="shortcut-item mb-2">
+                            <span class="shortcut-key">Ctrl</span> + <span class="shortcut-key">S</span>
+                            <span class="ms-2">Save Form</span>
+                        </div>
+                        <div class="shortcut-item mb-2">
+                            <span class="shortcut-key">Ctrl</span> + <span class="shortcut-key">Enter</span>
+                            <span class="ms-2">Save & New</span>
+                        </div>
+                        <div class="shortcut-item mb-2">
+                            <span class="shortcut-key">Alt</span> + <span class="shortcut-key">N</span>
+                            <span class="ms-2">Single Entry Tab</span>
+                        </div>
+                        <div class="shortcut-item mb-2">
+                            <span class="shortcut-key">Alt</span> + <span class="shortcut-key">B</span>
+                            <span class="ms-2">Bulk Import Tab</span>
+                        </div>
+                        <div class="shortcut-item mb-2">
+                            <span class="shortcut-key">Alt</span> + <span class="shortcut-key">D</span>
+                            <span class="ms-2">Demo Data Tab</span>
+                        </div>
+                        <div class="shortcut-item mb-2">
+                            <span class="shortcut-key">Shift</span> + <span class="shortcut-key">?</span>
+                            <span class="ms-2">Toggle Shortcuts</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <span class="shortcut-key">Esc</span>
+                            <span class="ms-2">Close Panels</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</div>
+
+        </main>
+    </div>
+    <!-- END layout-wrapper -->
+
+
+    
+        
+            
+
+
+    <!-- Right Sidebar -->
+    <div class="right-bar">
+        <div data-simplebar class="h-100">
+            <div class="rightbar-title d-flex align-items-center bg-dark p-3">
+
+                <h5 class="m-0 me-2 text-white">Theme Customizer</h5>
+
+                <a href="javascript:void(0);" class="right-bar-toggle ms-auto">
+                    <i class="mdi mdi-close noti-icon"></i>
+                </a>
+            </div>
+
+            <!-- Settings -->
+            <hr class="m-0" />
+
+            <div class="p-4">
+                <h6 class="mb-3">Layout</h6>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="layout"
+                        id="layout-vertical" value="vertical">
+                    <label class="form-check-label" for="layout-vertical">Vertical</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="layout"
+                        id="layout-horizontal" value="horizontal">
+                    <label class="form-check-label" for="layout-horizontal">Horizontal</label>
+                </div>
+
+                <h6 class="mt-4 mb-3 pt-2">Layout Mode</h6>
+
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="layout-mode"
+                        id="layout-mode-light" value="light">
+                    <label class="form-check-label" for="layout-mode-light">Light</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="layout-mode"
+                        id="layout-mode-dark" value="dark">
+                    <label class="form-check-label" for="layout-mode-dark">Dark</label>
+                </div>
+
+                <h6 class="mt-4 mb-3 pt-2">Layout Width</h6>
+
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="layout-width"
+                        id="layout-width-fuild" value="fuild" onchange="document.body.setAttribute('data-layout-size', 'fluid')">
+                    <label class="form-check-label" for="layout-width-fuild">Fluid</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="layout-width"
+                        id="layout-width-boxed" value="boxed" onchange="document.body.setAttribute('data-layout-size', 'boxed'),document.body.setAttribute('data-sidebar-size', 'sm')">
+                    <label class="form-check-label" for="layout-width-boxed">Boxed</label>
+                </div>
+
+                <h6 class="mt-4 mb-3 pt-2">Layout Position</h6>
+
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="layout-position"
+                        id="layout-position-fixed" value="fixed" onchange="document.body.setAttribute('data-layout-scrollable', 'false')">
+                    <label class="form-check-label" for="layout-position-fixed">Fixed</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="layout-position"
+                        id="layout-position-scrollable" value="scrollable" onchange="document.body.setAttribute('data-layout-scrollable', 'true')">
+                    <label class="form-check-label" for="layout-position-scrollable">Scrollable</label>
+                </div>
+
+                <h6 class="mt-4 mb-3 pt-2">Topbar Color</h6>
+
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="topbar-color"
+                        id="topbar-color-light" value="light" onchange="document.body.setAttribute('data-topbar', 'light')">
+                    <label class="form-check-label" for="topbar-color-light">Light</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="topbar-color"
+                        id="topbar-color-dark" value="dark" onchange="document.body.setAttribute('data-topbar', 'dark')">
+                    <label class="form-check-label" for="topbar-color-dark">Dark</label>
+                </div>
+
+                <h6 class="mt-4 mb-3 pt-2 sidebar-setting">Sidebar Size</h6>
+
+                <div class="form-check sidebar-setting">
+                    <input class="form-check-input" type="radio" name="sidebar-size"
+                        id="sidebar-size-default" value="default" onchange="document.body.setAttribute('data-sidebar-size', 'lg')">
+                    <label class="form-check-label" for="sidebar-size-default">Default</label>
+                </div>
+                <div class="form-check sidebar-setting">
+                    <input class="form-check-input" type="radio" name="sidebar-size"
+                        id="sidebar-size-compact" value="compact" onchange="document.body.setAttribute('data-sidebar-size', 'md')">
+                    <label class="form-check-label" for="sidebar-size-compact">Compact</label>
+                </div>
+                <div class="form-check sidebar-setting">
+                    <input class="form-check-input" type="radio" name="sidebar-size"
+                        id="sidebar-size-small" value="small" onchange="document.body.setAttribute('data-sidebar-size', 'sm')">
+                    <label class="form-check-label" for="sidebar-size-small">Small (Icon View)</label>
+                </div>
+
+                <h6 class="mt-4 mb-3 pt-2 sidebar-setting">Sidebar Color</h6>
+
+                <div class="form-check sidebar-setting">
+                    <input class="form-check-input" type="radio" name="sidebar-color"
+                        id="sidebar-color-light" value="light" onchange="document.body.setAttribute('data-sidebar', 'light')">
+                    <label class="form-check-label" for="sidebar-color-light">Light</label>
+                </div>
+                <div class="form-check sidebar-setting">
+                    <input class="form-check-input" type="radio" name="sidebar-color"
+                        id="sidebar-color-dark" value="dark" onchange="document.body.setAttribute('data-sidebar', 'dark')">
+                    <label class="form-check-label" for="sidebar-color-dark">Dark</label>
+                </div>
+                <div class="form-check sidebar-setting">
+                    <input class="form-check-input" type="radio" name="sidebar-color"
+                        id="sidebar-color-brand" value="brand" onchange="document.body.setAttribute('data-sidebar', 'brand')">
+                    <label class="form-check-label" for="sidebar-color-brand">Brand</label>
+                </div>
+
+                <h6 class="mt-4 mb-3 pt-2">Direction</h6>
+
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="layout-direction"
+                        id="layout-direction-ltr" value="ltr">
+                    <label class="form-check-label" for="layout-direction-ltr">LTR</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="layout-direction"
+                        id="layout-direction-rtl" value="rtl">
+                    <label class="form-check-label" for="layout-direction-rtl">RTL</label>
+                </div>
+
+            </div>
+
+        </div> <!-- end slimscroll-menu-->
+    </div>
+    <!-- /Right-bar -->
+
+    <!-- Right bar overlay-->
+    <div class="rightbar-overlay"></div>
+
+        
+    
+
+
+    
+
+    <!-- JAVASCRIPT -->
+    <script src="/static/libs/jquery/dist/jquery.min.js?v=20251203145647"></script>
+    <script src="/static/libs/bootstrap/dist/js/bootstrap.bundle.min.js?v=20251203145647"></script>
+    <script src="/static/libs/metismenu/dist/metisMenu.min.js?v=20251203145647"></script>
+    <script src="/static/libs/simplebar/dist/simplebar.min.js?v=20251203145647"></script>
+    <script src="/static/libs/node-waves/dist/waves.min.js?v=20251203145647"></script>
+    <script src="/static/libs/feather-icons/dist/feather.min.js?v=20251203145647"></script>
+    <!-- pace js -->
+    <script src="/static/libs/pace-js/pace.min.js?v=20251203145647"></script>
+    <!-- HTMX -->
+    <script src="/static/libs/htmx.org/dist/htmx.min.js?v=20251203145647"></script>
+    <!-- Pristine.js (local) to avoid CDN/tracking blocks -->
+    <script src="/static/libs/pristinejs/dist/pristine.min.js?v=20251203145647"></script>
+    <!-- Toastr -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script>
+      // Ensure HTMX sends the Django CSRF token for POST/PUT/DELETE.
+      (function() {
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        document.body.addEventListener('htmx:configRequest', function (evt) {
+          const token = getCookie('csrftoken');
+          if (token) {
+            evt.detail.headers['X-CSRFToken'] = token;
+          }
+        });
+      })();
+    </script>
+    
+<script src="/static/libs/flatpickr/dist/flatpickr.min.js?v=20251203145647"></script>
+<script src="/static/libs/bootstrap-datepicker/dist/js/bootstrap-datepicker.min.js?v=20251203145647"></script>
+
+<script>
+    // ==========================================
+    // UNIVERSAL ADVANCED FORM BASE JAVASCRIPT
+    // ==========================================
+    
+    // Configuration from template context
+    const FORM_CONFIG = {
+        enableTabs: true,
+        enableBulkImport: true,
+        enableTemplates: true,
+        enableShortcuts: true,
+        enableSaveAndNew: true,
+        formId: 'chart_of_accounts-form',
+    };
+    
+    // Shortcuts Panel Toggle
+    function toggleShortcuts() {
+        const panel = document.getElementById('shortcuts-panel');
+        if (panel) {
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        }
+    }
+
+    // Tab Management
+    function showTab(tabName) {
+        if (!FORM_CONFIG.enableTabs) return;
+        
+        // Map tab names to tab-pane IDs
+        const tabMap = {
+            'single': 'single-entry',
+            'bulk': 'bulk-import',
+            'demo': 'demo-data'
+        };
+        
+        const targetTabId = tabMap[tabName] || tabName;
+        
+        // Update tab buttons with ARIA attributes
+        document.querySelectorAll('[data-tab]').forEach(btn => {
+            btn.classList.remove('active');
+            btn.setAttribute('aria-pressed', 'false');
+        });
+        
+        const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+        if (activeBtn) {
+            activeBtn.classList.add('active');
+            activeBtn.setAttribute('aria-pressed', 'true');
+        }
+        
+        // Update tab content
+        document.querySelectorAll('.tab-pane').forEach(pane => {
+            pane.classList.remove('show', 'active');
+            pane.setAttribute('aria-hidden', 'true');
+        });
+        
+        const targetPane = document.getElementById(targetTabId);
+        if (targetPane) {
+            targetPane.classList.add('show', 'active');
+            targetPane.setAttribute('aria-hidden', 'false');
+        } else {
+            console.warn(`Tab pane with ID '${targetTabId}' not found`);
+        }
+        
+        // Focus first input in active tab
+        setTimeout(() => {
+            const activeTab = document.querySelector('.tab-pane.active');
+            const firstInput = activeTab?.querySelector('input:not([type="hidden"]), textarea, select');
+            if (firstInput) firstInput.focus();
+        }, 100);
+    }
+    
+    // Form Save Functions
+    function saveForm() {
+        // Try to find form by ID first
+        let form = document.getElementById(FORM_CONFIG.formId);
+        
+        // If not found, try common form IDs
+        if (!form) {
+            form = document.getElementById('coa-single-form') || 
+                   document.querySelector('.tab-pane.active form') ||
+                   document.querySelector('form[method="post"]');
+        }
+        
+        if (form) {
+            // Trigger pristine validation if available
+            if (window.pristineInstances && window.pristineInstances.has(form)) {
+                const pristine = window.pristineInstances.get(form);
+                if (pristine.validate()) {
+                    form.requestSubmit();
+                } else {
+                    // Show validation error notification
+                    if (typeof toastr !== 'undefined') {
+                        toastr.error('Please fix the validation errors before submitting', 'Validation Error');
+                    }
+                    // Focus first invalid field
+                    const firstInvalid = form.querySelector('.is-invalid');
+                    if (firstInvalid) firstInvalid.focus();
+                }
+            } else {
+                form.requestSubmit();
+            }
+        } else {
+            console.error('No form found to submit');
+            if (typeof toastr !== 'undefined') {
+                toastr.error('Form not found', 'Error');
+            }
+        }
+    }
+    
+    function saveAndNew() {
+        if (!FORM_CONFIG.enableSaveAndNew) return;
+        
+        let form = document.getElementById(FORM_CONFIG.formId);
+        if (!form) {
+            form = document.getElementById('coa-single-form') || 
+                   document.querySelector('.tab-pane.active form') ||
+                   document.querySelector('form[method="post"]');
+        }
+        
+        if (form) {
+            // Trigger pristine validation if available
+            if (window.pristineInstances && window.pristineInstances.has(form)) {
+                const pristine = window.pristineInstances.get(form);
+                if (!pristine.validate()) {
+                    // Show validation error notification
+                    if (typeof toastr !== 'undefined') {
+                        toastr.error('Please fix the validation errors before submitting', 'Validation Error');
+                    }
+                    // Focus first invalid field
+                    const firstInvalid = form.querySelector('.is-invalid');
+                    if (firstInvalid) firstInvalid.focus();
+                    return; // Don't submit if validation fails
+                }
+            }
+            
+            // Remove existing save_and_new input if any
+            const existingInput = form.querySelector('input[name="save_and_new"]');
+            if (existingInput) existingInput.remove();
+            
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'save_and_new';
+            input.value = '1';
+            form.appendChild(input);
+            form.requestSubmit();
+        } else {
+            console.error('No form found to submit');
+            if (typeof toastr !== 'undefined') {
+                toastr.error('Form not found', 'Error');
+            }
+        }
+    }
+
+    // Global Keyboard Shortcuts
+    if (FORM_CONFIG.enableShortcuts) {
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+S: Save
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                saveForm();
+            }
+            
+            // Ctrl+Enter: Save & New
+            if (FORM_CONFIG.enableSaveAndNew && e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                saveAndNew();
+            }
+            
+            // Alt+1-3: Switch Tabs
+            if (FORM_CONFIG.enableTabs && e.altKey && ['1', '2', '3'].includes(e.key)) {
+                e.preventDefault();
+                const tabNames = ['single', 'bulk', 'demo'];
+                const tabIndex = parseInt(e.key) - 1;
+                if (tabNames[tabIndex]) {
+                    showTab(tabNames[tabIndex]);
+                }
+            }
+            
+            // Shift+?: Toggle Shortcuts
+            if (e.shiftKey && e.key === '?') {
+                e.preventDefault();
+                toggleShortcuts();
+            }
+            
+            // Escape: Close panels
+            if (e.key === 'Escape') {
+                const panel = document.getElementById('shortcuts-panel');
+                if (panel && panel.style.display !== 'none') {
+                    toggleShortcuts();
+                }
+            }
+        });
+    }
+    
+    // Initialize on DOM Ready
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // Initialize Datepickers
+        if (typeof $.fn.datepicker !== 'undefined') {
+            $('.datepicker').datepicker({
+                format: 'yyyy-mm-dd',
+                autoclose: true,
+                todayHighlight: true,
+                orientation: 'bottom auto'
+            });
+        }
+        
+        // Initialize Flatpickr for date-time fields
+        if (typeof flatpickr !== 'undefined') {
+            flatpickr('.flatpickr', {
+                dateFormat: 'Y-m-d',
+                allowInput: true
+            });
+        }
+        
+        // Initialize Pristine Validation
+        if (typeof Pristine !== 'undefined') {
+            window.pristineInstances = window.pristineInstances || new Map();
+            
+            const forms = document.querySelectorAll('form[novalidate]');
+            forms.forEach(function(form) {
+                const pristine = new Pristine(form, {
+                    classTo: 'mb-3',
+                    errorClass: 'is-invalid',
+                    successClass: 'is-valid',
+                    errorTextParent: 'mb-3',
+                    errorTextTag: 'div',
+                    errorTextClass: 'error-message'
+                });
+                
+                window.pristineInstances.set(form, pristine);
+                
+                // Validate on submit
+                form.addEventListener('submit', function(e) {
+                    if (!pristine.validate()) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        // Focus first invalid field
+                        const firstInvalid = form.querySelector('.is-invalid');
+                        if (firstInvalid) {
+                            firstInvalid.focus();
+                            firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }
+                });
+            });
+        }
+        
+        // Add required field indicators
+        document.querySelectorAll('input[required], select[required], textarea[required]').forEach(field => {
+            const label = document.querySelector(`label[for="${field.id}"]`);
+            if (label && !label.classList.contains('required-field')) {
+                label.classList.add('required-field');
+            }
+        });
+    });
+
+    // HTMX Event Handlers
+    document.body.addEventListener('htmx:afterSwap', function(event) {
+        // Reinitialize components after HTMX swap
+        if (typeof $.fn.datepicker !== 'undefined') {
+            $('.datepicker').datepicker({
+                format: 'yyyy-mm-dd',
+                autoclose: true,
+                todayHighlight: true
+            });
+        }
+        
+        // Show success message if response contains success indicator
+        const successMsg = event.detail.target.querySelector('.alert-success');
+        if (successMsg && typeof toastr !== 'undefined') {
+            toastr.success('Operation completed successfully');
+        }
+    });
+
+    document.body.addEventListener('htmx:responseError', function(event) {
+        console.error('HTMX Response Error:', event.detail);
+        if (typeof toastr !== 'undefined') {
+            const status = event.detail.xhr.status;
+            let message = 'An error occurred. Please try again.';
+            
+            if (status === 404) {
+                message = 'Resource not found.';
+            } else if (status === 403) {
+                message = 'You do not have permission to perform this action.';
+            } else if (status === 500) {
+                message = 'Server error. Please contact support.';
+            } else if (status === 400) {
+                message = 'Invalid request. Please check your input.';
+            }
+            
+            toastr.error(message, 'Error');
+        }
+    });
+    
+    document.body.addEventListener('htmx:sendError', function(event) {
+        console.error('HTMX Send Error:', event.detail);
+        if (typeof toastr !== 'undefined') {
+            toastr.error('Network error. Please check your connection.', 'Connection Error');
+        }
+    });
+    
+    document.body.addEventListener('htmx:beforeRequest', function(event) {
+        // Disable submit buttons during request
+        const form = event.detail.elt;
+        if (form.tagName === 'FORM') {
+            const buttons = form.querySelectorAll('button[type="submit"]');
+            buttons.forEach(btn => btn.disabled = true);
+        }
+    });
+    
+    document.body.addEventListener('htmx:afterRequest', function(event) {
+        // Re-enable submit buttons after request
+        const form = event.detail.elt;
+        if (form.tagName === 'FORM') {
+            const buttons = form.querySelectorAll('button[type="submit"]');
+            buttons.forEach(btn => btn.disabled = false);
+        }
+    });
+
+    
+// COA-specific enhancements
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Enhanced COA Form loaded');
+    
+    // Add visual feedback for required fields
+    document.querySelectorAll('input[required], select[required], textarea[required]').forEach(field => {
+        const label = document.querySelector(`label[for="${field.id}"]`);
+        if (label && !label.classList.contains('required-field')) {
+            label.classList.add('required-field');
+        }
+    });
+    
+    // Show welcome toast
+    if (typeof toastr !== 'undefined') {
+        toastr.info('💡 Press Shift+? to view keyboard shortcuts', 'Quick Tip');
+    }
+});
+
+// HTMX Success Handler
+document.body.addEventListener('htmx:afterSwap', function(event) {
+    const successMsg = event.detail.target.querySelector('.alert-success');
+    if (successMsg) {
+        setTimeout(() => successMsg.classList.add('fade-in'), 100);
+    }
+});
+
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    
+    <script id="i18n-json" type="application/json"><script id="i18n-json" type="application/json">{"journal.entry.title": "Journal Entry", "journal.badge.new": "New", "button.save": "Save", "button.cancel": "Cancel", "button.post": "Post", "button.add_row": "Add Row", "button.add_attachment": "Add Attachment", "button.details": "Details", "actions.print": "Print", "actions.export": "Export", "actions.download_sample": "Download Sample", "actions.duplicate": "Duplicate", "actions.save_as_recurring": "Save as Recurring", "actions.back_to_list": "Back to List", "aria.toggle_density": "Toggle density", "aria.more_actions": "More actions", "aria.toggle_side_panel": "Toggle side panel", "aria.toggle_details_panel": "Toggle details panel", "placeholder.ai_assist": "Describe your journal entry (e.g., 'Accrue March AWS bill')...", "command_palette.placeholder": "Type a command or search...", "label.date": "Date", "label.journal_type": "Journal Type", "label.reference": "Reference", "label.header_description": "Header Description", "label.details": "Details", "attachments.title": "Attachments", "attachments.dropzone_hint": "Drag \u0026 drop files here or click to upload", "attachments.section_title": "Attachments", "ai.insights_title": "AI Insights", "ai.no_insights": "No specific insights for this entry.", "sidepanel.entry_details": "Entry Details", "sidepanel.select_row_hint": "Select a row to view details.", "column.row_number": "#", "column.drag_handle": "Drag handle", "column.account": "Account", "column.description": "Description", "column.debit": "Debit", "column.credit": "Credit", "column.department": "Department", "column.project": "Project", "column.cost_center": "Cost Center", "column.currency": "Currency", "column.exchange_rate": "Ex. Rate", "column.status": "Status", "column.row_actions": "Actions", "totals.total_debit": "Total Debit:", "totals.total_credit": "Total Credit:", "totals.imbalance": "Imbalance", "totals.balanced": "Balanced", "totals.realized_gain_loss": "Realized Gain/Loss:", "validation.issues_title": "Validation Issues", "validation.valid": "Valid", "validation.invalid": "Invalid", "validation.no_errors": "No errors found.", "validation.error_occurred": "An error occurred during validation.", "validation.connection_error": "Could not connect to the server for validation.", "validation.all_checks_passed": "All checks passed. This journal entry is ready to be posted.", "validation.reference_duplicate": "This reference number is already in use for this journal type.", "validation.reference_unavailable": "Could not validate reference.", "error.line_both_debit_credit": "A line cannot have both a debit and a credit.", "error.unexpected": "An unexpected error occurred.", "error.required_field": "This field is required.", "recurring.save_before_recurring": "Please save the journal entry before saving it as a recurring template.", "recurring.enter_name_prompt": "Enter a name for the recurring template:", "recurring.enter_schedule_prompt": "Enter schedule (monthly, quarterly, annually):", "recurring.invalid_schedule": "Invalid schedule. Please enter monthly, quarterly, or annually.", "confirm.discard_changes": "Discard changes?", "shortcuts.title": "Keyboard Shortcuts", "shortcuts.navigation": "Navigation", "shortcuts.actions": "Actions", "shortcuts.editing": "Editing", "shortcuts.views": "Views", "shortcuts.navigate_rows": "Navigate Rows", "shortcuts.navigate_cells": "Navigate Cells", "shortcuts.next_field": "Next Field", "shortcuts.previous_field": "Previous Field", "shortcuts.save_entry": "Save Entry", "shortcuts.post_journal": "Post Journal", "shortcuts.quick_actions": "Quick Actions", "shortcuts.command_palette": "Command Palette", "shortcuts.new_line": "New Line", "shortcuts.duplicate_line": "Duplicate Line", "shortcuts.auto_balance": "Auto Balance", "shortcuts.delete_line": "Delete Line", "shortcuts.focus_grid": "Focus Grid", "shortcuts.focus_details": "Focus Details", "shortcuts.focus_attachments": "Focus Attachments", "shortcuts.full_screen": "Full Screen", "context.edit": "Edit", "context.duplicate": "Duplicate", "context.delete": "Delete", "context.insert_above": "Insert Above", "context.insert_below": "Insert Below", "context.copy_values": "Copy Values", "status.draft": "Draft", "status.posted": "Posted", "status.new": "New", "voucher.title.edit": "Edit Journal Entry", "voucher.title.new": "New Journal Entry", "voucher.page_title": "Voucher Entry", "voucher.section.header": "Journal Information", "voucher.section.lines": "Journal Lines", "voucher.button.add_line": "Add Line", "voucher.button.cancel": "Cancel", "voucher.button.save_draft": "Save as Draft", "voucher.button.save_and_post": "Save and Post", "voucher.error.cannot_delete_from_status": "Cannot delete lines from {status} journals", "voucher.success.line_deleted": "Line deleted. {remaining} line(s) remaining.", "voucher.error.journal_not_found": "Journal not found", "voucher.error.line_not_found": "Line not found", "voucher.error.error_prefix": "Error: {message}", "voucher.validation.journal_not_balanced": "Journal is not balanced: Debit {debit} \u2260 Credit {credit}", "voucher.validation.must_have_line": "Journal must have at least one line", "voucher.warning.no_reference": "Journal entry has no reference number", "voucher.balance.balanced": "Balanced", "voucher.balance.unbalanced": "Unbalanced: Debit {debit} \u2260 Credit {credit}", "voucher.error.forbidden.post": "Cannot post a {status} journal", "voucher.error.forbidden.delete": "Cannot delete a {status} journal", "voucher.error.forbidden.reverse": "Cannot reverse a {status} journal", "voucher.error.invalid_amount": "Invalid amount: {message}", "voucher.error.validation": "Validation error: {message}", "approval.dashboard.title": "Approval Dashboard", "approval.status.pending": "Pending", "approval.status.approved": "Approved", "approval.status.rejected": "Rejected", "approval.awaiting_approval": "awaiting approval", "approval.this_month": "this month", "approval.requiring_resubmission": "requiring resubmission", "approval.approval_rate": "Approval Rate", "approval.of_total_submissions": "of total submissions", "approval.average_approval_time": "Average Approval Time", "approval.hours": "hours", "approval.from_submission_to_completion": "from submission to completion", "approval.approval_efficiency": "Approval Efficiency", "approval.success_rate": "success rate", "approval.workflow_performance": "Workflow Performance", "approval.workflow": "Workflow", "approval.total": "Total", "approval.status": "Status", "approval.approver_performance": "Approver Performance", "approval.approver": "Approver", "approval.total_decisions": "Total Decisions", "approval.go_to_queue": "Go to Approval Queue", "approval.no_workflow_data": "No workflow data available.", "approval.queue.title": "Approval Queue", "approval.queue.dashboard": "Dashboard", "approval.queue.assigned_to_me": "Assigned to Me", "approval.queue.overdue": "Overdue", "approval.queue.high_priority": "High Priority", "approval.queue.total_pending": "Total Pending", "approval.queue.search_ref_placeholder": "Search by reference...", "approval.queue.all_types": "All Types", "approval.queue.newest_first": "Newest First", "approval.queue.oldest_first": "Oldest First", "approval.queue.highest_amount": "Highest Amount", "approval.queue.lowest_amount": "Lowest Amount", "approval.queue.filter": "Filter", "approval.queue.reference": "Reference", "approval.queue.type": "Type", "approval.queue.date": "Date", "approval.queue.amount": "Amount", "approval.queue.submitted_by": "Submitted By", "approval.queue.current_step": "Current Step", "approval.queue.days_pending": "Days Pending", "approval.queue.actions": "Actions", "approval.queue.approve": "Approve", "approval.queue.reject": "Reject", "approval.queue.reject_journal": "Reject Journal", "approval.queue.reject_reason": "Rejection Reason", "approval.queue.reject_reason_placeholder": "Please provide reason for rejection...", "approval.queue.cancel": "Cancel", "approval.queue.first": "First", "approval.queue.previous": "Previous", "approval.queue.next": "Next", "approval.queue.last": "Last", "approval.queue.none": "No pending approvals at this time.", "approval.history.title": "Approval History", "approval.history.back_to_queue": "Back to Queue", "approval.history.journal_details": "Journal Details", "approval.history.reference": "Reference:", "approval.history.type": "Type:", "approval.history.date": "Date:", "approval.history.amount": "Amount:", "approval.history.created_by": "Created By:", "approval.history.status": "Status:", "approval.history.workflow": "Workflow:", "approval.history.current_step": "Current Step:", "approval.history.approval_status": "Approval Status", "approval.history.approval_timeline": "Approval Timeline", "approval.history.submitted_for_approval": "Submitted for Approval", "approval.history.submitted_by_on": "Submitted by {user} on {date}", "approval.history.approval_complete": "Approval Complete", "approval.history.completed_on": "Completed on {date}", "approval.history.approval_rejected": "Approval Rejected", "approval.history.rejected_on": "Rejected on {date}", "approval.history.reason": "Reason:", "approval.history.no_decisions": "No decisions yet.", "approval.history.view_journal": "View Journal", "approval.history.edit_journal": "Edit Journal", "reports.financial_reports": "Financial Reports", "reports.select_report_hint": "Select a report to view financial data for your organization.", "reports.view_report": "View Report", "journal_date": "Journal Date", "journal_entry_title": "Journal Entry", "account": "Account", "debit": "Debit", "credit": "Credit", "description": "Description"}</script></script>
+    <script>
+      (function(){
+        try {
+          var node = document.getElementById('i18n-json');
+          var raw = node ? node.textContent : '{}';
+          window.I18N = JSON.parse(raw || '{}');
+        } catch (e) {
+          window.I18N = {};
+        }
+        window.CURRENT_LANGUAGE = 'en';
+        window.CURRENT_REGION = 'US';
+        window.t = function(key, fallback){
+          if (window.I18N && Object.prototype.hasOwnProperty.call(window.I18N, key)) return window.I18N[key];
+          return fallback || key;
+        };
+      })();
+    </script>
+    <script src="/static/js/app.js?v=20251203145647"></script>
+    
+      <script id="maintenance-state" type="application/json">{"enabled": false, "message": "We are applying updates. Your work is saved and will be available shortly.", "status_text": "System upgrade in progress - est. 5 minutes.", "app_version": "20251203145647", "retry_after": 300, "updated_at": "2025-12-03T14:56:52.226108+00:00"}</script>
+    
+    
+
+    <script>
+        // Configure toastr
+        toastr.options = {
+            "closeButton": true,
+            "debug": false,
+            "newestOnTop": true,
+            "progressBar": true,
+            "positionClass": "toast-top-right",
+            "preventDuplicates": false,
+            "onclick": null,
+            "showDuration": "300",
+            "hideDuration": "1000",
+            "timeOut": "5000",
+            "extendedTimeOut": "1000",
+            "showEasing": "swing",
+            "hideEasing": "linear",
+            "showMethod": "fadeIn",
+            "hideMethod": "fadeOut"
+        };
+
+        // HTMX Toast Notifications
+        document.body.addEventListener('showMessage', function(evt) {
+            const message = evt.detail.message;
+            const type = evt.detail.type || 'success';
+            toastr[type](message);
+        });
+
+        // Maintenance + cache-busting client helper.
+        (function() {
+          var storageKey = 'himalytix-app-version';
+          var serverVersion = '20251203145647';
+          var maintenanceStateNode = document.getElementById('maintenance-state');
+          var maintenanceSnapshotNode = document.getElementById('maintenance-snapshot');
+
+          function clearCachesThenReload(newVersion) {
+            try {
+              if (window.caches && window.caches.keys) {
+                window.caches.keys().then(function(names) {
+                  names.forEach(function(name) { window.caches.delete(name); });
+                });
+              }
+              sessionStorage.clear();
+              localStorage.setItem(storageKey, newVersion);
+            } catch (e) {
+              // Non-blocking best-effort cache purge.
+            }
+            window.location.reload();
+          }
+
+          try {
+            var previous = localStorage.getItem(storageKey);
+            if (serverVersion) {
+              if (previous && previous !== serverVersion) {
+                clearCachesThenReload(serverVersion);
+                return;
+              }
+              localStorage.setItem(storageKey, serverVersion);
+            }
+          } catch (e) {
+            // Ignore storage failures (private browsing, etc.)
+          }
+
+          function handleState(state) {
+            if (!state) return;
+            if (state.app_version && serverVersion && state.app_version !== serverVersion) {
+              clearCachesThenReload(state.app_version);
+              return;
+            }
+            if (state.enabled) {
+              toastr.warning(state.status_text || 'Maintenance mode enabled. We will resume shortly.');
+              setTimeout(function() { window.location.reload(); }, 1000);
+            }
+          }
+
+          if (maintenanceStateNode) {
+            try {
+              handleState(JSON.parse(maintenanceStateNode.textContent || '{}'));
+            } catch (e) { /* ignore */ }
+          }
+
+          if (maintenanceSnapshotNode) {
+            try {
+              var snap = JSON.parse(maintenanceSnapshotNode.textContent || '{}');
+              if (snap && snap.path) {
+                toastr.info('We saved your last action at ' + snap.path + '. Resume once maintenance ends.');
+              }
+            } catch (e) { /* ignore */ }
+          }
+
+          // Only connect to SSE stream if we detect maintenance mode might be active
+          // This prevents unnecessary long-polling connections on every page
+          // Check if maintenance banner is visible or maintenance mode flag is set
+          var maintenanceBanner = document.getElementById('maintenance-banner');
+          var shouldConnectSSE = maintenanceBanner && maintenanceBanner.style.display !== 'none';
+          
+          if (window.EventSource && shouldConnectSSE) {
+            try {
+              var es = new EventSource("/maintenance/stream/");
+              es.onmessage = function(evt) {
+                try {
+                  var state = JSON.parse(evt.data || '{}');
+                  handleState(state);
+                  // Close connection if maintenance is not active
+                  if (!state.active) {
+                    es.close();
+                  }
+                } catch (e) { /* ignore */ }
+              };
+              // Auto-close after 2 minutes to prevent hanging connections
+              setTimeout(function() { es.close(); }, 120000);
+            } catch (err) {
+              // SSE not available; nothing to do.
+            }
+          }
+        })();
+    </script>
+    
+
+</body>
+
+</html>

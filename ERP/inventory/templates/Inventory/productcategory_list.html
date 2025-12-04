@@ -23,3 +23,43 @@
     <th style="width:140px;">Actions</th>
   </tr>
 {% endblock %}
+
+{% block table_body %}
+  {% for category in object_list %}
+    <tr>
+      <td><strong>{{ category.name }}</strong></td>
+      <td><code>{{ category.code }}</code></td>
+      <td>
+        {% if category.is_active %}
+          <span class="badge bg-success">Active</span>
+        {% else %}
+          <span class="badge bg-secondary">Inactive</span>
+        {% endif %}
+      </td>
+      <td>
+        <div class="btn-group btn-group-sm" role="group">
+          <a href="{% url 'inventory:product_category_detail' category.pk %}" class="btn btn-outline-info" title="View">
+            <i class="mdi mdi-eye"></i>
+          </a>
+          {% if can_change %}
+            <a href="{% url 'inventory:product_category_update' category.pk %}" class="btn btn-outline-primary" title="Edit">
+              <i class="mdi mdi-pencil"></i>
+            </a>
+          {% endif %}
+          {% if can_delete %}
+            <a href="{% url 'inventory:product_category_delete' category.pk %}" class="btn btn-outline-danger" title="Delete">
+              <i class="mdi mdi-trash-can"></i>
+            </a>
+          {% endif %}
+        </div>
+      </td>
+    </tr>
+  {% empty %}
+    <tr>
+      <td colspan="4" class="text-center text-muted py-4">
+        No product categories found.
+        {% if can_add %}<a href="{% url 'inventory:product_category_create' %}">Create one</a>{% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+{% endblock %}

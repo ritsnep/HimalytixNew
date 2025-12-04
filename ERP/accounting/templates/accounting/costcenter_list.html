@@ -10,7 +10,7 @@
 {% endblock %}
 
 {% block create_button %}
-<a href="{% url 'accounting:costcenter_create' %}" class="btn btn-success mb-2">
+<a href="{% url 'accounting:costcenter_create' %}" class="btn btn-success btn-sm">
     <i class="mdi mdi-plus me-1"></i> New Cost Center
 </a>
 {% endblock %}
@@ -22,7 +22,10 @@
         <th>Name</th>
         <th>Description</th>
         <th>Status</th>
-        <th>Actions</th>
+        <th data-default-visible="false">Start Date</th>
+        <th data-default-visible="false">End Date</th>
+        <th data-default-visible="false">Archived At</th>
+        <th class="no-search">Actions</th>
     </tr>
 </thead>
 {% endblock %}
@@ -41,6 +44,9 @@
                 <span class="badge bg-danger">Inactive</span>
             {% endif %}
         </td>
+        <td data-searchable="true">{{ cc.start_date }}</td>
+        <td data-searchable="true">{{ cc.end_date }}</td>
+        <td data-searchable="true">{{ cc.archived_at }}</td>
         <td>
             <a href="{% url 'accounting:costcenter_update' cc.cost_center_id %}" class="btn btn-sm btn-primary">
                 <i class="fas fa-edit"></i> Edit

@@ -40,6 +40,7 @@ class CustomerListView(PermissionRequiredMixin, UserOrganizationMixin, ListView)
         context = super().get_context_data(**kwargs)
         context["create_url"] = reverse("accounting:customer_create")
         context["create_button_text"] = "New Customer"
+        context.setdefault("page_title", "Customers")
         return context
 
 
@@ -111,6 +112,7 @@ class VendorListView(PermissionRequiredMixin, UserOrganizationMixin, ListView):
         context = super().get_context_data(**kwargs)
         context["create_url"] = reverse("accounting:vendor_create")
         context["create_button_text"] = "New Vendor"
+        context.setdefault("page_title", "Vendors")
         return context
 
 
@@ -182,6 +184,7 @@ class APPaymentListView(PermissionRequiredMixin, UserOrganizationMixin, ListView
         context = super().get_context_data(**kwargs)
         context["create_url"] = reverse("accounting:ap_payment_create")
         context["create_button_text"] = "New AP Payment"
+        context.setdefault("page_title", "AP Payments")
         return context
 
 

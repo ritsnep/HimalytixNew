@@ -95,7 +95,7 @@ class PermissionRequiredMixin(LoginRequiredMixin, UserOrganizationMixin):
         organization = self.get_organization()
         if self.require_organization and not organization:
             messages.warning(request, "Please select an active organization to continue.")
-            return HttpResponseRedirect(reverse_lazy("select_organization"))
+            return HttpResponseRedirect(reverse_lazy("usermanagement:select_organization"))
 
         if request.user.is_superuser:
             return super().dispatch(request, *args, **kwargs)

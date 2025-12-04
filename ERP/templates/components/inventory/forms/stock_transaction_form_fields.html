@@ -1,0 +1,35 @@
+{{ form.non_field_errors }}
+<div class="row g-3">
+  <div class="col-md-6">
+    <label class="form-label">Transaction Type</label>
+    {{ form.transaction_type }} {{ form.transaction_type.errors }}
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Warehouse</label>
+    {{ form.warehouse }} {{ form.warehouse.errors }}
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Product</label>
+    {{ form.product }} {{ form.product.errors }}
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Quantity</label>
+    {{ form.quantity }} {{ form.quantity.errors }}
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Location</label>
+    {{ form.location }} {{ form.location.errors }}
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Batch/Serial</label>
+    {{ form.batch }} {{ form.batch.errors }}
+  </div>
+  <div class="col-md-12">
+    <label class="form-label">Reference</label>
+    {{ form.reference }} {{ form.reference.errors }}
+  </div>
+  <div class="col-md-12">
+    <label class="form-label">Notes</label>
+    {{ form.notes }} {{ form.notes.errors }}
+  </div>
+</div>

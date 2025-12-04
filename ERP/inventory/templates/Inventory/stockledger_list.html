@@ -1,91 +1,74 @@
-{% extends "Inventory/base.html" %}
+{% extends "components/base/list_base.html" %}
 {% load static %}
 
-{% block inventory_title %}Stock Ledger{% endblock %}
+{% block title %}Stock Ledger{% endblock %}
+{% block list_page_title %}Stock Ledger{% endblock %}
+{% block list_title %}Stock Ledger History{% endblock %}
 
-{% block inventory_content %}
-<h1 class="text-2xl font-semibold text-gray-900 mb-6">Stock Ledger History</h1>
+{% block list_actions %}
+  <div class="d-flex flex-wrap gap-2">
+    <a href="{% url 'inventory:stock_report' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="mdi mdi-chart-box"></i> Stock Report
+    </a>
+  </div>
+{% endblock %}
 
-<div class="mb-6 bg-white shadow overflow-hidden sm:rounded-lg p-6">
-    <h2 class="text-lg font-medium text-gray-900 mb-4">Filter Ledger</h2>
-    <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-        <div>
-            <label for="q" class="block text-sm font-medium text-gray-700">Search (Product, Warehouse, Location, Batch, Ref)</label>
-            <input type="text" name="q" id="q" value="{{ current_search_query }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-        </div>
-        <div>
-            <label for="warehouse" class="block text-sm font-medium text-gray-700">Warehouse</label>
-            <select id="warehouse" name="warehouse" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                <option value="">All Warehouses</option>
-                {% for warehouse in warehouses %}
-                <option value="{{ warehouse.code }}" {% if current_warehouse_filter == warehouse.code %}selected{% endif %}>{{ warehouse.name }} ({{ warehouse.code }})</option>
-                {% endfor %}
-            </select>
-        </div>
-         <div>
-            <label for="product" class="block text-sm font-medium text-gray-700">Product</label>
-            <select id="product" name="product" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                <option value="">All Products</option>
-                {% for product in products %}
-                <option value="{{ product.code }}" {% if current_product_filter == product.code %}selected{% endif %}>{{ product.name }} ({{ product.code }})</option>
-                {% endfor %}
-            </select>
-        </div>
-         <div>
-            <label for="txn_type" class="block text-sm font-medium text-gray-700">Transaction Type</label>
-            <select id="txn_type" name="txn_type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                <option value="">All Types</option>
-                {% for type in txn_types %}
-                <option value="{{ type }}" {% if current_txn_type_filter == type %}selected{% endif %}>{{ type|capfirst }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-span-1 md:col-span-4 flex justify-end">
-             <a href="{% url 'inventory:stockledger_list' %}" class="mr-4 inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Reset Filters</a>
-            <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                Apply Filters
-            </button>
-        </div>
-    </form>
-</div>
+{% block table_head %}
+  <tr>
+    <th>Date</th>
+    <th>Type</th>
+    <th>Reference</th>
+    <th>Product</th>
+    <th>Warehouse</th>
+    <th>Location</th>
+    <th class="text-end">Qty In</th>
+    <th class="text-end">Qty Out</th>
+    <th class="text-end">Unit Cost</th>
+    <th style="width:120px;">Actions</th>
+  </tr>
+{% endblock %}
 
-{% include "Inventory/_list_table.html" with headers='Date,Type,Reference,Product,Warehouse,Location,Batch/Serial,Qty In,Qty Out,Unit Cost' fields='txn_date,txn_type,reference_id,product.name,warehouse.name,location.code|default:"N/A",batch.batch_number|default:"N/A"|add:" / "|add:batch.serial_number|default:"",qty_in,qty_out,unit_cost' items=ledger_entries show_actions=False %}
-
-{% comment %}
-Pagination (optional)
-{% endcomment %}
-{% if is_paginated %}
-<nav class="mt-6 flex items-center justify-between border-t border-gray-200 px-4 sm:px-0">
-    <div class="-mt-px flex w-0 flex-1">
-        {% if page_obj.has_previous %}
-        <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.warehouse %}&warehouse={{ request.GET.warehouse }}{% endif %}{% if request.GET.product %}&product={{ request.GET.product }}{% endif %}{% if request.GET.txn_type %}&txn_type={{ request.GET.txn_type }}{% endif %}" class="inline-flex items-center border-t-2 border-transparent pr-1 pt-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700">
-            <svg class="mr-3 h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.5 1.5 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.5 1.5 0 009.253 9H9z" clip-rule="evenodd" />
-            </svg>
-            Previous
-        </a>
+{% block table_body %}
+  {% for entry in object_list %}
+    <tr>
+      <td>{{ entry.txn_date|date:"SHORT_DATE_FORMAT" }}</td>
+      <td>
+        {% if entry.txn_type == 'IN' %}
+          <span class="badge bg-success">IN</span>
+        {% elif entry.txn_type == 'OUT' %}
+          <span class="badge bg-danger">OUT</span>
+        {% elif entry.txn_type == 'TRANSFER' %}
+          <span class="badge bg-info">TRANSFER</span>
+        {% else %}
+          <span class="badge bg-light text-dark">{{ entry.get_txn_type_display }}</span>
         {% endif %}
-    </div>
-    <div class="hidden md:-mt-px md:flex">
-        {% for i in paginator.page_range %}
-            {% if page_obj.number == i %}
-                <a href="#" class="inline-flex items-center border-t-2 border-indigo-500 px-4 pt-4 text-sm font-medium text-indigo-600" aria-current="page">{{ i }}</a>
-            {% else %}
-                <a href="?page={{ i }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.warehouse %}&warehouse={{ request.GET.warehouse }}{% endif %}{% if request.GET.product %}&product={{ request.GET.product }}{% endif %}{% if request.GET.txn_type %}&txn_type={{ request.GET.txn_type }}{% endif %}" class="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700">{{ i }}</a>
-            {% endif %}
-        {% endfor %}
-    </div>
-    <div class="-mt-px flex w-0 flex-1 justify-end">
-        {% if page_obj.has_next %}
-        <a href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.warehouse %}&warehouse={{ request.GET.warehouse }}{% endif %}{% if request.GET.product %}&product={{ request.GET.product }}{% endif %}{% if request.GET.txn_type %}&txn_type={{ request.GET.txn_type }}{% endif %}" class="inline-flex items-center border-t-2 border-transparent pl-1 pt-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700">
-            Next
-            <svg class="ml-3 h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fill-rule="evenodd" d="M2 10a8 8 0 1116 0 8 8 0 01-16 0zm7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.5 1.5 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.5 1.5 0 009.253 9H9z" clip-rule="evenodd" />
-            </svg>
-        </a>
+      </td>
+      <td class="fw-semibold">{{ entry.reference_id|default:"—" }}</td>
+      <td>{{ entry.product.code }} - {{ entry.product.name }}</td>
+      <td>{{ entry.warehouse.code }}</td>
+      <td>{{ entry.location.code|default:"N/A" }}</td>
+      <td class="text-end">
+        {% if entry.qty_in %}
+          <span class="text-success">{{ entry.qty_in }}</span>
+        {% else %}
+          —
         {% endif %}
-    </div>
-</nav>
-{% endif %}
-
+      </td>
+      <td class="text-end">
+        {% if entry.qty_out %}
+          <span class="text-danger">{{ entry.qty_out }}</span>
+        {% else %}
+          —
+        {% endif %}
+      </td>
+      <td class="text-end">{{ entry.unit_cost|default:"0" }}</td>
+      <td>
+        <div class="btn-group btn-group-sm" role="group">
+          <a href="{% url 'inventory:stockledger_detail' entry.pk %}" class="btn btn-outline-info">View</a>
+        </div>
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="10" class="text-center text-muted py-3">No ledger entries found.</td></tr>
+  {% endfor %}
 {% endblock %}

@@ -1,0 +1,9 @@
+{% extends "components/base/confirm_delete.html" %}
+{% load static %}
+
+{% block title %}Delete RMA - {{ object.rma_number }}?{% endblock %}
+{% block delete_title %}Delete RMA?{% endblock %}
+{% block delete_message %}
+  Are you sure you want to delete the RMA <strong>{{ object.rma_number }}</strong>?
+  This action cannot be undone.
+{% endblock %}

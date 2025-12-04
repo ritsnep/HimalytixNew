@@ -1,10 +1,53 @@
 from django.urls import path
 
 from purchasing import views
+from purchasing.views_po import (
+    POWorkspaceView,
+    POListView,
+    PODetailView,
+    POCreateView,
+    POUpdateView,
+    POApproveView,
+    POSendView,
+    POCancelView,
+    POLineAddView,
+)
+from purchasing.views_gr import (
+    GRWorkspaceView,
+    GRListView,
+    GRDetailView,
+    GRCreateView,
+    GRUpdateView,
+    GRPostView,
+    GRCancelView,
+    GRLineUpdateView,
+)
 
 app_name = "purchasing"
 
 urlpatterns = [
+    # Purchase Orders
+    path("pos/", POWorkspaceView.as_view(), name="po_workspace"),
+    path("pos/list/", POListView.as_view(), name="po_list"),
+    path("pos/create/", POCreateView.as_view(), name="po_create"),
+    path("pos/<int:pk>/", PODetailView.as_view(), name="po_detail"),
+    path("pos/<int:pk>/edit/", POUpdateView.as_view(), name="po_edit"),
+    path("pos/<int:pk>/approve/", POApproveView.as_view(), name="po_approve"),
+    path("pos/<int:pk>/send/", POSendView.as_view(), name="po_send"),
+    path("pos/<int:pk>/cancel/", POCancelView.as_view(), name="po_cancel"),
+    path("pos/<int:pk>/line/add/", POLineAddView.as_view(), name="po_line_add"),
+    
+    # Goods Receipts
+    path("grs/", GRWorkspaceView.as_view(), name="gr_workspace"),
+    path("grs/list/", GRListView.as_view(), name="gr_list"),
+    path("grs/create/", GRCreateView.as_view(), name="gr_create"),
+    path("grs/<int:pk>/", GRDetailView.as_view(), name="gr_detail"),
+    path("grs/<int:pk>/edit/", GRUpdateView.as_view(), name="gr_edit"),
+    path("grs/<int:pk>/post/", GRPostView.as_view(), name="gr_post"),
+    path("grs/<int:pk>/cancel/", GRCancelView.as_view(), name="gr_cancel"),
+    path("grs/line/<int:pk>/update/", GRLineUpdateView.as_view(), name="gr_line_update"),
+    
+    # Invoices (existing)
     path("", views.workspace, name="workspace"),
     path("invoices/", views.invoice_list, name="invoice-list"),
     path("invoices/new/", views.invoice_form, name="invoice-create"),

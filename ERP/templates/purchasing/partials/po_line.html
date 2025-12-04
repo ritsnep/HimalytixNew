@@ -1,0 +1,13 @@
+<tr id="po-line-{{ line.id }}">
+  <td>
+    <div class="fw-semibold">{{ line.product.name }}</div>
+    {% if line.expected_delivery_date %}
+    <div class="text-muted small">ETA {{ line.expected_delivery_date }}</div>
+    {% endif %}
+  </td>
+  <td class="text-end">{{ line.quantity_ordered }}</td>
+  <td class="text-end">{{ line.quantity_received }}</td>
+  <td class="text-end">{{ line.quantity_invoiced }}</td>
+  <td class="text-end">{{ line.unit_price }}</td>
+  <td class="text-end">{{ line.line_total }}</td>
+</tr>

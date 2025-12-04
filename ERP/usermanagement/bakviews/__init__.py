@@ -25,11 +25,11 @@ from .organization_views import (
 from .permission_views import (
     UserPermissionListView,
     UserRoleUpdateView,
-    EntityPermissionUpdateView,
-    update_user_permissions
+    update_user_permissions,
+    entity_permission_update,
 )
 
-from .auth_views import CustomLoginView, LogoutView
+from .auth_views import custom_login, logout_view
 
 __all__ = [
     'UserListView', 'UserCreateView', 'UserDetailView',
@@ -40,6 +40,6 @@ __all__ = [
     'OrganizationDetailView', 'OrganizationUpdateView',
     'OrganizationDeleteView',
     'UserPermissionListView', 'UserRoleUpdateView',
-    'EntityPermissionUpdateView',
-    'CustomLoginView', 'LogoutView'
+    'update_user_permissions', 'entity_permission_update',
+    'custom_login', 'logout_view'
 ] 

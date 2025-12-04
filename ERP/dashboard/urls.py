@@ -47,7 +47,7 @@ urlpatterns = [
     path('', include('django_prometheus.urls')),  # Adds /metrics endpoint
     
     # Dashboard
-    path('manage/', include('usermanagement.urls')),
+    path('manage/', include(('usermanagement.urls', 'usermanagement'), namespace='usermanagement')),
     path('account/', include('account.urls')),
     path('inventory/', include('inventory.urls')),
     path('billing/', include('billing.urls', namespace='billing')),

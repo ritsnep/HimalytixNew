@@ -58,7 +58,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for permission in role.entitypermission_set.all %}
+                                    {% for permission in role.permissions.all %}
                                     <tr>
                                         <td>{{ permission.entity.name }}</td>
                                         <td>{{ permission.action }}</td>

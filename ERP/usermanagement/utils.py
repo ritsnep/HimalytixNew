@@ -32,7 +32,7 @@ def permission_required(permission, *, require_organization: bool = True):
             if require_organization and not organization:
                 messages.warning(request, "Select an organization to continue.")
                 return HttpResponseRedirect(
-                    f"{reverse_lazy('select_organization')}?next={quote(request.get_full_path())}"
+                    f"{reverse_lazy('usermanagement:select_organization')}?next={quote(request.get_full_path())}"
                 )
 
             if isinstance(permission, tuple):
@@ -136,7 +136,7 @@ def require_permission(module, entity, action):
             organization = request.user.get_active_organization()
             if not organization:
                 messages.warning(request, "Please select an active organization to continue.")
-                return HttpResponseRedirect(reverse_lazy('select_organization'))
+                return HttpResponseRedirect(reverse_lazy('usermanagement:select_organization'))
                 
             if not PermissionUtils.has_permission(
                 request.user, 

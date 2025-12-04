@@ -26,20 +26,38 @@
 {% endblock %}
 
 {% block table_body %}
-  {% for shipment in shipments %}
+  {% for shipment in object_list %}
     <tr>
-      <td class="fw-semibold">{{ shipment.shipment_number }}</td>
-      <td>{{ shipment.carrier_name }}</td>
-      <td>{{ shipment.tracking_number|default:"-" }}</td>
-      <td><span class="badge bg-light text-dark">{{ shipment.get_status_display }}</span></td>
+      <td class="fw-semibold"><code>{{ shipment.shipment_number }}</code></td>
+      <td>{{ shipment.carrier_name|default:"—" }}</td>
+      <td><code>{{ shipment.tracking_number|default:"—" }}</code></td>
+      <td><span class="badge bg-info">{{ shipment.get_status_display }}</span></td>
       <td>{{ shipment.ship_from_warehouse.code }}</td>
-      <td>{{ shipment.estimated_delivery|default:"-" }}</td>
+      <td>{{ shipment.estimated_delivery|date:"Y-m-d"|default:"—" }}</td>
       <td>
         <div class="btn-group btn-group-sm" role="group">
-          <a href="{% url 'inventory:shipment_detail' shipment.pk %}" class="btn btn-outline-info">View</a>
-          <a href="{% url 'inventory:shipment_update' shipment.pk %}" class="btn btn-outline-primary">Edit</a>
+          <a href="{% url 'inventory:shipment_detail' shipment.pk %}" class="btn btn-outline-info" title="View">
+            <i class="mdi mdi-eye"></i>
+          </a>
+          {% if can_change %}
+            <a href="{% url 'inventory:shipment_update' shipment.pk %}" class="btn btn-outline-primary" title="Edit">
+              <i class="mdi mdi-pencil"></i>
+            </a>
+          {% endif %}
+          {% if can_delete %}
+            <a href="{% url 'inventory:shipment_delete' shipment.pk %}" class="btn btn-outline-danger" title="Delete">
+              <i class="mdi mdi-trash-can"></i>
+            </a>
+          {% endif %}
         </div>
       </td>
     </tr>
-    {% endfor %}
+  {% empty %}
+    <tr>
+      <td colspan="7" class="text-center text-muted py-4">
+        No shipments found.
+        {% if can_add %}<a href="{% url 'inventory:shipment_create' %}">Create one</a>{% endif %}
+      </td>
+    </tr>
+  {% endfor %}
 {% endblock %}

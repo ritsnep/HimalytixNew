@@ -61,7 +61,7 @@ def voucher_config_list(request):
     organization = _get_active_organization(request)
     if not organization:
         messages.warning(request, 'Please select an organization to continue.')
-        return redirect('select_organization')
+        return redirect('usermanagement:select_organization')
 
     configs = VoucherModeConfig.objects.filter(organization=organization)
     edit_id = request.GET.get('edit')
@@ -127,7 +127,7 @@ def schema_history(request, config_id):
     organization = _get_active_organization(request)
     if not organization:
         messages.warning(request, 'Please select an organization to continue.')
-        return redirect('select_organization')
+        return redirect('usermanagement:select_organization')
     config = get_object_or_404(VoucherModeConfig, config_id=config_id, organization=organization)
     schemas = VoucherSchema.objects.filter(voucher_mode_config=config).order_by('-version')
     return render(request, 'forms_designer/schema_history.html', {
@@ -158,7 +158,7 @@ def designer(request, config_id):
     organization = _get_active_organization(request)
     if not organization:
         messages.warning(request, 'Please select an organization to continue.')
-        return redirect('select_organization')
+        return redirect('usermanagement:select_organization')
     config = get_object_or_404(VoucherModeConfig, config_id=config_id, organization=organization)
     schema = get_active_schema(config)
     
@@ -185,7 +185,7 @@ def designer_v2(request, config_id):
     organization = _get_active_organization(request)
     if not organization:
         messages.warning(request, 'Please select an organization to continue.')
-        return redirect('select_organization')
+        return redirect('usermanagement:select_organization')
     config = get_object_or_404(VoucherModeConfig, config_id=config_id, organization=organization)
     schema = get_active_schema(config)
     
@@ -246,7 +246,7 @@ def preview(request, config_id):
     organization = _get_active_organization(request)
     if not organization:
         messages.warning(request, 'Please select an organization to continue.')
-        return redirect('select_organization')
+        return redirect('usermanagement:select_organization')
     config = get_object_or_404(VoucherModeConfig, config_id=config_id, organization=organization)
     schema = get_active_schema(config)
     # --- UDFs: Add UDF fields to schema dynamically ---

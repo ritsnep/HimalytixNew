@@ -1,0 +1,9 @@
+{% extends "components/base/confirm_delete.html" %}
+{% load static %}
+
+{% block title %}Delete Pick List - {{ object.pick_list_number }}?{% endblock %}
+{% block delete_title %}Delete Pick List?{% endblock %}
+{% block delete_message %}
+  Are you sure you want to delete the pick list <strong>{{ object.pick_list_number }}</strong>?
+  This action cannot be undone.
+{% endblock %}

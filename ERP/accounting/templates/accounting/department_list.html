@@ -22,7 +22,15 @@
         <th>Name</th>
         <th>Description</th>
         <th>Status</th>
-        <th>Actions</th>
+        <th data-default-visible="false">Start Date</th>
+        <th data-default-visible="false">End Date</th>
+        <th data-default-visible="false">Archived At</th>
+        <th data-default-visible="false">Archived By</th>
+        <th data-default-visible="false">Created At</th>
+        <th data-default-visible="false">Updated At</th>
+        <th data-default-visible="false">Created By</th>
+        <th data-default-visible="false">Updated By</th>
+        <th class="no-search">Actions</th>
     </tr>
 </thead>
 {% endblock %}
@@ -41,6 +49,14 @@
                 <span class="badge bg-danger">Inactive</span>
             {% endif %}
         </td>
+        <td>{{ d.start_date }}</td>
+        <td>{{ d.end_date }}</td>
+        <td>{{ d.archived_at }}</td>
+        <td>{{ d.archived_by }}</td>
+        <td>{{ d.created_at }}</td>
+        <td>{{ d.updated_at }}</td>
+        <td>{{ d.created_by }}</td>
+        <td>{{ d.updated_by }}</td>
         <td>
             <a href="{% url 'accounting:department_update' d.pk %}" class="btn btn-sm btn-primary">
                 <i class="fas fa-edit"></i> Edit

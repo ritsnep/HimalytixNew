@@ -191,6 +191,8 @@ TEMPLATES = [
                 'dashboard.context_processors.branding_context',
                 'dashboard.context_processors.runtime_context',
                 'dashboard.context_processors.ui_metadata_context',
+                    # Inject active organization into templates globally
+                    'usermanagement.context_processors.active_organization',
             ],
             # Enable cached template loader when not in DEBUG
             **({'loaders': [

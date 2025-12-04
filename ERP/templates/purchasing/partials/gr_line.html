@@ -1,0 +1,62 @@
+<tr id="gr-line-{{ line.id }}">
+  <td>
+    <div class="fw-semibold">{{ line.po_line.product.name }}</div>
+    <div class="text-muted small">PO line {{ line.po_line.id }}</div>
+  </td>
+  <td class="text-end">{{ line.po_line.quantity_ordered }}</td>
+  <td class="text-end">
+    {% if gr.status == gr.Status.DRAFT %}
+    <input
+      type="number"
+      name="quantity_received"
+      step="0.0001"
+      min="0"
+      value="{{ line.quantity_received }}"
+      class="form-control form-control-sm text-end">
+    {% else %}
+    {{ line.quantity_received }}
+    {% endif %}
+  </td>
+  <td class="text-end">
+    {% if gr.status == gr.Status.DRAFT %}
+    <input
+      type="number"
+      name="quantity_accepted"
+      step="0.0001"
+      min="0"
+      value="{{ line.quantity_accepted }}"
+      class="form-control form-control-sm text-end">
+    {% else %}
+    {{ line.quantity_accepted }}
+    {% endif %}
+  </td>
+  <td class="text-end">{{ line.quantity_rejected }}</td>
+  <td class="text-end">{{ line.get_qc_result_display|default:line.qc_result }}</td>
+  {% if match_result %}
+    {% with ml=match_result.lines|default_if_none:[]|dictsort:"po_line_id" %}
+    {% endwith %}
+    {% for ml in match_result.lines %}
+      {% if ml.po_line_id == line.po_line_id %}
+        <td class="text-end">
+          {% if ml.status == "pass" %}<span class="badge bg-success-subtle text-success">OK</span>
+          {% elif ml.status == "warn" %}<span class="badge bg-warning-subtle text-warning">Warn</span>
+          {% else %}<span class="badge bg-danger-subtle text-danger">Fail</span>{% endif %}
+        </td>
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+  {% if gr.status == gr.Status.DRAFT %}
+  <td class="text-end">
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+    <button
+      class="btn btn-primary btn-sm"
+      type="button"
+      hx-post="{% url 'purchasing:gr_line_update' line.id %}"
+      hx-target="#gr-line-{{ line.id }}"
+      hx-swap="outerHTML"
+      hx-include="#gr-line-{{ line.id }} input">
+      Save
+    </button>
+  </td>
+  {% endif %}
+</tr>

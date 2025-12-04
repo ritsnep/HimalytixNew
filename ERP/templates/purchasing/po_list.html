@@ -1,0 +1,59 @@
+<form
+  class="row g-2 align-items-end mb-3"
+  hx-get="{% url 'purchasing:po_list' %}"
+  hx-target="#po-list-panel"
+  hx-swap="innerHTML">
+  <div class="col-12">
+    <label class="form-label visually-hidden" for="po-search">Search</label>
+    <input
+      id="po-search"
+      type="search"
+      name="search"
+      class="form-control form-control-sm"
+      placeholder="Search by PO number or vendor"
+      value="{{ request.GET.search|default:'' }}"
+      autocomplete="off">
+  </div>
+  <div class="col">
+    <label class="form-label visually-hidden" for="po-status">Status</label>
+    <select
+      id="po-status"
+      name="status"
+      class="form-select form-select-sm">
+      <option value="">All statuses</option>
+      {% for value, label in status_choices %}
+      <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <button class="btn btn-outline-secondary btn-sm" type="submit">Filter</button>
+  </div>
+</form>
+
+<div class="list-group list-group-flush shadow-none">
+  {% for po in pos %}
+  <button
+    type="button"
+    class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+    hx-get="{% url 'purchasing:po_detail' po.pk %}"
+    hx-target="#po-detail-panel"
+    hx-swap="innerHTML">
+    <div class="text-start">
+      <div class="fw-semibold">{{ po.number|default:po.pk }}</div>
+      <small class="text-muted">
+        {{ po.order_date }} | {{ po.vendor.display_name }}
+      </small>
+    </div>
+    <div class="text-end">
+      <div class="fw-semibold">{{ po.currency.currency_code }} {{ po.total_amount }}</div>
+      <span class="badge bg-light text-dark text-uppercase">{{ po.get_status_display }}</span>
+    </div>
+  </button>
+  {% empty %}
+  <div class="text-center text-muted py-5">
+    <p class="mb-1">No purchase orders found.</p>
+    <small>Use the + button to create the first one.</small>
+  </div>
+  {% endfor %}
+</div>

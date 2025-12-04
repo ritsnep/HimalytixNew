@@ -3,14 +3,18 @@
 <div class="main-content">
   <div class="page-content">
     <div class="container-fluid">
-      <div class="d-flex justify-content-between align-items-center mb-3">
+      <div class="page-title-box d-sm-flex align-items-center justify-content-between">
         <div>
           <h4 class="mb-0">Procurement Workspace</h4>
-          <p class="text-muted mb-0">Capture vendor bills, receive stock, and spread landed costs with the same HTMX workflow used across Himalytix.</p>
+          <p class="text-muted mb-0">Capture vendor bills, receive stock, and spread landed costs using the shared HTMX workflow.</p>
         </div>
-        <div>
+        <div class="d-flex align-items-center gap-2">
+          <ol class="breadcrumb m-0 d-none d-md-flex">
+            <li class="breadcrumb-item">Procurement</li>
+            <li class="breadcrumb-item active">Purchase Invoices</li>
+          </ol>
           <a
-            class="btn btn-primary btn-sm"
+            class="btn btn-success btn-sm"
             hx-get="{% url 'purchasing:invoice-create' %}"
             hx-target="#purchasing-detail-panel"
             hx-swap="innerHTML">
@@ -31,7 +35,7 @@
               hx-swap="innerHTML">
               <div class="text-center text-muted py-5">
                 <div class="spinner-border text-primary mb-3" role="status"></div>
-                <p class="mb-0">Loading purchase invoices…</p>
+                <p class="mb-0">Loading purchase invoices...</p>
               </div>
             </div>
           </div>

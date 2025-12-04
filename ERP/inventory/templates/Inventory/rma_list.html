@@ -26,7 +26,7 @@
 {% endblock %}
 
 {% block table_body %}
-  {% for rma in rmas %}
+  {% for rma in object_list %}
     <tr>
       <td class="fw-semibold">{{ rma.rma_number }}</td>
       <td>{{ rma.product.code }}</td>
@@ -37,9 +37,12 @@
       <td>
         <div class="btn-group btn-group-sm" role="group">
           <a href="{% url 'inventory:rma_detail' rma.pk %}" class="btn btn-outline-info">View</a>
-          <a href="{% url 'inventory:rma_update' rma.pk %}" class="btn btn-outline-primary">Edit</a>
+          {% if can_change %}<a href="{% url 'inventory:rma_update' rma.pk %}" class="btn btn-outline-primary">Edit</a>{% endif %}
+          {% if can_delete %}<a href="{% url 'inventory:rma_delete' rma.pk %}" class="btn btn-outline-danger">Delete</a>{% endif %}
         </div>
       </td>
     </tr>
-    {% endfor %}
+  {% empty %}
+    <tr><td colspan="7" class="text-center text-muted py-3">No RMAs found.</td></tr>
+  {% endfor %}
 {% endblock %}

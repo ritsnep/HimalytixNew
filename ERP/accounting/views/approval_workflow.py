@@ -68,7 +68,7 @@ class ApprovalQueueView(UserOrganizationMixin, ListView):
         self.organization = self.get_organization()
         if not self.organization:
             messages.warning(request, _('Please select an active organization to continue.'))
-            return redirect('select_organization')
+            return redirect('usermanagement:select_organization')
 
         if not PermissionUtils.has_permission(request.user, self.organization, 'accounting', 'journal', 'approve_journal'):
             messages.error(request, _('You do not have permission to review approvals.'))
@@ -185,7 +185,7 @@ class VoucherApproveView(UserOrganizationMixin, View):
         organization = self.get_organization()
         if not organization:
             messages.warning(request, _('Please select an active organization to continue.'))
-            return redirect('select_organization')
+            return redirect('usermanagement:select_organization')
         self.organization = organization
 
         journal = get_object_or_404(
@@ -396,7 +396,7 @@ class VoucherRejectView(UserOrganizationMixin, View):
         organization = self.get_organization()
         if not organization:
             messages.warning(request, _('Please select an active organization to continue.'))
-            return redirect('select_organization')
+            return redirect('usermanagement:select_organization')
         self.organization = organization
 
         journal = get_object_or_404(
@@ -526,7 +526,7 @@ class ApprovalHistoryView(UserOrganizationMixin, DetailView):
         self.organization = self.get_organization()
         if not self.organization:
             messages.warning(request, _('Please select an active organization to continue.'))
-            return redirect('select_organization')
+            return redirect('usermanagement:select_organization')
 
         if not PermissionUtils.has_permission(request.user, self.organization, 'accounting', 'journal', 'view'):
             messages.error(request, _('You do not have permission to view approval history.'))
@@ -578,7 +578,7 @@ class ApprovalDashboardView(UserOrganizationMixin, View):
         org = self.get_organization()
         if not org:
             messages.warning(request, _('Please select an active organization to continue.'))
-            return redirect('select_organization')
+            return redirect('usermanagement:select_organization')
         self.organization = org
 
         if not PermissionUtils.has_permission(request.user, org, 'accounting', 'journal', 'approve_journal'):

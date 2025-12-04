@@ -1,0 +1,27 @@
+{{ form.non_field_errors }}
+<div class="row g-3">
+  <div class="col-md-6 col-lg-4">
+    <label class="form-label">Price List</label>
+    {{ form.price_list }} {{ form.price_list.errors }}
+  </div>
+  <div class="col-md-6 col-lg-4">
+    <label class="form-label">Product</label>
+    {{ form.product }} {{ form.product.errors }}
+  </div>
+  <div class="col-md-6 col-lg-4">
+    <label class="form-label">Price</label>
+    {{ form.price }} {{ form.price.errors }}
+  </div>
+  <div class="col-md-6 col-lg-4">
+    <label class="form-label">Discount %</label>
+    {{ form.discount_percentage }} {{ form.discount_percentage.errors }}
+  </div>
+  <div class="col-md-6 col-lg-4">
+    <label class="form-label">Effective From</label>
+    {{ form.effective_from }} {{ form.effective_from.errors }}
+  </div>
+  <div class="col-md-6 col-lg-4">
+    <label class="form-label">Effective To</label>
+    {{ form.effective_to }} {{ form.effective_to.errors }}
+  </div>
+</div>

@@ -22,7 +22,7 @@
           <div class="col-md-6">{{ form.tax_amount.label_tag }} {{ form.tax_amount }}</div>
           <div class="col-12">{{ form.receipt_location.label_tag }} {{ form.receipt_location }}</div>
           <div class="col-12">
-            <button type="submit" class="btn btn-primary">Save Purchase</button>
+            {% include 'partials/_form_actions.html' with save_text='Save Purchase' %}
             <span class="text-muted small">Posting happens via API (/noc-purchases/{id}/post_purchase/).</span>
           </div>
         </form>

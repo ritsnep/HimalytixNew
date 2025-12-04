@@ -75,25 +75,42 @@
             <div class="container-fluid">
                 <div class="card mb-0">
                     <div class="card-body pb-2 pt-3">
-                        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap">
-                            <div class="d-flex align-items-center mb-2 mb-md-0">
-                                <h4 class="card-title mb-0 me-3">
+                        <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+                            <div class="d-flex flex-column gap-1">
+                                <h4 class="card-title mb-0">
                                     {{ page_title|default:"List" }}
                                 </h4>
+                                {% if breadcrumbs %}
+                                <nav aria-label="breadcrumb" class="small">
+                                    <ol class="breadcrumb mb-0">
+                                        {% for name, url in breadcrumbs %}
+                                            {% if not forloop.last %}
+                                                <li class="breadcrumb-item"><a href="{{ url }}">{{ name }}</a></li>
+                                            {% else %}
+                                                <li class="breadcrumb-item active">{{ name }}</li>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </ol>
+                                </nav>
+                                {% endif %}
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-wrap" id="list-actions">
+                                {% block create_button %}
                                 {% if create_url and create_button_text %}
-                                <a href="{{ create_url }}" class="btn btn-success btn-sm ms-2">
+                                <a href="{{ create_url }}" class="btn btn-success btn-sm">
                                     <i class="mdi mdi-plus me-1"></i> {{ create_button_text }}
                                 </a>
                                 {% endif %}
+                                {% endblock create_button %}
+                                <!-- DataTables search and export buttons will be injected here -->
+                                <div id="datatable-controls" class="d-flex align-items-center flex-wrap gap-2"></div>
                             </div>
-                            <!-- DataTables search and export buttons will be injected here -->
-                            <div id="datatable-controls" class="d-flex align-items-center"></div>
                         </div>
                         {% block custom_filters %}
                         {% endblock custom_filters %}
                         <div class="table-rep-plugin">
                             <div class="table-responsive mb-0">
-                                <table id="datatable-buttons" class="table table-bordered table-sm dt-responsive nowrap w-100 mb-0">
+                                <table id="datatable-buttons" class="table table-bordered table-sm dt-responsive nowrap w-100 mb-0" data-view-key="{{ view_key|default:page_title|default:'list'|slugify }}">
                                     {% block table_head %}{% endblock table_head %}
                                     {% block table_body %}{% endblock table_body %}
                                     <tfoot>
@@ -130,6 +147,42 @@
 <script src="{% static 'libs/datatables.net-fixedheader/js/dataTables.fixedHeader.min.js' %}"></script>
 <script>
 $(document).ready(function() {
+    var tableEl = $('#datatable-buttons');
+    var headCells = tableEl.find('thead th');
+
+    // Determine default visibility from data-default-visible attr (default is true)
+    var hiddenTargets = [];
+    headCells.each(function(idx) {
+        var th = $(this);
+        var defVisible = th.data('default-visible');
+        if (defVisible === false || defVisible === "false") {
+            hiddenTargets.push(idx);
+        }
+    });
+
+    // Build column filter inputs in the table footer if not provided
+    var tfoot = tableEl.find('tfoot');
+    if (headCells.length && !tfoot.find('tr').length) {
+        var filterRow = $('<tr/>');
+        headCells.each(function() {
+            var th = $(this);
+            var searchableAttr = th.attr('data-searchable');
+            var isSearchable = searchableAttr === undefined || searchableAttr === "true";
+            if (th.hasClass('no-search') || searchableAttr === "false") {
+                filterRow.append('<th></th>');
+                return;
+            }
+            var placeholder = th.text().trim();
+            var input = $('<input/>', {
+                type: 'text',
+                class: 'form-control form-control-sm column-search',
+                placeholder: placeholder ? ('Search ' + placeholder) : 'Search'
+            });
+            filterRow.append($('<th/>').append(input));
+        });
+        tfoot.append(filterRow);
+    }
+
     // Allow injecting per-page DataTables options via a JSON script element with id='datatable-config'
     var extra = {};
     var cfgEl = document.getElementById('datatable-config');
@@ -143,47 +196,87 @@ $(document).ready(function() {
                 extend: 'copy', 
                 className: 'btn btn-light btn-sm',
                 text: '<i class="mdi mdi-content-copy"></i>',
-                attr: { title: 'Copy', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' }
+                attr: { title: 'Copy', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' },
+                exportOptions: { columns: ':visible' }
             },
             { 
                 extend: 'csv', 
                 className: 'btn btn-light btn-sm',
                 text: '<i class="mdi mdi-file-delimited"></i>',
-                attr: { title: 'CSV', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' }
+                attr: { title: 'CSV', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' },
+                exportOptions: { columns: ':visible' }
             },
             { 
                 extend: 'excel', 
                 className: 'btn btn-light btn-sm',
                 text: '<i class="mdi mdi-file-excel"></i>',
-                attr: { title: 'Excel', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' }
+                attr: { title: 'Excel', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' },
+                exportOptions: { columns: ':visible' }
             },
             { 
                 extend: 'pdf', 
                 className: 'btn btn-light btn-sm',
                 text: '<i class="mdi mdi-file-pdf"></i>',
-                attr: { title: 'PDF', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' }
+                attr: { title: 'PDF', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' },
+                exportOptions: { columns: ':visible' }
             },
             { 
                 extend: 'print', 
                 className: 'btn btn-light btn-sm',
                 text: '<i class="mdi mdi-printer"></i>',
-                attr: { title: 'Print', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' }
+                attr: { title: 'Print', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' },
+                exportOptions: { columns: ':visible' }
             },
             { 
                 extend: 'colvis', 
                 className: 'btn btn-light btn-sm',
                 text: '<i class="mdi mdi-view-column"></i>',
                 attr: { title: 'Column Visibility', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' }
+            },
+            {
+                text: '<i class="mdi mdi-content-save"></i>',
+                className: 'btn btn-light btn-sm',
+                attr: { title: 'Save View', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' },
+                action: function (e, dt) {
+                    var vis = [];
+                    dt.columns().every(function(idx) {
+                        vis.push(this.visible());
+                    });
+                    var key = tableEl.data('view-key') || 'datatable';
+                    localStorage.setItem('dt-view-' + key, JSON.stringify({ visible: vis }));
+                    if (window.bootstrap && typeof showToast === 'function') {
+                        showToast('List view saved.', 'success');
+                    }
+                }
             }
         ],
         responsive: true,
         fixedHeader: true,
         lengthMenu: [[10, 20, 40, 50, -1], [10, 20, 40, 50, "All"]],
-        pageLength: {{ request.GET.rows|default:10 }}
+        pageLength: {{ request.GET.rows|default:10 }},
+        columnDefs: hiddenTargets.length ? [{ targets: hiddenTargets, visible: false }] : []
     };
     var opts = Object.assign({}, baseOpts, extra || {});
     var table = $('#datatable-buttons').DataTable(opts);
     window.DT_MAIN = table;
+
+    // Apply saved view (column visibility)
+    try {
+        var viewKey = tableEl.data('view-key') || 'datatable';
+        var savedRaw = localStorage.getItem('dt-view-' + viewKey);
+        if (savedRaw) {
+            var saved = JSON.parse(savedRaw);
+            if (saved && Array.isArray(saved.visible)) {
+                saved.visible.forEach(function(val, idx) {
+                    if (typeof val === 'boolean') {
+                        table.column(idx).visible(val, false);
+                    }
+                });
+                table.columns.adjust().draw(false);
+            }
+        }
+    } catch(e) { /* non-blocking */ }
+
     // Column search (if tfoot inputs are present)
     table.columns().every(function() {
         var that = this;
@@ -209,15 +302,23 @@ $(document).ready(function() {
 });
 
 // Loading indicator logic
+// Show loading overlay for any HTMX requests that target content areas like table bodies
 document.addEventListener('htmx:beforeRequest', function(evt) {
-    if (evt.detail.target.id === 'journal-table-body') {
-        document.querySelector('.loading-overlay').style.display = 'flex';
-    }
+    try {
+        const target = evt && evt.detail && evt.detail.target;
+        // Show overlay if a request targets a table or table container
+        if (!target || (target.closest && target.closest('.table-responsive'))) {
+            document.querySelector('.loading-overlay').style.display = 'flex';
+        }
+    } catch(e) { /* Safe guard: don't let an error prevent the request */ }
 });
 document.addEventListener('htmx:afterRequest', function(evt) {
-    if (evt.detail.target.id === 'journal-table-body') {
-        document.querySelector('.loading-overlay').style.display = 'none';
-    }
+    try {
+        const target = evt && evt.detail && evt.detail.target;
+        if (!target || (target.closest && target.closest('.table-responsive'))) {
+            document.querySelector('.loading-overlay').style.display = 'none';
+        }
+    } catch(e) { /* Safe guard */ }
 });
 
 // Toast notification logic

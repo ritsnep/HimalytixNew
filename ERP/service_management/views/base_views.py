@@ -17,7 +17,7 @@ class BaseListView(UserOrganizationMixin, ListView):
         organization = self.get_organization()
         if not organization:
             messages.warning(request, "Please select an active organization to continue.")
-            return redirect("select_organization")
+            return redirect("usermanagement:select_organization")
 
         if not self._has_permission(request.user, organization):
             messages.error(request, "You don't have permission to access this page.")

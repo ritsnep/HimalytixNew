@@ -1,0 +1,94 @@
+{% extends "components/base/detail_base.html" %}
+{% load static %}
+
+{% block title %}{{ location.code }} - Location{% endblock %}
+{% block page_title %}{{ location.code }}{% endblock %}
+
+{% block breadcrumbs %}
+  {{ block.super }}
+  <li class="breadcrumb-item"><a href="{% url 'inventory:warehouse_list' %}">Warehouses</a></li>
+  <li class="breadcrumb-item">
+    <a href="{% url 'inventory:warehouse_detail' pk=location.warehouse.pk %}">{{ location.warehouse.name }}</a>
+  </li>
+  <li class="breadcrumb-item active">{{ location.code }}</li>
+{% endblock %}
+
+{% block detail_content %}
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Location Details</h5>
+      </div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Warehouse</h6>
+          </div>
+          <div class="col-sm-9">
+            <a href="{% url 'inventory:warehouse_detail' pk=location.warehouse.pk %}">
+              {{ location.warehouse.name }}
+            </a>
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Code</h6>
+          </div>
+          <div class="col-sm-9">
+            <code class="text-body">{{ location.code }}</code>
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Name</h6>
+          </div>
+          <div class="col-sm-9">
+            {{ location.name|default:"—" }}
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Type</h6>
+          </div>
+          <div class="col-sm-9">
+            <span class="badge bg-info">{{ location.location_type }}</span>
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Status</h6>
+          </div>
+          <div class="col-sm-9">
+            {% if location.is_active %}
+              <span class="badge bg-success">Active</span>
+            {% else %}
+              <span class="badge bg-secondary">Inactive</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Actions</h5>
+      </div>
+      <div class="card-body">
+        {% if can_change %}
+          <a href="{% url 'inventory:location_update' pk=location.pk %}" class="btn btn-primary w-100 mb-2">
+            <i class="mdi mdi-pencil"></i> Edit
+          </a>
+        {% endif %}
+        {% if can_delete %}
+          <a href="#" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#deleteModal">
+            <i class="mdi mdi-trash-can"></i> Delete
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

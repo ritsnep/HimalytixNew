@@ -2,7 +2,8 @@ from django.contrib.auth.mixins import AccessMixin, LoginRequiredMixin
 from django.shortcuts import redirect
 from django.contrib import messages
 from django.urls import reverse
-from .models import Organization
+from .models import Organization, Entity
+from .utils import PermissionUtils
 
 class BasePermissionMixin(AccessMixin):
     entity_code = None
@@ -26,24 +27,36 @@ class BasePermissionMixin(AccessMixin):
 
 class EntityPermissionMixin(AccessMixin):
     def has_permission(self, entity_code, required_action):
-        """Check if user has permission for the given entity and action"""
+        """Check if user has permission for the given entity and action.
+
+        Uses PermissionUtils to verify whether the user has the required
+        permission for the provided entity code and action.
+        """
         if not self.request.user.is_authenticated:
             return False
-            
+
         # Superusers bypass all permission checks
         if self.request.user.is_superuser:
             return True
-            
+
         # Get user's active organization
         organization = self.request.user.get_active_organization()
         if not organization:
             return False
-            
-        # Check if user has the required permission
-        return self.request.user.has_entity_permission(
-            entity_code=entity_code,
-            action=required_action,
-            organization=organization
+
+        # Try to resolve the entity and module code
+        try:
+            entity = Entity.objects.get(code=entity_code)
+            module_code = entity.module.code
+        except Entity.DoesNotExist:
+            return False
+
+        return PermissionUtils.has_permission(
+            self.request.user,
+            organization,
+            module_code,
+            entity_code,
+            required_action,
         )
 
     def handle_no_permission(self):

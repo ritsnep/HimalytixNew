@@ -10,7 +10,7 @@
           </span>
           <span class="logo-lg">
             <img src="{% static 'images/himalytix-sm.svg'%}" alt="" height="24" />
-            <span class="logo-txt">Dason</span>
+            <span class="logo-txt">Himalytix</span>
           </span>
         </a>
 
@@ -117,6 +117,31 @@
           <i data-feather="sun" class="icon-lg layout-mode-light"></i>
         </button>
       </div>
+      <!-- Organization switcher: show current organization and allow quick switch -->
+      {% if user.is_authenticated %}
+      <div class="dropdown d-inline-block ms-2">
+        <button
+          type="button"
+          class="btn header-item"
+          data-bs-toggle="dropdown"
+          aria-haspopup="true"
+          aria-expanded="false"
+        >
+          <i class="mdi mdi-domain align-middle"></i>
+          <span class="d-none d-xl-inline-block ms-1 fw-medium">
+            {% if organization %}
+                <a href="{% url 'usermanagement:organization_detail' organization.id %}" class="text-reset">{{ organization.name }}</a>
+            {% else %}
+                Select Organization
+            {% endif %}
+          </span>
+        </button>
+        <div class="dropdown-menu dropdown-menu-end">
+          <a class="dropdown-item" href="{% url 'usermanagement:select_organization' %}?next={{ request.get_full_path|urlencode }}">Switch Organization</a>
+          <a class="dropdown-item" href="{% url 'usermanagement:organization_list' %}">Manage Organizations</a>
+        </div>
+      </div>
+      {% endif %}
       <div class="dropdown d-none d-lg-inline-block ms-1">
         <button
           type="button"

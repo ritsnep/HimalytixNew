@@ -1,0 +1,27 @@
+{{ form.non_field_errors }}
+<div class="row g-3">
+  <div class="col-md-6">
+    <label class="form-label">Pick List</label>
+    {{ form.pick_list }} {{ form.pick_list.errors }}
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Product</label>
+    {{ form.product }} {{ form.product.errors }}
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Quantity Required</label>
+    {{ form.quantity_required }} {{ form.quantity_required.errors }}
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Location</label>
+    {{ form.location }} {{ form.location.errors }}
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Quantity Picked</label>
+    {{ form.quantity_picked }} {{ form.quantity_picked.errors }}
+  </div>
+  <div class="col-md-12">
+    <label class="form-label">Notes</label>
+    {{ form.notes }} {{ form.notes.errors }}
+  </div>
+</div>

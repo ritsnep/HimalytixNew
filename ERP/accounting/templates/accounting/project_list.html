@@ -15,7 +15,14 @@
     <th>Name</th>
     <th>Description</th>
     <th>Status</th>
-    <th>Action</th>
+    <th data-default-visible="false">Start Date</th>
+    <th data-default-visible="false">End Date</th>
+    <th data-default-visible="false">Archived At</th>
+    <th data-default-visible="false">Created At</th>
+    <th data-default-visible="false">Updated At</th>
+    <th data-default-visible="false">Created By</th>
+    <th data-default-visible="false">Updated By</th>
+    <th class="no-search">Action</th>
   </tr>
 </thead>
 {% endblock %}
@@ -34,6 +41,13 @@
         <span class="badge bg-danger">Inactive</span>
       {% endif %}
     </td>
+    <td>{{ p.start_date }}</td>
+    <td>{{ p.end_date }}</td>
+    <td>{{ p.archived_at }}</td>
+    <td>{{ p.created_at }}</td>
+    <td>{{ p.updated_at }}</td>
+    <td>{{ p.created_by }}</td>
+    <td>{{ p.updated_by }}</td>
     <td>
       <a href="{% url 'accounting:project_update' p.project_id %}" class="btn btn-sm btn-primary">Edit</a>
     </td>
