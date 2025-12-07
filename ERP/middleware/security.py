@@ -2,39 +2,59 @@
 Security middleware for Himalytix ERP
 Implements rate limiting and security headers
 """
+import time
+from django.conf import settings
 from django.core.cache import cache
 from django.http import JsonResponse
 from django.utils.deprecation import MiddlewareMixin
-import time
+
+
+DEFAULT_RATE_LIMITS = {
+    "api": (100, 3600),   # 100 requests per hour
+    "login": (5, 60),     # 5 requests per minute
+    "admin": (50, 3600),  # 50 requests per hour
+}
+
+
+def get_limit_config(group):
+    custom = getattr(settings, "RATE_LIMIT_RULES", {})
+    if group in custom:
+        limit = custom[group].get("limit", DEFAULT_RATE_LIMITS[group][0])
+        window = custom[group].get("window", DEFAULT_RATE_LIMITS[group][1])
+        return limit, window
+    return DEFAULT_RATE_LIMITS[group]
 
 
 class RateLimitMiddleware(MiddlewareMixin):
     """
     Rate limiting middleware for API endpoints.
     
-    Rules:
+    Rules (overridable via settings.RATE_LIMIT_RULES):
     - API endpoints: 100 requests/hour per user
     - Login endpoint: 5 requests/minute per IP
     - Admin endpoints: 50 requests/hour per user
+    - Staff/superusers are exempt.
     """
-    
+
     def process_request(self, request):
         # Skip rate limiting for health checks
         if request.path in ['/health/', '/health/ready/', '/health/live/']:
             return None
+        # Exempt staff/superusers to avoid blocking admin work
+        if getattr(request, "user", None) and request.user.is_authenticated and request.user.is_staff:
+            return None
         
         # Determine rate limit based on endpoint
         if request.path.startswith('/api/'):
-            limit, window = 100, 3600  # 100 requests per hour
             group = 'api'
         elif request.path == '/accounts/login/':
-            limit, window = 5, 60  # 5 requests per minute
             group = 'login'
         elif request.path.startswith('/admin/'):
-            limit, window = 50, 3600  # 50 requests per hour
             group = 'admin'
         else:
             return None  # No rate limit for other endpoints
+
+        limit, window = get_limit_config(group)
         
         # Generate cache key
         if request.user.is_authenticated:

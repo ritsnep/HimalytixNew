@@ -94,6 +94,27 @@ class NotificationRule(models.Model):
         blank=True,
         help_text="Dotted path on instance to resolve a user (e.g. owner).",
     )
+    direct_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="notification_rules_as_recipient",
+        help_text="Fallback user when path resolution fails.",
+    )
+    direct_email = models.EmailField(
+        blank=True,
+        help_text="Fallback email when path resolution fails (for email channel).",
+    )
+    direct_phone = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Fallback phone when path resolution fails (for SMS channel).",
+    )
+    fallback_to_request_user = models.BooleanField(
+        default=True,
+        help_text="Use request.user as last resort for in-app and Django messages.",
+    )
     target_phone_path = models.CharField(
         max_length=255,
         blank=True,
@@ -204,6 +225,7 @@ class InAppNotification(models.Model):
     )
     object_id = models.CharField(max_length=255, blank=True)
     content_object = GenericForeignKey("content_type", "object_id")
+    action_url = models.URLField(blank=True, help_text="Optional link to act on this notification.")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -217,6 +239,65 @@ class InAppNotification(models.Model):
             self.is_read = True
             self.read_at = timezone.now()
             self.save(update_fields=["is_read", "read_at"])
+
+
+class ApprovalRequest(models.Model):
+    """Approval workflow request that requires user to visit and approve/reject."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+
+    title = models.CharField(max_length=255)
+    message = models.TextField(blank=True)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.CharField(max_length=255)
+    content_object = GenericForeignKey("content_type", "object_id")
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approval_requests_made",
+    )
+    approver = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approval_requests_assigned",
+    )
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.PENDING
+    )
+    metadata = models.JSONField(default=dict, blank=True)
+    decision_notes = models.TextField(blank=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.title} ({self.get_status_display()})"
+
+    @property
+    def is_open(self) -> bool:
+        return self.status == self.Status.PENDING
+
+    def approve(self, notes: str = ""):
+        self.status = self.Status.APPROVED
+        self.decision_notes = notes
+        self.decided_at = timezone.now()
+        self.save(update_fields=["status", "decision_notes", "decided_at", "updated_at"])
+
+    def reject(self, notes: str = ""):
+        self.status = self.Status.REJECTED
+        self.decision_notes = notes
+        self.decided_at = timezone.now()
+        self.save(update_fields=["status", "decision_notes", "decided_at", "updated_at"])
 
 
 class Transaction(models.Model):

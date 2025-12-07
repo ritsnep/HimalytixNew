@@ -7,8 +7,10 @@ from django.contrib import messages
 from django.contrib.contenttypes.models import ContentType
 from django.core.mail import EmailMessage
 from django.utils import timezone
+from django.urls import reverse
 
 from .models import (
+    ApprovalRequest,
     InAppNotification,
     MessageTemplate,
     NotificationLog,
@@ -82,6 +84,10 @@ def resolve_email(rule: NotificationRule, instance: Any) -> List[str]:
     target = None
     if rule.target_email_path:
         target = resolve_path(instance, rule.target_email_path)
+    if not target and rule.direct_email:
+        target = rule.direct_email
+    if not target and rule.direct_user:
+        target = getattr(rule.direct_user, "email", None)
     if not target and hasattr(instance, "user"):
         user = getattr(instance, "user", None)
         target = getattr(user, "email", None)
@@ -90,20 +96,27 @@ def resolve_email(rule: NotificationRule, instance: Any) -> List[str]:
     return normalize_recipients(target)
 
 
-def resolve_user(rule: NotificationRule, instance: Any) -> Any:
+def resolve_user(rule: NotificationRule, instance: Any, request: Any = None) -> Any:
     if rule.target_user_path:
         candidate = resolve_path(instance, rule.target_user_path)
         if candidate:
             return candidate
+    if rule.direct_user:
+        return rule.direct_user
     if hasattr(instance, "user"):
         return getattr(instance, "user")
     if hasattr(instance, "owner"):
         return getattr(instance, "owner")
+    if rule.fallback_to_request_user and request is not None:
+        if getattr(request, "user", None) and request.user.is_authenticated:
+            return request.user
     return None
 
 
 def resolve_phone(rule: NotificationRule, instance: Any) -> Optional[str]:
     phone = resolve_path(instance, rule.target_phone_path) if rule.target_phone_path else None
+    if not phone and rule.direct_phone:
+        phone = rule.direct_phone
     if phone:
         return str(phone)
     if hasattr(instance, "phone"):
@@ -196,6 +209,31 @@ def dispatch_single_rule(
     return _dispatch_rule(rule, instance, request=request, extra_context=extra_context)
 
 
+def create_approval_notification(
+    *, instance: Any, requested_by: Any, approver: Any, title: str, message: str = "", metadata: Optional[Dict[str, Any]] = None
+) -> ApprovalRequest:
+    """Utility to persist an approval request and send an in-app notification with a link."""
+    metadata = metadata or {}
+    approval = ApprovalRequest.objects.create(
+        title=title,
+        message=message,
+        content_type=ContentType.objects.get_for_model(instance.__class__),
+        object_id=str(getattr(instance, "pk", "")),
+        requested_by=requested_by,
+        approver=approver,
+        metadata=metadata,
+    )
+    InAppNotification.objects.create(
+        recipient=approver,
+        title=title,
+        body=message or "An approval is pending your action.",
+        content_type=approval.content_type,
+        object_id=approval.id,
+        action_url=reverse("notification_center:approval_detail", args=[approval.id]),
+    )
+    return approval
+
+
 def _send_channel(
     channel: str,
     rule: NotificationRule,
@@ -207,7 +245,7 @@ def _send_channel(
     if channel == MessageTemplate.Channel.EMAIL:
         return _send_email(rule, instance, subject, body)
     if channel == MessageTemplate.Channel.IN_APP:
-        return _send_in_app(rule, instance, subject, body)
+        return _send_in_app(rule, instance, subject, body, request=request)
     if channel == MessageTemplate.Channel.DJANGO_MESSAGE:
         return _send_django_message(subject, body, request)
     if channel == MessageTemplate.Channel.SMS:
@@ -230,9 +268,9 @@ def _send_email(
 
 
 def _send_in_app(
-    rule: NotificationRule, instance: Any, subject: str, body: str
+    rule: NotificationRule, instance: Any, subject: str, body: str, request: Any = None
 ) -> Tuple[str, str, str]:
-    user = resolve_user(rule, instance)
+    user = resolve_user(rule, instance, request=request)
     if not user:
         return NotificationLog.Status.SKIPPED, "No user resolved for in-app notification", ""
 

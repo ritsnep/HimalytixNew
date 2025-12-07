@@ -12,6 +12,7 @@ except ImportError:  # Fallback for environments without the default admin class
 
 from .forms import NotificationRuleForm
 from .models import (
+    ApprovalRequest,
     InAppNotification,
     MessageTemplate,
     NotificationLog,
@@ -31,7 +32,7 @@ except AlreadyRegistered:
 class MessageTemplateAdmin(admin.ModelAdmin):
     list_display = ("name", "channel", "updated_at")
     search_fields = ("name", "description", "subject", "body")
-    readonly_fields = ("preview_with_sample",)
+    readonly_fields = ("preview_with_sample", "created_at", "updated_at")
     fieldsets = (
         ("Meta", {"fields": ("name", "description", "channel", "is_html")}),
         (
@@ -128,7 +129,7 @@ class NotificationLogAdmin(admin.ModelAdmin):
 
 @admin.register(InAppNotification)
 class InAppNotificationAdmin(admin.ModelAdmin):
-    list_display = ("title", "recipient", "is_read", "created_at")
+    list_display = ("title", "recipient", "is_read", "created_at", "action_url")
     list_filter = ("is_read", "created_at")
     search_fields = ("title", "body", "recipient__username", "recipient__email")
     actions = ["mark_as_read"]
@@ -141,6 +142,15 @@ class InAppNotificationAdmin(admin.ModelAdmin):
                 notification.mark_read()
                 updated += 1
         self.message_user(request, f"Marked {updated} notification(s) as read.")
+
+
+@admin.register(ApprovalRequest)
+class ApprovalRequestAdmin(admin.ModelAdmin):
+    list_display = ("title", "status", "approver", "requested_by", "created_at")
+    list_filter = ("status", "created_at")
+    search_fields = ("title", "message", "metadata")
+    autocomplete_fields = ("approver", "requested_by", "content_type")
+    readonly_fields = ("decided_at", "created_at", "updated_at")
 
 
 @admin.register(Transaction)

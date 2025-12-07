@@ -97,9 +97,10 @@ urlpatterns = [
     
     # Vertical Dashboard endpoints (API)
     path("api/dashboards/", include("dashboard.api.dashboard_urls")),
-    
+
     # Vertical Dashboard HTML page (accessible from sidebar)
     path("dashboards/vertical/", include("dashboard.views_vertical.urls")),
+    path("notifications/", include(("notification_center.urls", "notification_center"), namespace="notification_center")),
 
     # Streamlit V2 login bootstrap
     path("V2/login", views.v2_login_redirect, name="v2_login"),
