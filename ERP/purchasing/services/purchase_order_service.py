@@ -159,6 +159,27 @@ class PurchaseOrderService:
         
         return po
 
+        def close_if_fully_received(self, po: PurchaseOrder) -> PurchaseOrder:
+            """
+            Mark a PO as received/closed based on line balances.
+            - RECEIVED when at least one receipt exists and open quantity remains
+            - CLOSED when all ordered quantities are received (or over-received is zero)
+            """
+            total_outstanding = Decimal("0")
+            total_received = Decimal("0")
+            for line in po.lines.all():
+                line_outstanding = line.quantity_ordered - line.quantity_received
+                total_outstanding += line_outstanding
+                total_received += line.quantity_received
+
+            if total_received > 0 and total_outstanding > 0:
+                po.status = PurchaseOrder.Status.RECEIVED
+                po.save(update_fields=["status", "updated_at"])
+            elif total_received > 0 and total_outstanding <= 0:
+                po.status = PurchaseOrder.Status.CLOSED
+                po.save(update_fields=["status", "updated_at"])
+            return po
+
     def _generate_po_number(self, organization) -> str:
         """
         Generate a unique PO number for the organization.

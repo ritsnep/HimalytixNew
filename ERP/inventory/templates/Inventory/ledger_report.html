@@ -49,13 +49,59 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <label for="date_from" class="form-label">From Date</label>
-                    <input type="date" name="date_from" id="date_from" class="form-control" value="{{ date_from }}">
+                    <div class="input-group dual-calendar-picker"
+                         data-dual-calendar
+                         data-calendar-mode="{{ calendar_mode|default:'AD' }}"
+                         data-initial-view="{% if calendar_mode == 'AD' %}AD{% else %}BS{% endif %}">
+                        <input type="text"
+                               name="date_from_bs"
+                               id="date_from_bs"
+                               class="form-control dual-calendar__bs{% if calendar_mode == 'AD' %} d-none{% endif %}"
+                               placeholder="BS YYYY-MM-DD"
+                               autocomplete="off"
+                               data-role="bs-input"
+                               value="{{ date_from_bs|default:'' }}">
+                        <input type="date"
+                               name="date_from"
+                               id="date_from"
+                               class="form-control dual-calendar__ad{% if calendar_mode == 'BS' %} d-none{% endif %}"
+                               data-role="ad-input"
+                               value="{{ date_from|default:'' }}">
+                        <button type="button"
+                                class="btn btn-outline-secondary dual-calendar__toggle {% if calendar_mode != 'DUAL' %}d-none{% endif %}"
+                                data-role="toggle">
+                            BS
+                        </button>
+                    </div>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <label for="date_to" class="form-label">To Date</label>
-                    <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to }}">
+                    <div class="input-group dual-calendar-picker"
+                         data-dual-calendar
+                         data-calendar-mode="{{ calendar_mode|default:'AD' }}"
+                         data-initial-view="{% if calendar_mode == 'AD' %}AD{% else %}BS{% endif %}">
+                        <input type="text"
+                               name="date_to_bs"
+                               id="date_to_bs"
+                               class="form-control dual-calendar__bs{% if calendar_mode == 'AD' %} d-none{% endif %}"
+                               placeholder="BS YYYY-MM-DD"
+                               autocomplete="off"
+                               data-role="bs-input"
+                               value="{{ date_to_bs|default:'' }}">
+                        <input type="date"
+                               name="date_to"
+                               id="date_to"
+                               class="form-control dual-calendar__ad{% if calendar_mode == 'BS' %} d-none{% endif %}"
+                               data-role="ad-input"
+                               value="{{ date_to|default:'' }}">
+                        <button type="button"
+                                class="btn btn-outline-secondary dual-calendar__toggle {% if calendar_mode != 'DUAL' %}d-none{% endif %}"
+                                data-role="toggle">
+                            BS
+                        </button>
+                    </div>
                 </div>
                 <div class="col-12">
                     <button type="submit" class="btn btn-primary">

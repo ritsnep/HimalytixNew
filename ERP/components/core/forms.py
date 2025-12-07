@@ -4,6 +4,9 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.forms.models import ModelForm
 from django.forms.widgets import Media
+from django.utils import timezone
+
+from utils.widgets import dual_date_widget
 
 
 class DynamicFormMixin:
@@ -12,6 +15,7 @@ class DynamicFormMixin:
     """
     def __init__(self, *args, **kwargs):
         self.field_config = kwargs.pop('field_config', {})
+        self.organization = kwargs.pop("organization", None)
         schema_fields = kwargs.pop('schema_fields', None)
         super().__init__(*args, **kwargs)
         if schema_fields:
@@ -80,7 +84,14 @@ class DynamicFormMixin:
             elif field_type in ('decimal', 'float'):
                 field = forms.FloatField(label=label, required=required, help_text=help_text, initial=initial, widget=forms.NumberInput(attrs=widget_attrs))
             elif field_type == 'date':
-                field = forms.DateField(label=label, required=required, help_text=help_text, initial=initial, widget=forms.DateInput(attrs=widget_attrs))
+                default_initial = initial if initial not in (None, '') else timezone.localdate()
+                field = forms.DateField(
+                    label=label,
+                    required=required,
+                    help_text=help_text,
+                    initial=default_initial,
+                    widget=dual_date_widget(attrs=widget_attrs, organization=self.organization),
+                )
             elif field_type == 'boolean':
                 field = forms.BooleanField(label=label, required=required, help_text=help_text, initial=initial)
             elif field_type == 'select':

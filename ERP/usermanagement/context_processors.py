@@ -1,3 +1,6 @@
+from utils.calendars import CalendarMode, DateSeedStrategy, get_calendar_mode
+
+
 def active_organization(request):
     """Add the user's active organization to the template context.
     This makes `organization` accessible in header templates without requiring
@@ -12,7 +15,13 @@ def active_organization(request):
                 org = getter()
             except Exception:
                 org = None
-    return {'organization': org}
+    return {
+        'organization': org,
+        'calendar_mode': get_calendar_mode(org, default=CalendarMode.DEFAULT),
+        'calendar_date_seed': DateSeedStrategy.normalize(
+            getattr(getattr(org, "config", None), "calendar_date_seed", None)
+        ),
+    }
 from usermanagement.models import Entity, Module
 from usermanagement.utils import PermissionUtils
 

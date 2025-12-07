@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.apps import apps
 from .models import (
-    CustomUser, Module, Entity,
+    CompanyConfig, CustomUser, Module, Entity,
     Organization, OrganizationAddress, OrganizationContact,
     Permission, Role, UserOrganization, UserRole, UserPermission
 )
@@ -50,7 +50,31 @@ class CustomUserAdmin(UserAdmin):
 class OrganizationAdmin(admin.ModelAdmin):
     list_display = ('name', 'code', 'legal_name', 'status', 'is_active')
     search_fields = ('name', 'code', 'legal_name')
-
+@admin.register(CompanyConfig)
+class CompanyConfigAdmin(admin.ModelAdmin):
+    list_display = (
+        'company',
+        'enable_noc_purchases',
+        'enable_dealer_management',
+        'enable_logistics',
+        'enable_advanced_inventory',
+        'enforce_credit_limit',
+        'credit_enforcement_mode',
+        'calendar_mode',
+        'calendar_date_seed',
+    )
+    list_filter = (
+        'enable_noc_purchases',
+        'enable_dealer_management',
+        'enable_logistics',
+        'enable_advanced_inventory',
+        'enforce_credit_limit',
+        'credit_enforcement_mode',
+        'calendar_mode',
+        'calendar_date_seed',
+    )
+    search_fields = ('company__name',)
+    list_select_related = ('company',)
 
 @admin.register(OrganizationAddress)
 class OrganizationAddressAdmin(admin.ModelAdmin):

@@ -1,5 +1,8 @@
 from django import forms
 from django.forms import modelform_factory, modelformset_factory
+
+from utils.calendars import CalendarMode, get_calendar_mode
+from utils.widgets import DualCalendarWidget
 from .forms_mixin import BootstrapFormMixin
 from .models import VoucherModeConfig
 from .widgets import DatePicker, AccountChoiceWidget
@@ -43,13 +46,22 @@ class FormBuilder:
         attrs['class'] = ' '.join(current_classes).strip()
 
         if field_type == 'date':
-            attrs['type'] = 'date' # Ensure date input type for date fields
+            attrs['type'] = 'date'  # Ensure date input type for date fields
 
         widget_class = self._map_type_to_widget(field_type)
         if widget_class:
-            field_kwargs['widget'] = widget_class(attrs=attrs)
-        elif attrs: # Fallback for fields without specific widget mapping but with attrs
-            field_kwargs['widget'] = forms.TextInput(attrs=attrs) # Default to TextInput if no specific widget
+            if widget_class is DualCalendarWidget:
+                default_view = get_calendar_mode(
+                    self.organization, default=CalendarMode.DEFAULT
+                )
+                field_kwargs['widget'] = widget_class(
+                    default_view=default_view,
+                    attrs=attrs,
+                )
+            else:
+                field_kwargs['widget'] = widget_class(attrs=attrs)
+        elif attrs:  # Fallback for fields without specific widget mapping but with attrs
+            field_kwargs['widget'] = forms.TextInput(attrs=attrs)  # Default to TextInput if no specific widget
 
         if field_type == 'select':
             choices = config.get('choices', [])
@@ -95,7 +107,7 @@ class FormBuilder:
         """Map schema field type to a Django Form Widget."""
         widget_map = {
             'text': forms.Textarea,
-            'date': DatePicker,
+            'date': DualCalendarWidget,
             'account': AccountChoiceWidget,
             'select': forms.Select,
         }

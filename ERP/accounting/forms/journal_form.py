@@ -27,6 +27,8 @@ from django.utils.translation import gettext_lazy as _
 from accounting.models import Journal, AccountingPeriod, JournalType, Currency
 from accounting.forms_mixin import BootstrapFormMixin
 from accounting.forms.udf_mixins import UDFFormMixin
+from utils.calendars import CalendarMode
+from utils.widgets import DualCalendarWidget
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +70,7 @@ class JournalForm(UDFFormMixin, BootstrapFormMixin, forms.ModelForm):
                 'required': 'required',
                 'aria-label': 'Accounting Period'
             }),
-            'journal_date': forms.DateInput(attrs={
+            'journal_date': DualCalendarWidget(attrs={
                 'class': 'form-control',
                 'type': 'date',
                 'required': 'required',
@@ -116,6 +118,24 @@ class JournalForm(UDFFormMixin, BootstrapFormMixin, forms.ModelForm):
         self.journal_type = kwargs.pop('journal_type', None)
 
         super().__init__(*args, **kwargs)
+
+        # Ensure journal_date is prefilling when no initial/data provided.
+        if not self.data and not self.initial.get('journal_date'):
+            today = timezone.localdate()
+            self.initial['journal_date'] = today
+            if 'journal_date' in self.fields:
+                self.fields['journal_date'].initial = today
+
+        calendar_mode = CalendarMode.normalize(
+            getattr(self.organization, 'calendar_mode', CalendarMode.DEFAULT)
+            if self.organization
+            else CalendarMode.DEFAULT
+        )
+        base_attrs = self.fields['journal_date'].widget.attrs.copy()
+        self.fields['journal_date'].widget = DualCalendarWidget(
+            default_view=calendar_mode,
+            attrs=base_attrs,
+        )
 
         # Filter journal types by organization
         if self.organization:

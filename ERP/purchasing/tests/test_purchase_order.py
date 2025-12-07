@@ -13,7 +13,7 @@ from django.core.exceptions import ValidationError
 from purchasing.models import PurchaseOrder, PurchaseOrderLine, GoodsReceipt, GoodsReceiptLine
 from purchasing.services.purchase_order_service import PurchaseOrderService
 from purchasing.services.goods_receipt_service import GoodsReceiptService
-from accounting.models import Vendor, Currency, ChartOfAccount, FiscalYear, AccountingPeriod
+from accounting.models import Vendor, Currency, ChartOfAccount, AccountType, FiscalYear, AccountingPeriod
 from inventory.models import Product, Warehouse, StockLedger
 from usermanagement.models import Organization
 from django.contrib.auth import get_user_model
@@ -520,10 +520,30 @@ class TestPurchaseOrderIntegration(TestCase):
             currency_name="US Dollar",
             symbol="$"
         )
+        
+        # Create AccountType for GL account
+        liability_type = AccountType.objects.create(
+            code="LIA",
+            name="Liability",
+            nature="liability",
+            classification="Statement of Financial Position",
+            balance_sheet_category="Liabilities",
+            display_order=1
+        )
+        
+        # Create AP account
+        ap_account = ChartOfAccount.objects.create(
+            organization=self.org,
+            account_code="2100",
+            account_name="Accounts Payable",
+            account_type=liability_type
+        )
+        
         self.vendor = Vendor.objects.create(
             organization=self.org,
             code="VENDOR001",
             display_name="Test Vendor",
+            accounts_payable_account=ap_account,
             is_active=True
         )
         self.product = Product.objects.create(

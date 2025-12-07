@@ -71,7 +71,7 @@
                                         <label for="{{ form.journal_date.id_for_label }}" class="form-label">
                                             {% trans "Journal Date" %} <span class="text-danger">*</span>
                                         </label>
-                                        {% render_field form.journal_date class="form-control" type="date" %}
+                                        {{ form.journal_date }}
                                         {% if form.journal_date.errors %}
                                             <div class="invalid-feedback d-block">{{ form.journal_date.errors }}</div>
                                         {% endif %}

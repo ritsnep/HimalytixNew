@@ -17,6 +17,7 @@ from purchasing.models import (
     GoodsReceipt,
     GoodsReceiptLine,
 )
+from utils.widgets import dual_date_widget, set_default_date_initial
 
 
 class OrganizationBoundFormMixin:
@@ -29,15 +30,23 @@ class OrganizationBoundFormMixin:
         super().__init__(*args, **kwargs)
         if organization:
             self._restrict_querysets(organization)
+        self._apply_dual_calendar_widgets()
 
     def _restrict_querysets(self, organization):  # pragma: no cover - override hook
         return
 
+    def _apply_dual_calendar_widgets(self):
+        for name, field in self.fields.items():
+            if isinstance(field, forms.DateField):
+                attrs = dict(getattr(field.widget, "attrs", {}) or {})
+                field.widget = dual_date_widget(attrs=attrs, organization=self.organization)
+                set_default_date_initial(self, name, field)
+
 
 class PurchaseInvoiceForm(OrganizationBoundFormMixin, forms.ModelForm):
-    invoice_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+    invoice_date = forms.DateField(widget=dual_date_widget())
     due_date = forms.DateField(
-        widget=forms.DateInput(attrs={"type": "date"}),
+        widget=dual_date_widget(),
         required=False,
     )
 
@@ -127,7 +136,7 @@ PurchaseInvoiceLineFormSet = inlineformset_factory(
 
 
 class LandedCostDocumentForm(forms.ModelForm):
-    document_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+    document_date = forms.DateField(widget=dual_date_widget())
 
     class Meta:
         model = LandedCostDocument
@@ -179,9 +188,9 @@ LandedCostLineFormSet = inlineformset_factory(
 class PurchaseOrderForm(OrganizationBoundFormMixin, forms.ModelForm):
     """Form for creating/editing purchase orders."""
     
-    order_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+    order_date = forms.DateField(widget=dual_date_widget())
     due_date = forms.DateField(
-        widget=forms.DateInput(attrs={"type": "date"}),
+        widget=dual_date_widget(),
         required=False,
     )
 
@@ -250,7 +259,7 @@ class PurchaseOrderLineForm(OrganizationBoundFormMixin, forms.ModelForm):
             "expense_account",
         ]
         widgets = {
-            "expected_delivery_date": forms.DateInput(attrs={"type": "date"}),
+            "expected_delivery_date": dual_date_widget(),
         }
 
     def _restrict_querysets(self, organization):
@@ -295,7 +304,7 @@ PurchaseOrderLineFormSet = inlineformset_factory(
 class GoodsReceiptForm(OrganizationBoundFormMixin, forms.ModelForm):
     """Form for creating/editing goods receipts."""
     
-    receipt_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+    receipt_date = forms.DateField(widget=dual_date_widget())
 
     class Meta:
         model = GoodsReceipt
@@ -362,7 +371,7 @@ class GoodsReceiptLineForm(OrganizationBoundFormMixin, forms.ModelForm):
             "notes",
         ]
         widgets = {
-            "expiry_date": forms.DateInput(attrs={"type": "date"}),
+            "expiry_date": dual_date_widget(),
             "serial_numbers": forms.TextInput(attrs={"placeholder": "Comma-separated"}),
             "notes": forms.Textarea(attrs={"rows": 2, "placeholder": "QC notes"}),
         }

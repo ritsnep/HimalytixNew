@@ -1,0 +1,28 @@
+{% comment %}Auto-rendered filters from smart_filter_config{% endcomment %}
+{% if smart_filter_config %}
+<form method="get" class="row g-2 align-items-end mb-3" novalidate>
+    {% comment %}Basic filters (first 3){% endcomment %}
+    {% for f in smart_filter_config.basic_filters %}
+        {% include 'accounting/partials/smart_filters_block.html' with f=f %}
+    {% endfor %}
+
+    {% if smart_filter_config.advanced_filters %}
+    <div class="col-12">
+        <a class="text-decoration-none" data-bs-toggle="collapse" href="#advanced-filters" role="button" aria-expanded="false" aria-controls="advanced-filters">
+            Advanced filters
+        </a>
+    </div>
+    <div class="collapse w-100" id="advanced-filters">
+        <div class="row g-2 mt-1">
+            {% for f in smart_filter_config.advanced_filters %}
+                {% include 'accounting/partials/smart_filters_block.html' with f=f %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="col-md-2 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary btn-sm w-100">Apply Filters</button>
+    </div>
+</form>
+{% endif %}

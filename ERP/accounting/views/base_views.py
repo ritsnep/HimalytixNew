@@ -1,9 +1,12 @@
 from django.contrib import messages
 from django.views.generic import ListView
 from django.shortcuts import redirect
+from django.db.models import Q
+from urllib.parse import urlencode
 
 from usermanagement.utils import PermissionUtils
 from accounting.views.views_mixins import UserOrganizationMixin
+from accounting.list_registry import get_config
 
 class BaseListView(UserOrganizationMixin, ListView):
     paginate_by = 20
@@ -50,3 +53,202 @@ class BaseListView(UserOrganizationMixin, ListView):
 
         context['page_title'] = self.model._meta.verbose_name_plural.title()
         return context
+
+
+class SmartListMixin:
+    """Adds dynamic filters and bulk actions based on model metadata/registry."""
+
+    smart_filters_enabled = True
+    smart_bulk_enabled = True
+
+    def get_smart_config(self):
+        return get_config(self.model)
+
+    def apply_smart_filters(self, qs):
+        if not self.smart_filters_enabled:
+            return qs
+
+        cfg = self.get_smart_config()
+        request = self.request
+
+        # Text search across configured fields
+        search_term = request.GET.get('q', '').strip()
+        if search_term and cfg.get('search_fields'):
+            query = Q()
+            for field in cfg['search_fields']:
+                query |= Q(**{f"{field}__icontains": search_term})
+            qs = qs.filter(query)
+
+        # Choice/status filters
+        for field in cfg.get('choice_fields', []):
+            val = request.GET.get(field)
+            if val:
+                qs = qs.filter(**{field: val})
+
+        # Boolean filters (expects yes/no)
+        for field in cfg.get('boolean_fields', []):
+            val = request.GET.get(field)
+            if val in ('yes', 'true', '1'):
+                qs = qs.filter(**{field: True})
+            elif val in ('no', 'false', '0'):
+                qs = qs.filter(**{field: False})
+
+        # Currency filter
+        currency_field = cfg.get('currency_field')
+        if currency_field:
+            currency_val = request.GET.get('currency')
+            if currency_val:
+                qs = qs.filter(**{f"{currency_field}_id": currency_val})
+
+        # Date range filters
+        for field in cfg.get('date_range_fields', []):
+            start = request.GET.get(f"{field}_from")
+            end = request.GET.get(f"{field}_to")
+            if start:
+                qs = qs.filter(**{f"{field}__date__gte": start})
+            if end:
+                qs = qs.filter(**{f"{field}__date__lte": end})
+
+        order_by = cfg.get('order_by') or []
+        if order_by:
+            qs = qs.order_by(*order_by)
+
+        return qs
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        return self.apply_smart_filters(qs)
+
+    def get_bulk_actions(self):
+        if not self.smart_bulk_enabled:
+            return []
+        return self.get_smart_config().get('bulk_actions', [])
+
+    def handle_bulk_actions(self, qs):
+        actions = self.get_bulk_actions()
+        action = self.request.POST.get('action')
+        selected_ids = self.request.POST.getlist('selected_ids')
+
+        if not action or action not in actions or not selected_ids:
+            messages.warning(self.request, "Select at least one row and a bulk action.")
+            return 0
+
+        qs = qs.filter(pk__in=selected_ids)
+        updated = 0
+
+        if action == 'activate':
+            if hasattr(self.model, 'is_active'):
+                updated = qs.update(is_active=True)
+            elif hasattr(self.model, 'status'):
+                updated = qs.update(status='active')
+        elif action == 'deactivate':
+            if hasattr(self.model, 'is_active'):
+                updated = qs.update(is_active=False)
+            elif hasattr(self.model, 'status'):
+                updated = qs.update(status='inactive')
+        elif action == 'hold' and hasattr(self.model, 'on_hold'):
+            updated = qs.update(on_hold=True)
+        elif action == 'unhold' and hasattr(self.model, 'on_hold'):
+            updated = qs.update(on_hold=False)
+        else:
+            messages.error(self.request, "Unsupported bulk action for this list.")
+            return 0
+
+        return updated
+
+    def post(self, request, *args, **kwargs):
+        if not self.smart_bulk_enabled:
+            return super().post(request, *args, **kwargs)
+
+        org = self.get_organization()
+        if not org:
+            messages.error(request, "Organization is required.")
+            return redirect(request.path)
+
+        qs = self.get_queryset().filter(organization=org)
+        updated = self.handle_bulk_actions(qs)
+        if updated:
+            messages.success(request, f"Bulk action applied to {updated} record(s).")
+        return self._redirect_with_filters(request)
+
+    def _redirect_with_filters(self, request):
+        params = {k: v for k, v in request.POST.items() if k not in ('csrfmiddlewaretoken', 'selected_ids', 'action') and v}
+        query = f"?{urlencode(params)}" if params else ''
+        return redirect(f"{request.path}{query}")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        cfg = self.get_smart_config() if self.smart_filters_enabled else None
+        if cfg:
+            request = self.request
+            # Collect choice options from model fields (if available)
+            choice_filters = []
+            for field_name in cfg.get('choice_fields', []):
+                opts = []
+                try:
+                    field = self.model._meta.get_field(field_name)
+                    opts = list(field.choices) if getattr(field, 'choices', None) else []
+                except Exception:
+                    opts = []
+                choice_filters.append({
+                    'name': field_name,
+                    'options': opts,
+                    'value': request.GET.get(field_name, ''),
+                })
+
+            boolean_filters = [
+                {
+                    'name': field_name,
+                    'value': request.GET.get(field_name, ''),
+                }
+                for field_name in cfg.get('boolean_fields', [])
+            ]
+
+            date_filters = []
+            for field_name in cfg.get('date_range_fields', []):
+                date_filters.append({
+                    'name': field_name,
+                    'from': request.GET.get(f"{field_name}_from", ''),
+                    'to': request.GET.get(f"{field_name}_to", ''),
+                })
+
+            currency_value = request.GET.get('currency', '')
+            filters_ordered = []
+            # Search as first filter block
+            filters_ordered.append({
+                'kind': 'search',
+                'label': 'Search',
+                'name': 'q',
+                'value': request.GET.get('q', ''),
+            })
+            filters_ordered.extend([{ 'kind': 'choice', **c } for c in choice_filters])
+            filters_ordered.extend([{ 'kind': 'boolean', **b } for b in boolean_filters])
+            if cfg.get('currency_field'):
+                filters_ordered.append({
+                    'kind': 'currency',
+                    'name': cfg.get('currency_field'),
+                    'value': currency_value,
+                })
+            filters_ordered.extend([{ 'kind': 'date', **d } for d in date_filters])
+
+            basic_filters = filters_ordered[:3]
+            advanced_filters = filters_ordered[3:]
+
+            context['smart_filter_config'] = {
+                'basic_filters': basic_filters,
+                'advanced_filters': advanced_filters,
+                'choice_filters': choice_filters,
+                'boolean_filters': boolean_filters,
+                'currency_field': cfg.get('currency_field'),
+                'currency_value': currency_value,
+                'date_filters': date_filters,
+                'search_value': request.GET.get('q', ''),
+            }
+        if self.smart_bulk_enabled:
+            context['smart_bulk_actions'] = self.get_bulk_actions()
+        return context
+
+
+class SmartListView(SmartListMixin, BaseListView):
+    """Convenience view combining BaseListView with smart filters/bulk."""
+    pass

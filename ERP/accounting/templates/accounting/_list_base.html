@@ -106,6 +106,9 @@
                                 <div id="datatable-controls" class="d-flex align-items-center flex-wrap gap-2"></div>
                             </div>
                         </div>
+                        {% if smart_filter_config %}
+                            {% include 'accounting/partials/smart_filters.html' %}
+                        {% endif %}
                         {% block custom_filters %}
                         {% endblock custom_filters %}
                         <div class="table-rep-plugin">
@@ -256,6 +259,10 @@ $(document).ready(function() {
         pageLength: {{ request.GET.rows|default:10 }},
         columnDefs: hiddenTargets.length ? [{ targets: hiddenTargets, visible: false }] : []
     };
+    // If smart bulk adds a checkbox column, ensure it is not orderable/searchable by default
+    if (extra && extra.columnDefs) {
+        baseOpts.columnDefs = (baseOpts.columnDefs || []).concat(extra.columnDefs);
+    }
     var opts = Object.assign({}, baseOpts, extra || {});
     var table = $('#datatable-buttons').DataTable(opts);
     window.DT_MAIN = table;

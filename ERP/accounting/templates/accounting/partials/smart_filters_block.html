@@ -1,0 +1,47 @@
+{% comment %}Render a single filter block based on kind{% endcomment %}
+{% if f.kind == 'search' %}
+<div class="col-md-3">
+    <label for="smart-{{ f.name }}" class="form-label">{{ f.label }}</label>
+    <input id="smart-{{ f.name }}" name="{{ f.name }}" type="text" value="{{ f.value }}" class="form-control form-control-sm" placeholder="Search">
+</div>
+{% elif f.kind == 'choice' %}
+<div class="col-md-2">
+    <label for="smart-{{ f.name }}" class="form-label">{{ f.name|capfirst }}</label>
+    <select id="smart-{{ f.name }}" name="{{ f.name }}" class="form-select form-select-sm">
+        <option value="">All</option>
+        {% for val,label in f.options %}
+            <option value="{{ val }}" {% if f.value == val|stringformat:'s' %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+</div>
+{% elif f.kind == 'boolean' %}
+<div class="col-md-2">
+    <label for="smart-{{ f.name }}" class="form-label">{{ f.name|capfirst }}</label>
+    <select id="smart-{{ f.name }}" name="{{ f.name }}" class="form-select form-select-sm">
+        <option value="">All</option>
+        <option value="yes" {% if f.value == 'yes' %}selected{% endif %}>Yes</option>
+        <option value="no" {% if f.value == 'no' %}selected{% endif %}>No</option>
+    </select>
+</div>
+{% elif f.kind == 'currency' %}
+<div class="col-md-2">
+    <label for="smart-currency" class="form-label">Currency</label>
+    <select id="smart-currency" name="currency" class="form-select form-select-sm">
+        <option value="">All</option>
+        {% if currency_choices %}
+            {% for c in currency_choices %}
+                <option value="{{ c.pk }}" {% if f.value|add:"" == c.pk|add:"" %}selected{% endif %}>{{ c.currency_code }} - {{ c.currency_name }}</option>
+            {% endfor %}
+        {% endif %}
+    </select>
+</div>
+{% elif f.kind == 'date' %}
+<div class="col-md-2">
+    <label class="form-label">{{ f.name|capfirst }} From</label>
+    <input type="date" class="form-control form-control-sm" name="{{ f.name }}_from" value="{{ f.from }}">
+</div>
+<div class="col-md-2">
+    <label class="form-label">{{ f.name|capfirst }} To</label>
+    <input type="date" class="form-control form-control-sm" name="{{ f.name }}_to" value="{{ f.to }}">
+</div>
+{% endif %}

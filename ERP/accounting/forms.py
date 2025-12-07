@@ -728,6 +728,7 @@ class CurrencyExchangeRateForm(BootstrapFormMixin, forms.ModelForm):
         })
     )
     rate_date = forms.DateField(
+        
         widget=forms.DateInput(attrs={
             'class': 'form-control datepicker',
             'required': 'required',

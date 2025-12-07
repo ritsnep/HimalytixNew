@@ -10,6 +10,7 @@ Handles:
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, time
 from decimal import Decimal
 from typing import Optional, List, Dict, Any
@@ -21,6 +22,10 @@ from django.utils import timezone
 from purchasing.models import GoodsReceipt, GoodsReceiptLine, PurchaseOrder
 from accounting.models import Journal, JournalLine, JournalType, AccountingPeriod
 from inventory.models import StockLedger
+from purchasing.services.purchase_order_service import PurchaseOrderService
+
+
+logger = logging.getLogger(__name__)
 
 
 class GoodsReceiptService:
@@ -177,6 +182,9 @@ class GoodsReceiptService:
         gr.journal = journal
         gr.posted_at = timezone.now()
         gr.save()
+
+        # Update PO status based on receipts
+        self._update_po_status_after_receipt(gr.purchase_order)
         
         return gr
 
@@ -255,8 +263,8 @@ class GoodsReceiptService:
             posting_service = PostingService(self.user)
             posting_service.post(journal)
         except Exception as e:
-            # Log but don't fail - GR is still valid
-            print(f"Warning: Could not post journal: {e}")
+            logger.warning("Could not post GR journal %s: %s", journal.id, e)
+            raise
         
         return journal
 
@@ -268,7 +276,7 @@ class GoodsReceiptService:
             defaults={
                 "name": "Goods Receipt",
                 "description": "Goods receipt and inventory posting",
-                "is_system": True,
+                "is_system_type": True,
             },
         )
         return journal_type
@@ -328,6 +336,11 @@ class GoodsReceiptService:
         gr.save(update_fields=["status", "updated_at"])
         
         return gr
+
+    def _update_po_status_after_receipt(self, po: PurchaseOrder) -> PurchaseOrder:
+        """Refresh PO status after GR posting based on quantities received."""
+        po_service = PurchaseOrderService(self.user)
+        return po_service.close_if_fully_received(po)
 
     def _generate_gr_number(self, organization) -> str:
         """

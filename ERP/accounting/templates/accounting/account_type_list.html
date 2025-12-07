@@ -10,14 +10,26 @@
 {% endblock %}
 
 {% block create_button %}
-<a href="{% url 'accounting:account_type_create' %}" class="btn btn-success mb-2">
-    <i class="mdi mdi-plus me-1"></i> New Account Type
-</a>
+<div class="d-flex align-items-center gap-2 flex-wrap">
+    <a href="{% url 'accounting:account_type_create' %}" class="btn btn-success btn-sm">
+        <i class="mdi mdi-plus me-1"></i> New Account Type
+    </a>
+    <div class="input-group input-group-sm" style="width: 320px;">
+        <label class="input-group-text" for="bulk-action">Bulk</label>
+        <select id="bulk-action" name="action" class="form-select form-select-sm" form="bulk-action-form">
+            <option value="">Select action</option>
+            <option value="activate">Mark Active</option>
+            <option value="deactivate">Mark Inactive</option>
+        </select>
+        <button id="bulk-action-apply" type="submit" class="btn btn-outline-primary" form="bulk-action-form">Apply</button>
+    </div>
+</div>
 {% endblock %}
 
 {% block table_head %}
 <thead>
     <tr>
+        <th class="no-search no-export" style="width:30px;"><input type="checkbox" id="select-all" class="form-check-input form-check-sm"></th>
         <th>Code</th>
         <th>Name</th>
         <th>Nature</th>
@@ -38,7 +50,8 @@
 {% block table_body %}
 <tbody>
     {% for type in account_types %}
-    <tr>
+    <tr data-pk="{{ type.pk }}">
+        <td><input type="checkbox" class="form-check-input row-select" name="selected_ids" value="{{ type.pk }}" form="bulk-action-form"></td>
         <td>{{ type.code }}</td>
         <td>{{ type.name }}</td>
         <td>{{ type.nature }}</td>
@@ -57,7 +70,55 @@
         </td>
     </tr>
     {% empty %}
-    <tr><td colspan="13">No account types found.</td></tr>
+    <tr><td colspan="14">No account types found.</td></tr>
     {% endfor %}
 </tbody>
 {% endblock %} 
+
+{% block custom_filters %}
+<form id="bulk-action-form" method="post">
+    {% csrf_token %}
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script id="datatable-config" type="application/json">
+{
+    "columnDefs": [
+        {"targets": [0, -1], "orderable": false, "searchable": false}
+    ]
+}
+</script>
+{{ block.super }}
+<script>
+    $(function() {
+        var selectAll = $('#select-all');
+        var rowChecks = $('input.row-select');
+        var actionSelect = $('#bulk-action');
+        var applyBtn = $('#bulk-action-apply');
+
+        function syncSelectAll() {
+            var checkedCount = rowChecks.filter(':checked').length;
+            selectAll.prop('checked', checkedCount > 0 && checkedCount === rowChecks.length);
+        }
+
+        selectAll.on('change', function() {
+            rowChecks.prop('checked', $(this).is(':checked'));
+        });
+
+        rowChecks.on('change', syncSelectAll);
+
+        applyBtn.on('click', function(e) {
+            if (!actionSelect.val()) {
+                e.preventDefault();
+                alert('Choose a bulk action to apply.');
+                return;
+            }
+            if (!rowChecks.filter(':checked').length) {
+                e.preventDefault();
+                alert('Select at least one item.');
+            }
+        });
+    });
+</script>
+{% endblock %}

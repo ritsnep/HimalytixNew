@@ -83,7 +83,7 @@ SECRET_KEY = os.getenv(
 DEBUG = env_bool('DJANGO_DEBUG', default=True)
 
 
-_default_hosts = ['localhost', '127.0.0.1', '[::1]']
+_default_hosts = ['localhost', '192.168.1.66','127.0.0.1', '[::1]']
 ALLOWED_HOSTS = env_list('DJANGO_ALLOWED_HOSTS') or _default_hosts
 CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS')
 
@@ -349,8 +349,8 @@ LANGUAGES = [
 ]
 LANGUAGE_COOKIE_NAME = 'django_language'
 
-TIME_ZONE = 'UTC'
-
+# TIME_ZONE = 'UTC'
+TIME_ZONE = "Asia/Kathmandu"
 USE_I18N = True
 
 USE_TZ = True

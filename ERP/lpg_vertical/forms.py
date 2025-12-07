@@ -13,6 +13,7 @@ from lpg_vertical.models import (
     TransportProvider,
     Vehicle,
 )
+from utils.widgets import dual_date_widget, set_default_date_initial
 
 
 class OrganizationModelForm(forms.ModelForm):
@@ -24,6 +25,10 @@ class OrganizationModelForm(forms.ModelForm):
         for name, field in self.fields.items():
             if hasattr(field, "queryset") and field.queryset is not None:
                 field.queryset = field.queryset.filter(organization=self.organization)
+            if isinstance(field, forms.DateField):
+                attrs = dict(getattr(field.widget, "attrs", {}) or {})
+                field.widget = dual_date_widget(attrs=attrs, organization=self.organization)
+                set_default_date_initial(self, name, field)
 
     def save(self, commit=True):
         instance = super().save(commit=False)
@@ -88,7 +93,7 @@ class NocPurchaseForm(OrganizationModelForm):
             "tax_amount",
             "receipt_location",
         ]
-        widgets = {"date": forms.DateInput(attrs={"type": "date"})}
+        widgets = {"date": dual_date_widget()}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -107,7 +112,7 @@ class SalesInvoiceForm(OrganizationModelForm):
             "empty_cylinders_collected",
             "notes",
         ]
-        widgets = {"date": forms.DateInput(attrs={"type": "date"})}
+        widgets = {"date": dual_date_widget()}
 
 
 class LogisticsTripForm(OrganizationModelForm):
@@ -126,4 +131,4 @@ class LogisticsTripForm(OrganizationModelForm):
             "ref_doc_id",
             "notes",
         ]
-        widgets = {"date": forms.DateInput(attrs={"type": "date"})}
+        widgets = {"date": dual_date_widget()}

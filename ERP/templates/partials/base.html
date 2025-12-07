@@ -36,6 +36,8 @@
     <link href="{% static 'css/app.min.css'%}" id="app-style" rel="stylesheet" type="text/css" />
     <!-- Toastr CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet" type="text/css" />
+    <!-- Dual calendar / Nepali datepicker -->
+    <link href="{% static 'libs/nepali-datepicker/css/nepali.datepicker.v5.0.6.min.css' %}" rel="stylesheet" type="text/css" />
     {% endblock css %}
 
 </head>
@@ -116,6 +118,14 @@
     <script src="{% static 'libs/pristinejs/dist/pristine.min.js' %}"></script>
     <!-- Toastr -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <!-- Nepali datepicker + dual calendar helper -->
+    <script src="{% static 'libs/nepali-datepicker/js/nepali.datepicker.v5.0.6.min.js' %}"></script>
+    <script>
+      window.CALENDAR_MODE = ('{{ calendar_mode|default:"AD" }}' || 'AD').toUpperCase();
+      window.CALENDAR_INITIAL_VIEW = window.CALENDAR_MODE === 'DUAL' ? 'BS' : window.CALENDAR_MODE;
+      window.CALENDAR_DATE_SEED = ('{{ calendar_date_seed|default:"LAST_OR_TODAY" }}' || 'LAST_OR_TODAY').toUpperCase();
+    </script>
+    <script src="{% static 'js/dual-calendar.js' %}"></script>
     <script>
       // Ensure HTMX sends the Django CSRF token for POST/PUT/DELETE.
       (function() {

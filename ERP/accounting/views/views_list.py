@@ -7,7 +7,7 @@ from accounting.forms import AccountTypeForm, FiscalYearForm, JournalForm, Journ
 from django.views.generic import ListView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from accounting.views.views_mixins import PermissionRequiredMixin
-from accounting.views.base_views import BaseListView
+from accounting.views.base_views import BaseListView, SmartListView
 from django.urls import reverse
 from usermanagement.utils import PermissionUtils  # Add this import for PermissionUtils
 from django.views import View
@@ -57,7 +57,7 @@ def general_journal_advanced_entry(request):
     return render(request, "accounting/general_journal_advanced_entry.html", context)
 
 
-class FiscalYearListView(BaseListView):
+class FiscalYearListView(SmartListView):
     model = FiscalYear
     template_name = 'accounting/fiscal_year_list.html'
     context_object_name = 'fiscal_years'
@@ -69,7 +69,7 @@ class FiscalYearListView(BaseListView):
         context['create_button_text'] = 'New Fiscal Year'
         return context
 
-class CostCenterListView(BaseListView):
+class CostCenterListView(SmartListView):
     model = CostCenter
     template_name = 'accounting/costcenter_list.html'
     context_object_name = 'cost_centers'
@@ -88,7 +88,7 @@ class CostCenterListView(BaseListView):
         context['create_button_text'] = 'New Cost Center'
         return context
 
-class DepartmentListView(BaseListView):
+class DepartmentListView(SmartListView):
     model = Department
     template_name = 'accounting/department_list.html'
     context_object_name = 'departments'
@@ -206,7 +206,7 @@ class JournalListView(BaseListView):
         })
         return context
 
-class VoucherModeConfigListView(BaseListView):
+class VoucherModeConfigListView(SmartListView):
     model = VoucherModeConfig
     template_name = 'forms_designer/voucher_config_list.html'
     context_object_name = 'configs'
@@ -224,7 +224,7 @@ class VoucherModeConfigDetailView(PermissionRequiredMixin, LoginRequiredMixin, D
     context_object_name = 'config'
     permission_required = ('accounting', 'vouchermodeconfig', 'view')
 
-class ChartOfAccountListView(BaseListView):
+class ChartOfAccountListView(SmartListView):
     model = ChartOfAccount
     template_name = 'accounting/chart_of_accounts_list.html'
     context_object_name = 'accounts'
@@ -239,7 +239,7 @@ class ChartOfAccountListView(BaseListView):
         context['create_button_text'] = 'New Chart of Account'
         return context
     
-class CurrencyListView(BaseListView):
+class CurrencyListView(SmartListView):
     model = Currency
     template_name = 'accounting/currency_list.html'
     context_object_name = 'currencies'
@@ -254,7 +254,7 @@ class CurrencyListView(BaseListView):
         context['create_button_text'] = 'New Currency'
         return context
 
-class CurrencyExchangeRateListView(BaseListView):
+class CurrencyExchangeRateListView(SmartListView):
     model = CurrencyExchangeRate
     template_name = 'accounting/currency_exchange_rate_list.html'
     context_object_name = 'exchange_rates'
@@ -279,7 +279,7 @@ class CurrencyExchangeRateListView(BaseListView):
         return context
 
 
-class TaxAuthorityListView(BaseListView):
+class TaxAuthorityListView(SmartListView):
     model = TaxAuthority
     template_name = 'accounting/tax_authority_list.html'
     context_object_name = 'tax_authorities'
@@ -295,7 +295,7 @@ class TaxAuthorityListView(BaseListView):
         return context
 
 
-class TaxTypeListView(BaseListView):
+class TaxTypeListView(SmartListView):
     model = TaxType
     template_name = 'accounting/tax_type_list.html'
     context_object_name = 'tax_types'
@@ -311,7 +311,7 @@ class TaxTypeListView(BaseListView):
         return context
 
 
-class ProjectListView(BaseListView):
+class ProjectListView(SmartListView):
     model = Project
     template_name = 'accounting/project_list.html'
     context_object_name = 'projects'
@@ -333,7 +333,7 @@ class ProjectListView(BaseListView):
         return context
 
 
-class AccountingPeriodListView(BaseListView):
+class AccountingPeriodListView(SmartListView):
     model = AccountingPeriod
     template_name = 'accounting/accounting_period_list.html'
     context_object_name = 'accounting_periods'
@@ -436,7 +436,7 @@ class ChartOfAccountListPartial(ChartOfAccountTreeListView):
 
 
 # Account Type Views
-class AccountTypeListView(BaseListView):
+class AccountTypeListView(SmartListView):
     model = AccountType
     template_name = 'accounting/account_type_list.html'
     context_object_name = 'account_types'
@@ -450,7 +450,7 @@ class AccountTypeListView(BaseListView):
         context['create_button_text'] = 'New Account Type'
         return context
 
-class VoucherUDFConfigListView(BaseListView):
+class VoucherUDFConfigListView(SmartListView):
     model = VoucherUDFConfig
     template_name = 'accounting/voucher_udf_config_list.html'
     context_object_name = 'udf_configs'

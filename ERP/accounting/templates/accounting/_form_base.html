@@ -41,6 +41,23 @@
             <!-- Form Content -->
             <div class="row">
                 <div class="col-lg-12">
+                    {% block form_errors %}
+                        {% if form and form.errors %}
+                            <div class="alert alert-danger" role="alert">
+                                <h5 class="alert-heading mb-2">Please fix the errors below</h5>
+                                <ul class="mb-0">
+                                    {% for error in form.non_field_errors %}
+                                        <li>{{ error }}</li>
+                                    {% endfor %}
+                                    {% for field in form %}
+                                        {% for error in field.errors %}
+                                            <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+                    {% endblock %}
                     {% block form_content %}{% endblock %}
                 </div>
             </div>

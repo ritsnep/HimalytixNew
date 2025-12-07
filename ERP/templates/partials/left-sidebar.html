@@ -372,17 +372,37 @@
 
                 <!-- Purchasing Section -->
                 <li>
-                    <a
-                        href="{% url 'purchasing:workspace' %}"
-                        hx-get="{% url 'purchasing:workspace' %}"
-                        hx-target="#main-container"
-                        hx-swap="innerHTML"
-                        hx-push-url="true"
-                        class="nav-link"
-                    >
+                    <a href="javascript: void(0);" class="has-arrow">
                         <i data-feather="shopping-bag"></i>
-                        <span>Purchasing Workspace</span>
+                        <span>Purchasing</span>
                     </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li>
+                            <a href="{% url 'purchasing:workspace' %}">
+                                <span>Purchasing Workspace</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'purchasing:po_workspace' %}" hx-get="{% url 'purchasing:po_workspace' %}" hx-target="#main-container" hx-swap="innerHTML" hx-push-url="true">
+                                <span>PO Workspace</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'purchasing:gr_workspace' %}" hx-get="{% url 'purchasing:gr_workspace' %}" hx-target="#main-container" hx-swap="innerHTML" hx-push-url="true">
+                                <span>GR Workspace</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'purchasing:po_list' %}">
+                                <span>Purchase Orders</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'purchasing:gr_list' %}">
+                                <span>Goods Receipts</span>
+                            </a>
+                        </li>
+                    </ul>
                 </li>
 
                 <!-- Enterprise Section -->

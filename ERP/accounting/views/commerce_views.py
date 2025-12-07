@@ -1,9 +1,12 @@
 from django.contrib import messages
+from django.db.models import Q
 from django.forms import inlineformset_factory
+from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.views import View
 from django.views.generic import CreateView, ListView, UpdateView
+from urllib.parse import urlencode
 
 from accounting.forms import (
     APPaymentForm,
@@ -12,7 +15,9 @@ from accounting.forms import (
     VendorForm,
 )
 from accounting.mixins import PermissionRequiredMixin, UserOrganizationMixin
-from accounting.models import APPayment, APPaymentLine, Customer, Vendor
+from accounting.models import APPayment, APPaymentLine, Currency, Customer, Vendor
+from usermanagement.utils import PermissionUtils
+from accounting.views.base_views import SmartListMixin
 
 
 APPaymentLineFormSet = inlineformset_factory(
@@ -96,23 +101,19 @@ class CustomerUpdateView(PermissionRequiredMixin, CustomerFormMixin, UpdateView)
         return context
 
 
-class VendorListView(PermissionRequiredMixin, UserOrganizationMixin, ListView):
+class VendorListView(PermissionRequiredMixin, SmartListMixin, UserOrganizationMixin, ListView):
     model = Vendor
     template_name = "accounting/vendor_list.html"
     context_object_name = "vendors"
     permission_required = ("accounting", "vendor", "view")
-
-    def get_queryset(self):
-        organization = self.get_organization()
-        if not organization:
-            return Vendor.objects.none()
-        return Vendor.objects.filter(organization=organization).order_by("display_name")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["create_url"] = reverse("accounting:vendor_create")
         context["create_button_text"] = "New Vendor"
         context.setdefault("page_title", "Vendors")
+        context["status_choices"] = Vendor.STATUS_CHOICES
+        context["currency_choices"] = Currency.objects.filter(is_active=True)
         return context
 
 

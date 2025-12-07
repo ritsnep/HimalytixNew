@@ -7,7 +7,14 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import F
 from django.shortcuts import redirect, render
+from django.utils.dateparse import parse_date
 
+from utils.calendars import (
+    CalendarMode,
+    ad_to_bs_string,
+    bs_to_ad_string,
+    maybe_coerce_bs_date,
+)
 from inventory.models import (
     InventoryItem,
     Product,
@@ -75,13 +82,37 @@ def ledger_report(request):
     if organization is None:
         messages.error(request, 'Select an organization to view ledger.')
         return redirect('dashboard')
-    
+
+    calendar_mode = CalendarMode.normalize(
+        getattr(organization, 'calendar_mode', CalendarMode.DEFAULT)
+        if organization
+        else CalendarMode.DEFAULT
+    )
+
+    def _coerce_date_value(ad_value: str, bs_value: str) -> str:
+        ad_value = (ad_value or '').strip()
+        bs_value = (bs_value or '').strip()
+        if bs_value:
+            converted = bs_to_ad_string(bs_value) or maybe_coerce_bs_date(bs_value)
+            if converted:
+                return converted if isinstance(converted, str) else converted.isoformat()
+        if ad_value:
+            parsed = parse_date(ad_value)
+            if parsed:
+                return parsed.isoformat()
+        return ad_value
+
     # Get filters
     selected_warehouse = request.GET.get('warehouse', '')
     selected_product = request.GET.get('product', '')
     selected_txn_type = request.GET.get('txn_type', '')
-    date_from = request.GET.get('date_from', '')
-    date_to = request.GET.get('date_to', '')
+    date_from_raw = request.GET.get('date_from', '')
+    date_to_raw = request.GET.get('date_to', '')
+    date_from_bs = request.GET.get('date_from_bs', '')
+    date_to_bs = request.GET.get('date_to_bs', '')
+
+    date_from = _coerce_date_value(date_from_raw, date_from_bs)
+    date_to = _coerce_date_value(date_to_raw, date_to_bs)
     
     # Build queryset
     ledger_entries = StockLedger.objects.filter(
@@ -117,6 +148,9 @@ def ledger_report(request):
     txn_types = StockLedger.objects.filter(
         organization=organization
     ).values_list('txn_type', flat=True).distinct().order_by('txn_type')
+
+    date_from_bs_display = date_from_bs or ad_to_bs_string(date_from) or ''
+    date_to_bs_display = date_to_bs or ad_to_bs_string(date_to) or ''
     
     context = {
         'organization': organization,
@@ -128,6 +162,9 @@ def ledger_report(request):
         'selected_product': selected_product,
         'selected_txn_type': selected_txn_type,
         'date_from': date_from,
+        'date_from_bs': date_from_bs_display,
         'date_to': date_to,
+        'date_to_bs': date_to_bs_display,
+        'calendar_mode': calendar_mode,
     }
     return render(request, 'inventory/ledger_report.html', context)

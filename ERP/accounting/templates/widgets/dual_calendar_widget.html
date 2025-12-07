@@ -1,0 +1,26 @@
+<div class="input-group dual-calendar-picker"
+     data-dual-calendar
+     data-calendar-mode="{{ widget.mode }}"
+     data-initial-view="{{ widget.start_view }}">
+  <input type="text"
+         id="{{ widget.bs_input_id }}"
+         name="{{ widget.bs_name }}"
+         class="{{ widget.bs_class }}{% if widget.mode == 'AD' %} d-none{% endif %}"
+         placeholder="YYYY-MM-DD (BS)"
+         autocomplete="off"
+         data-role="bs-input"
+         value="{{ widget.bs_value|default_if_none:'' }}"
+         {% if widget.mode == 'AD' %}hidden{% endif %}>
+
+  <input {% include "django/forms/widgets/attrs.html" %}
+         value="{{ widget.ad_value|default_if_none:'' }}"
+         data-role="ad-input"
+         class="{{ widget.attrs.class }}{% if widget.mode == 'BS' %} d-none{% endif %}"
+         {% if widget.mode == 'BS' %}hidden{% endif %}>
+
+  <button type="button"
+          class="btn btn-outline-secondary dual-calendar__toggle {% if widget.mode != 'DUAL' %}d-none{% endif %}"
+          data-role="toggle">
+    {% if widget.start_view == 'BS' %}AD{% else %}BS{% endif %}
+  </button>
+</div>

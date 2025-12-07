@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from tenancy.models import Tenant
+from utils.calendars import CalendarMode, DateSeedStrategy
 
 
 _ACTIVE_ORG_CACHE_MISS = object()
@@ -58,6 +59,12 @@ class Organization(models.Model):
     def company_config(self):
         """Safe accessor for the related CompanyConfig if it exists."""
         return getattr(self, "config", None)
+
+    @property
+    def calendar_mode(self):
+        """Expose the configured calendar mode with a safe default."""
+        config = self.company_config
+        return CalendarMode.normalize(getattr(config, "calendar_mode", None))
     
     
 class OrganizationAddress(models.Model):
@@ -282,6 +289,18 @@ class CompanyConfig(models.Model):
         default="block",
         help_text="How to handle dealer credit limit breaches.",
     )
+    calendar_mode = models.CharField(
+        max_length=10,
+        choices=CalendarMode.choices(),
+        default=CalendarMode.DEFAULT,
+        help_text="Default calendar experience for the organization.",
+    )
+    calendar_date_seed = models.CharField(
+        max_length=20,
+        choices=DateSeedStrategy.choices(),
+        default=DateSeedStrategy.DEFAULT,
+        help_text="Prefill dates with today or the last entry (per org).",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -301,6 +320,8 @@ class CompanyConfig(models.Model):
                 "enable_dealer_management": True,
                 "enable_logistics": True,
                 "enable_advanced_inventory": True,
+                "calendar_mode": CalendarMode.DEFAULT,
+                "calendar_date_seed": DateSeedStrategy.DEFAULT,
             }
         if vertical == "logistics":
             return {
@@ -308,6 +329,8 @@ class CompanyConfig(models.Model):
                 "enable_dealer_management": False,
                 "enable_logistics": True,
                 "enable_advanced_inventory": False,
+                "calendar_mode": CalendarMode.DEFAULT,
+                "calendar_date_seed": DateSeedStrategy.DEFAULT,
             }
         # retailer/default
         return {
@@ -315,6 +338,8 @@ class CompanyConfig(models.Model):
             "enable_dealer_management": True,
             "enable_logistics": False,
             "enable_advanced_inventory": False,
+            "calendar_mode": CalendarMode.DEFAULT,
+            "calendar_date_seed": DateSeedStrategy.DEFAULT,
         }
 
 

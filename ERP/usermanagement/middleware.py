@@ -1,6 +1,7 @@
 """Middleware to attach the active organization/company to the request."""
 
 from usermanagement.models import Organization, UserOrganization
+from utils.calendars import CalendarMode, get_calendar_mode
 
 
 class ActiveOrganizationMiddleware:
@@ -12,6 +13,7 @@ class ActiveOrganizationMiddleware:
     def __call__(self, request):
         organization = self._resolve_organization(request)
         request.organization = organization
+        request.calendar_mode = get_calendar_mode(organization, default=CalendarMode.DEFAULT)
         user = getattr(request, "user", None)
         if user and hasattr(user, "set_active_organization"):
             user.set_active_organization(organization)

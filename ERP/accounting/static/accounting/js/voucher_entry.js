@@ -36,6 +36,8 @@ const DEFAULT_JOURNAL_TYPE = __root?.dataset?.defaultJournalType || 'JN';
 const INITIAL_JOURNAL_ID_RAW = __root?.dataset?.initialJournalId || '';
 const INITIAL_JOURNAL_ID = INITIAL_JOURNAL_ID_RAW ? Number(INITIAL_JOURNAL_ID_RAW) || null : null;
 const DETAIL_URL_TEMPLATE = __root?.dataset?.detailUrlTemplate || null;
+const CALENDAR_MODE = (window.CALENDAR_MODE || 'AD').toUpperCase();
+const CALENDAR_INITIAL_VIEW = (window.CALENDAR_INITIAL_VIEW || CALENDAR_MODE).toUpperCase();
 const LOOKUPS = {
   account: __root?.dataset?.lookupAccount || null,
   costCenter: __root?.dataset?.lookupCostCenter || null,
@@ -61,6 +63,26 @@ const STATUS_LABEL_MAP = {
   submitted: 'Submitted',
 };
 const DEBUG_ENABLED = __root?.dataset?.debugEnabled === 'true';
+
+const toIsoDate = (value) => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object' && value.year && value.month && value.day) {
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${value.year}-${pad(value.month)}-${pad(value.day)}`;
+  }
+  return '';
+};
+
+const adToBsString = (adVal) => {
+  if (!adVal || !window.NepaliFunctions || !window.NepaliFunctions.AD2BS) return '';
+  try {
+    return toIsoDate(window.NepaliFunctions.AD2BS(adVal)) || '';
+  } catch (err) {
+    console.warn('[DualCalendar] AD2BS failed in voucher_entry', err);
+    return '';
+  }
+};
 
 const cloneForDebug = (payload) => {
   if (!DEBUG_ENABLED || payload === undefined) return undefined;
@@ -1525,8 +1547,33 @@ const App = {
 
   renderDefaultHeaderForm() {
     const { header, udfHeaderDefs } = this.state;
+    const bsVal = adToBsString(header.date);
+    const startView = CALENDAR_INITIAL_VIEW === 'BS' ? 'BS' : 'AD';
+    const adId = 'hdr-date-ad';
+    const bsId = 'hdr-date-bs';
     const controls = [
-      Labeled('Date', `<input type="date" class="form-control" value="${escapeHtml(header.date)}" data-hkey="date" title="${escapeHtml(header.date)}">`),
+      Labeled('Date', `
+        <div class="input-group dual-calendar-picker"
+             data-dual-calendar
+             data-calendar-mode="${CALENDAR_MODE}"
+             data-initial-view="${startView}">
+          <input type="text"
+                 id="${bsId}"
+                 class="form-control dual-calendar__bs${CALENDAR_MODE === 'AD' ? ' d-none' : ''}"
+                 placeholder="BS YYYY-MM-DD"
+                 autocomplete="off"
+                 data-role="bs-input"
+                 value="${escapeHtml(bsVal)}">
+          <input type="date"
+                 id="${adId}"
+                 class="form-control dual-calendar__ad${CALENDAR_MODE === 'BS' ? ' d-none' : ''}"
+                 data-role="ad-input"
+                 data-hkey="date"
+                 value="${escapeHtml(header.date)}">
+          <button type="button"
+                  class="btn btn-outline-secondary dual-calendar__toggle ${CALENDAR_MODE !== 'DUAL' ? 'd-none' : ''}"
+                  data-role="toggle">BS</button>
+        </div>`),
       Labeled('Branch', `<input class="form-control" value="${escapeHtml(header.branch || '')}" data-hkey="branch" title="${escapeHtml(header.branch || '')}">`),
       Labeled('Currency', `<select class="form-select" data-hkey="currency" title="${escapeHtml(header.currency)}">${this.state.supportedCurrencies.map(cur => `<option value="${escapeHtml(cur)}" ${cur === header.currency ? 'selected' : ''}>${escapeHtml(cur)}</option>`).join('')}</select>`),
       Labeled('Exchange Rate', `<input type="number" step="0.0001" class="form-control text-end" value="${escapeHtml(header.exRate)}" data-hkey="exRate" title="${escapeHtml(header.exRate)}">`),
@@ -1964,6 +2011,10 @@ const App = {
       ${this.state.showPaymentTermsModal ? paymentTermsModalHtml(this.state) : ''}
       ${this.state.showKeyboardHelp ? keyboardHelpModalHtml() : ''}
     `;
+
+    if (window.DualCalendar && typeof window.DualCalendar.initAll === 'function') {
+      window.DualCalendar.initAll(el);
+    }
 
     setTimeout(() => { this.focusCurrent(); this.bindResizeHandles(); this.bindCsv(); this.bindRowDrag(); }, 0);
     const grid = document.querySelector('.voucher-grid-wrapper');
