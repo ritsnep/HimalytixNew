@@ -137,6 +137,7 @@ INSTALLED_APPS = [
     'enterprise',
     'service_management',
     'lpg_vertical',
+    'notification_center',
     'django_celery_results',
     'django_celery_beat',
 ]
