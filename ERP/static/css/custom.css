@@ -1,3 +1,157 @@
+/* Design tokens and responsive helpers */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Source+Sans+Pro:wght@400;500;600;700&family=Poppins:wght@400;500;600&display=swap');
+
+:root {
+  --ui-font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+  --ui-font-size-base: 16px;
+  --ui-font-size-xs: 13px;
+  --ui-font-size-s: 14px;
+  --ui-font-size-m: 16px;
+  --ui-font-size-l: 18px;
+  --ui-font-size-xl: 20px;
+}
+
+body {
+  font-family: var(--ui-font-family);
+  font-size: var(--ui-font-size-base);
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+html, body { width: 100%; min-height: 100%; }
+#layout-wrapper { width: 100%; overflow-x: hidden; display: flex; align-items: stretch; }
+#main-container { width: 100%; min-width: 0; overflow-x: hidden; flex: 1 1 auto; }
+
+
+.ui-scale-xs { font-size: var(--ui-font-size-xs); font-weight: 400; }
+.ui-scale-s  { font-size: var(--ui-font-size-s);  font-weight: 400; }
+.ui-scale-m  { font-size: var(--ui-font-size-m);  font-weight: 400; }
+.ui-scale-l  { font-size: var(--ui-font-size-l);  font-weight: 400; }
+.ui-scale-xl { font-size: var(--ui-font-size-xl); font-weight: 400; }
+
+/* Light/Dark aware backgrounds */
+body[data-layout-mode="light"] #layout-wrapper {
+  background: #f5f7fb;
+}
+body[data-layout-mode="dark"] #layout-wrapper {
+  background: #191e22;
+}
+body[data-layout-mode="light"] .vertical-menu {
+  background: #ffffff;
+  border-right: 1px solid #e6e9f0;
+}
+body[data-layout-mode="dark"] .vertical-menu {
+  background: #23272b;
+}
+body[data-layout-mode="light"] .main-content {
+  background: #f5f7fb;
+}
+body[data-layout-mode="dark"] .main-content {
+  background: #191e22;
+}
+
+/* Topbar overrides obey data-topbar regardless of layout mode */
+body[data-topbar="light"] #page-topbar,
+body[data-topbar="light"] #page-topbar .navbar-header {
+  background-color: #ffffff !important;
+  border-bottom: 1px solid #e6e9f0 !important;
+  color: #1a1f2a !important;
+}
+body[data-topbar="light"] #page-topbar .navbar-header .btn.header-item,
+body[data-topbar="light"] #page-topbar .navbar-header .header-item,
+body[data-topbar="light"] #page-topbar .navbar-header .nav-link,
+body[data-topbar="light"] #page-topbar .navbar-header i,
+body[data-topbar="light"] #page-topbar .logo-txt {
+  color: #1a1f2a !important;
+}
+
+body[data-topbar="dark"] #page-topbar,
+body[data-topbar="dark"] #page-topbar .navbar-header {
+  background-color: #1f2733 !important;
+  color: #e7edf5 !important;
+}
+
+/* Sidebar overrides obey data-sidebar regardless of layout mode */
+body[data-sidebar="light"] .vertical-menu {
+  background: #ffffff !important;
+  border-right: 1px solid #e6e9f0 !important;
+}
+body[data-sidebar="light"] .vertical-menu .metismenu a {
+  color: #1a1f2a !important;
+}
+body[data-sidebar="light"] .vertical-menu .metismenu a:hover,
+body[data-sidebar="light"] .vertical-menu .metismenu .mm-active > a {
+  color: #0d6efd !important;
+  background: #f0f4ff !important;
+}
+body[data-sidebar="light"] .vertical-menu .menu-title { color: #6b7280; }
+
+body[data-sidebar="dark"] .vertical-menu {
+  background: #23272b;
+}
+
+/* Journal entry overflow handling */
+.journal-entry-shell {
+  width: 100%;
+  overflow-x: hidden;
+}
+.journal-entry-shell .card {
+  min-width: 0;
+}
+.voucher-grid-wrapper { overflow-x: auto; }
+.voucher-grid { min-width: 960px; }
+
+/* Journal Entry page-specific fixes */
+.journal-entry-page .page-title-box { flex-wrap: wrap; }
+.journal-entry-page .voucher-actions { justify-content: flex-end; }
+.journal-entry-page .ve-sticky-bar { overflow-x: auto; }
+.journal-entry-page .ve-sticky-bar .d-sm-flex { gap: 0.5rem; }
+.journal-entry-page { width: 100%; max-width: none; margin: 0; padding-left: 0; padding-right: 0; overflow-x: hidden; box-sizing: border-box; }
+.journal-entry-page .card { box-shadow: 0 1px 3px rgba(15,23,42,0.12); border: 1px solid #e5e7eb; }
+.journal-entry-page .card-header { background: #fff; }
+.journal-entry-page .voucher-grid-wrapper { max-height: 500px; max-width: 100%; overflow-x: auto; }
+.journal-entry-page .voucher-grid { width: max-content; min-width: 1100px; }
+.journal-entry-page .ve-row input,
+.journal-entry-page .ve-row select { min-width: 0; }
+.journal-entry-page .journal-entry-shell { overflow-x: auto; }
+.journal-entry-page .journal-entry-shell .card { min-width: 0; width: 100%; }
+.journal-entry-page .journal-entry-shell > .row { margin-left: 0; margin-right: 0; }
+.journal-entry-page #app { display: block; max-width: 100%; }
+.journal-entry-page #app > .ve-wrapper { max-width: 100%; overflow-x: hidden; }
+.journal-entry-page #app > .ve-wrapper .card { width: 100%; }
+
+/* Data table pages (e.g., vendor list) should scroll within their wrapper, not the viewport */
+.table-rep-plugin,
+.table-rep-plugin .table-responsive { width: 100%; max-width: 100%; overflow-x: auto; }
+.table-rep-plugin table { width: 100%; min-width: 960px; }
+
+/* Responsive tightening for small screens */
+@media (max-width: 768px) {
+  .journal-entry-page { padding-left: 12px; padding-right: 12px; }
+  .journal-entry-page .page-title-box { gap: 0.5rem; }
+  .journal-entry-page .voucher-actions { width: 100%; justify-content: flex-start; }
+  .journal-entry-page .ve-sticky-bar { left: 0; right: 0; }
+  .journal-entry-page .voucher-grid-wrapper { max-height: 420px; }
+  .journal-entry-page .voucher-grid { min-width: 640px; width: 100%; }
+  .journal-entry-page .card-body { padding: 12px; }
+  .table-rep-plugin table { min-width: 640px; width: 100%; }
+  .page-content { padding-left: 12px; padding-right: 12px; overflow-x: hidden; }
+  .table-rep-plugin .table-responsive { overflow-x: auto; }
+}
+
+@media (max-width: 576px) {
+  .journal-entry-page .ve-sticky-bar .d-sm-flex { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  .journal-entry-page .voucher-actions { justify-content: flex-start; gap: 0.5rem; }
+  .journal-entry-page .card-body { padding: 10px; }
+  .journal-entry-shell .row { margin-left: 0; margin-right: 0; }
+  .journal-entry-page .card { border-radius: 12px; }
+  .table-rep-plugin table { min-width: 0; width: 100%; }
+  .journal-entry-page .voucher-grid { min-width: 0; width: 100%; }
+  .journal-entry-page .voucher-grid-wrapper { overflow-x: auto; }
+  .journal-entry-page .ve-sticky-bar { position: static; box-shadow: none; }
+  .journal-entry-page .ve-sticky-footer { position: static; box-shadow: none; }
+  .table-rep-plugin .table-responsive { padding-bottom: 8px; }
+}
+
 /* Layout shell */
 body, html {
   height: 100%;
@@ -32,12 +186,25 @@ body, html {
   background: #191e22;
   min-height: 100vh;
   transition: margin-left 0.2s;
+  width: calc(100% - 250px);
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
+/* Let the right sidebar overlay; avoid shifting main content */
+body.right-bar-enabled .main-content { margin-right: 0; width: calc(100% - 250px); }
 @media (max-width: 991px) {
-  .main-content { margin-left: 60px; }
+  .main-content { margin-left: 60px; margin-right: 0; width: calc(100% - 60px); }
 }
 @media (max-width: 600px) {
-  .main-content { margin-left: 0; }
+  .main-content { margin-left: 0; width: 100%; }
+}
+
+@media (max-width: 768px) {
+  #layout-wrapper { display: block; }
+  .vertical-menu { transform: translateX(-100%); width: 0 !important; }
+  body.sidebar-enable .vertical-menu { transform: translateX(0); width: 240px !important; }
+  .main-content { margin-left: 0 !important; padding: 16px 12px 12px 12px; }
+  .page-content { padding-left: 12px; padding-right: 12px; }
 }
 
 /* Tab-bar is sticky so it doesn't cover page content */

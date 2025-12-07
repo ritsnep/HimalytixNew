@@ -36,8 +36,8 @@
 
 {% block content %}
 <div class="main-content">
-  <div class="page-content">
-    <div class="container-fluid">
+  <div class="page-content py-3 py-md-4">
+    <div class="container-fluid px-2 px-md-3 journal-entry-page">
       {# Hidden CSRF token for JavaScript fetch requests #}
       {% csrf_token %}
       
@@ -79,37 +79,39 @@
       {% endif %}
 
     <!-- Main Content Card -->
-    <div class="row">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-body">
-            <div
-              id="app"
-              data-endpoint-save="{% url 'accounting:journal_save_draft' %}"
-              data-endpoint-submit="{% url 'accounting:journal_submit' %}"
-              data-endpoint-approve="{% url 'accounting:journal_approve' %}"
-              data-endpoint-reject="{% url 'accounting:journal_reject' %}"
-              data-endpoint-post="{% url 'accounting:journal_post' %}"
-              data-endpoint-period-validate="{% url 'accounting:journal_period_validate' %}"
-              data-config-url="{{ config_endpoint }}"
-              data-lookup-account="{% url 'accounting:journal_account_lookup' %}"
-              data-lookup-cost-center="{% url 'accounting:journal_cost_center_lookup' %}"
-              data-prefs-url="{{ prefs_endpoint }}"
-              data-prefs-save-url="{{ prefs_save_endpoint }}"
-              data-attach-upload="{{ attachment_upload_endpoint }}"
-              data-attach-delete="{{ attachment_delete_endpoint }}"
-              data-payment-terms="{{ payment_terms_endpoint }}"
-              data-default-journal-type="{{ journal_default_type }}"
-              data-initial-journal-id="{{ initial_journal_id }}"
-              data-detail-url-template="{{ detail_url_template }}"
-              data-supported-currencies="{{ supported_currencies|join:',' }}"
-              data-can-submit="{{ permission_flags.can_submit|yesno:'true,false' }}"
-              data-can-approve="{{ permission_flags.can_approve|yesno:'true,false' }}"
-              data-can-reject="{{ permission_flags.can_reject|yesno:'true,false' }}"
-              data-can-post="{{ permission_flags.can_post|yesno:'true,false' }}"
-              data-show-config-selector="{{ show_config_selector|yesno:'true,false' }}"
-              data-debug-enabled="{{ journal_debug_enabled|yesno:'true,false' }}"
-            ></div>
+    <div class="journal-entry-shell">
+      <div class="row g-3">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <div
+                id="app"
+                data-endpoint-save="{% url 'accounting:journal_save_draft' %}"
+                data-endpoint-submit="{% url 'accounting:journal_submit' %}"
+                data-endpoint-approve="{% url 'accounting:journal_approve' %}"
+                data-endpoint-reject="{% url 'accounting:journal_reject' %}"
+                data-endpoint-post="{% url 'accounting:journal_post' %}"
+                data-endpoint-period-validate="{% url 'accounting:journal_period_validate' %}"
+                data-config-url="{{ config_endpoint }}"
+                data-lookup-account="{% url 'accounting:journal_account_lookup' %}"
+                data-lookup-cost-center="{% url 'accounting:journal_cost_center_lookup' %}"
+                data-prefs-url="{{ prefs_endpoint }}"
+                data-prefs-save-url="{{ prefs_save_endpoint }}"
+                data-attach-upload="{{ attachment_upload_endpoint }}"
+                data-attach-delete="{{ attachment_delete_endpoint }}"
+                data-payment-terms="{{ payment_terms_endpoint }}"
+                data-default-journal-type="{{ journal_default_type }}"
+                data-initial-journal-id="{{ initial_journal_id }}"
+                data-detail-url-template="{{ detail_url_template }}"
+                data-supported-currencies="{{ supported_currencies|join:',' }}"
+                data-can-submit="{{ permission_flags.can_submit|yesno:'true,false' }}"
+                data-can-approve="{{ permission_flags.can_approve|yesno:'true,false' }}"
+                data-can-reject="{{ permission_flags.can_reject|yesno:'true,false' }}"
+                data-can-post="{{ permission_flags.can_post|yesno:'true,false' }}"
+                data-show-config-selector="{{ show_config_selector|yesno:'true,false' }}"
+                data-debug-enabled="{{ journal_debug_enabled|yesno:'true,false' }}"
+              ></div>
+            </div>
           </div>
         </div>
       </div>

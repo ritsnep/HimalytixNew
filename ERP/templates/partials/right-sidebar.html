@@ -19,13 +19,13 @@
             <div class="p-4">
                 <h6 class="mb-3">Layout</h6>
                 <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="layout"
-                        id="layout-vertical" value="vertical">
+                    <input class="form-check-input" type="radio" name="layout" 
+                        id="layout-vertical" value="vertical" data-setting="layout">
                     <label class="form-check-label" for="layout-vertical">Vertical</label>
                 </div>
                 <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="layout"
-                        id="layout-horizontal" value="horizontal">
+                    <input class="form-check-input" type="radio" name="layout" 
+                        id="layout-horizontal" value="horizontal" data-setting="layout">
                     <label class="form-check-label" for="layout-horizontal">Horizontal</label>
                 </div>
 
@@ -33,25 +33,69 @@
 
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="radio" name="layout-mode"
-                        id="layout-mode-light" value="light">
+                        id="layout-mode-light" value="light" data-setting="layout-mode">
                     <label class="form-check-label" for="layout-mode-light">Light</label>
                 </div>
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="radio" name="layout-mode"
-                        id="layout-mode-dark" value="dark">
+                        id="layout-mode-dark" value="dark" data-setting="layout-mode">
                     <label class="form-check-label" for="layout-mode-dark">Dark</label>
+                </div>
+
+                <h6 class="mt-4 mb-3 pt-2">Text Size</h6>
+                <div class="d-flex flex-wrap gap-2">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="text-scale" id="text-scale-xs" value="xs" data-setting="text-scale">
+                        <label class="form-check-label" for="text-scale-xs">Very Small</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="text-scale" id="text-scale-s" value="s" data-setting="text-scale">
+                        <label class="form-check-label" for="text-scale-s">Small</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="text-scale" id="text-scale-m" value="m" data-setting="text-scale">
+                        <label class="form-check-label" for="text-scale-m">Medium</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="text-scale" id="text-scale-l" value="l" data-setting="text-scale">
+                        <label class="form-check-label" for="text-scale-l">Large</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="text-scale" id="text-scale-xl" value="xl" data-setting="text-scale">
+                        <label class="form-check-label" for="text-scale-xl">Extra Large</label>
+                    </div>
+                </div>
+
+                <h6 class="mt-4 mb-3 pt-2">Font Pair</h6>
+                <div class="d-flex flex-column gap-1">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="font-family" id="font-family-inter" value="Inter, 'Segoe UI', system-ui, -apple-system, sans-serif" data-setting="font-family">
+                        <label class="form-check-label" for="font-family-inter">Inter / Segoe (Default)</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="font-family" id="font-family-roboto" value="Roboto, 'Helvetica Neue', Arial, sans-serif" data-setting="font-family">
+                        <label class="form-check-label" for="font-family-roboto">Roboto / Helvetica</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="font-family" id="font-family-source" value="'Source Sans Pro', 'Segoe UI', system-ui, sans-serif" data-setting="font-family">
+                        <label class="form-check-label" for="font-family-source">Source Sans / Segoe</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="font-family" id="font-family-poppins" value="Poppins, 'Segoe UI', system-ui, sans-serif" data-setting="font-family">
+                        <label class="form-check-label" for="font-family-poppins">Poppins / Segoe</label>
+                    </div>
                 </div>
 
                 <h6 class="mt-4 mb-3 pt-2">Layout Width</h6>
 
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="radio" name="layout-width"
-                        id="layout-width-fuild" value="fuild" onchange="document.body.setAttribute('data-layout-size', 'fluid')">
+                        id="layout-width-fuild" value="fluid" data-setting="layout-width">
                     <label class="form-check-label" for="layout-width-fuild">Fluid</label>
                 </div>
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="radio" name="layout-width"
-                        id="layout-width-boxed" value="boxed" onchange="document.body.setAttribute('data-layout-size', 'boxed'),document.body.setAttribute('data-sidebar-size', 'sm')">
+                        id="layout-width-boxed" value="boxed" data-setting="layout-width">
                     <label class="form-check-label" for="layout-width-boxed">Boxed</label>
                 </div>
 
@@ -59,12 +103,12 @@
 
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="radio" name="layout-position"
-                        id="layout-position-fixed" value="fixed" onchange="document.body.setAttribute('data-layout-scrollable', 'false')">
+                        id="layout-position-fixed" value="fixed" data-setting="layout-position">
                     <label class="form-check-label" for="layout-position-fixed">Fixed</label>
                 </div>
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="radio" name="layout-position"
-                        id="layout-position-scrollable" value="scrollable" onchange="document.body.setAttribute('data-layout-scrollable', 'true')">
+                        id="layout-position-scrollable" value="scrollable" data-setting="layout-position">
                     <label class="form-check-label" for="layout-position-scrollable">Scrollable</label>
                 </div>
 
@@ -72,12 +116,12 @@
 
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="radio" name="topbar-color"
-                        id="topbar-color-light" value="light" onchange="document.body.setAttribute('data-topbar', 'light')">
+                        id="topbar-color-light" value="light" data-setting="topbar-color">
                     <label class="form-check-label" for="topbar-color-light">Light</label>
                 </div>
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="radio" name="topbar-color"
-                        id="topbar-color-dark" value="dark" onchange="document.body.setAttribute('data-topbar', 'dark')">
+                        id="topbar-color-dark" value="dark" data-setting="topbar-color">
                     <label class="form-check-label" for="topbar-color-dark">Dark</label>
                 </div>
 
@@ -85,17 +129,17 @@
 
                 <div class="form-check sidebar-setting">
                     <input class="form-check-input" type="radio" name="sidebar-size"
-                        id="sidebar-size-default" value="default" onchange="document.body.setAttribute('data-sidebar-size', 'lg')">
+                        id="sidebar-size-default" value="default" data-setting="sidebar-size">
                     <label class="form-check-label" for="sidebar-size-default">Default</label>
                 </div>
                 <div class="form-check sidebar-setting">
                     <input class="form-check-input" type="radio" name="sidebar-size"
-                        id="sidebar-size-compact" value="compact" onchange="document.body.setAttribute('data-sidebar-size', 'md')">
+                        id="sidebar-size-compact" value="compact" data-setting="sidebar-size">
                     <label class="form-check-label" for="sidebar-size-compact">Compact</label>
                 </div>
                 <div class="form-check sidebar-setting">
                     <input class="form-check-input" type="radio" name="sidebar-size"
-                        id="sidebar-size-small" value="small" onchange="document.body.setAttribute('data-sidebar-size', 'sm')">
+                        id="sidebar-size-small" value="small" data-setting="sidebar-size">
                     <label class="form-check-label" for="sidebar-size-small">Small (Icon View)</label>
                 </div>
 
@@ -103,17 +147,17 @@
 
                 <div class="form-check sidebar-setting">
                     <input class="form-check-input" type="radio" name="sidebar-color"
-                        id="sidebar-color-light" value="light" onchange="document.body.setAttribute('data-sidebar', 'light')">
+                        id="sidebar-color-light" value="light" data-setting="sidebar-color">
                     <label class="form-check-label" for="sidebar-color-light">Light</label>
                 </div>
                 <div class="form-check sidebar-setting">
                     <input class="form-check-input" type="radio" name="sidebar-color"
-                        id="sidebar-color-dark" value="dark" onchange="document.body.setAttribute('data-sidebar', 'dark')">
+                        id="sidebar-color-dark" value="dark" data-setting="sidebar-color">
                     <label class="form-check-label" for="sidebar-color-dark">Dark</label>
                 </div>
                 <div class="form-check sidebar-setting">
                     <input class="form-check-input" type="radio" name="sidebar-color"
-                        id="sidebar-color-brand" value="brand" onchange="document.body.setAttribute('data-sidebar', 'brand')">
+                        id="sidebar-color-brand" value="brand" data-setting="sidebar-color">
                     <label class="form-check-label" for="sidebar-color-brand">Brand</label>
                 </div>
 
@@ -121,12 +165,12 @@
 
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="radio" name="layout-direction"
-                        id="layout-direction-ltr" value="ltr">
+                        id="layout-direction-ltr" value="ltr" data-setting="layout-direction">
                     <label class="form-check-label" for="layout-direction-ltr">LTR</label>
                 </div>
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="radio" name="layout-direction"
-                        id="layout-direction-rtl" value="rtl">
+                        id="layout-direction-rtl" value="rtl" data-setting="layout-direction">
                     <label class="form-check-label" for="layout-direction-rtl">RTL</label>
                 </div>
 

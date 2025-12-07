@@ -24,6 +24,15 @@ def env_list(name: str) -> list[str]:
 APP_VERSION = os.getenv("APP_VERSION", datetime.utcnow().strftime("%Y%m%d%H%M%S"))
 STATIC_ASSET_VERSION = os.getenv("STATIC_ASSET_VERSION", APP_VERSION)
 
+# UI defaults (can be overridden by env and per-user cookies)
+UI_THEME_DEFAULT = os.getenv("UI_THEME_DEFAULT", "light")
+UI_TEXT_SCALE_DEFAULT = os.getenv("UI_TEXT_SCALE_DEFAULT", "m")  # xs, s, m, l, xl
+UI_FONT_FAMILY_DEFAULT = os.getenv(
+    "UI_FONT_FAMILY_DEFAULT",
+    'Inter, "Segoe UI", system-ui, -apple-system, sans-serif'
+)
+UI_TOPBAR_DEFAULT = os.getenv("UI_TOPBAR_DEFAULT", "light")
+
 # Maintenance mode defaults (overridable via Redis + management command)
 MAINTENANCE_MODE = env_bool("MAINTENANCE_MODE", default=False)
 MAINTENANCE_MESSAGE = os.getenv(

@@ -34,6 +34,8 @@
     <link href="{% static 'css/icons.min.css'%}" rel="stylesheet" type="text/css" />
     <!-- App Css-->
     <link href="{% static 'css/app.min.css'%}" id="app-style" rel="stylesheet" type="text/css" />
+    <!-- Custom overrides + design tokens -->
+    <link href="{% static 'css/custom.css'%}" rel="stylesheet" type="text/css" />
     <!-- Toastr CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet" type="text/css" />
     <!-- Dual calendar / Nepali datepicker -->
@@ -42,7 +44,44 @@
 
 </head>
 
-<body {% block extra_body %} data-topbar="dark"{% endblock extra_body %}>
+<body {% block extra_body %}{% endblock extra_body %}
+  data-layout-mode="{{ theme|default:ui_theme_default|default:'light' }}"
+  data-topbar="{{ ui_topbar_default|default:'light' }}"
+  data-text-scale="{{ text_scale|default:ui_text_scale_default|default:'m' }}"
+  data-font-family="{{ ui_font_family_default }}"
+  data-sidebar="light"
+  data-sidebar-size="lg"
+  class="ui-scale-{{ text_scale|default:ui_text_scale_default|default:'m' }}">
+
+  <script>
+    (function() {
+      function getCookie(name) {
+        var value = "; " + document.cookie;
+        var parts = value.split("; " + name + "=");
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return null;
+      }
+      var body = document.body;
+      if (!body) return;
+      var theme = getCookie('theme') || localStorage.getItem('theme') || body.getAttribute('data-layout-mode') || 'light';
+      body.setAttribute('data-layout-mode', theme);
+      var topbar = getCookie('ui-topbar-color') || localStorage.getItem('ui-topbar-color') || body.getAttribute('data-topbar') || 'light';
+      var sidebar = getCookie('ui-sidebar-color') || localStorage.getItem('ui-sidebar-color') || body.getAttribute('data-sidebar') || 'light';
+      var sidebarSize = getCookie('ui-sidebar-size') || localStorage.getItem('ui-sidebar-size') || body.getAttribute('data-sidebar-size') || 'lg';
+      var layout = getCookie('ui-layout') || localStorage.getItem('ui-layout') || body.getAttribute('data-layout') || 'vertical';
+      var layoutWidth = getCookie('ui-layout-width') || localStorage.getItem('ui-layout-width') || body.getAttribute('data-layout-size') || 'fluid';
+      var layoutPos = getCookie('ui-layout-position') || localStorage.getItem('ui-layout-position') || (body.getAttribute('data-layout-scrollable') === 'true' ? 'scrollable' : 'fixed');
+      var direction = getCookie('ui-layout-direction') || localStorage.getItem('ui-layout-direction') || document.documentElement.getAttribute('dir') || 'ltr';
+
+      body.setAttribute('data-topbar', topbar);
+      body.setAttribute('data-sidebar', sidebar);
+      body.setAttribute('data-sidebar-size', sidebarSize);
+      body.setAttribute('data-layout', layout);
+      body.setAttribute('data-layout-size', layoutWidth);
+      body.setAttribute('data-layout-scrollable', layoutPos === 'scrollable' ? 'true' : 'false');
+      document.documentElement.setAttribute('dir', direction === 'rtl' ? 'rtl' : 'ltr');
+    })();
+  </script>
   {# Hidden layout controls to prevent vendor script null errors on pages without right sidebar #}
   <div id="layout-guard" style="display:none">
     <input type="checkbox" id="layout-horizontal" />
@@ -173,6 +212,7 @@
       })();
     </script>
     <script src="{% static 'js/app.js'%}"></script>
+    <script src="{% static 'js/main.js'%}"></script>
     {% if maintenance_state %}
       {{ maintenance_state|json_script:"maintenance-state" }}
     {% endif %}
