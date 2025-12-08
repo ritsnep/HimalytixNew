@@ -1,0 +1,49 @@
+{% extends "partials/base.html" %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+        <div>
+            <h3 class="mb-1">{{ title|default:"Trial Balance" }}</h3>
+            <div class="text-muted small">Organization: {{ organization }} • As of {{ as_of_date|date:"Y-m-d" }}</div>
+        </div>
+    </div>
+    {% if lines %}
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table mb-0 table-sm">
+                    <thead>
+                        <tr>
+                            <th>Account Code</th>
+                            <th>Account Name</th>
+                            <th>Type</th>
+                            <th class="text-end">Debit</th>
+                            <th class="text-end">Credit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for line in lines %}
+                        <tr>
+                            <td>{{ line.account_code }}</td>
+                            <td>{{ line.account_name }}</td>
+                            <td>{{ line.account_type }}</td>
+                            <td class="text-end">{{ line.debit_balance }}</td>
+                            <td class="text-end">{{ line.credit_balance }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer d-flex gap-3 justify-content-end">
+            <div><strong>Total Debits:</strong> {{ totals.total_debits }}</div>
+            <div><strong>Total Credits:</strong> {{ totals.total_credits }}</div>
+            <div><strong>Difference:</strong> {{ totals.difference }}</div>
+        </div>
+    </div>
+    {% else %}
+        <div class="alert alert-warning">No data found.</div>
+    {% endif %}
+</div>
+{% endblock content %}

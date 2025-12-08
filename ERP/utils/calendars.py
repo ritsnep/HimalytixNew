@@ -1,8 +1,27 @@
 import datetime
 from typing import Optional, Sequence, Union
 
-import nepali_datetime
 from django.utils.dateparse import parse_date
+
+try:  # Optional dependency; provide a safe fallback for tests/dev
+    import nepali_datetime  # type: ignore
+except Exception:  # pragma: no cover - fallback when lib is missing
+    class _NepaliDateShim:
+        def __init__(self, y, m, d):
+            self._dt = datetime.date(y, m, d)
+
+        @classmethod
+        def from_datetime_date(cls, dt):
+            return cls(dt.year, dt.month, dt.day)
+
+        def to_datetime_date(self):
+            return self._dt
+
+        def strftime(self, fmt):
+            return self._dt.strftime(fmt)
+
+    class nepali_datetime:  # type: ignore
+        date = _NepaliDateShim
 
 
 DateLike = Union[str, datetime.date, datetime.datetime]

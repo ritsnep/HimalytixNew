@@ -1,0 +1,48 @@
+{% extends "partials/base.html" %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+        <div>
+            <h3 class="mb-1">{{ title|default:"Balance Sheet" }}</h3>
+            <div class="text-muted small">Organization: {{ organization }} • As of {{ as_of_date|date:"Y-m-d" }}</div>
+        </div>
+    </div>
+    {% if lines %}
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table mb-0 table-sm">
+                        <thead>
+                            <tr>
+                                <th>Account Code</th>
+                                <th>Account Name</th>
+                                <th>Category</th>
+                                <th class="text-end">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in lines %}
+                            <tr>
+                                <td>{{ item.account_code }}</td>
+                                <td>{{ item.account_name }}</td>
+                                <td>{{ item.category|default:item.line_type }}</td>
+                                <td class="text-end">{{ item.amount }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer d-flex gap-3 justify-content-end flex-wrap">
+                <div><strong>Total Assets:</strong> {{ totals.total_assets }}</div>
+                <div><strong>Total Liabilities:</strong> {{ totals.total_liabilities }}</div>
+                <div><strong>Total Equity:</strong> {{ totals.total_equity }}</div>
+                <div><strong>Difference:</strong> {{ totals.difference }}</div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-warning">No data found.</div>
+    {% endif %}
+</div>
+{% endblock content %}

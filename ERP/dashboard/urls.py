@@ -62,6 +62,7 @@ urlpatterns = [
     path("accounts/login/", CustomLoginView.as_view(), name="account_login"),
     path('accounts/', include('allauth.urls')),  # Important!
     path('forms_designer/', include('forms_designer.urls')),
+    path('reports/', include(('reporting.urls', 'reporting'), namespace='reporting')),
     path('api/lpg/', include('lpg_vertical.urls')),
     path("", views.DashboardView.as_view(), name="dashboard"),
     path("settings", views.Settings.as_view(), name="settings"),

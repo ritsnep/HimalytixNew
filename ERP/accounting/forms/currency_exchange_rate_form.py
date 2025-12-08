@@ -15,7 +15,10 @@ class CurrencyExchangeRateForm(BootstrapFormMixin, forms.ModelForm):
         if self.organization and not self.instance.pk:
             base_cur = getattr(self.organization, 'base_currency_code', None) or getattr(self.organization, 'base_currency_code_id', None)
             if base_cur and 'from_currency' in self.fields and not self.initial.get('from_currency'):
-                self.initial['from_currency'] = base_cur
+                if hasattr(base_cur, 'currency_code'):
+                    self.initial['from_currency'] = base_cur.currency_code
+                else:
+                    self.initial['from_currency'] = base_cur
             if 'to_currency' in self.fields:
                 # Clear default to encourage explicit selection
                 self.initial['to_currency'] = None

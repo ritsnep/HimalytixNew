@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{ title }}</title>
+    <style>
+        body { font-family: "Inter", system-ui, sans-serif; margin:0; padding:24px; background:#0b1324; color:#e5e7eb; }
+        .card { background:#0f172a; border:1px solid #1f2937; border-radius:12px; padding:16px; box-shadow:0 14px 40px rgba(0,0,0,0.35); }
+        h1 { margin:0 0 6px 0; font-size:22px; }
+        .meta { color:#94a3b8; font-size:12px; }
+        table { width:100%; border-collapse:collapse; margin-top:12px; }
+        th, td { padding:8px 10px; border-bottom:1px solid #1f2937; font-size:13px; }
+        th { text-align:left; color:#cbd5e1; }
+        td.text-right { text-align:right; }
+        .totals { display:flex; gap:18px; justify-content:flex-end; margin-top:10px; color:#cbd5e1; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>{{ title }}</h1>
+        <div class="meta">Organization: {{ organization }} • As of {{ filters.as_of_date|date:"Y-m-d" }}</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Account Code</th>
+                    <th>Account Name</th>
+                    <th>Type</th>
+                    <th class="text-right">Debit</th>
+                    <th class="text-right">Credit</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for line in lines %}
+                <tr>
+                    <td>{{ line.account_code }}</td>
+                    <td>{{ line.account_name }}</td>
+                    <td>{{ line.account_type }}</td>
+                    <td class="text-right">{{ line.debit_balance }}</td>
+                    <td class="text-right">{{ line.credit_balance }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="totals">
+            <div><strong>Debits</strong> {{ totals.total_debits }}</div>
+            <div><strong>Credits</strong> {{ totals.total_credits }}</div>
+            <div><strong>Diff</strong> {{ totals.difference }}</div>
+        </div>
+    </div>
+</body>
+</html>

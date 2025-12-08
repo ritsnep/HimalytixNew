@@ -1,0 +1,36 @@
+{% extends "partials/base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    .report-frame { border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; box-shadow: 0 12px 30px rgba(15,23,42,0.08); }
+    .report-frame .card-body { padding: 0; }
+    .report-actions .btn { min-width: 42px; }
+</style>
+{% endblock extra_css %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+        <div>
+            <h3 class="mb-1">{{ definition.name }}</h3>
+            <p class="text-muted mb-0 small">{{ definition.description }}</p>
+            <div class="small text-muted">Organization: {{ organization }}</div>
+        </div>
+        <div class="report-actions d-flex align-items-center gap-2 no-print">
+            {% for fmt, url in export_links.items %}
+                <a class="btn btn-light btn-sm" href="{{ url }}"><i class="mdi mdi-download me-1"></i>{{ fmt|upper }}</a>
+            {% endfor %}
+            {% if designer_url %}
+                <a class="btn btn-dark btn-sm" href="{{ designer_url }}"><i class="mdi mdi-draw me-1"></i>Designer</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card report-frame">
+        <div class="card-body" id="report-render-target">
+            {{ rendered_report|safe }}
+        </div>
+    </div>
+</div>
+{% endblock content %}

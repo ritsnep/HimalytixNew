@@ -9,6 +9,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'tenancy',
     'accounting',
+    'reporting',
     'usermanagement',
     'enterprise',
 ]
@@ -40,4 +41,5 @@ AUTH_USER_MODEL = 'usermanagement.CustomUser'
 MIGRATION_MODULES = {
     'usermanagement': None,
     'accounting': None,
+    'reporting': None,
 }

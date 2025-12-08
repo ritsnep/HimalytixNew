@@ -60,6 +60,9 @@ MAINTENANCE_ALLOW_SUPERUSER = env_bool("MAINTENANCE_ALLOW_SUPERUSER", default=Tr
 MAINTENANCE_STREAM_MAX_MESSAGES = int(os.getenv("MAINTENANCE_STREAM_MAX_MESSAGES", "30"))  # Reduced from 120 to 30 (1 minute total)
 MAINTENANCE_STREAM_INTERVAL = int(os.getenv("MAINTENANCE_STREAM_INTERVAL", "2"))
 
+# Reporting toggles
+ENABLE_CUSTOM_REPORTS = env_bool("ENABLE_CUSTOM_REPORTS", default=True)
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -128,6 +131,7 @@ INSTALLED_APPS = [
     'crispy_bootstrap4',
     'tenancy',
     'accounting',
+    'reporting',
     'api',
     'rest_framework',
     'rest_framework.authtoken',
@@ -817,4 +821,11 @@ CELERY_TASK_ALWAYS_EAGER = os.environ.get('CELERY_TASK_ALWAYS_EAGER', '0') == '1
 CELERY_TASK_EAGER_PROPAGATES = True
 DJANGO_CELERY_BEAT_TZ_AWARE = True
 DJANGO_STRUCTLOG_CELERY_ENABLED = True
+# Default beat schedule (can also be managed via django-celery-beat admin)
+CELERY_BEAT_SCHEDULE = {
+    "reporting-dispatch-due": {
+        "task": "reporting.tasks.dispatch_due_reports",
+        "schedule": int(os.environ.get("REPORTING_SCHEDULE_INTERVAL_SECONDS", "300")),
+    },
+}
 

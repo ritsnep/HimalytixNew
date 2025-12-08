@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{ title }}</title>
+    <style>
+        body { font-family:"Inter",system-ui,sans-serif; margin:0; padding:24px; background:#0b1324; color:#e5e7eb;}
+        .card { background:#0f172a; border:1px solid #1f2937; border-radius:12px; padding:14px; margin-bottom:12px; }
+        h1 { margin:0 0 6px 0; font-size:22px; }
+        .meta { color:#94a3b8; font-size:12px; }
+        table { width:100%; border-collapse:collapse; margin-top:10px; }
+        th,td { padding:7px 9px; border-bottom:1px solid #1f2937; font-size:13px; }
+        th { text-align:left; color:#cbd5e1; }
+        td.text-right { text-align:right; }
+        .totals { display:flex; gap:16px; justify-content:flex-end; background:#111827; border:1px solid #1f2937; border-radius:10px; padding:10px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>{{ title }}</h1>
+        <div class="meta">Organization: {{ organization }} • {{ filters.start_date|date:"Y-m-d" }} to {{ filters.end_date|date:"Y-m-d" }}</div>
+    </div>
+    {% for section in sections %}
+    <div class="card">
+        <div class="meta" style="margin-bottom:6px; text-transform:uppercase;">{{ section.category }}</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Account Code</th>
+                    <th>Account Name</th>
+                    <th class="text-right">Debit</th>
+                    <th class="text-right">Credit</th>
+                    <th class="text-right">Net</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for account in section.accounts %}
+                <tr>
+                    <td>{{ account.account_code }}</td>
+                    <td>{{ account.account_name }}</td>
+                    <td class="text-right">{{ account.debit }}</td>
+                    <td class="text-right">{{ account.credit }}</td>
+                    <td class="text-right">{{ account.net }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="totals"><strong>Subtotal</strong> {{ section.total }}</div>
+    </div>
+    {% endfor %}
+    <div class="totals">
+        <div><strong>Income</strong> {{ totals.total_income }}</div>
+        <div><strong>Expense</strong> {{ totals.total_expense }}</div>
+        <div><strong>Net</strong> {{ totals.net_profit }}</div>
+    </div>
+</body>
+</html>

@@ -12,11 +12,12 @@ from django.db import transaction
 from accounting.journal_grid_forms import JournalGridLineForm, JournalGridLineFormSet
 from accounting.models import ChartOfAccount
 from accounting.forms import JournalForm
+from accounting.forms.form_factory import get_voucher_ui_header
 from ..models import JournalLine, Journal
 
 @require_GET
 def journal_entry_grid(request):
-    header_form = JournalForm(organization=request.organization)
+    header_form = JournalForm(organization=request.organization, ui_schema=get_voucher_ui_header(request.organization))
     line_forms = [JournalGridLineForm(prefix='lines-0', organization=request.organization)]
     context = {
         'header_form': header_form,
@@ -70,7 +71,7 @@ def journal_entry_grid_paste(request):
 
 @require_POST
 def journal_entry_grid_save(request):
-    header_form = JournalForm(request.POST, organization=request.organization)
+    header_form = JournalForm(request.POST, organization=request.organization, ui_schema=get_voucher_ui_header(request.organization))
     line_formset = JournalGridLineFormSet(request.POST, prefix='lines', form_kwargs={'organization': request.organization})
     if not header_form.is_valid():
         return HttpResponse("Header invalid", status=422)

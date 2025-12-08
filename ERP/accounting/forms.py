@@ -505,8 +505,12 @@ class ChartOfAccountForm(BootstrapFormMixin, forms.ModelForm):
             except Exception:
                 base_cur = None
             if base_cur:
-                # For FK field initial can be set to the instance
-                self.fields['currency'].initial = base_cur
+                # Prefer a PK string (currency_code) as the initial rather than
+                # a Currency instance, which keeps form.initial consistent.
+                if hasattr(base_cur, 'currency_code'):
+                    self.fields['currency'].initial = base_cur.currency_code
+                else:
+                    self.fields['currency'].initial = base_cur
         # Always set organization on the instance for validation
         if self.organization and not getattr(self.instance, 'organization_id', None):
             self.instance.organization = self.organization
@@ -1057,7 +1061,10 @@ class VoucherModeConfigForm(BootstrapFormMixin, forms.ModelForm):
         except Exception:
             base_cur = None
         if base_cur:
-            self.fields['default_currency'].initial = base_cur
+            if hasattr(base_cur, 'currency_code'):
+                self.fields['default_currency'].initial = base_cur.currency_code
+            else:
+                self.fields['default_currency'].initial = base_cur
 
         # Fix: use self.organization instead of undefined variable
         if self.organization:
@@ -1570,7 +1577,10 @@ class VendorForm(BootstrapFormMixin, forms.ModelForm):
             except Exception:
                 base_cur = None
             if base_cur:
-                self.fields['default_currency'].initial = base_cur
+                if hasattr(base_cur, 'currency_code'):
+                    self.fields['default_currency'].initial = base_cur.currency_code
+                else:
+                    self.fields['default_currency'].initial = base_cur
 
 
 class CustomerForm(BootstrapFormMixin, forms.ModelForm):
@@ -1636,7 +1646,10 @@ class CustomerForm(BootstrapFormMixin, forms.ModelForm):
             except Exception:
                 base_cur = None
             if base_cur:
-                self.fields['default_currency'].initial = base_cur
+                if hasattr(base_cur, 'currency_code'):
+                    self.fields['default_currency'].initial = base_cur.currency_code
+                else:
+                    self.fields['default_currency'].initial = base_cur
 
 
 class DimensionForm(BootstrapFormMixin, forms.ModelForm):
@@ -1722,7 +1735,10 @@ class SalesInvoiceForm(BootstrapFormMixin, forms.ModelForm):
             except Exception:
                 base_cur = None
             if base_cur:
-                self.fields['currency'].initial = base_cur
+                if hasattr(base_cur, 'currency_code'):
+                    self.fields['currency'].initial = base_cur.currency_code
+                else:
+                    self.fields['currency'].initial = base_cur
 
     def clean(self):
         cleaned = super().clean()

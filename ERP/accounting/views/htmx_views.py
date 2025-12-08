@@ -8,6 +8,8 @@ from decimal import Decimal
 
 from accounting.models import GeneralLedger, Journal, JournalLine, ChartOfAccount
 from accounting.forms import JournalLineForm, JournalForm, JournalLineFormSet
+from accounting.forms.form_factory import get_voucher_ui_header
+from accounting.models import VoucherModeConfig
 
 class AddJournalRowView(View):
     def post(self, request, *args, **kwargs):
@@ -68,7 +70,8 @@ class SaveJournalView(View):
         if journal_id:
             journal_instance = get_object_or_404(Journal, pk=journal_id, organization=request.user.organization)
 
-        form = JournalForm(request.POST, instance=journal_instance, organization=request.user.organization)
+        header_ui = get_voucher_ui_header(request.user.organization)
+        form = JournalForm(request.POST, instance=journal_instance, organization=request.user.organization, ui_schema=header_ui)
 
         if form.is_valid():
             journal = form.save(commit=False)
@@ -76,7 +79,18 @@ class SaveJournalView(View):
                 journal.organization = request.user.organization
                 journal.created_by = request.user
 
-            formset = JournalLineFormSet(request.POST, instance=journal, form_kwargs={'organization': request.user.organization})
+            # attempt to get line UI schema and pass to formset
+            line_ui = None
+            try:
+                cfg = VoucherModeConfig.objects.filter(organization=request.user.organization, is_default=True).first()
+                if cfg:
+                    line_ui = cfg.resolve_ui().get('lines')
+            except Exception:
+                line_ui = None
+            line_kwargs = {'organization': request.user.organization}
+            if line_ui:
+                line_kwargs['ui_schema'] = line_ui
+            formset = JournalLineFormSet(request.POST, instance=journal, form_kwargs=line_kwargs)
 
             if formset.is_valid():
                 journal.save()

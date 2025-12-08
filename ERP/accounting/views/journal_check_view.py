@@ -7,6 +7,7 @@ import json
 
 from accounting.models import Journal
 from accounting.forms import JournalForm, JournalLineFormSet
+from accounting.forms.form_factory import get_voucher_ui_header
 from accounting.views.views_mixins import UserOrganizationMixin
 from utils.htmx import require_htmx
 
@@ -42,8 +43,21 @@ class JournalCheckView(UserOrganizationMixin, View):
             organization=self.get_organization()
         )
         
-        form = JournalForm(data=journal_data, instance=journal_instance)
-        formset = JournalLineFormSet(data=lines_data)
+        header_ui = get_voucher_ui_header(self.get_organization())
+        # attempt to get line ui if default voucher config exists for org
+        line_ui = None
+        try:
+            from accounting.models import VoucherModeConfig
+            cfg = VoucherModeConfig.objects.filter(organization=self.get_organization(), is_default=True).first()
+            if cfg:
+                line_ui = cfg.resolve_ui().get('lines')
+        except Exception:
+            line_ui = None
+        form = JournalForm(data=journal_data, instance=journal_instance, ui_schema=header_ui)
+        formset_kwargs = {}
+        if line_ui:
+            formset_kwargs['ui_schema'] = line_ui
+        formset = JournalLineFormSet(data=lines_data, **formset_kwargs)
         
         validator = JournalValidationService(
             journal=journal_instance,
@@ -66,16 +80,30 @@ class JournalCheckView(UserOrganizationMixin, View):
             organization=self.get_organization()
         )
         
+        header_ui = get_voucher_ui_header(self.get_organization(), journal_type=getattr(journal, 'journal_type', None))
         form = JournalForm(
             request.POST, 
             instance=journal, 
-            organization=self.get_organization()
+            organization=self.get_organization(),
+            ui_schema=header_ui
         )
+        # attempt to retrieve line ui for this journal's journal_type
+        line_ui = None
+        try:
+            from accounting.models import VoucherModeConfig
+            cfg = VoucherModeConfig.objects.filter(organization=self.get_organization(), is_default=True, transaction_type=getattr(journal, 'journal_type', None)).first()
+            if cfg:
+                line_ui = cfg.resolve_ui().get('lines')
+        except Exception:
+            line_ui = None
+        formset_kwargs = {'organization': self.get_organization()}
+        if line_ui:
+            formset_kwargs['ui_schema'] = line_ui
         formset = JournalLineFormSet(
             request.POST, 
             instance=journal, 
             prefix='lines', 
-            form_kwargs={'organization': self.get_organization()}
+            form_kwargs=formset_kwargs
         )
 
         validator = JournalValidationService(

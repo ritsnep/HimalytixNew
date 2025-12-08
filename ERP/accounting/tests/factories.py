@@ -55,13 +55,20 @@ def _unique_suffix() -> int:
 def create_organization(**overrides) -> Organization:
     """Create an organization with sane defaults for tests."""
     idx = _unique_suffix()
+    # Normalize base_currency_code overrides: if a string code is provided,
+    # resolve it to a Currency instance to match the model FK type.
+    bcc_override = overrides.get('base_currency_code')
+    if isinstance(bcc_override, str):
+        overrides['base_currency_code'] = create_currency(bcc_override)
+
     defaults = {
         "name": overrides.get("name") or f"Test Org {idx}",
         "code": overrides.get("code") or f"ORG{idx:03d}",
         "type": overrides.get("type") or "company",
         "status": overrides.get("status") or "active",
         "is_active": overrides.get("is_active", True),
-        "base_currency_code": overrides.get("base_currency_code", "USD"),
+        # Ensure Organization.base_currency_code is a Currency instance
+        "base_currency_code": overrides.get("base_currency_code") or create_currency(),
     }
     defaults.update(overrides)
     return Organization.objects.create(**defaults)
@@ -271,7 +278,7 @@ def create_voucher_mode_config(
         "show_dimensions": overrides.pop("show_dimensions", True),
         "allow_multiple_currencies": overrides.pop("allow_multiple_currencies", False),
         "require_line_description": overrides.pop("require_line_description", True),
-        "default_currency": overrides.pop("default_currency", organization.base_currency_code or "USD"),
+        "default_currency": overrides.pop("default_currency", getattr(organization, 'base_currency_code_id', 'USD') or "USD"),
     }
     defaults.update(overrides)
     return VoucherModeConfig.objects.create(**defaults)
@@ -300,7 +307,7 @@ def create_journal(
         "period": period,
         "journal_date": journal_date,
         "journal_number": overrides.pop("journal_number", f"{journal_type.code or 'JNL'}-{idx:03d}"),
-        "currency_code": overrides.pop("currency_code", organization.base_currency_code or "USD"),
+        "currency_code": overrides.pop("currency_code", getattr(organization, 'base_currency_code_id', 'USD') or "USD"),
         "status": overrides.pop("status", "draft"),
         "created_by": user,
     }

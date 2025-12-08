@@ -8,7 +8,7 @@ from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from accounting.forms.journal_line_form import JournalLineForm
-from accounting.models import Journal, JournalType, JournalLine, AccountingPeriod
+from accounting.models import Journal, JournalType, JournalLine, AccountingPeriod, VoucherModeConfig
 from usermanagement.utils import PermissionUtils
 from accounting.forms import JournalForm, JournalLineFormSet
 import openpyxl
@@ -18,7 +18,7 @@ from django.utils.decorators import method_decorator
 from accounting.services.journal_entry_service import JournalEntryService
 from accounting.validation import JournalValidationService
 from utils.htmx import require_htmx
-from accounting.services.ocr_service import process_receipt_with_ocr
+from accounting.forms.form_factory import VoucherFormFactory, get_voucher_ui_header
 from accounting.services.post_journal import JournalError
 from accounting.config.settings import journal_entry_settings
 from accounting.models import AuditLog
@@ -114,7 +114,6 @@ class JournalHeaderFormView(UserOrganizationMixin, View):
     template_name = 'accounting/partials/journal_header_form.html'
 
     def get(self, request, *args, **kwargs):
-        from accounting.forms.form_factory import get_voucher_ui_header
         organization = self.get_organization()
         ui_schema = get_voucher_ui_header(organization)
         form = JournalForm(organization=organization, ui_schema=ui_schema)
@@ -125,7 +124,19 @@ class JournalNewLineView(UserOrganizationMixin, View):
     template_name = 'accounting/partials/journal_line_form.html'
 
     def get(self, request, *args, **kwargs):
-        formset = JournalLineFormSet(queryset=JournalLine.objects.none(), prefix='lines', form_kwargs={'organization': self.get_organization()})
+        organization = self.get_organization()
+        # Try to fetch line UI schema if set for organization's default voucher config
+        line_ui = None
+        try:
+            selected_config = VoucherModeConfig.objects.filter(organization=organization, is_default=True).first()
+            if selected_config:
+                line_ui = selected_config.resolve_ui().get('lines')
+        except Exception:
+            line_ui = None
+        form_kwargs = {'organization': organization}
+        if line_ui:
+            form_kwargs['ui_schema'] = line_ui
+        formset = JournalLineFormSet(queryset=JournalLine.objects.none(), prefix='lines', form_kwargs=form_kwargs)
         empty_form = formset.empty_form
         return render(request, self.template_name, {'form': empty_form})
 
@@ -135,7 +146,18 @@ class JournalEntryRowTemplateView(UserOrganizationMixin, View):
     Used by HTMX to dynamically add new rows.
     """
     def get(self, request, *args, **kwargs):
-        formset = JournalLineFormSet(queryset=JournalLine.objects.none(), prefix='lines', form_kwargs={'organization': self.get_organization()})
+        organization = self.get_organization()
+        line_ui = None
+        try:
+            selected_config = VoucherModeConfig.objects.filter(organization=organization, is_default=True).first()
+            if selected_config:
+                line_ui = selected_config.resolve_ui().get('lines')
+        except Exception:
+            line_ui = None
+        form_kwargs = {'organization': organization}
+        if line_ui:
+            form_kwargs['ui_schema'] = line_ui
+        formset = JournalLineFormSet(queryset=JournalLine.objects.none(), prefix='lines', form_kwargs=form_kwargs)
         empty_form = formset.empty_form
         context = {
             'form': empty_form,
@@ -148,7 +170,6 @@ class JournalEntryRowTemplateView(UserOrganizationMixin, View):
 class JournalUpdateLineView(UserOrganizationMixin, View):
 
     def post(self, request, *args, **kwargs):
-        from accounting.forms.form_factory import get_voucher_ui_header
         organization = self.get_organization()
         ui_schema = get_voucher_ui_header(organization)
         form = JournalForm(request.POST, organization=organization, ui_schema=ui_schema)
@@ -393,8 +414,30 @@ class BaseJournalEntryView(LoginRequiredMixin, View):
         return context
 
     def process_journal_submission(self, request, journal_instance=None):
-        form = JournalForm(request.POST, instance=journal_instance, organization=request.organization)
-        formset = JournalLineFormSet(request.POST, instance=journal_instance, prefix='lines')
+        # Attach UI schema (header & lines) to the forms if available
+        ui_header = get_voucher_ui_header(request.organization)
+        # Determine line-level schema if present for the journal type
+        line_ui = None
+        try:
+            journal_type = None
+            if journal_instance:
+                journal_type = journal_instance.journal_type
+            else:
+                journal_type = request.POST.get('journal_type')
+            selected_config = VoucherModeConfig.objects.filter(organization=request.organization, is_default=True)
+            if journal_type:
+                selected_config = selected_config.filter(transaction_type=journal_type)
+            selected_config = selected_config.first()
+            if selected_config:
+                line_ui = selected_config.resolve_ui().get('lines')
+        except Exception:
+            line_ui = None
+
+        form = JournalForm(request.POST, instance=journal_instance, organization=request.organization, ui_schema=ui_header)
+        formset_kwargs = {'organization': request.organization}
+        if line_ui:
+            formset_kwargs['ui_schema'] = line_ui
+        formset = JournalLineFormSet(request.POST, instance=journal_instance, prefix='lines', form_kwargs=formset_kwargs)
 
         if form.is_valid() and formset.is_valid():
             validation_service = JournalValidationService(request.organization)
@@ -464,9 +507,21 @@ class JournalEntryDetailView(BaseJournalEntryView):
             return redirect('accounting:journal_entry_new')
         
         journal = self.get_journal(pk)
-        form = JournalForm(instance=journal, organization=request.organization)
+        ui_header = get_voucher_ui_header(request.organization, journal_type=journal.journal_type if journal else None)
+        form = JournalForm(instance=journal, organization=request.organization, ui_schema=ui_header)
         if journal:
-            formset = JournalLineFormSet(queryset=journal.lines.all(), prefix='lines')
+            # Attempt to get line UI schema for this journal type
+            line_ui = None
+            try:
+                selected_config = VoucherModeConfig.objects.filter(organization=request.organization, is_default=True, transaction_type=journal.journal_type).first()
+                if selected_config:
+                    line_ui = selected_config.resolve_ui().get('lines')
+            except Exception:
+                line_ui = None
+            form_kwargs = {'organization': request.organization}
+            if line_ui:
+                form_kwargs['ui_schema'] = line_ui
+            formset = JournalLineFormSet(queryset=journal.lines.all(), prefix='lines', form_kwargs=form_kwargs)
         else:
             formset = JournalLineFormSet(queryset=JournalLine.objects.none(), prefix='lines')
         context = self.get_context_data(form=form, formset=formset, journal=journal)
@@ -474,8 +529,20 @@ class JournalEntryDetailView(BaseJournalEntryView):
 
 class JournalEntryCreateView(BaseJournalEntryView):
     def get(self, request, *args, **kwargs):
-        form = JournalForm(organization=request.organization)
-        formset = JournalLineFormSet(queryset=JournalLine.objects.none(), prefix='lines')
+        ui_header = get_voucher_ui_header(request.organization)
+        form = JournalForm(organization=request.organization, ui_schema=ui_header)
+        # Get default line UI schema
+        line_ui = None
+        try:
+            selected_config = VoucherModeConfig.objects.filter(organization=request.organization, is_default=True).first()
+            if selected_config:
+                line_ui = selected_config.resolve_ui().get('lines')
+        except Exception:
+            line_ui = None
+        form_kwargs = {'organization': request.organization}
+        if line_ui:
+            form_kwargs['ui_schema'] = line_ui
+        formset = JournalLineFormSet(queryset=JournalLine.objects.none(), prefix='lines', form_kwargs=form_kwargs)
         context = self.get_context_data(form=form, formset=formset)
         return render(request, self.template_name, context)
 
@@ -485,8 +552,20 @@ class JournalEntryCreateView(BaseJournalEntryView):
 class JournalEntryUpdateView(BaseJournalEntryView):
     def get(self, request, *args, **kwargs):
         journal = self.get_journal(kwargs.get('pk'))
-        form = JournalForm(instance=journal, organization=request.organization)
-        formset = JournalLineFormSet(queryset=journal.lines.all(), prefix='lines')
+        ui_header = get_voucher_ui_header(request.organization, journal_type=journal.journal_type if journal else None)
+        form = JournalForm(instance=journal, organization=request.organization, ui_schema=ui_header)
+        # Attempt to get line UI schema for journal type and pass to formset
+        line_ui = None
+        try:
+            selected_config = VoucherModeConfig.objects.filter(organization=request.organization, is_default=True, transaction_type=journal.journal_type).first()
+            if selected_config:
+                line_ui = selected_config.resolve_ui().get('lines')
+        except Exception:
+            line_ui = None
+        form_kwargs = {'organization': request.organization}
+        if line_ui:
+            form_kwargs['ui_schema'] = line_ui
+        formset = JournalLineFormSet(queryset=journal.lines.all(), prefix='lines', form_kwargs=form_kwargs)
         context = self.get_context_data(form=form, formset=formset, journal=journal)
         return render(request, self.template_name, context)
 

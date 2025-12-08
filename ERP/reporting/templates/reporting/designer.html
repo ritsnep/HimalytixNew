@@ -1,0 +1,397 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ definition.name }} Designer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/icons.min.css' %}">
+    <link rel="stylesheet" href="https://unpkg.com/grapesjs@0.21.5/dist/css/grapes.min.css">
+    <style>
+        :root {
+            --panel-bg: #0f172a;
+            --panel-border: #1f2937;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: #f3f4f6;
+            color: #0f172a;
+        }
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 20px;
+            background: var(--panel-bg);
+            color: #e5e7eb;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+        }
+        .brand .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #22c55e;
+            display: inline-block;
+        }
+        .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .main-wrap { padding: 16px 20px 32px; }
+        .page-title { margin: 0 0 8px; font-size: 22px; font-weight: 700; }
+        .page-sub { margin: 0 0 20px; color: #6b7280; font-size: 13px; }
+        .grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 320px;
+            gap: 16px;
+            align-items: start;
+        }
+        @media (max-width: 1024px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+        #report-designer {
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #ffffff;
+            min-height: 75vh;
+            box-shadow: 0 16px 40px rgba(15,23,42,0.08);
+        }
+        .designer-sidebar {
+            background: var(--panel-bg);
+            color: #e5e7eb;
+            border-radius: 12px;
+            padding: 14px;
+            position: sticky;
+            top: 20px;
+            max-height: calc(100vh - 140px);
+            overflow-y: auto;
+            border: 1px solid var(--panel-border);
+        }
+        .designer-sidebar h6 {
+            color: #cbd5e1;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.04em;
+            margin: 0;
+        }
+        .preview-card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .field-badge {
+            display: inline-block;
+            padding: 6px 8px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            margin: 4px 4px 0 0;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .field-badge:hover { background: rgba(255,255,255,0.12); }
+        .sidebar-section {
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding-bottom: 12px;
+            margin-bottom: 14px;
+        }
+        .sidebar-section:last-child { border-bottom: 0; margin-bottom: 0; padding-bottom: 0; }
+        .btn-ghost { background: transparent; border: 1px solid #d0d7de; color: #0f172a; }
+        .hint { background: #e0f2fe; border: 1px solid #bae6fd; color: #0c4a6e; border-radius: 10px; padding: 10px 12px; font-size: 13px; }
+        .gjs-pn-panel { display: none !important; }
+        .gjs-one-bg { background: #0b1120 !important; }
+        .gjs-two-color { color: #d1d5db !important; }
+        .gjs-three-bg { background-color: #1f2937 !important; }
+        .gjs-four-color { color: #f3f4f6 !important; }
+        .gjs-cv-canvas { background-color: #ffffff !important; }
+        .side-panel {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            width: 280px;
+            max-height: calc(80vh - 24px);
+            overflow-y: auto;
+            background: #0f172a;
+            color: #e5e7eb;
+            border: 1px solid #1f2937;
+            border-radius: 10px;
+            padding: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+            display: none;
+            z-index: 30;
+        }
+        .side-panel h6 { font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 8px; color: #cbd5e1; }
+        .side-panel.active { display: block; }
+        .canvas-wrap { position: relative; }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <div class="brand">
+            <span class="dot"></span>
+            <span>Reporting Designer</span>
+        </div>
+        <div class="toolbar">
+            <select id="template-picker" class="form-select form-select-sm">
+                <option value="">Load gallery template…</option>
+            </select>
+            <button id="toggle-blocks" class="btn btn-outline-light btn-sm" type="button">Blocks</button>
+            <button id="toggle-styles" class="btn btn-outline-light btn-sm" type="button">Styles</button>
+            <button id="reset-template" class="btn btn-outline-light btn-sm" type="button">Reset to base</button>
+            <a href="{% url 'reporting:report_view' code=definition.code %}" class="btn btn-light btn-sm"><i class="mdi mdi-arrow-left me-1"></i>Back to report</a>
+            <button id="save-template" class="btn btn-success btn-sm"><i class="mdi mdi-content-save me-1"></i>Save</button>
+        </div>
+    </div>
+
+    <div class="main-wrap">
+        <h1 class="page-title">{{ definition.name }} Designer</h1>
+        <p class="page-sub">Organization: {{ organization }} • Code: {{ definition.code }}</p>
+
+        <div class="grid">
+            <div class="canvas-wrap">
+                <div id="blocks-panel" class="side-panel">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0">Blocks</h6>
+                        <button class="btn btn-sm btn-outline-light" type="button" onclick="document.getElementById('blocks-panel').classList.remove('active')">×</button>
+                    </div>
+                    <div id="gjs-blocks"></div>
+                </div>
+                <div id="styles-panel" class="side-panel" style="left: 308px;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0">Styles</h6>
+                        <button class="btn btn-sm btn-outline-light" type="button" onclick="document.getElementById('styles-panel').classList.remove('active')">×</button>
+                    </div>
+                    <div id="gjs-styles"></div>
+                </div>
+                <div id="report-designer"></div>
+            </div>
+            <div class="designer-sidebar">
+                <div class="sidebar-section">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6>Sample Rows</h6>
+                        <button class="btn btn-sm btn-outline-light" id="refresh-sample" type="button">Refresh</button>
+                    </div>
+                    <div id="preview-list" class="mt-2"></div>
+                </div>
+                <div class="sidebar-section">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6>Available Fields</h6>
+                        <span class="badge bg-secondary" id="field-count">0</span>
+                    </div>
+                    <input type="text" id="field-filter" class="form-control form-control-sm mt-2 mb-2" placeholder="Filter fields…" />
+                    <div id="field-list"></div>
+                    <p class="small text-muted mt-2 mb-0">Click a field to copy the placeholder.</p>
+                </div>
+                <div>
+                    <h6 class="mb-2">Design Tips</h6>
+                    <ul class="small mb-0 ps-3">
+                        <li>Drag from “Blocks” palette to add text, images, tables, or charts.</li>
+                        <li>Loops: {% templatetag openblock %} for line in lines {% templatetag closeblock %} … {% templatetag openblock %} endfor {% templatetag closeblock %}</li>
+                        <li>Placeholders: {% templatetag openvariable %} field_name {% templatetag closevariable %}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-3 hint">
+            Use <code>{% templatetag openvariable %} field_name {% templatetag closevariable %}</code> to inject values and
+            <code>{% templatetag openblock %} for line in lines {% templatetag closeblock %}...{% templatetag openblock %} endfor {% templatetag closeblock %}</code> to loop over collections.
+        </div>
+    </div>
+
+    <form class="d-none">{% csrf_token %}</form>
+    {{ available_fields|json_script:"designer-fields" }}
+    {{ preview_rows|json_script:"designer-preview" }}
+
+    <script src="https://unpkg.com/grapesjs@0.21.5/dist/grapes.min.js"></script>
+    <script src="{% static 'reporting/designer.js' %}"></script>
+    <script>
+        const templateHtml = `{{ template_html|escapejs }}`;
+        const starter = templateHtml && templateHtml.trim() ? templateHtml : `
+            <section style="padding:24px;">
+                <header style="border-bottom:1px solid #e5e7eb;margin-bottom:16px;">
+                    <h2 style="margin:0 0 4px;font-size:20px;">{{ title }}</h2>
+                    <div style="color:#6b7280;font-size:13px;">Organization: {{ organization }} • Generated: {{ generated_at }}</div>
+                </header>
+                <div style="margin-bottom:12px;font-weight:600;">Journal Lines</div>
+                <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left;border-bottom:1px solid #e5e7eb;padding:6px;">Date</th>
+                            <th style="text-align:left;border-bottom:1px solid #e5e7eb;padding:6px;">Journal #</th>
+                            <th style="text-align:left;border-bottom:1px solid #e5e7eb;padding:6px;">Account</th>
+                            <th style="text-align:right;border-bottom:1px solid #e5e7eb;padding:6px;">Debit</th>
+                            <th style="text-align:right;border-bottom:1px solid #e5e7eb;padding:6px;">Credit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% templatetag openblock %} for line in flat_rows {% templatetag closeblock %}
+                        <tr>
+                            <td style="padding:6px;border-bottom:1px solid #f1f5f9;">{{ line.0 }}</td>
+                            <td style="padding:6px;border-bottom:1px solid #f1f5f9;">{{ line.1 }}</td>
+                            <td style="padding:6px;border-bottom:1px solid #f1f5f9;">{{ line.4 }}</td>
+                            <td style="padding:6px;text-align:right;border-bottom:1px solid #f1f5f9;">{{ line.6 }}</td>
+                            <td style="padding:6px;text-align:right;border-bottom:1px solid #f1f5f9;">{{ line.7 }}</td>
+                        </tr>
+                        {% templatetag openblock %} endfor {% templatetag closeblock %}
+                    </tbody>
+                </table>
+            </section>`;
+        const initialTemplateHtml = starter;
+        const fields = JSON.parse(document.getElementById("designer-fields").textContent || "[]");
+        let previewRows = JSON.parse(document.getElementById("designer-preview").textContent || "[]");
+        const fieldListEl = document.getElementById("field-list");
+        const previewContainer = document.getElementById("preview-list");
+        const templatePicker = document.getElementById("template-picker");
+
+        function renderPreview(rows) {
+            previewContainer.innerHTML = "";
+            rows.forEach(row => {
+                const card = document.createElement("div");
+                card.className = "preview-card";
+                const label = row.journal_number || row.account_code || row.account_name || row.journal_type || "Row";
+                card.innerHTML = `<div class="fw-semibold">${label}</div>
+                    <div class="small text-muted mb-1">${row.journal_date || row.period || ""}</div>
+                    <div class="small">Values: ${Object.keys(row).length}</div>`;
+                previewContainer.appendChild(card);
+            });
+        }
+
+        const openVar = "{% templatetag openvariable %}";
+        const closeVar = "{% templatetag closevariable %}";
+        function renderFields(filterText = "") {
+            fieldListEl.innerHTML = "";
+            const normalized = filterText.toLowerCase();
+            const matching = fields.filter(f => !normalized || f.toLowerCase().includes(normalized));
+            matching.forEach(f => {
+                const badge = document.createElement("div");
+                badge.className = "field-badge";
+                badge.textContent = `${openVar} ${f} ${closeVar}`;
+                badge.title = "Click to copy";
+                badge.addEventListener("click", () => {
+                    navigator.clipboard?.writeText(`${openVar} ${f} ${closeVar}`);
+                });
+                fieldListEl.appendChild(badge);
+            });
+            document.getElementById("field-count").textContent = matching.length;
+        }
+
+        renderFields();
+        document.getElementById("field-filter").addEventListener("input", (e) => renderFields(e.target.value));
+        renderPreview(previewRows);
+
+        const designer = initReportDesigner({
+            container: "#report-designer",
+            templateHtml: starter,
+            availableFields: fields,
+            blockContainer: "#gjs-blocks",
+            styleContainer: "#gjs-styles",
+            height: "80vh",
+        });
+
+        const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || "{{ csrf_token }}";
+
+        function loadGallery() {
+            const url = "{% url 'reporting:report_template_api' %}?code={{ definition.code }}&include_gallery=1";
+            fetch(url, { credentials: "same-origin" })
+                .then(resp => resp.json())
+                .then(data => {
+                    if (data.gallery) {
+                        templatePicker.innerHTML = '<option value=\"\">Load gallery template…</option>';
+                        data.gallery.forEach(t => {
+                            const opt = document.createElement("option");
+                            opt.value = t.id;
+                            opt.textContent = t.name;
+                            templatePicker.appendChild(opt);
+                        });
+                    }
+                })
+                .catch(() => {});
+        }
+        loadGallery();
+
+        templatePicker.addEventListener("change", () => {
+            const id = templatePicker.value;
+            if (!id) return;
+            const url = "{% url 'reporting:report_template_api' %}?code={{ definition.code }}&template_id=" + id;
+            fetch(url, { credentials: "same-origin" })
+                .then(resp => resp.json())
+                .then(data => {
+                    if (data.template_html) {
+                        designer.setComponents(data.template_html);
+                    }
+                });
+        });
+
+        document.getElementById("reset-template").addEventListener("click", () => {
+            designer.setComponents(initialTemplateHtml);
+        });
+
+        const blocksPanel = document.getElementById("blocks-panel");
+        const stylesPanel = document.getElementById("styles-panel");
+        document.getElementById("toggle-blocks").addEventListener("click", () => {
+            blocksPanel.classList.toggle("active");
+            stylesPanel.classList.remove("active");
+        });
+        document.getElementById("toggle-styles").addEventListener("click", () => {
+            stylesPanel.classList.toggle("active");
+            blocksPanel.classList.remove("active");
+        });
+
+        document.getElementById("refresh-sample").addEventListener("click", () => {
+            fetch("{% url 'reporting:report_sample_api' %}?code={{ definition.code }}", { credentials: "same-origin" })
+                .then(resp => resp.json())
+                .then(data => {
+                    if (data.rows) {
+                        previewRows = data.rows;
+                        renderPreview(previewRows);
+                    }
+                });
+        });
+
+        document.getElementById("save-template").addEventListener("click", function() {
+            const payload = {
+                code: "{{ definition.code }}",
+                template_html: designer.getHtml() + "<style>" + designer.getCss() + "</style>",
+                template_json: {},
+                engine: "django",
+                is_custom_enabled: true
+            };
+            fetch("{% url 'reporting:report_template_api' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken
+                },
+                body: JSON.stringify(payload)
+            }).then(resp => resp.json().then(data => ({ status: resp.status, body: data })))
+              .then(result => {
+                  if (result.status >= 200 && result.status < 300) {
+                      alert("Template saved.");
+                      loadGallery();
+                  } else {
+                      alert("Save failed: " + (result.body.detail || result.status));
+                  }
+              })
+              .catch(err => alert("Save failed: " + err));
+        });
+    </script>
+</body>
+</html>

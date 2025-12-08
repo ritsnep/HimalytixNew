@@ -218,7 +218,13 @@ class JournalLineForm(UDFFormMixin, BootstrapFormMixin, forms.ModelForm):
             self.fields['fx_rate'].initial = 1.0
             if not self.initial.get('txn_currency'):
                 base_cur = getattr(self.organization, 'base_currency_code', None) or getattr(self.organization, 'base_currency_code_id', None) if self.organization else None
-                self.fields['txn_currency'].initial = base_cur or 'USD'
+                if base_cur:
+                    if hasattr(base_cur, 'currency_code'):
+                        self.fields['txn_currency'].initial = base_cur.currency_code
+                    else:
+                        self.fields['txn_currency'].initial = base_cur
+                else:
+                    self.fields['txn_currency'].initial = 'USD'
 
     def clean_debit_amount(self) -> Optional[Decimal]:
         """

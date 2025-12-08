@@ -13,6 +13,7 @@ from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
 from accounting.models import AccountType, Currency, CurrencyExchangeRate, FiscalYear, TaxAuthority, TaxType
 from accounting.forms import AccountTypeForm, ChartOfAccountForm, CostCenterForm, CurrencyExchangeRateForm, CurrencyForm, DepartmentForm, FiscalYearForm, ProjectForm, TaxAuthorityForm, TaxTypeForm
+from accounting.forms.form_factory import VoucherFormFactory, get_voucher_ui_header
 from django.contrib import messages
 from django.db.models import F
 from django.http import JsonResponse
@@ -1423,21 +1424,45 @@ class JournalEntryView(LoginRequiredMixin, UserOrganizationMixin, View):
         organization = self.get_organization()
         journal = None
 
-        if pk:
-            journal = get_object_or_404(Journal, pk=pk, organization=organization)
-            form = JournalForm(instance=journal, organization=organization)
-            line_form_kwargs = {'organization': organization, 'journal': journal}
-            formset = JournalLineFormSet(instance=journal, prefix='lines', form_kwargs=line_form_kwargs)
-            page_title = f'Edit Journal Entry #{journal.journal_number}'
-        else:
-            form = JournalForm(organization=organization)
-            line_form_kwargs = {'organization': organization}
-            formset = JournalLineFormSet(prefix='lines', form_kwargs=line_form_kwargs)
-            page_title = 'New Journal Entry'
-
+        # Load voucher config options early so we can apply UI schema to forms
         voucher_configs = VoucherModeConfig.objects.filter(organization=organization, is_active=True)
         selected_config_pk = request.GET.get('voucher_config', voucher_configs.first().pk if voucher_configs else None)
         selected_config = get_object_or_404(VoucherModeConfig, pk=selected_config_pk) if selected_config_pk else None
+        # helper available from top-level imports
+        header_ui = None
+        line_ui = None
+        # Precompute voucher config and UI schema
+        voucher_configs = VoucherModeConfig.objects.filter(organization=organization, is_active=True)
+        selected_config_pk = request.GET.get('voucher_config', voucher_configs.first().pk if voucher_configs else None)
+        selected_config = get_object_or_404(VoucherModeConfig, pk=selected_config_pk) if selected_config_pk else None
+        header_ui = get_voucher_ui_header(organization, journal.journal_type.code if (pk and journal and getattr(journal, 'journal_type', None)) else None)
+        line_ui = selected_config.resolve_ui().get('lines') if selected_config else None
+
+        if pk:
+            journal = get_object_or_404(Journal, pk=pk, organization=organization)
+            header_ui = get_voucher_ui_header(organization, journal.journal_type.code if getattr(journal, 'journal_type', None) else None)
+            if selected_config:
+                ui = selected_config.resolve_ui()
+                line_ui = ui.get('lines') if isinstance(ui, dict) else None
+            form = JournalForm(instance=journal, organization=organization, ui_schema=header_ui)
+            line_form_kwargs = {'organization': organization, 'journal': journal}
+            if line_ui:
+                line_form_kwargs['ui_schema'] = line_ui
+            formset = JournalLineFormSet(instance=journal, prefix='lines', form_kwargs=line_form_kwargs)
+            page_title = f'Edit Journal Entry #{journal.journal_number}'
+        else:
+            header_ui = get_voucher_ui_header(organization)
+            if selected_config:
+                ui = selected_config.resolve_ui()
+                line_ui = ui.get('lines') if isinstance(ui, dict) else None
+            form = JournalForm(organization=organization, ui_schema=header_ui)
+            line_form_kwargs = {'organization': organization}
+            if line_ui:
+                line_form_kwargs['ui_schema'] = line_ui
+            formset = JournalLineFormSet(prefix='lines', form_kwargs=line_form_kwargs)
+            page_title = 'New Journal Entry'
+
+        # voucher_configs and selected_config already defined above
             
         context = {
             'form': form,
@@ -1451,15 +1476,27 @@ class JournalEntryView(LoginRequiredMixin, UserOrganizationMixin, View):
     def post(self, request, pk=None):
         organization = self.get_organization()
         journal = None
-        
+        # Determine selected voucher config and UI schema so forms get the same overrides
+        voucher_configs = VoucherModeConfig.objects.filter(organization=organization, is_active=True)
+        selected_config_pk = request.GET.get('voucher_config', voucher_configs.first().pk if voucher_configs else None)
+        selected_config = get_object_or_404(VoucherModeConfig, pk=selected_config_pk) if selected_config_pk else None
+        header_ui = get_voucher_ui_header(organization)
+        line_ui = None
+        if selected_config:
+            ui = selected_config.resolve_ui()
+            line_ui = ui.get('lines') if isinstance(ui, dict) else None
         if pk:
             journal = get_object_or_404(Journal, pk=pk, organization=organization)
-            form = JournalForm(request.POST, instance=journal, organization=organization)
+            form = JournalForm(request.POST, instance=journal, organization=organization, ui_schema=header_ui)
             line_form_kwargs = {'organization': organization, 'journal': journal}
+            if line_ui:
+                line_form_kwargs['ui_schema'] = line_ui
             formset = JournalLineFormSet(request.POST, instance=journal, prefix='lines', form_kwargs=line_form_kwargs)
         else:
-            form = JournalForm(request.POST, organization=organization)
+            form = JournalForm(request.POST, organization=organization, ui_schema=header_ui)
             line_form_kwargs = {'organization': organization}
+            if line_ui:
+                line_form_kwargs['ui_schema'] = line_ui
             formset = JournalLineFormSet(request.POST, prefix='lines', form_kwargs=line_form_kwargs)
 
         if form.is_valid() and formset.is_valid():
@@ -1683,8 +1720,22 @@ def journal_save_ajax(request):
     if not PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'add'):
         return JsonResponse({'error': 'Permission denied'}, status=403)
 
-    form = JournalForm(request.POST, organization=organization)
-    formset = JournalLineFormSet(request.POST, form_kwargs={'organization': organization})
+    from accounting.forms.form_factory import get_voucher_ui_header
+    # Determine UI schema (default to organization's default voucher config)
+    header_ui = get_voucher_ui_header(organization)
+    form = JournalForm(request.POST, organization=organization, ui_schema=header_ui)
+    # Determine line ui if available
+    line_ui = None
+    try:
+        selected_config = VoucherModeConfig.objects.filter(organization=organization, is_default=True).first()
+        if selected_config:
+            line_ui = selected_config.resolve_ui().get('lines')
+    except Exception:
+        line_ui = None
+    formset_kwargs = {'organization': organization}
+    if line_ui:
+        formset_kwargs['ui_schema'] = line_ui
+    formset = JournalLineFormSet(request.POST, form_kwargs=formset_kwargs)
 
     if form.is_valid() and formset.is_valid():
         with transaction.atomic():

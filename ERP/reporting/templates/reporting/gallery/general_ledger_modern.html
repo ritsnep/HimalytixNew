@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{ title }}</title>
+    <style>
+        body { font-family: "Inter", system-ui, -apple-system, sans-serif; margin: 0; padding: 24px; background: #0b1324; color: #e5e7eb; }
+        .card { background: #0f172a; border: 1px solid #1f2937; border-radius: 14px; padding: 16px; box-shadow: 0 18px 60px rgba(0,0,0,0.35); }
+        h1 { margin: 0 0 6px 0; font-size: 22px; }
+        .meta { color: #94a3b8; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+        th, td { padding: 8px 10px; border-bottom: 1px solid #1f2937; font-size: 13px; }
+        th { text-align: left; color: #cbd5e1; }
+        td.text-right { text-align: right; }
+        .totals { margin-top: 10px; display: flex; gap: 16px; justify-content: flex-end; color: #cbd5e1; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>{{ title }}</h1>
+        <div class="meta">Organization: {{ organization }} • {{ filters.start_date|date:"Y-m-d" }} to {{ filters.end_date|date:"Y-m-d" }}</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Account</th>
+                    <th>Journal #</th>
+                    <th>Reference</th>
+                    <th>Description</th>
+                    <th class="text-right">Debit</th>
+                    <th class="text-right">Credit</th>
+                    <th class="text-right">Balance</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for line in lines %}
+                <tr>
+                    <td>{{ line.date|date:"Y-m-d" }}</td>
+                    <td>{{ line.account_code }} {{ line.account_name }}</td>
+                    <td>{{ line.journal_no }}</td>
+                    <td>{{ line.reference }}</td>
+                    <td>{{ line.description }}</td>
+                    <td class="text-right">{{ line.debit }}</td>
+                    <td class="text-right">{{ line.credit }}</td>
+                    <td class="text-right">{{ line.running_balance|default:line.balance }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="totals">
+            <div><strong>Debit</strong> {{ totals.total_debit }}</div>
+            <div><strong>Credit</strong> {{ totals.total_credit }}</div>
+            <div><strong>Ending</strong> {{ totals.ending_balance }}</div>
+        </div>
+    </div>
+</body>
+</html>

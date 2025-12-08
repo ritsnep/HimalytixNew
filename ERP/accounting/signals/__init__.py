@@ -175,6 +175,7 @@ def create_default_voucher_config(sender, instance, created, **kwargs):
             "show_dimensions": True,
             "allow_multiple_currencies": False,
             "require_line_description": True,
-            "default_currency": getattr(instance.organization, 'base_currency_code_id', 'USD'),
+            # Ensure a 3-letter code string is used here; fallback to USD if not set.
+            "default_currency": getattr(instance.organization, 'base_currency_code_id', None) or 'USD',
         },
     )

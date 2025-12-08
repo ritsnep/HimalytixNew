@@ -58,9 +58,17 @@ class BootstrapFormMixin(forms.Form):
                 except Exception:
                     # If imports or introspection fail, gracefully continue
                     pass
-                # Set the initial value to base currency if no explicit initial is set
-                if base_currency and (self.initial.get(name) is None) and (field.initial in (None, '')):
-                    self.initial[name] = base_currency
+                # Set the initial value to base currency if no explicit initial is set.
+                # Normalize Currency instance -> currency_code (string) so tests and
+                # code relying on form.initial see the PK value rather than a model
+                # instance. Only set the initial when the caller hasn't provided
+                # an explicit initial in the form instantiation.
+                if base_currency and (self.initial.get(name) is None):
+                    # If base_currency is a model instance, use its PK (currency_code)
+                    if hasattr(base_currency, 'currency_code'):
+                        self.initial[name] = base_currency.currency_code
+                    else:
+                        self.initial[name] = base_currency
 
     def _apply_ui_schema(self, header_schema: dict):
         """Apply a header schema (dict mapping field names to config) to an
