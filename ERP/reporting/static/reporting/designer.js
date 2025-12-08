@@ -79,6 +79,13 @@
       fromElement: false,
       storageManager: false,
       noticeOnUnload: true,
+      panels: { defaults: [] },
+      blockManager: {
+        appendTo: options.blockContainer || null,
+      },
+      styleManager: {
+        appendTo: options.styleContainer || null,
+      },
       canvas: {
         styles: [
           "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css",
@@ -92,6 +99,9 @@
     if (options.templateHtml) {
       editor.setComponents(options.templateHtml);
     }
+    // Ensure a white canvas background
+    const css = ".gjs-cv-canvas, .gjs-frame { background: #ffffff !important; }";
+    editor.addComponents(`<style>${css}</style>`);
 
     editor.Commands.add("save-report-template", {
       run: function () {
