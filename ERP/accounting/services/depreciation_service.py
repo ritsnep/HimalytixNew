@@ -50,7 +50,7 @@ class DepreciationService:
             period=self.journal_type.organization.fiscal_years.filter(is_current=True).first().periods.filter(status='open').first(),
             journal_date=period_date,
             description=f"Depreciation for {period_date:%B %Y}",
-            currency_code=self.journal_type.organization.base_currency_code or 'USD',
+            currency_code=getattr(self.journal_type.organization, 'base_currency_code_id', 'USD') or 'USD',
             exchange_rate=Decimal('1'),
             status='draft',
             created_by=self.user,

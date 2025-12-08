@@ -7,6 +7,13 @@ Contact: themesdesign.in@gmail.com
 File: Main Css File
 */
 @import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap");
+
+/* Define CSS Custom Properties (variables) for consistent spacing and layout values */
+:root {
+  --header-height: 70px; /* Assuming 70px is a common header height */
+  --base-spacing: 24px;  /* A foundational spacing unit for the application */
+  --footer-height: 60px; /* Assuming 60px is a common footer height or bottom margin */
+}
 body[data-layout-mode=dark] {
   background-color: #191e22;
   color: #ced4da;
@@ -137,7 +144,21 @@ body[data-layout-mode=dark] .layout-mode-light {
   }
 }
 .page-content {
-  padding: calc(70px + 24px) calc(24px / 2) 60px calc(24px / 2);
+  /*
+   * Improved padding for readability and maintainability.
+   * Uses pre-calculated values and CSS custom properties for consistency.
+   *
+   * Original: padding: calc(70px + 24px) calc(24px / 2) 60px calc(24px / 2);
+   *
+   * Top padding: var(--header-height) + var(--base-spacing) = 70px + 24px = 94px
+   * Right padding: var(--base-spacing) / 2 = 24px / 2 = 12px
+   * Bottom padding: var(--footer-height) = 60px
+   * Left padding: var(--base-spacing) / 2 = 24px / 2 = 12px
+   */
+  padding: calc(var(--header-height) + var(--base-spacing))
+           calc(var(--base-spacing) / 2)
+           var(--footer-height)
+           calc(var(--base-spacing) / 2);
 }
 
 .header-item {

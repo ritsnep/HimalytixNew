@@ -82,6 +82,24 @@ class VoucherFormFactory:
             f"(instance: {instance.id if instance else 'None'})"
         )
 
+        # If a VoucherModeConfig exists for this organization+journal_type,
+        # include its ui_schema header as `ui_schema` so the form can apply
+        # runtime overrides (labels, placeholders, hidden/disabled fields).
+        try:
+            from accounting.models import VoucherModeConfig
+            if organization and journal_type:
+                cfg = VoucherModeConfig.objects.filter(
+                    organization=organization,
+                    journal_type__code=journal_type
+                ).first()
+                if cfg:
+                    ui = cfg.resolve_ui()
+                    if isinstance(ui, dict) and 'header' in ui:
+                        form_kwargs['ui_schema'] = ui['header']
+        except Exception:
+            # Don't fail form creation if config lookup errors; log and continue
+            logger.exception("Failed to load VoucherModeConfig for form schema")
+
         return JournalForm(**form_kwargs)
 
     @staticmethod
@@ -130,7 +148,51 @@ class VoucherFormFactory:
             f"(prefix: {prefix}, instance: {instance.id if instance else 'None'})"
         )
 
+        # Attach line-level ui_schema if a voucher config exists for this org
+        try:
+            from accounting.models import VoucherModeConfig
+            if organization and kwargs.get('journal_type'):
+                cfg = VoucherModeConfig.objects.filter(
+                    organization=organization,
+                    journal_type__code=kwargs.get('journal_type')
+                ).first()
+            elif organization and instance and getattr(instance, 'journal', None):
+                # If instance has a parent journal, try its journal_type
+                j_type = getattr(getattr(instance, 'journal', None), 'journal_type', None)
+                cfg = VoucherModeConfig.objects.filter(organization=organization, journal_type=j_type).first()
+            else:
+                cfg = None
+            if cfg:
+                ui = cfg.resolve_ui()
+                if isinstance(ui, dict) and 'lines' in ui:
+                    form_kwargs['ui_schema'] = ui['lines']
+        except Exception:
+            logger.exception("Failed to load VoucherModeConfig for line form schema")
+
         return JournalLineForm(**form_kwargs)
+
+
+def get_voucher_ui_header(organization, journal_type=None):
+    """Return the header portion of a VoucherModeConfig.ui_schema if it exists.
+
+    Fallbacks:
+      1) If journal_type specified, find voucher config for organization+journal_type
+      2) Else, pick `is_default` config for organization
+      3) Else, return None
+    """
+    try:
+        from accounting.models import VoucherModeConfig
+        cfg = None
+        if organization and journal_type:
+            cfg = VoucherModeConfig.objects.filter(organization=organization, journal_type__code=journal_type).first()
+        if not cfg and organization:
+            cfg = VoucherModeConfig.objects.filter(organization=organization, is_default=True).first()
+        if cfg:
+            ui = cfg.resolve_ui()
+            return ui.get('header') if isinstance(ui, dict) else None
+    except Exception:
+        pass
+    return None
 
     @staticmethod
     def get_journal_line_formset(
@@ -138,6 +200,7 @@ class VoucherFormFactory:
         instance: Optional[Journal] = None,
         data: Optional[Dict] = None,
         files: Optional[Dict] = None,
+        journal_type: Optional[str] = None,
         **kwargs
     ) -> BaseFormSet:
         """
@@ -173,7 +236,7 @@ class VoucherFormFactory:
             ... )
         """
         formset_kwargs = {
-            'form_kwargs': {'organization': organization},
+            'form_kwargs': {'organization': organization, 'journal_type': journal_type},
             **kwargs
         }
 
@@ -299,7 +362,7 @@ class VoucherFormFactory:
 
         initial = {
             'journal_date': timezone.now().date(),
-            'currency_code': 'USD',
+            'currency_code': getattr(organization, 'base_currency_code_id', 'USD') if organization else 'USD',
             'exchange_rate': 1.0,
             'status': 'draft',
         }

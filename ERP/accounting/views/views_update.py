@@ -233,7 +233,7 @@ class DepartmentUpdateView(LoginRequiredMixin, UpdateView):
 class ChartOfAccountUpdateView(PermissionRequiredMixin, LoginRequiredMixin, UpdateView):
     model = ChartOfAccount
     form_class = ChartOfAccountForm
-    template_name = 'accounting/chart_of_accounts_form.html'
+    template_name = 'accounting/chart_of_accounts_form_enhanced.html'
     success_url = reverse_lazy('accounting:chart_of_accounts_list')
     permission_required = ('accounting', 'chartofaccount', 'change')
 
@@ -262,7 +262,7 @@ class ChartOfAccountUpdateView(PermissionRequiredMixin, LoginRequiredMixin, Upda
                     )
                 
                 messages.success(self.request, "Chart of Account updated successfully.")
-                if self.request.POST.get('action') == 'save_new':
+                if self.request.POST.get('save_and_new') or self.request.POST.get('action') == 'save_new':
                     return redirect('accounting:chart_of_accounts_create')
                 return response
                 
@@ -286,14 +286,21 @@ class ChartOfAccountUpdateView(PermissionRequiredMixin, LoginRequiredMixin, Upda
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['form_title'] = 'Edit Chart of Account'
-        context['back_url'] = reverse('accounting:chart_of_accounts_list')
-        context['breadcrumbs'] = [
-            ('Chart of Accounts', reverse('accounting:chart_of_accounts_list')),
-            ('Edit Chart of Account', None)
-        ]
-        # Set the correct post URL for the form
-        context['form_post_url'] = reverse('accounting:chart_of_accounts_update', kwargs={'pk': self.object.pk})
+        context.update({
+            'form_title': 'Edit Chart of Account',
+            'page_title': 'Chart of Accounts',
+            'list_url': reverse('accounting:chart_of_accounts_list'),
+            'back_url': reverse('accounting:chart_of_accounts_list'),
+            'breadcrumbs': [
+                ('Chart of Accounts', reverse('accounting:chart_of_accounts_list')),
+                ('Edit Chart of Account', None)
+            ],
+            # Point the enhanced form to the update endpoint
+            'form_post_url': reverse('accounting:chart_of_accounts_update', kwargs={'pk': self.object.pk}),
+            # Keep the enhanced layout but hide bulk/demo tabs for edit mode
+            'enable_bulk_import': False,
+            'enable_templates': False,
+        })
         return context
 
     def handle_no_permission(self):

@@ -213,10 +213,12 @@ class JournalLineForm(UDFFormMixin, BootstrapFormMixin, forms.ModelForm):
             self.fields['tax_code'].queryset = TaxCode.objects.none()
             self.fields['txn_currency'].queryset = Currency.objects.none()
 
-        # Set default values
+        # Set default values; prefer explicit initial or organization base currency
         if not self.instance.pk:
             self.fields['fx_rate'].initial = 1.0
-            self.fields['txn_currency'].initial = 'USD'
+            if not self.initial.get('txn_currency'):
+                base_cur = getattr(self.organization, 'base_currency_code', None) or getattr(self.organization, 'base_currency_code_id', None) if self.organization else None
+                self.fields['txn_currency'].initial = base_cur or 'USD'
 
     def clean_debit_amount(self) -> Optional[Decimal]:
         """

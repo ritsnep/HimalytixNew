@@ -49,13 +49,13 @@ class SalesInvoiceService:
 
     def _resolve_exchange_rate(self, organization, currency, document_date) -> Decimal:
         """Pull the latest active FX rate to the organization's base currency."""
-        if not currency or currency.currency_code == getattr(organization, "base_currency_code", None):
+        if not currency or currency.currency_code == getattr(organization, "base_currency_code_id", None):
             return Decimal('1')
         rate_value = (
             CurrencyExchangeRate.objects.filter(
                 organization=organization,
                 from_currency=currency,
-                to_currency__currency_code=getattr(organization, "base_currency_code", None),
+                to_currency__currency_code=getattr(organization, "base_currency_code_id", None),
                 rate_date__lte=document_date,
                 is_active=True,
             )

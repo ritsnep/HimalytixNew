@@ -64,7 +64,8 @@ class VoucherCreateView(BaseVoucherView):
         )
 
         line_formset = VoucherFormFactory.get_journal_line_formset(
-            organization=organization
+            organization=organization,
+            journal_type=journal_type,
         )
 
         context = self.get_context_data(
@@ -116,6 +117,7 @@ class VoucherCreateView(BaseVoucherView):
 
         line_formset = VoucherFormFactory.get_journal_line_formset(
             organization=organization,
+            journal_type=journal_type,
             data=request.POST,
             files=request.FILES
         )

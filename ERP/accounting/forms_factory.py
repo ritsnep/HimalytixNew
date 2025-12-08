@@ -19,6 +19,14 @@ class FormBuilder:
         self.prefix = prefix
         self.phase = phase
         self.initial = initial
+        # Default dynamic form 'currency' initial to organization's base currency
+        try:
+            if self.initial is None and self.organization is not None:
+                base_cur = getattr(self.organization, 'base_currency_code_id', None) or getattr(self.organization, 'base_currency_code', None)
+                if base_cur:
+                    self.initial = {'currency': base_cur}
+        except Exception:
+            pass
         self.disabled_fields = disabled_fields or []
         self.kwargs = kwargs
 
@@ -65,10 +73,23 @@ class FormBuilder:
 
         if field_type == 'select':
             choices = config.get('choices', [])
-            # Ensure choices are in (value, label) format
-            if choices and not isinstance(choices[0], (list, tuple)):
-                choices = [(c, c) for c in choices]
-            field_kwargs['choices'] = choices
+            from django.apps import apps
+            if isinstance(choices, str):
+                # Treat as a model reference, use ModelChoiceField with queryset
+                try:
+                    model = apps.get_model('accounting', choices)
+                    field_class = forms.ModelChoiceField
+                    field_kwargs['queryset'] = model.objects.filter(is_active=True)
+                    # Keep a simple to_field_name if present
+                    field_kwargs['to_field_name'] = getattr(model._meta.pk, 'name', 'id')
+                except LookupError:
+                    # Fall back to an empty choice set
+                    field_kwargs['choices'] = []
+            else:
+                # Ensure choices are in (value, label) format
+                if choices and not isinstance(choices[0], (list, tuple)):
+                    choices = [(c, c) for c in choices]
+                field_kwargs['choices'] = choices
         elif field_type == 'account':
             # For ModelChoiceField, queryset is required. Assuming 'choices' in schema provides model name.
             from django.apps import apps
@@ -83,6 +104,16 @@ class FormBuilder:
                     field_class = forms.CharField # Fallback to CharField if model not found
             else:
                 field_class = forms.CharField # Fallback if no model name provided
+
+        # Apply field-level schema flags (hidden/disabled/placeholder)
+        if config.get('hidden'):
+            from django.forms import widgets
+            field_kwargs['widget'] = widgets.HiddenInput(attrs=attrs)
+        if config.get('disabled'):
+            field_kwargs['disabled'] = True
+        placeholder = config.get('placeholder')
+        if placeholder:
+            attrs['placeholder'] = placeholder
 
         # Filter out None values
         field_kwargs = {k: v for k, v in field_kwargs.items() if v is not None}

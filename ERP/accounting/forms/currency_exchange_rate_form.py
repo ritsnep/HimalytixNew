@@ -9,6 +9,16 @@ class CurrencyExchangeRateForm(BootstrapFormMixin, forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.organization = kwargs.pop('organization', None)
         super().__init__(*args, **kwargs)
+        # When creating a new exchange rate, default the `from_currency` to
+        # the organization's base currency but leave the `to_currency` empty
+        # so users explicitly choose the target currency.
+        if self.organization and not self.instance.pk:
+            base_cur = getattr(self.organization, 'base_currency_code', None) or getattr(self.organization, 'base_currency_code_id', None)
+            if base_cur and 'from_currency' in self.fields and not self.initial.get('from_currency'):
+                self.initial['from_currency'] = base_cur
+            if 'to_currency' in self.fields:
+                # Clear default to encourage explicit selection
+                self.initial['to_currency'] = None
 
     class Meta:
         model = CurrencyExchangeRate

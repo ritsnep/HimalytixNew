@@ -650,6 +650,7 @@ class Currency(models.Model):
     currency_name = models.CharField(max_length=100)
     symbol = models.CharField(max_length=10)
     is_active = models.BooleanField(default=True)
+    isdefault = models.BooleanField(default=False)
     archived_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -662,9 +663,18 @@ class Currency(models.Model):
         db_table = 'currency'
         verbose_name_plural = "Currencies"
         ordering = ['currency_code']
+        constraints = [
+            UniqueConstraint(fields=['isdefault'], condition=Q(isdefault=True), name='unique_default_currency'),
+        ]
 
     def __str__(self):
         return f"{self.currency_code} - {self.currency_name}"
+
+    def save(self, *args, **kwargs):
+        # Ensure only one global default currency at application level as well.
+        if self.isdefault:
+            Currency.objects.filter(isdefault=True).exclude(pk=self.pk).update(isdefault=False)
+        super().save(*args, **kwargs)
 
 
 code_validator = RegexValidator(r'^\d{4}(?:\.\d{2})*$', 'Invalid COA code format.')

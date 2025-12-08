@@ -50,7 +50,8 @@ def invoice_create(request):
     ).order_by("rate")
 
     currencies = Currency.objects.filter(is_active=True).order_by("currency_code")
-    default_currency = currencies.filter(currency_code=organization.base_currency_code).first() or currencies.first()
+    # `organization.base_currency_code` is now a FK to Currency, so prefer that instance.
+    default_currency = getattr(organization, 'base_currency_code', None) or currencies.first()
 
     payment_terms = PaymentTerm.objects.filter(
         organization=organization,
@@ -247,7 +248,8 @@ def invoice_save(request):
         except Exception:
             messages.warning(request, "Could not parse due date; using payment term defaults.")
 
-    currency_code = request.POST.get('currency') or organization.base_currency_code
+    # request may post a currency code; otherwise use organization's base currency FK
+    currency_code = request.POST.get('currency') or getattr(organization, 'base_currency_code_id', None)
     currency = Currency.objects.filter(currency_code=currency_code).first()
     if not currency:
         messages.error(request, "Please configure at least one currency before creating invoices.")

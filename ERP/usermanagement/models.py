@@ -39,7 +39,15 @@ class Organization(models.Model):
     fiscal_year_start_month = models.SmallIntegerField(default=1)
     fiscal_year_start_day = models.SmallIntegerField(default=1)
     fiscal_year_start = models.DateField(null=True, blank=True)
-    base_currency_code = models.CharField(max_length=3, default="USD")
+    base_currency_code = models.ForeignKey(
+        'accounting.Currency',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='base_currency_code',
+        to_field='currency_code',
+        related_name='organizations',
+    )
     address = models.TextField(blank=True, default="")
     vertical_type = models.CharField(
         max_length=20,

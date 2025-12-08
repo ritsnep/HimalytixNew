@@ -114,7 +114,10 @@ class JournalHeaderFormView(UserOrganizationMixin, View):
     template_name = 'accounting/partials/journal_header_form.html'
 
     def get(self, request, *args, **kwargs):
-        form = JournalForm(organization=self.get_organization())
+        from accounting.forms.form_factory import get_voucher_ui_header
+        organization = self.get_organization()
+        ui_schema = get_voucher_ui_header(organization)
+        form = JournalForm(organization=organization, ui_schema=ui_schema)
         return render(request, self.template_name, {'form': form})
 
 
@@ -145,7 +148,10 @@ class JournalEntryRowTemplateView(UserOrganizationMixin, View):
 class JournalUpdateLineView(UserOrganizationMixin, View):
 
     def post(self, request, *args, **kwargs):
-        form = JournalForm(request.POST, organization=self.get_organization())
+        from accounting.forms.form_factory import get_voucher_ui_header
+        organization = self.get_organization()
+        ui_schema = get_voucher_ui_header(organization)
+        form = JournalForm(request.POST, organization=organization, ui_schema=ui_schema)
         formset = JournalLineFormSet(request.POST, queryset=JournalLine.objects.none(), prefix='lines', form_kwargs={'organization': self.get_organization()})
 
         if form.is_valid() and formset.is_valid():

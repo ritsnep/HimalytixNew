@@ -225,8 +225,8 @@ class ChartOfAccountCreateView(AdvancedFormMixin, PermissionRequiredMixin, UserO
                     )
                 
                 messages.success(self.request, "Chart of Account created successfully.")
-                # Support Save & New button
-                if self.request.POST.get('action') == 'save_new':
+                # Support Save & New button from enhanced UI
+                if self.request.POST.get('save_and_new') or self.request.POST.get('action') == 'save_new':
                     return redirect('accounting:chart_of_accounts_create')
                 return response
                 

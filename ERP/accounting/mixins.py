@@ -35,6 +35,28 @@ class UserOrganizationMixin:
             kwargs["organization"] = organization
         return kwargs
 
+    def get_context_data(self, **kwargs):
+        """Ensure views have access to the current organization's default currency.
+
+        This method intentionally calls super().get_context_data when available,
+        and falls back to the provided kwargs when not. It then injects
+        `default_currency` (Currency instance or None) and
+        `default_currency_code` (raw currency code string) into the context.
+        """
+        # Try to call parent context builder if present
+        try:
+            context = super().get_context_data(**kwargs)
+        except Exception:
+            context = dict(**kwargs)
+
+        organization = self.get_organization()
+        if organization:
+            # `base_currency_code` is a FK to Currency; `_id` gives raw code
+            context.setdefault('default_currency', getattr(organization, 'base_currency_code', None))
+            context.setdefault('default_currency_code', getattr(organization, 'base_currency_code_id', None))
+
+        return context
+
     def get_queryset(self):
         queryset = super().get_queryset()
         organization = self.get_organization()

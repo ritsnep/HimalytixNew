@@ -207,6 +207,28 @@ body.right-bar-enabled .main-content { margin-right: 0; width: calc(100% - 250px
   .page-content { padding-left: 12px; padding-right: 12px; }
 }
 
+/* Respect sidebar toggle states (lg/md/sm) */
+body[data-sidebar-size="md"] .vertical-menu {
+  width: 160px;
+}
+body[data-sidebar-size="md"] .main-content {
+  margin-left: 160px;
+  width: calc(100% - 160px);
+}
+body[data-sidebar-size="sm"] .vertical-menu {
+  width: 70px;
+}
+body[data-sidebar-size="sm"] .main-content {
+  margin-left: 70px;
+  width: calc(100% - 70px);
+}
+body[data-sidebar-size="sm"].right-bar-enabled .main-content {
+  width: calc(100% - 70px);
+}
+body[data-sidebar-size="md"].right-bar-enabled .main-content {
+  width: calc(100% - 160px);
+}
+
 /* Tab-bar is sticky so it doesn't cover page content */
 #tab-bar {
   position: sticky;

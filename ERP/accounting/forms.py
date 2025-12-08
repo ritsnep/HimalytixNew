@@ -499,6 +499,14 @@ class ChartOfAccountForm(BootstrapFormMixin, forms.ModelForm):
                                for currency in Currency.objects.filter(is_active=True)]
             self.fields['currency'].widget = forms.Select(attrs={'class': 'form-select'})
             self.fields['currency'].choices = currency_choices
+            # Default to organization's base currency when available
+            try:
+                base_cur = getattr(self.organization, 'base_currency_code', None)
+            except Exception:
+                base_cur = None
+            if base_cur:
+                # For FK field initial can be set to the instance
+                self.fields['currency'].initial = base_cur
         # Always set organization on the instance for validation
         if self.organization and not getattr(self.instance, 'organization_id', None):
             self.instance.organization = self.organization
@@ -1043,6 +1051,14 @@ class VoucherModeConfigForm(BootstrapFormMixin, forms.ModelForm):
             self.currency_warning = "No active currencies found. Please add currencies in the system settings."
         self.fields['default_currency'].choices = currency_choices
 
+        # Auto-select organization's base currency if available
+        try:
+            base_cur = getattr(self.organization, 'base_currency_code', None)
+        except Exception:
+            base_cur = None
+        if base_cur:
+            self.fields['default_currency'].initial = base_cur
+
         # Fix: use self.organization instead of undefined variable
         if self.organization:
             self.fields['journal_type'].queryset = JournalType.objects.filter(
@@ -1123,6 +1139,13 @@ class JournalForm(BootstrapFormMixin, forms.ModelForm):
                 status='open'
             )
             self.fields['currency_code'].choices = get_active_currency_choices()
+            # Default journal currency to organization's base currency code
+            try:
+                base_code = getattr(self.organization, 'base_currency_code_id', None)
+            except Exception:
+                base_code = None
+            if base_code:
+                self.fields['currency_code'].initial = base_code
 
     def clean_journal_date(self):
         journal_date = self.cleaned_data.get('journal_date')
@@ -1209,6 +1232,13 @@ class JournalLineForm(BootstrapFormMixin, forms.ModelForm):
                                 for c in Currency.objects.filter(is_active=True)]
             if 'currency_code' in self.fields:
                 self.fields['currency_code'].choices = [('', '---------')] + currency_choices
+                # Default journal line currency to organization's base currency code
+                try:
+                    base_code = getattr(organization, 'base_currency_code_id', None)
+                except Exception:
+                    base_code = None
+                if base_code:
+                    self.fields['currency_code'].initial = base_code
 
         # Custom validation: ensure either debit or credit is present, but not both or neither.
         # This will be validated server-side.
@@ -1532,6 +1562,15 @@ class VendorForm(BootstrapFormMixin, forms.ModelForm):
             self.fields['expense_account'].queryset = ChartOfAccount.objects.filter(
                 organization=self.organization,
             )
+        # Set default currency queryset and initial
+        if 'default_currency' in self.fields:
+            self.fields['default_currency'].queryset = Currency.objects.filter(is_active=True)
+            try:
+                base_cur = getattr(self.organization, 'base_currency_code', None)
+            except Exception:
+                base_cur = None
+            if base_cur:
+                self.fields['default_currency'].initial = base_cur
 
 
 class CustomerForm(BootstrapFormMixin, forms.ModelForm):
@@ -1589,6 +1628,15 @@ class CustomerForm(BootstrapFormMixin, forms.ModelForm):
                 self.fields[field_name].queryset = ChartOfAccount.objects.filter(
                     organization=self.organization,
                 )
+        # Set default currency queryset and initial for customer
+        if 'default_currency' in self.fields:
+            self.fields['default_currency'].queryset = Currency.objects.filter(is_active=True)
+            try:
+                base_cur = getattr(self.organization, 'base_currency_code', None)
+            except Exception:
+                base_cur = None
+            if base_cur:
+                self.fields['default_currency'].initial = base_cur
 
 
 class DimensionForm(BootstrapFormMixin, forms.ModelForm):
@@ -1666,6 +1714,15 @@ class SalesInvoiceForm(BootstrapFormMixin, forms.ModelForm):
             self.fields['warehouse'].queryset = Warehouse.objects.filter(
                 organization=self.organization, is_active=True
             )
+        # Ensure currency queryset and initial default
+        if 'currency' in self.fields:
+            self.fields['currency'].queryset = Currency.objects.filter(is_active=True)
+            try:
+                base_cur = getattr(self.organization, 'base_currency_code', None)
+            except Exception:
+                base_cur = None
+            if base_cur:
+                self.fields['currency'].initial = base_cur
 
     def clean(self):
         cleaned = super().clean()

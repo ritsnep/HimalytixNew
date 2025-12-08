@@ -131,6 +131,13 @@
         {% endblock content %}
         </main>
     </div>
+    {% if messages %}
+      <script id="django-messages-json" type="application/json">[
+      {% for message in messages %}
+        {"level": "{{ message.tags|default:'info' }}", "text": "{{ message|escapejs }}"}{% if not forloop.last %},{% endif %}
+      {% endfor %}
+      ]</script>
+    {% endif %}
     <!-- END layout-wrapper -->
 
 
@@ -246,6 +253,40 @@
             const type = evt.detail.type || 'success';
             toastr[type](message);
         });
+
+        // Django messages -> toastr
+        (function() {
+          var node = document.getElementById('django-messages-json');
+          if (!node || !window.toastr) return;
+          try {
+            var msgs = JSON.parse(node.textContent || '[]') || [];
+            msgs.forEach(function(msg) {
+              var level = (msg.level || 'info').split(' ')[0];
+              if (typeof toastr[level] === 'function') {
+                toastr[level](msg.text);
+              } else {
+                toastr.info(msg.text);
+              }
+            });
+          } catch (e) {
+            // Non-blocking
+          }
+        })();
+
+        // Auto spinner on form submit buttons (opt out with data-no-spinner)
+        (function() {
+          document.addEventListener('submit', function(evt) {
+            var form = evt.target;
+            if (form.matches('[data-no-spinner]')) return;
+            var btn = form.querySelector('button[type="submit"]:not([data-no-spinner])');
+            if (!btn || btn.dataset.loading === 'true') return;
+            btn.dataset.loading = 'true';
+            btn.dataset.originalHtml = btn.innerHTML;
+            var label = btn.getAttribute('data-loading-text') || 'Processing...';
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm align-middle me-2" role="status" aria-hidden="true"></span>' + label;
+            btn.disabled = true;
+          }, { capture: true });
+        })();
 
         // Maintenance + cache-busting client helper.
         (function() {

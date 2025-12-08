@@ -203,6 +203,8 @@ TEMPLATES = [
                 'dashboard.context_processors.ui_metadata_context',
                     # Inject active organization into templates globally
                     'usermanagement.context_processors.active_organization',
+                    # Inject accounting default currency into all templates
+                    'accounting.context_processors.default_currency',
             ],
             # Enable cached template loader when not in DEBUG
             **({'loaders': [

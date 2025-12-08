@@ -123,7 +123,8 @@ class VoucherEditView(VoucherDetailMixin, BaseVoucherView):
 
         line_formset = VoucherFormFactory.get_journal_line_formset(
             organization=organization,
-            instance=journal
+            instance=journal,
+            journal_type=(journal.journal_type.code if journal.journal_type else None),
         )
 
         context = self.get_context_data(
@@ -189,6 +190,7 @@ class VoucherEditView(VoucherDetailMixin, BaseVoucherView):
         line_formset = VoucherFormFactory.get_journal_line_formset(
             organization=organization,
             instance=journal,
+            journal_type=(journal.journal_type.code if journal.journal_type else None),
             data=request.POST,
             files=request.FILES
         )

@@ -1,6 +1,7 @@
 <!-- Single Entry Form Partial -->
+{% url 'accounting:chart_of_accounts_create' as coa_create_url %}
 <form id="coa-single-form" method="post" novalidate
-      hx-post="{% url 'accounting:chart_of_accounts_create' %}"
+    hx-post="{{ form_post_url|default:coa_create_url }}"
       hx-trigger="submit"
       hx-target="#coa-single-form"
       hx-swap="outerHTML"

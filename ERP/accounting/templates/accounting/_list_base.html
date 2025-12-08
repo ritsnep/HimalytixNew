@@ -60,20 +60,61 @@
             z-index: 1050;
             transition: opacity 0.2s;
         }
+
+        /* Layout tightening for list pages */
+        .list-layout-shell {
+            position: relative;
+            min-height: 100vh;
+        }
+        .page-content--list {
+            padding: calc(70px + 12px) 12px 32px 12px;
+        }
+        @media (min-width: 992px) {
+            .page-content--list {
+                padding-left: 20px;
+                padding-right: 20px;
+            }
+        }
+        @media (max-width: 767.98px) {
+            .page-content--list {
+                padding: calc(70px + 8px) 10px 28px 10px;
+            }
+        }
+        .list-layout-shell .container-fluid {
+            padding-left: 0;
+            padding-right: 0;
+        }
+        .list-card {
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+            border: 1px solid #e5e7eb;
+        }
+        .list-layout-footer .footer {
+            position: static;
+            left: auto;
+            right: auto;
+            bottom: auto;
+            height: auto;
+            padding: 12px 20px;
+            margin: 0;
+        }
+        .list-layout-shell .loading-overlay {
+            position: fixed;
+        }
     </style>
 {% endblock extra_css %}
 
 {% block content %}
-<div class="loading-overlay" style="display: none;">
-    <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading...</span>
+<div class="list-layout-shell">
+    <div class="loading-overlay" style="display: none;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
     </div>
-</div>
-<div id="toast-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1055"></div>
+    <div id="toast-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1055"></div>
     <div class="main-content">
-        <div class="page-content">
+        <div class="page-content page-content--list">
             <div class="container-fluid">
-                <div class="card mb-0">
+                <div class="card list-card mb-3">
                     <div class="card-body pb-2 pt-3">
                         <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
                             <div class="d-flex flex-column gap-1">
@@ -86,8 +127,7 @@
                                         {% for name, url in breadcrumbs %}
                                             {% if not forloop.last %}
                                                 <li class="breadcrumb-item"><a href="{{ url }}">{{ name }}</a></li>
-                                            {% else %}
-                                                <li class="breadcrumb-item active">{{ name }}</li>
+                                            
                                             {% endif %}
                                         {% endfor %}
                                     </ol>
@@ -127,7 +167,10 @@
             </div>
         </div>
     </div>
-    {% include 'partials/footer.html' %}
+    <div class="list-layout-footer">
+        {% include 'partials/footer.html' %}
+    </div>
+</div>
 {% endblock content %}
 
 {% block extra_js %}

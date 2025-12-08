@@ -1,10 +1,6 @@
 {% comment %}Render a single filter block based on kind{% endcomment %}
-{% if f.kind == 'search' %}
-<div class="col-md-3">
-    <label for="smart-{{ f.name }}" class="form-label">{{ f.label }}</label>
-    <input id="smart-{{ f.name }}" name="{{ f.name }}" type="text" value="{{ f.value }}" class="form-control form-control-sm" placeholder="Search">
-</div>
-{% elif f.kind == 'choice' %}
+
+{% if f.kind == 'choice' %}
 <div class="col-md-2">
     <label for="smart-{{ f.name }}" class="form-label">{{ f.name|capfirst }}</label>
     <select id="smart-{{ f.name }}" name="{{ f.name }}" class="form-select form-select-sm">
@@ -30,7 +26,13 @@
         <option value="">All</option>
         {% if currency_choices %}
             {% for c in currency_choices %}
-                <option value="{{ c.pk }}" {% if f.value|add:"" == c.pk|add:"" %}selected{% endif %}>{{ c.currency_code }} - {{ c.currency_name }}</option>
+                {% comment %}Select when filter value matches OR when no filter value and a default_currency is provided{% endcomment %}
+                <option value="{{ c.pk }}"
+                    {% if f.value|add:"" == c.pk|add:"" %}selected{% elif not f.value and default_currency %}
+                        {% if c.currency_code == default_currency.currency_code or c.currency_code == default_currency %}selected{% endif %}
+                    {% endif %}>
+                    {{ c.currency_code }} - {{ c.currency_name }}
+                </option>
             {% endfor %}
         {% endif %}
     </select>
