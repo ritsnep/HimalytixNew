@@ -14,12 +14,12 @@ Classes:
     - ReportExportView: Export analytics as PDF/Excel
 """
 
+from django.apps import apps
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import TemplateView, View, DetailView, ListView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, HttpResponseBadRequest
 from django.views.decorators.http import require_http_methods
-from django.views.decorators.ajax import ajax_required
 from django.utils.decorators import method_decorator
 from django.urls import reverse_lazy
 from django.db.models import Sum, Count, Q, F, Value
@@ -30,11 +30,35 @@ from datetime import datetime, timedelta, date
 import json
 import csv
 from io import StringIO, BytesIO
+from functools import wraps
 
-from accounting.models import Organization, Account, Journal, JournalLine, ApprovalLog
+from accounting.models import Organization, Account, Journal, JournalLine
 from accounting.services.analytics_service import (
     AnalyticsService, FinancialMetrics, PerformanceMetrics, TrendAnalyzer
 )
+from accounting.services.payable_dashboard_service import PayableDashboardService
+from accounting.services.receivable_dashboard_service import ReceivableDashboardService
+
+
+def ajax_required(view_func):
+    """Ensure only AJAX/HX requests are allowed."""
+
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        if request.headers.get('x-requested-with') != 'XMLHttpRequest':
+            if request.headers.get('hx-request') == 'true':
+                return view_func(request, *args, **kwargs)
+            return HttpResponseBadRequest('AJAX request required.')
+        return view_func(request, *args, **kwargs)
+
+    return _wrapped
+
+
+def _get_approval_log_model():
+    try:
+        return apps.get_model('accounting', 'ApprovalLog')
+    except LookupError:
+        return None
 
 
 # ============================================================================
@@ -102,6 +126,70 @@ class AnalyticsDashboardView(OrganizationAccessMixin, TemplateView):
             context['error'] = str(e)
         
         return context
+
+
+class ReceivableDashboardView(OrganizationAccessMixin, TemplateView):
+    """Dedicated receivable dashboard for receivables KPIs and follow-up actions."""
+
+    template_name = 'accounting/receivable_dashboard.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        organization = self.get_organization()
+        as_of_date = self._get_date_parameter()
+
+        service = ReceivableDashboardService(organization, as_of_date)
+        rows = service.get_invoice_rows()
+        buckets = service.bucket_summary(rows)
+
+        context.update({
+            'receivable_rows': service.serialize_rows(rows),
+            'receivable_buckets': service.serialize_buckets(buckets),
+            'receivable_total': float(service.grand_total(rows)),
+            'as_of_date': as_of_date,
+        })
+        return context
+
+    def _get_date_parameter(self) -> date:
+        as_of_date = self.request.GET.get('as_of_date')
+        if isinstance(as_of_date, str):
+            try:
+                return datetime.strptime(as_of_date, '%Y-%m-%d').date()
+            except ValueError:
+                return date.today()
+        return as_of_date or date.today()
+
+
+class PayableDashboardView(OrganizationAccessMixin, TemplateView):
+    """Dedicated payable dashboard providing visibility into outstanding vendor bills."""
+
+    template_name = 'accounting/payable_dashboard.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        organization = self.get_organization()
+        as_of_date = self._get_date_parameter()
+
+        service = PayableDashboardService(organization, as_of_date)
+        rows = service.get_invoice_rows()
+        buckets = service.bucket_summary(rows)
+
+        context.update({
+            'payable_rows': service.serialize_rows(rows),
+            'payable_buckets': service.serialize_buckets(buckets),
+            'payable_total': float(service.grand_total(rows)),
+            'as_of_date': as_of_date,
+        })
+        return context
+
+    def _get_date_parameter(self) -> date:
+        as_of_date = self.request.GET.get('as_of_date')
+        if isinstance(as_of_date, str):
+            try:
+                return datetime.strptime(as_of_date, '%Y-%m-%d').date()
+            except ValueError:
+                return date.today()
+        return as_of_date or date.today()
 
 
 # ============================================================================
@@ -424,15 +512,20 @@ class PerformanceAnalyticsView(OrganizationAccessMixin, TemplateView):
             performance_data = metrics.get_performance_summary()
             
             # Get record counts
+            approval_log_model = _get_approval_log_model()
+            approval_logs = 0
+            if approval_log_model is not None:
+                approval_logs = approval_log_model.objects.filter(
+                    journal__organization=organization
+                ).count()
+
             record_stats = {
                 'journals': Journal.objects.filter(organization=organization).count(),
                 'accounts': Account.objects.filter(organization=organization).count(),
                 'journal_lines': JournalLine.objects.filter(
                     journal__organization=organization
                 ).count(),
-                'approval_logs': ApprovalLog.objects.filter(
-                    journal__organization=organization
-                ).count(),
+                'approval_logs': approval_logs,
             }
             
             context.update({
@@ -461,7 +554,14 @@ class DashboardDataAPIView(OrganizationAccessMixin, View):
         """Get dashboard data as JSON."""
         organization = request.user.organization
         metric = request.GET.get('metric', 'summary')
-        as_of_date = request.GET.get('as_of_date', date.today())
+        as_of_date = request.GET.get('as_of_date')
+        if isinstance(as_of_date, str):
+            try:
+                as_of_date = datetime.strptime(as_of_date, '%Y-%m-%d').date()
+            except ValueError:
+                as_of_date = date.today()
+        else:
+            as_of_date = as_of_date or date.today()
         
         try:
             service = AnalyticsService(organization)
@@ -474,6 +574,8 @@ class DashboardDataAPIView(OrganizationAccessMixin, View):
                 data = service.get_approval_status()
             elif metric == 'top_accounts':
                 data = service.get_top_accounts()
+            elif metric == 'receivables':
+                data = service.get_dashboard_summary(as_of_date).get('receivable_overview', {})
             elif metric == 'cash_flow':
                 analyzer = TrendAnalyzer(organization)
                 data = analyzer.get_monthly_trend(months=6)

@@ -729,7 +729,7 @@ $(document).ready(function() {
 
                 <!-- Additional Header Fields (Dynamic UDFs) -->
                 {% for field in header_form %}
-                    {% if field.name not in 'journal_date,reference_number,narration' %}
+                    {% if field.name != 'journal_date' and field.name != 'reference_number' and field.name != 'narration' %}
                     <div class="row">
                         <div class="col-md-12 mb-3">
                             <label for="{{ field.id_for_label }}">
@@ -803,7 +803,7 @@ $(document).ready(function() {
 
                         <!-- Additional Line Fields (Dynamic UDFs) -->
                         {% for field in line_form %}
-                            {% if field.name not in 'account,description,debit_amount,credit_amount,id,DELETE' %}
+                            {% if field.name != 'account' and field.name != 'description' and field.name != 'debit_amount' and field.name != 'credit_amount' and field.name != 'id' and field.name != 'DELETE' %}
                             <div class="row">
                                 <div class="col-md-12 mb-3">
                                     <label class="small mb-1">

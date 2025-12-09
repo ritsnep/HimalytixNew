@@ -37,6 +37,7 @@ from .views.views_list import (
 # Import from views.py (for reports, general views, and most list/detail views)
 from .views import views
 from .views import dashboard_views
+from .views.analytics_views import ReceivableDashboardView
 from accounting.api import dashboard_views as api_dashboard_views
 from .views.views import (
     ReportsListView, TrialBalanceView, IncomeStatementView, BalanceSheetView,
@@ -98,9 +99,12 @@ from .views import views_htmx
 from .views import payment_scheduler_views
 from .views import purchase_invoice_views
 from .views import sales_invoice_views
+from .views import delivery_note_views
+from .views import quotation_views
 from .views import ar_receipt_views
 from .views import commerce_views
 from .views import wizard
+from .views import expense_views
 from .views import views_api
 from .views.manual_journal_view import (
     ManualJournalListView,
@@ -186,6 +190,7 @@ urlpatterns = [
     path('manual-journals/<int:pk>/', ManualJournalDetailView.as_view(), name='manual_journal_detail'),
     path('manual-journals/<int:pk>/edit/', ManualJournalUpdateView.as_view(), name='manual_journal_update'),
     path('manual-journals/<int:pk>/post/', ManualJournalPostView.as_view(), name='manual_journal_post'),
+    path('expenses/new/', expense_views.ExpenseEntryCreateView.as_view(), name='expense_entry_new'),
     
     # General Ledger URLs
     path('general-ledger/', GeneralLedgerListView.as_view(), name='general_ledger_list'),
@@ -353,6 +358,7 @@ urlpatterns = [
     path('advanced-reports/ap-aging/', AccountsPayableAgingView.as_view(), name='report_ap_aging'),
     path('advanced-reports/custom/<slug:code>/', CustomReportView.as_view(), name='custom_report'),
     path('advanced-reports/export/', ReportExportView.as_view(), name='report_export'),
+    path('receivable-dashboard/', ReceivableDashboardView.as_view(), name='receivable_dashboard'),
 
     # Vendor Billing
     path('vendor-bills/new/', purchase_invoice_views.VendorBillCreateView.as_view(), name='vendor_bill_create'),
@@ -363,6 +369,19 @@ urlpatterns = [
     path('customer-payments/statement/', customer_statement_views.CustomerStatementView.as_view(), name='customer_statement'),
     path('sales-invoices/', sales_invoice_views.SalesInvoiceListView.as_view(), name='sales_invoice_list'),
     path('sales-invoices/new/', sales_invoice_views.SalesInvoiceCreateView.as_view(), name='sales_invoice_create'),
+    path('sales-invoices/<int:invoice_id>/post/', sales_invoice_views.SalesInvoicePostView.as_view(), name='sales_invoice_post'),
+    path('sales-invoices/<int:invoice_id>/print/', sales_invoice_views.SalesInvoicePrintView.as_view(), name='sales_invoice_print'),
+    path('delivery-notes/', delivery_note_views.DeliveryNoteListView.as_view(), name='delivery_note_list'),
+    path('delivery-notes/new/', delivery_note_views.DeliveryNoteCreateView.as_view(), name='delivery_note_create'),
+    path('delivery-notes/<int:pk>/print/', delivery_note_views.DeliveryNotePrintView.as_view(), name='delivery_note_print'),
+    path('delivery-notes/<int:pk>/invoice/', delivery_note_views.DeliveryNoteInvoiceCreateView.as_view(), name='delivery_note_invoice_create'),
+    path('quotations/', quotation_views.QuotationListView.as_view(), name='quotation_list'),
+    path('quotations/new/', quotation_views.QuotationCreateView.as_view(), name='quotation_create'),
+    path('quotations/<int:pk>/', quotation_views.QuotationDetailView.as_view(), name='quotation_detail'),
+    path('quotations/<int:pk>/edit/', quotation_views.QuotationUpdateView.as_view(), name='quotation_update'),
+    path('quotations/<int:pk>/convert/', quotation_views.QuotationConvertView.as_view(), name='quotation_convert'),
+    path('quotations/<int:pk>/status/', quotation_views.QuotationStatusUpdateView.as_view(), name='quotation_status'),
+    path('quotations/<int:pk>/print/', quotation_views.QuotationPrintView.as_view(), name='quotation_print'),
     path('ar-receipts/', ar_receipt_views.ARReceiptListView.as_view(), name='ar_receipt_list'),
     path('ar-receipts/new/', ar_receipt_views.ARReceiptCreateView.as_view(), name='ar_receipt_create'),
     path('ap-payments/', commerce_views.APPaymentListView.as_view(), name='ap_payment_list'),

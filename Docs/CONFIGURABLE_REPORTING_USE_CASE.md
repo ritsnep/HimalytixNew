@@ -49,6 +49,6 @@ Each has a base template under `reporting/templates/reporting/base/` and a “Mo
 
 ## Quick Start
 1. Install deps: `pip install weasyprint openpyxl`.
-2. Migrate: `python manage.py migrate reporting`.
+2. Migrate: `python manage.py migrate reporting`. 
 3. Run Celery worker + beat so scheduled runs dispatch.
 4. Visit `/reports/` to open reports or `/reports/<code>/designer/` to customize.

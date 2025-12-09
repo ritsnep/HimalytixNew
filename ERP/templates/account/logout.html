@@ -21,11 +21,12 @@
                                         <div class="mt-4 pt-2">
                                             <h5>Are you sure you want to sign out?</h5>
                                             <p class="text-muted font-size-15">Thank you for using <span class="fw-semibold text-dark">Himalytix</span></p>
-                                            <form method="post" action="{% url 'logout' %}">
-                                            <div class="mt-4">
-                                                <a href="{% url 'logout' %}" class="btn btn-primary w-100 waves-effect waves-light">Sign Out</a>
-                                            </div>
-                                        </form>
+                                            <form method="post" action="{% url 'account_logout' %}">
+                                                {% csrf_token %}
+                                                <div class="mt-4">
+                                                    <button type="submit" class="btn btn-primary w-100 waves-effect waves-light">Sign Out</button>
+                                                </div>
+                                            </form>
                                         </div>
                                     </div>
                                 

@@ -7,6 +7,7 @@ import logging
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 
 from accounting.models import (
@@ -18,6 +19,7 @@ from accounting.models import (
     CurrencyExchangeRate,
     SalesInvoice,
     SalesInvoiceLine,
+    InvoiceLineTax,
 )
 from accounting.services.posting_service import PostingService
 from accounting.services.inventory_posting_service import InventoryPostingService
@@ -107,7 +109,7 @@ class SalesInvoiceService:
         )
 
         for index, line_data in enumerate(lines, start=1):
-            SalesInvoiceLine.objects.create(
+            line = SalesInvoiceLine.objects.create(
                 invoice=invoice,
                 line_number=index,
                 description=line_data.get('description', ''),
@@ -124,9 +126,43 @@ class SalesInvoiceService:
                 dimension_value=line_data.get('dimension_value'),
                 metadata=line_data.get('metadata', {}),
             )
+            tax_breakdown = line_data.get("tax_breakdown") or []
+            self._persist_tax_breakdown(
+                organization=organization,
+                line=line,
+                breakdown=tax_breakdown,
+            )
 
         invoice.recompute_totals(save=True)
         return invoice
+
+    def _persist_tax_breakdown(self, *, organization, line: SalesInvoiceLine, breakdown: Iterable[dict]) -> None:
+        """
+        Store any calculated taxes for a line in InvoiceLineTax for auditability and
+        multi-tax support. Expects breakdown items with keys: tax_code, base_amount, tax_amount.
+        """
+        if not breakdown:
+            return
+        content_type = ContentType.objects.get_for_model(SalesInvoiceLine)
+        records = []
+        for sequence, item in enumerate(breakdown, start=1):
+            tax_code = item.get("tax_code")
+            if tax_code is None:
+                continue
+            records.append(
+                InvoiceLineTax(
+                    organization=organization,
+                    content_type=content_type,
+                    object_id=line.pk,
+                    tax_code=tax_code,
+                    sequence=item.get("sequence", sequence),
+                    base_amount=item.get("base_amount", Decimal("0")),
+                    tax_amount=item.get("tax_amount", Decimal("0")),
+                    metadata=item.get("metadata", {}),
+                )
+            )
+        if records:
+            InvoiceLineTax.objects.bulk_create(records)
 
     @transaction.atomic
     def validate_invoice(self, invoice: SalesInvoice) -> SalesInvoice:
@@ -207,6 +243,19 @@ class SalesInvoiceService:
         )
 
         line_number = 1
+        tax_ct = ContentType.objects.get_for_model(SalesInvoiceLine)
+        tax_rows = (
+            InvoiceLineTax.objects.filter(
+                content_type=tax_ct,
+                object_id__in=list(invoice.lines.values_list("pk", flat=True)),
+            )
+            .select_related("tax_code")
+            .order_by("sequence")
+        )
+        tax_map: dict[int, list[InvoiceLineTax]] = {}
+        for tax_row in tax_rows:
+            tax_map.setdefault(tax_row.object_id, []).append(tax_row)
+
         for sil in invoice.lines.select_related('revenue_account', 'tax_code'):
             JournalLine.objects.create(
                 journal=journal,
@@ -220,7 +269,21 @@ class SalesInvoiceService:
                 created_by=self.user,
             )
             line_number += 1
-            if sil.tax_amount > 0 and sil.tax_code and sil.tax_code.sales_account:
+            line_taxes = tax_map.get(sil.pk, [])
+            if line_taxes:
+                for tax_row in line_taxes:
+                    if tax_row.tax_amount <= 0 or not (tax_row.tax_code and tax_row.tax_code.sales_account):
+                        continue
+                    JournalLine.objects.create(
+                        journal=journal,
+                        line_number=line_number,
+                        account=tax_row.tax_code.sales_account,
+                        description=f"Output tax ({tax_row.tax_code.code}) for {invoice.invoice_number}",
+                        credit_amount=tax_row.tax_amount,
+                        created_by=self.user,
+                    )
+                    line_number += 1
+            elif sil.tax_amount > 0 and sil.tax_code and sil.tax_code.sales_account:
                 JournalLine.objects.create(
                     journal=journal,
                     line_number=line_number,

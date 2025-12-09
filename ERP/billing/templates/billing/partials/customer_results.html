@@ -9,7 +9,7 @@
         </div>
         <small class="text-muted">
             {% if customer.phone_number %}{{ customer.phone_number }}{% endif %}
-            {% if customer.email %} • {{ customer.email }}{% endif %}
+            {% if customer.email %} ? {{ customer.email }}{% endif %}
         </small>
     </div>
     {% endfor %}

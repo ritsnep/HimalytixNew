@@ -2,7 +2,13 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.urls import reverse_lazy
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
+import logging
+
 from usermanagement.utils import PermissionUtils
+
+logger = logging.getLogger(__name__)
 
 
 class UserOrganizationMixin:
@@ -80,50 +86,90 @@ class UserOrganizationMixin:
 
 
 class PermissionRequiredMixin(LoginRequiredMixin, UserOrganizationMixin):
-    """RBAC-aware mixin leveraging Module+Entity+Action permissions."""
+    """
+    Enhanced mixin with audit logging and better UX.
 
+    Attributes:
+        permission_required: Tuple (module, entity, action) or list of tuples
+        permission_required_any: If True, user needs ANY of the permissions (OR logic)
+        permission_denied_message: Custom message on permission denial
+        permission_denied_url: Custom redirect URL on denial
+        raise_exception: If True, raise 403 instead of redirect
+    """
     permission_required = None
-    module_name = None
-    entity_name = None
-    action_name = None
-    require_organization = True
+    permission_required_any = False  # False = AND logic, True = OR logic
+    permission_denied_message = None
+    permission_denied_url = None
+    raise_exception = False
 
-    def get_permission_components(self):
-        if self.permission_required:
-            perm = self.permission_required
-            if isinstance(perm, str):
-                parts = perm.split(".")
-                if len(parts) == 2 and "_" in parts[1]:
-                    entity, action = parts[1].split("_", 1)
-                    return parts[0], entity, action
-            elif isinstance(perm, (list, tuple)) and len(perm) == 3:
-                return tuple(perm)
-        if self.module_name and self.entity_name and self.action_name:
-            return self.module_name, self.entity_name, self.action_name
-        raise AttributeError(
-            "PermissionRequiredMixin needs a permission_required tuple or module/entity/action attributes."
-        )
+    def get_permission_required(self):
+        """
+        Return the permission(s) required.
+        Can be overridden to compute permissions dynamically.
+        """
+        if self.permission_required is None:
+            return []
 
-    def handle_no_permission(self):
-        if not self.request.user.is_authenticated:
-            return super().handle_no_permission()
-        messages.error(self.request, "You don't have permission to access this page.")
-        return HttpResponseRedirect(reverse_lazy("dashboard"))
+        # Normalize to list of tuples
+        if isinstance(self.permission_required, tuple) and len(self.permission_required) == 3:
+            return [self.permission_required]
+        return self.permission_required
 
-    def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return super().dispatch(request, *args, **kwargs)
+    def has_permission(self):
+        """Check if user has required permission(s)."""
+        perms_required = self.get_permission_required()
+        if not perms_required:
+            return True
 
         organization = self.get_organization()
-        if self.require_organization and not organization:
-            messages.warning(request, "Please select an active organization to continue.")
-            return HttpResponseRedirect(reverse_lazy("usermanagement:select_organization"))
+        user = self.request.user
 
-        if request.user.is_superuser:
-            return super().dispatch(request, *args, **kwargs)
+        checks = [
+            PermissionUtils.has_permission(user, organization, module, entity, action)
+            for module, entity, action in perms_required
+        ]
 
-        module, entity, action = self.get_permission_components()
-        if not PermissionUtils.has_permission(request.user, organization, module, entity, action):
+        if self.permission_required_any:
+            return any(checks)  # OR logic
+        return all(checks)  # AND logic
+
+    def handle_no_permission(self):
+        """Handle permission denial."""
+        user = self.request.user
+        perms = self.get_permission_required()
+
+        # Audit log
+        logger.warning(
+            f"Permission denied: user={user.username}, "
+            f"permissions={perms}, "
+            f"view={self.__class__.__name__}, "
+            f"path={self.request.path}"
+        )
+
+        # Custom message
+        message = self.permission_denied_message or \
+                  "You don't have permission to access this page."
+        messages.error(self.request, message)
+
+        # Raise exception or redirect
+        if self.raise_exception:
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied(message)
+
+        redirect_url = self.permission_denied_url or 'dashboard'
+        return HttpResponseRedirect(reverse_lazy(redirect_url))
+
+    @method_decorator(never_cache)  # Prevent caching of permission-protected pages
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+
+        organization = self.get_organization()
+        if not organization:
+            messages.warning(request, "Please select an organization.")
+            return HttpResponseRedirect(reverse_lazy('usermanagement:select_organization'))
+
+        if not self.has_permission():
             return self.handle_no_permission()
 
         return super().dispatch(request, *args, **kwargs)

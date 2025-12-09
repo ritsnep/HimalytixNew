@@ -1,0 +1,58 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block title %}Rate Limit Exceeded - Himalytix{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="card-title mb-0">
+                        <i class="mdi mdi-alert-circle-outline me-2"></i>
+                        Rate Limit Exceeded
+                    </h4>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-4">
+                        <i class="mdi mdi-timer-sand display-1 text-warning"></i>
+                    </div>
+
+                    <h5 class="card-title">Too Many Requests</h5>
+
+                    <p class="card-text text-muted mb-4">
+                        You've made too many requests in a short period of time.
+                        Please wait a moment before trying again.
+                    </p>
+
+                    <div class="alert alert-info">
+                        <strong>Limit:</strong> {{ limit }}<br>
+                        <strong>Retry after:</strong> {{ retry_after }} seconds
+                    </div>
+
+                    <div class="mt-4">
+                        <a href="{% url 'dashboard' %}" class="btn btn-primary">
+                            <i class="mdi mdi-home me-1"></i>
+                            Go to Dashboard
+                        </a>
+                        <button onclick="window.history.back()" class="btn btn-secondary ms-2">
+                            <i class="mdi mdi-arrow-left me-1"></i>
+                            Go Back
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-retry after the specified time
+setTimeout(function() {
+    if (confirm('The rate limit should have reset. Would you like to retry your request?')) {
+        window.location.reload();
+    }
+}, {{ retry_after|default:60 }} * 1000);
+</script>
+{% endblock %}

@@ -7,7 +7,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView
 from django.db.models import Q, Sum, Count
-from django.http import HttpResponseRedirect, JsonResponse, StreamingHttpResponse
+from django.http import HttpResponseRedirect, JsonResponse, StreamingHttpResponse, HttpResponse
+import os
 from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import translation
@@ -202,6 +203,25 @@ def set_language(request):
     response = HttpResponseRedirect(request.META.get('HTTP_REFERER', '/'))
     response.set_cookie(settings.LANGUAGE_COOKIE_NAME, lang_short)
     return response
+
+def service_worker(request):
+    """Serve the service worker JS from the static folder at '/sw.js' for root scope.
+    This avoids placing the file under /static/ which restricts the service worker's scope.
+    """
+    try:
+        sw_path = os.path.join(settings.STATIC_ROOT or settings.BASE_DIR, 'sw.js')
+        # Fallback to static directory if needed
+        if not os.path.exists(sw_path):
+            sw_path = os.path.join(settings.BASE_DIR, 'static', 'sw.js')
+        with open(sw_path, 'rb') as f:
+            data = f.read()
+        response = HttpResponse(data, content_type='application/javascript')
+        # Add caching headers to let browsers cache the SW file for a short period
+        response['Cache-Control'] = 'public, max-age=0, must-revalidate'
+        return response
+    except Exception:
+        return HttpResponse('// Service worker not found', content_type='application/javascript')
+
 
 
 def set_region(request):

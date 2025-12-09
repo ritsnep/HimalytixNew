@@ -1,0 +1,73 @@
+{% extends 'accounting/_list_base.html' %}
+{% load permission_tags %}
+
+{% block table_head %}
+<thead>
+    <tr>
+        <th data-searchable="true">Note Number</th>
+        <th data-searchable="true">Customer</th>
+        <th data-searchable="true">Delivery Date</th>
+        <th data-searchable="true">Warehouse</th>
+        <th data-searchable="true">Status</th>
+        <th data-searchable="false" class="no-search">Actions</th>
+    </tr>
+</thead>
+{% endblock table_head %}
+
+{% block table_body %}
+<tbody>
+    {% for dn in delivery_notes %}
+    <tr>
+        <td>
+            <a href="{% url 'accounting:delivery_note_print' dn.pk %}" class="text-decoration-none">
+                {{ dn.note_number|default:"DN?" }}
+            </a>
+        </td>
+        <td>{{ dn.customer_display_name }}</td>
+        <td>{{ dn.delivery_date|date:"M d, Y" }}</td>
+        <td>{% if dn.warehouse %}{{ dn.warehouse.name }}{% else %}-{% endif %}</td>
+        <td>
+            <span class="badge bg-{% if dn.status == 'confirmed' %}success{% elif dn.status == 'cancelled' %}danger{% else %}warning{% endif %}">
+                {{ dn.get_status_display }}
+            </span>
+        </td>
+        <td>
+            <div class="btn-group btn-group-sm" role="group">
+                <a href="{% url 'accounting:delivery_note_print' dn.pk %}"
+                   class="btn btn-outline-primary btn-sm"
+                   title="Print Delivery Note">
+                    <i class="mdi mdi-printer"></i>
+                </a>
+                {% if dn.status == 'confirmed' and not dn.linked_invoice %}
+                    {% if user|has_permission:'accounting_salesinvoice_add' %}
+                    <form method="post" action="{% url 'accounting:delivery_note_invoice_create' dn.pk %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit"
+                                class="btn btn-outline-success btn-sm"
+                                title="Create Invoice from this Delivery Note"
+                                onclick="return confirm('Create a sales invoice from this delivery note?')">
+                            <i class="mdi mdi-receipt"></i> Invoice
+                        </button>
+                    </form>
+                    {% endif %}
+                {% elif dn.status == 'confirmed' and dn.linked_invoice %}
+                    <a href="{% url 'accounting:sales_invoice_detail' dn.linked_invoice.pk %}"
+                       class="btn btn-outline-info btn-sm"
+                       title="View Linked Invoice">
+                        <i class="mdi mdi-link"></i> Invoice
+                    </a>
+                {% endif %}
+            </div>
+        </td>
+    </tr>
+    {% endfor %}
+</tbody>
+{% endblock table_body %}
+
+{% block create_button %}
+<div class="d-flex align-items-center gap-2 flex-wrap">
+    <a href="{% url 'accounting:delivery_note_create' %}" class="btn btn-success btn-sm ms-2">
+        <i class="mdi mdi-plus me-1"></i> New Delivery Note
+    </a>
+</div>
+{% endblock create_button %}

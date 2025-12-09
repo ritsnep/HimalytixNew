@@ -1,0 +1,46 @@
+{% extends 'accounting/_list_base.html' %}
+
+{% block title %}Quotations{% endblock %}
+
+{% block table_head %}
+<thead>
+    <tr>
+        <th>#</th>
+        <th>Customer</th>
+        <th>Quote Date</th>
+        <th>Valid Until</th>
+        <th>Status</th>
+        <th class="text-end">Total</th>
+        <th></th>
+    </tr>
+</thead>
+{% endblock table_head %}
+
+{% block table_body %}
+<tbody>
+    {% for quote in quotations %}
+    <tr>
+        <td>{{ quote.quotation_number }}</td>
+        <td>{{ quote.customer_display_name }}</td>
+        <td>{{ quote.quotation_date }}</td>
+        <td>{% if quote.valid_until %}{{ quote.valid_until }}{% else %}&ndash;{% endif %}</td>
+        <td>
+            <span class="badge bg-light text-dark text-capitalize">
+                {{ quote.status }}
+            </span>
+            {% if quote.is_expired %}
+            <span class="badge bg-danger text-capitalize">expired</span>
+            {% endif %}
+        </td>
+        <td class="text-end">{{ quote.total }}</td>
+        <td>
+            <a href="{% url 'accounting:quotation_detail' quote.pk %}" class="btn btn-sm btn-outline-primary">View</a>
+        </td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="7" class="text-center text-muted">No quotations yet.</td>
+    </tr>
+    {% endfor %}
+</tbody>
+{% endblock table_body %}

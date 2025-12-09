@@ -47,12 +47,9 @@ urlpatterns = [
     path('subscriptions/<int:pk>/edit/', SubscriptionUpdateView.as_view(), name='subscription_update'),
     
     # Subscription Invoice URLs
-    path('invoices/', SubscriptionInvoiceListView.as_view(), name='subscriptioninvoice_list'),
-    # Map the common plural create path to the one-off HTMX invoice entry (used by UI)
-    path('invoices/create/', invoice_entry_htmx.invoice_create, name='invoice_create'),
-    # Keep the subscription-specific create view available under a namespaced path
-    path('invoices/create/subscription/', SubscriptionInvoiceCreateView.as_view(), name='subscriptioninvoice_create'),
-    path('invoices/<int:pk>/edit/', SubscriptionInvoiceUpdateView.as_view(), name='subscriptioninvoice_update'),
+    path('subscription-invoices/', SubscriptionInvoiceListView.as_view(), name='subscriptioninvoice_list'),
+    path('subscription-invoices/create/', SubscriptionInvoiceCreateView.as_view(), name='subscriptioninvoice_create'),
+    path('subscription-invoices/<int:pk>/edit/', SubscriptionInvoiceUpdateView.as_view(), name='subscriptioninvoice_update'),
     
     # Deferred Revenue URLs
     path('deferred-revenue/', DeferredRevenueListView.as_view(), name='deferredrevenue_list'),

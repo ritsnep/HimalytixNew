@@ -34,6 +34,8 @@ from .models import (
     SalesInvoiceLine,
     SalesOrder,
     SalesOrderLine,
+    Quotation,
+    QuotationLine,
     ARReceipt,
     ARReceiptLine,
     APPayment,
@@ -1752,8 +1754,131 @@ class SalesInvoiceForm(BootstrapFormMixin, forms.ModelForm):
 
 
 class SalesInvoiceLineForm(BootstrapFormMixin, forms.ModelForm):
+    tax_codes = forms.ModelMultipleChoiceField(
+        queryset=TaxCode.objects.none(),
+        required=False,
+        widget=forms.SelectMultiple(attrs={'class': 'form-select tax-multi'}),
+        help_text='Select one or more taxes to apply to this line.',
+    )
+
     class Meta:
         model = SalesInvoiceLine
+        fields = (
+            'description',
+            'product_code',
+            'quantity',
+            'unit_price',
+            'discount_amount',
+            'revenue_account',
+            'tax_code',
+            'tax_amount',
+            'cost_center',
+            'department',
+            'project',
+            'dimension_value',
+        )
+        widgets = {
+            'description': forms.TextInput(attrs={'class': 'form-control'}),
+            'product_code': forms.TextInput(attrs={'class': 'form-control'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.0001'}),
+            'unit_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.0001'}),
+            'discount_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'revenue_account': forms.Select(attrs={'class': 'form-select'}),
+            'tax_code': forms.Select(attrs={'class': 'form-select'}),
+            'tax_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'cost_center': forms.Select(attrs={'class': 'form-select'}),
+            'department': forms.Select(attrs={'class': 'form-select'}),
+            'project': forms.Select(attrs={'class': 'form-select'}),
+            'dimension_value': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.organization = kwargs.pop('organization', None)
+        super().__init__(*args, **kwargs)
+        self.fields['tax_amount'].widget.attrs.setdefault('readonly', True)
+        if self.organization:
+            tax_qs = TaxCode.objects.filter(organization=self.organization, is_active=True)
+            self.fields['tax_code'].queryset = tax_qs
+            self.fields['tax_codes'].queryset = tax_qs
+        else:
+            self.fields['tax_codes'].queryset = TaxCode.objects.filter(is_active=True)
+
+
+class QuotationForm(BootstrapFormMixin, forms.ModelForm):
+    status = forms.ChoiceField(
+        choices=Quotation.STATUS_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        required=True,
+    )
+
+    class Meta:
+        model = Quotation
+        fields = (
+            'organization',
+            'customer',
+            'quotation_number',
+            'reference_number',
+            'quotation_date',
+            'valid_until',
+            'due_date',
+            'payment_term',
+            'currency',
+            'exchange_rate',
+            'status',
+            'terms',
+            'notes',
+        )
+        widgets = {
+            'quotation_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'reference_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'quotation_date': forms.TextInput(attrs={'class': 'form-control datepicker'}),
+            'valid_until': forms.TextInput(attrs={'class': 'form-control datepicker'}),
+            'due_date': forms.TextInput(attrs={'class': 'form-control datepicker'}),
+            'payment_term': forms.Select(attrs={'class': 'form-select'}),
+            'currency': forms.Select(attrs={'class': 'form-select'}),
+            'exchange_rate': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.000001'}),
+            'terms': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.organization = kwargs.pop('organization', None)
+        super().__init__(*args, **kwargs)
+        self.fields['quotation_number'].required = False
+        self.fields['quotation_number'].widget.attrs.setdefault('placeholder', 'Auto-generated')
+        self.fields['quotation_number'].widget.attrs['readonly'] = True
+        self.fields['status'].initial = Quotation.STATUS_DRAFT
+        if self.organization:
+            self.fields['customer'].queryset = self.fields['customer'].queryset.filter(
+                organization=self.organization,
+            )
+        if 'currency' in self.fields:
+            self.fields['currency'].queryset = Currency.objects.filter(is_active=True)
+            try:
+                base_cur = getattr(self.organization, 'base_currency_code', None)
+            except Exception:
+                base_cur = None
+            if base_cur:
+                if hasattr(base_cur, 'currency_code'):
+                    self.fields['currency'].initial = base_cur.currency_code
+                else:
+                    self.fields['currency'].initial = base_cur
+
+    def clean(self):
+        cleaned = super().clean()
+        quotation_date = cleaned.get('quotation_date')
+        valid_until = cleaned.get('valid_until')
+        payment_term = cleaned.get('payment_term')
+        if valid_until and quotation_date and valid_until < quotation_date:
+            self.add_error('valid_until', 'Validity date cannot be before the quote date.')
+        if quotation_date and not cleaned.get('due_date') and payment_term:
+            cleaned['due_date'] = payment_term.calculate_due_date(quotation_date)
+        return cleaned
+
+
+class QuotationLineForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = QuotationLine
         fields = (
             'description',
             'product_code',
@@ -1790,6 +1915,7 @@ class SalesOrderForm(BootstrapFormMixin, forms.ModelForm):
         fields = (
             'organization',
             'customer',
+            'warehouse',
             'order_number',
             'reference_number',
             'order_date',
@@ -1803,6 +1929,7 @@ class SalesOrderForm(BootstrapFormMixin, forms.ModelForm):
             'reference_number': forms.TextInput(attrs={'class': 'form-control'}),
             'order_date': forms.TextInput(attrs={'class': 'form-control datepicker'}),
             'expected_ship_date': forms.TextInput(attrs={'class': 'form-control datepicker'}),
+            'warehouse': forms.Select(attrs={'class': 'form-select'}),
             'currency': forms.Select(attrs={'class': 'form-select'}),
             'exchange_rate': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.000001'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
@@ -1816,6 +1943,9 @@ class SalesOrderForm(BootstrapFormMixin, forms.ModelForm):
         self.fields['order_number'].widget.attrs['readonly'] = True
         if self.organization:
             self.fields['customer'].queryset = self.fields['customer'].queryset.filter(
+                organization=self.organization,
+            )
+            self.fields['warehouse'].queryset = self.fields['warehouse'].queryset.filter(
                 organization=self.organization,
             )
 

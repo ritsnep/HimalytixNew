@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Print Quotation {{ quotation.quotation_number }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .document-box {
+        max-width: 800px;
+        margin: auto;
+        padding: 30px;
+        border: 1px solid #ddd;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.12);
+        font-size: 14px;
+        line-height: 22px;
+        font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif;
+    }
+    .document-box table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .document-box table td {
+        padding: 6px;
+        vertical-align: top;
+    }
+    .document-box table tr.heading td {
+        background: #f3f5f7;
+        border-bottom: 1px solid #ddd;
+        font-weight: bold;
+    }
+    .document-box table tr.item td {
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .document-box table tr.total td:nth-child(6) {
+        border-top: 2px solid #ddd;
+        font-weight: bold;
+    }
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="no-print text-end mb-3">
+        <a href="{% url 'accounting:quotation_detail' quotation.pk %}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Back</a>
+    </div>
+    <div class="document-box">
+        <table>
+            <tr>
+                <td>
+                    <h2>{{ organization.name }}</h2>
+                    <p>
+                        {{ organization.address|default:'' }}<br>
+                        {% if organization.phone %}Phone: {{ organization.phone }}<br>{% endif %}
+                        {% if organization.email %}Email: {{ organization.email }}<br>{% endif %}
+                    </p>
+                </td>
+                <td style="text-align:right;">
+                    <h4>QUOTATION</h4>
+                    <p>
+                        <strong>Quote #:</strong> {{ quotation.quotation_number }}<br>
+                        <strong>Date:</strong> {{ quotation.quotation_date|date:'Y-m-d' }}<br>
+                        <strong>Valid Until:</strong> {% if quotation.valid_until %}{{ quotation.valid_until|date:'Y-m-d' }}{% else %}N/A{% endif %}
+                    </p>
+                </td>
+            </tr>
+        </table>
+        <hr>
+        <table>
+            <tr class="heading">
+                <td>#</td>
+                <td>Description</td>
+                <td>Product</td>
+                <td class="text-end">Qty</td>
+                <td class="text-end">Unit Price</td>
+                <td class="text-end">Amount</td>
+            </tr>
+            {% for line in lines %}
+            <tr class="item">
+                <td>{{ line.line_number }}</td>
+                <td>{{ line.description }}</td>
+                <td>{{ line.product_code }}</td>
+                <td class="text-end">{{ line.quantity }}</td>
+                <td class="text-end">{{ line.unit_price|floatformat:2 }}</td>
+                <td class="text-end">{{ line.line_total|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="total">
+                <td colspan="4"></td>
+                <td class="text-end"><strong>Subtotal</strong></td>
+                <td class="text-end">{{ quotation.subtotal|floatformat:2 }}</td>
+            </tr>
+            <tr class="total">
+                <td colspan="4"></td>
+                <td class="text-end"><strong>Tax Total</strong></td>
+                <td class="text-end">{{ quotation.tax_total|floatformat:2 }}</td>
+            </tr>
+            <tr class="total">
+                <td colspan="4"></td>
+                <td class="text-end"><strong>Total</strong></td>
+                <td class="text-end"><strong>{{ quotation.currency.code }} {{ quotation.total|floatformat:2 }}</strong></td>
+            </tr>
+        </table>
+        {% if quotation.terms %}
+        <div class="mt-4">
+            <h6>Terms</h6>
+            <p>{{ quotation.terms }}</p>
+        </div>
+        {% endif %}
+        {% if quotation.notes %}
+        <div class="mt-3">
+            <h6>Notes</h6>
+            <p>{{ quotation.notes }}</p>
+        </div>
+        {% endif %}
+        <div class="mt-4 text-muted" style="font-size:12px;">
+            Printed on: {{ now|date:'Y-m-d H:i:s' }}
+        </div>
+    </div>
+</div>
+{% endblock %}

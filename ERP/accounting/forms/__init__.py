@@ -16,6 +16,7 @@ from .journal_type_form import JournalTypeForm
 from .journal_form import JournalForm
 from .voucher_udf_config_form import VoucherUDFConfigForm
 from .tax_code_form import TaxCodeForm
+from .expense_form import ExpenseEntryForm
 
 from .general_ledger_form import GeneralLedgerForm
 from .journal_import_form import JournalImportForm

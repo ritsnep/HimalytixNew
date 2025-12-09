@@ -1,12 +1,13 @@
 {% if products %}
     {% for product in products %}
-    <div class="product-item" onclick="selectProduct('{{ line_index }}', '{{ product.id }}', '{{ product.name }}', '{{ product.sale_price }}')">
+    <div class="product-item" onclick="selectProduct('{{ line_index }}','{{ product.id }}','{{ product.code }}','{{ product.name|escapejs }}','{{ product.sale_price }}','{{ product.income_account_id|default:'' }}','{{ product.is_inventory_item|yesno:"true,false" }}')">
         <div>
             <strong>{{ product.code }}</strong> - {{ product.name }}
         </div>
         <small class="text-muted">
-            Price: NPR {{ product.sale_price }}
-            {% if product.uom %} • Unit: {{ product.uom }}{% endif %}
+            Price: {{ product.sale_price }}
+            {% if product.uom %} ? Unit: {{ product.uom }}{% endif %}
+            {% if product.income_account %} ? Rev: {{ product.income_account.account_code }}{% endif %}
         </small>
     </div>
     {% endfor %}

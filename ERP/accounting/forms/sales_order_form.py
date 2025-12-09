@@ -10,6 +10,7 @@ class SalesOrderForm(BootstrapFormMixin, forms.ModelForm):
         fields = (
             "organization",
             "customer",
+            "warehouse",
             "order_number",
             "reference_number",
             "order_date",
@@ -23,6 +24,7 @@ class SalesOrderForm(BootstrapFormMixin, forms.ModelForm):
             "reference_number": forms.TextInput(attrs={"class": "form-control"}),
             "order_date": forms.TextInput(attrs={"class": "form-control datepicker"}),
             "expected_ship_date": forms.TextInput(attrs={"class": "form-control datepicker"}),
+            "warehouse": forms.Select(attrs={"class": "form-select"}),
             "currency": forms.Select(attrs={"class": "form-select"}),
             "exchange_rate": forms.NumberInput(attrs={"class": "form-control", "step": "0.000001"}),
             "notes": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
@@ -36,6 +38,9 @@ class SalesOrderForm(BootstrapFormMixin, forms.ModelForm):
         self.fields["order_number"].widget.attrs["readonly"] = True
         if self.organization:
             self.fields["customer"].queryset = self.fields["customer"].queryset.filter(
+                organization=self.organization,
+            )
+            self.fields["warehouse"].queryset = self.fields["warehouse"].queryset.filter(
                 organization=self.organization,
             )
 

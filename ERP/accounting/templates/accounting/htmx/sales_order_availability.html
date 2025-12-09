@@ -1,0 +1,5 @@
+{% if message %}
+<div class="text-muted small">{{ message }}</div>
+{% else %}
+<div class="small">Available: {{ quantity }} {% if warehouse %}at {{ warehouse.code }}{% endif %}</div>
+{% endif %}

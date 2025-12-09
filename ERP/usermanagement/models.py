@@ -3,6 +3,7 @@ import uuid
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.db.utils import ProgrammingError
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -66,7 +67,7 @@ class Organization(models.Model):
     @property
     def company_config(self):
         """Safe accessor for the related CompanyConfig if it exists."""
-        return getattr(self, "config", None)
+        return get_safe_company_config(self)
 
     @property
     def calendar_mode(self):
@@ -75,6 +76,16 @@ class Organization(models.Model):
         return CalendarMode.normalize(getattr(config, "calendar_mode", None))
     
     
+def get_safe_company_config(organization):
+    """Return the related CompanyConfig but ignore missing schema columns."""
+    if organization is None:
+        return None
+    try:
+        return getattr(organization, "config", None)
+    except ProgrammingError:
+        return None
+
+
 class OrganizationAddress(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='addresses')
     address_type = models.CharField(max_length=50)
@@ -309,6 +320,17 @@ class CompanyConfig(models.Model):
         default=DateSeedStrategy.DEFAULT,
         help_text="Prefill dates with today or the last entry (per org).",
     )
+    invoice_template = models.CharField(
+        max_length=20,
+        choices=[("a4", "A4 (Full Page)"), ("thermal", "Thermal (80mm)")],
+        default="a4",
+        help_text="Choose the print layout used for sales invoices.",
+    )
+    invoice_logo_url = models.URLField(
+        blank=True,
+        default="",
+        help_text="Optional logo URL for printed invoices.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -365,13 +387,28 @@ class Permission(models.Model):
     class Meta:
         unique_together = ('codename', 'module', 'entity')
         ordering = ['module', 'entity', 'action']
-        
-    def __str__(self):
-        return f"{self.name} ({self.codename})"
-
+        indexes = [
+            models.Index(fields=['codename']),  # Faster lookups
+            models.Index(fields=['module', 'entity']),
+            models.Index(fields=['is_active']),
+        ]
+    
+    def clean(self):
+        """Validate codename format."""
+        super().clean()
+        if self.codename:
+            expected = f"{self.module.code}_{self.entity.code}_{self.action}"
+            if self.codename != expected:
+                from django.core.exceptions import ValidationError
+                raise ValidationError(
+                    f"Codename must be '{expected}', got '{self.codename}'"
+                )
+    
     def save(self, *args, **kwargs):
+        """Auto-generate codename if not provided."""
         if not self.codename:
             self.codename = f"{self.module.code}_{self.entity.code}_{self.action}"
+        self.full_clean()
         super().save(*args, **kwargs)
 
 class Role(models.Model):
@@ -407,6 +444,9 @@ class UserRole(models.Model):
     class Meta:
         unique_together = ('user', 'role', 'organization')
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'organization', 'is_active']),
+        ]
 
     def __str__(self):
         return f"{self.user.username} - {self.role.name} ({self.organization.name})"
@@ -422,6 +462,9 @@ class UserPermission(models.Model):
     class Meta:
         unique_together = ('user', 'permission', 'organization')
         ordering = ['user', 'organization', 'permission']
+        indexes = [
+            models.Index(fields=['user', 'organization']),
+        ]
 
     def __str__(self):
         return f"{self.user.username} - {self.permission.codename} ({'grant' if self.is_granted else 'revoke'})"

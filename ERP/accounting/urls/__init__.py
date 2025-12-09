@@ -3,6 +3,7 @@ from django.urls import path, include
 from accounting.api import dashboard_views as api_dashboard_views
 from accounting.views import dashboard_views
 from accounting.views import views_import
+from accounting.views.analytics_views import PayableDashboardView, ReceivableDashboardView
 from ..views import journal_entry, journal_entry_view, voucher_views, voucher_crud_views
 from ..views import views_journal_grid as journal_grid_view
 from ..views.report_views import (
@@ -85,6 +86,7 @@ from ..views import views_htmx
 from ..views import wizard
 from ..views import purchase_invoice_views, payment_scheduler_views, vendor_statement_views, customer_statement_views, sales_invoice_views, ar_receipt_views, commerce_views, sales_order_views
 from ..views import sales_invoice_views, ar_receipt_views, commerce_views, sales_order_views
+from ..views import delivery_note_views
 
 app_name = "accounting"
 
@@ -299,6 +301,8 @@ urlpatterns = [
     path('advanced-reports/ap-aging/', AccountsPayableAgingView.as_view(), name='report_ap_aging'),
     path('advanced-reports/custom/<slug:code>/', CustomReportView.as_view(), name='custom_report'),
     path('advanced-reports/export/', ReportExportView.as_view(), name='report_export'),
+    path('receivable-dashboard/', ReceivableDashboardView.as_view(), name='receivable_dashboard'),
+    path('payable-dashboard/', PayableDashboardView.as_view(), name='payable_dashboard'),
 
     # Vendor Billing / Accounts Payable
     path('vendor-bills/new/', purchase_invoice_views.VendorBillCreateView.as_view(), name='vendor_bill_create'),
@@ -309,8 +313,14 @@ urlpatterns = [
     path('customer-payments/statement/', customer_statement_views.CustomerStatementView.as_view(), name='customer_statement'),
     path('sales-invoices/', sales_invoice_views.SalesInvoiceListView.as_view(), name='sales_invoice_list'),
     path('sales-invoices/new/', sales_invoice_views.SalesInvoiceCreateView.as_view(), name='sales_invoice_create'),
+    path('delivery-notes/', delivery_note_views.DeliveryNoteListView.as_view(), name='delivery_note_list'),
+    path('delivery-notes/new/', delivery_note_views.DeliveryNoteCreateView.as_view(), name='delivery_note_create'),
+    path('delivery-notes/<int:pk>/print/', delivery_note_views.DeliveryNotePrintView.as_view(), name='delivery_note_print'),
+    path('delivery-notes/<int:pk>/invoice/', delivery_note_views.DeliveryNoteInvoiceCreateView.as_view(), name='delivery_note_invoice_create'),
     path('sales-orders/', sales_order_views.SalesOrderListView.as_view(), name='sales_order_list'),
     path('sales-orders/new/', sales_order_views.SalesOrderCreateView.as_view(), name='sales_order_create'),
+    path('sales-orders/<int:pk>/action/', sales_order_views.SalesOrderActionView.as_view(), name='sales_order_action'),
+    path('sales-orders/availability/', sales_order_views.SalesOrderAvailabilityHXView.as_view(), name='sales_order_availability'),
     path('ar-receipts/', ar_receipt_views.ARReceiptListView.as_view(), name='ar_receipt_list'),
     path('ar-receipts/new/', ar_receipt_views.ARReceiptCreateView.as_view(), name='ar_receipt_create'),
     path('ap-payments/', commerce_views.APPaymentListView.as_view(), name='ap_payment_list'),

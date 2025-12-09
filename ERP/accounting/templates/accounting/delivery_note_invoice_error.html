@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="mdi mdi-alert-circle me-2"></i>
+                        {% trans "Invoice Creation Failed" %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <h6 class="alert-heading">{% trans "Error Details" %}</h6>
+                        <p class="mb-0">{{ message }}</p>
+                    </div>
+
+                    {% if object %}
+                    <div class="mb-3">
+                        <strong>{% trans "Delivery Note:" %}</strong>
+                        {{ object.note_number|default:object.pk }}
+                        ({{ object.customer_display_name }})
+                    </div>
+                    {% endif %}
+
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'accounting:delivery_note_list' %}" class="btn btn-secondary">
+                            <i class="mdi mdi-arrow-left me-1"></i>
+                            {% trans "Back to Delivery Notes" %}
+                        </a>
+                        {% if object %}
+                        <a href="{% url 'accounting:delivery_note_print' object.pk %}" class="btn btn-primary">
+                            <i class="mdi mdi-printer me-1"></i>
+                            {% trans "View Delivery Note" %}
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

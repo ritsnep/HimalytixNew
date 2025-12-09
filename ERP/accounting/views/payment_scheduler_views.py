@@ -2,7 +2,7 @@ from collections import defaultdict
 from decimal import Decimal
 
 from django.contrib import messages
-from django.db.models import F, Sum, DecimalField, ExpressionWrapper
+from django.db.models import F, Sum, DecimalField, ExpressionWrapper, Q
 from django.db.models.functions import Coalesce
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -129,6 +129,8 @@ class PaymentSchedulerView(AccountsPayablePermissionMixin, View):
         }
 
     def _open_invoices(self, organization):
+        settled_statuses = PurchaseInvoice.PAYMENT_SETTLED_STATUSES
+        settled_filter = Q(payment_lines__payment__status__in=settled_statuses)
         invoices = (
             PurchaseInvoice.objects.filter(
                 organization=organization,
@@ -136,8 +138,14 @@ class PaymentSchedulerView(AccountsPayablePermissionMixin, View):
             )
             .select_related("vendor", "currency")
             .annotate(
-                paid_amount=Coalesce(Sum("payment_lines__applied_amount"), Decimal("0")),
-                discount_amount=Coalesce(Sum("payment_lines__discount_taken"), Decimal("0")),
+                paid_amount=Coalesce(
+                    Sum("payment_lines__applied_amount", filter=settled_filter),
+                    Decimal("0"),
+                ),
+                discount_amount=Coalesce(
+                    Sum("payment_lines__discount_taken", filter=settled_filter),
+                    Decimal("0"),
+                ),
             )
             .annotate(
                 outstanding=ExpressionWrapper(

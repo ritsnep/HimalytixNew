@@ -114,7 +114,7 @@
 
             <!-- Additional Fields (if any) -->
             {% for field in header_form %}
-                {% if field.name not in 'journal_date,journal_type,reference,period,description' %}
+                {% if field.name != 'journal_date' and field.name != 'journal_type' and field.name != 'reference' and field.name != 'period' and field.name != 'description' %}
                     <div class="row mt-3">
                         <div class="col-md-6">
                             <label for="{{ field.id_for_label }}" class="form-label">

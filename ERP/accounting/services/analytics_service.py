@@ -12,6 +12,7 @@ Classes:
     - CacheManager: Analytics caching strategy
 """
 
+from django.apps import apps
 from django.core.cache import cache
 from django.db.models import Sum, Count, Q, F, Value
 from django.utils import timezone
@@ -24,8 +25,17 @@ from accounting.models import (
     Organization, Account, Journal, JournalLine,
     AccountingPeriod, FiscalYear
 )
+from accounting.services.payable_dashboard_service import PayableDashboardService
+from accounting.services.receivable_dashboard_service import ReceivableDashboardService
 
 logger = logging.getLogger(__name__)
+
+
+def _get_approval_log_model():
+    try:
+        return apps.get_model('accounting', 'ApprovalLog')
+    except LookupError:
+        return None
 
 
 class AnalyticsService:
@@ -42,6 +52,7 @@ class AnalyticsService:
         self.financial_metrics = FinancialMetrics(organization)
         self.performance_metrics = PerformanceMetrics(organization)
         self.trend_analyzer = TrendAnalyzer(organization)
+        self.approval_log_model = _get_approval_log_model()
     
     def get_dashboard_summary(self, as_of_date: Optional[date] = None) -> Dict[str, Any]:
         """
@@ -79,6 +90,8 @@ class AnalyticsService:
             'performance': self.performance_metrics.get_performance_summary(),
             'generated_at': timezone.now().isoformat(),
         }
+        summary['receivable_overview'] = self._build_receivable_overview(as_of_date)
+        summary['payable_overview'] = self._build_payable_overview(as_of_date)
         
         cache.set(cache_key, summary, self.CACHE_TIMEOUT_SHORT)
         return summary
@@ -114,24 +127,30 @@ class AnalyticsService:
         
         today = date.today()
         
-        # Get pending approvals
-        pending = ApprovalLog.objects.filter(
-            journal__organization=self.organization,
-            approval_status='PENDING'
-        ).count()
-        
-        # Get today's approvals
-        approved_today = ApprovalLog.objects.filter(
-            journal__organization=self.organization,
-            approval_status='APPROVED',
-            approval_date__date=today
-        ).count()
-        
-        rejected_today = ApprovalLog.objects.filter(
-            journal__organization=self.organization,
-            approval_status='REJECTED',
-            approval_date__date=today
-        ).count()
+        approval_counts = {
+            'pending_count': 0,
+            'approved_today': 0,
+            'rejected_today': 0,
+        }
+
+        ApprovalLog = self.approval_log_model
+        if ApprovalLog is not None:
+            approval_counts['pending_count'] = ApprovalLog.objects.filter(
+                journal__organization=self.organization,
+                approval_status='PENDING'
+            ).count()
+
+            approval_counts['approved_today'] = ApprovalLog.objects.filter(
+                journal__organization=self.organization,
+                approval_status='APPROVED',
+                approval_date__date=today
+            ).count()
+
+            approval_counts['rejected_today'] = ApprovalLog.objects.filter(
+                journal__organization=self.organization,
+                approval_status='REJECTED',
+                approval_date__date=today
+            ).count()
         
         # Get pending journal details
         pending_journals = Journal.objects.filter(
@@ -142,9 +161,7 @@ class AnalyticsService:
         )[:10]
         
         result = {
-            'pending_count': pending,
-            'approved_today': approved_today,
-            'rejected_today': rejected_today,
+            **approval_counts,
             'pending_journals': list(pending_journals),
         }
         
@@ -193,6 +210,27 @@ class AnalyticsService:
         cache.set(cache_key, result, self.CACHE_TIMEOUT_MEDIUM)
         return result
     
+    def _build_receivable_overview(self, as_of_date: date) -> Dict[str, Any]:
+        """Build serialized receivable rows, buckets, and totals."""
+        service = ReceivableDashboardService(self.organization, as_of_date)
+        rows = service.get_invoice_rows()
+        buckets = service.bucket_summary(rows)
+        return {
+            'rows': service.serialize_rows(rows),
+            'buckets': service.serialize_buckets(buckets),
+            'grand_total': float(service.grand_total(rows)),
+        }
+
+    def _build_payable_overview(self, as_of_date: date) -> Dict[str, Any]:
+        service = PayableDashboardService(self.organization, as_of_date)
+        rows = service.get_invoice_rows()
+        buckets = service.bucket_summary(rows)
+        return {
+            'rows': service.serialize_rows(rows),
+            'buckets': service.serialize_buckets(buckets),
+            'grand_total': float(service.grand_total(rows)),
+        }
+
     def get_account_balance_history(self, account_id: int, months: int = 12) -> List[Dict[str, Any]]:
         """
         Get account balance history for trend analysis.

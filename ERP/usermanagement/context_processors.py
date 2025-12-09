@@ -29,41 +29,20 @@ def permissions(request):
     """Add user permissions to template context."""
     if not request.user.is_authenticated:
         return {
-            'user_permissions': {},
-            'has_permission': lambda module, entity, action: False,
+            'user_permissions': set(),
         }
 
     organization = request.user.get_active_organization()
     permission_set = PermissionUtils.get_user_permissions(request.user, organization)
 
     # Special marker for all permissions
-    if permission_set == ['*']:
+    if permission_set == {'*'}:
         return {
-            'user_permissions': {'*': True},
-            'has_permission': lambda module, entity, action: True,
+            'user_permissions': {'*'},
         }
 
-    structured_permissions = {}
-    for codename in permission_set:
-        try:
-            module_code, entity_code, action = codename.split('_', 2)
-        except ValueError:
-            # Skip malformed codenames but keep processing
-            continue
-
-        module_perms = structured_permissions.setdefault(module_code, {})
-        entity_perms = module_perms.setdefault(entity_code, set())
-        entity_perms.add(action)
-
     return {
-        'user_permissions': structured_permissions,
-        'has_permission': lambda module, entity, action: PermissionUtils.has_permission(
-            request.user,
-            organization,
-            module,
-            entity,
-            action,
-        ),
+        'user_permissions': permission_set,
     }
 
 def menu(request):

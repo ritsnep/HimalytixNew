@@ -5,6 +5,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from django.contrib.contenttypes.models import ContentType
+from django.db.migrations.recorder import MigrationRecorder
 from .models import (
     InAppNotification,
     MessageTemplate,
@@ -14,7 +15,14 @@ from .models import (
 from .services import capture_initial_state, dispatch_for_instance, get_rules_for_model
 
 # Avoid recursive triggers on framework tables; Transaction remains observable.
-EXCLUDED_SENDERS = {NotificationRule, NotificationLog, MessageTemplate, InAppNotification, ContentType}
+EXCLUDED_SENDERS = {
+    NotificationRule,
+    NotificationLog,
+    MessageTemplate,
+    InAppNotification,
+    ContentType,
+    MigrationRecorder.Migration,
+}
 
 
 if os.environ.get('DISABLE_NOTIFICATION_SIGNALS') != '1':

@@ -9,6 +9,7 @@ from django.contrib.auth import get_user_model
 from usermanagement.models import CustomUser, Organization
 from django.utils.crypto import get_random_string
 from django.db.models import Max, Q, F, CheckConstraint, Sum, UniqueConstraint
+from django.db.models.functions import Coalesce
 import logging
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -22,6 +23,21 @@ User = get_user_model()
 from django.db import models
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+
+REMINDER_CHANNEL_EMAIL = 'email'
+REMINDER_CHANNEL_SMS = 'sms'
+REMINDER_CHANNEL_CHOICES = [
+    (REMINDER_CHANNEL_EMAIL, 'Email'),
+    (REMINDER_CHANNEL_SMS, 'SMS/WhatsApp'),
+]
+REMINDER_STATUS_PENDING = 'pending'
+REMINDER_STATUS_SENT = 'sent'
+REMINDER_STATUS_FAILED = 'failed'
+REMINDER_STATUS_CHOICES = [
+    (REMINDER_STATUS_PENDING, 'Pending'),
+    (REMINDER_STATUS_SENT, 'Sent'),
+    (REMINDER_STATUS_FAILED, 'Failed'),
+]
 
 class AuditLog(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
@@ -971,6 +987,60 @@ class ChartOfAccount(models.Model):
             super(ChartOfAccount, self).save(*args, **kwargs)
 
 
+class ExpenseCategory(models.Model):
+    expense_category_id = models.BigAutoField(primary_key=True)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name='expense_categories',
+    )
+    code = models.CharField(max_length=30)
+    name = models.CharField(max_length=150)
+    description = models.TextField(blank=True)
+    expense_account = models.ForeignKey(
+        ChartOfAccount,
+        on_delete=models.PROTECT,
+        related_name='expense_categories_expense_account',
+    )
+    default_payment_account = models.ForeignKey(
+        ChartOfAccount,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='expense_category_payment_defaults',
+    )
+    default_tax_code = models.ForeignKey(
+        'TaxCode',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='tax_code_expense_categories',
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'expense_category'
+        unique_together = ('organization', 'code')
+        ordering = ['code']
+        indexes = [
+            models.Index(fields=['organization']),
+            models.Index(fields=['code']),
+        ]
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"
+
+    def clean(self):
+        errors = []
+        if self.expense_account and self.expense_account.organization_id != self.organization_id:
+            errors.append(ValidationError("Expense account must belong to the same organization."))
+        if self.default_payment_account and self.default_payment_account.organization_id != self.organization_id:
+            errors.append(ValidationError("Default payment account must belong to the same organization."))
+        if errors:
+            raise ValidationError(errors)
+
 class AccountingSettings(models.Model):
     """Organization-level accounting settings for statutory controls."""
 
@@ -1488,6 +1558,74 @@ class PurchaseInvoice(models.Model):
         self.base_currency_total = (self.total or Decimal('0')) * (self.exchange_rate or Decimal('1'))
         if save:
             super().save(update_fields=['subtotal', 'tax_total', 'total', 'base_currency_total', 'updated_at'])
+
+    def payment_totals(self):
+        totals = self.receipt_lines.aggregate(
+            applied=Coalesce(Sum('applied_amount'), Decimal('0')),
+            discount=Coalesce(Sum('discount_taken'), Decimal('0')),
+        )
+        return totals
+
+    def outstanding_balance(self):
+        totals = self.payment_totals()
+        outstanding = (self.total or Decimal('0')) - (totals['applied'] + totals['discount'])
+        return outstanding if outstanding > Decimal('0') else Decimal('0')
+
+    def days_overdue(self, as_of=None):
+        as_of = as_of or timezone.localdate()
+        if not self.due_date:
+            return 0
+        delta = (as_of - self.due_date).days
+        return delta if delta > 0 else 0
+
+    def refresh_payment_status(self):
+        if self.status in {'draft', 'cancelled'}:
+            return False
+        outstanding = self.outstanding_balance()
+        target_status = 'paid' if outstanding <= Decimal('0') else 'posted'
+        if self.status != target_status:
+            self.status = target_status
+            self.updated_at = timezone.now()
+            self.save(update_fields=['status', 'updated_at'])
+            return True
+        return False
+
+    PAYMENT_SETTLED_STATUSES = ('executed', 'reconciled')
+
+    def _payment_aggregation(self, *, statuses=None):
+        if statuses is None:
+            target_statuses = self.PAYMENT_SETTLED_STATUSES
+        elif statuses:
+            target_statuses = statuses
+        else:
+            target_statuses = None
+        filter_expr = Q(payment__status__in=target_statuses) if target_statuses else None
+        paid_expr = Sum('applied_amount', filter=filter_expr) if filter_expr is not None else Sum('applied_amount')
+        discount_expr = Sum('discount_taken', filter=filter_expr) if filter_expr is not None else Sum('discount_taken')
+        return self.payment_lines.aggregate(
+            paid=Coalesce(paid_expr, Decimal('0')),
+            discount=Coalesce(discount_expr, Decimal('0')),
+        )
+
+    def payment_totals(self, *, statuses=None):
+        return self._payment_aggregation(statuses=statuses)
+
+    def outstanding_amount(self, *, include_pending=False):
+        statuses = () if include_pending else self.PAYMENT_SETTLED_STATUSES
+        totals = self.payment_totals(statuses=statuses)
+        return self.total - totals['paid'] - totals['discount']
+
+    def refresh_payment_status(self):
+        outstanding = self.outstanding_amount()
+        if outstanding <= 0 and self.status not in {'paid', 'cancelled', 'draft'}:
+            self.status = 'paid'
+            self.save(update_fields=['status', 'updated_at'])
+            return True
+        if outstanding > 0 and self.status == 'paid':
+            self.status = 'posted'
+            self.save(update_fields=['status', 'updated_at'])
+            return True
+        return False
 
     def clean(self):
         super().clean()
@@ -2444,6 +2582,14 @@ class SalesOrder(models.Model):
         on_delete=models.PROTECT,
         related_name="sales_order_currency",
     )
+    warehouse = models.ForeignKey(
+        "Inventory.Warehouse",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="sales_orders",
+        help_text="Default warehouse for allocation/fulfillment",
+    )
     exchange_rate = models.DecimalField(max_digits=19, decimal_places=6, default=1)
     subtotal = models.DecimalField(max_digits=19, decimal_places=4, default=0)
     tax_total = models.DecimalField(max_digits=19, decimal_places=4, default=0)
@@ -2526,6 +2672,7 @@ class SalesOrderLine(models.Model):
     description = models.TextField()
     product_code = models.CharField(max_length=100, blank=True)
     quantity = models.DecimalField(max_digits=19, decimal_places=4, default=1)
+    allocated_quantity = models.DecimalField(max_digits=19, decimal_places=4, default=0)
     unit_price = models.DecimalField(max_digits=19, decimal_places=6, default=0)
     discount_amount = models.DecimalField(max_digits=19, decimal_places=4, default=0)
     line_total = models.DecimalField(max_digits=19, decimal_places=4, default=0)
@@ -2568,6 +2715,241 @@ class SalesOrderLine(models.Model):
         super().save(*args, **kwargs)
         if self.order_id:
             self.order.recompute_totals(save=True)
+
+
+class Quotation(models.Model):
+    """Non-posting customer quote that can be converted to an order or invoice."""
+
+    STATUS_DRAFT = 'draft'
+    STATUS_SENT = 'sent'
+    STATUS_ACCEPTED = 'accepted'
+    STATUS_CONVERTED = 'converted'
+    STATUS_EXPIRED = 'expired'
+    STATUS_CANCELLED = 'cancelled'
+
+    STATUS_CHOICES = [
+        (STATUS_DRAFT, 'Draft'),
+        (STATUS_SENT, 'Sent'),
+        (STATUS_ACCEPTED, 'Accepted'),
+        (STATUS_CONVERTED, 'Converted'),
+        (STATUS_EXPIRED, 'Expired'),
+        (STATUS_CANCELLED, 'Cancelled'),
+    ]
+
+    quotation_id = models.BigAutoField(primary_key=True)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.PROTECT,
+        related_name='quotations',
+    )
+    customer = models.ForeignKey(
+        'Customer',
+        on_delete=models.PROTECT,
+        related_name='quotations',
+    )
+    customer_display_name = models.CharField(max_length=255)
+    quotation_number = models.CharField(max_length=50, blank=True, default='')
+    quotation_date = models.DateField(default=timezone.now)
+    valid_until = models.DateField(null=True, blank=True)
+    reference_number = models.CharField(max_length=100, blank=True)
+    payment_term = models.ForeignKey(
+        PaymentTerm,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        limit_choices_to={'term_type__in': ['ar', 'both']},
+    )
+    due_date = models.DateField(null=True, blank=True)
+    currency = models.ForeignKey(
+        'Currency',
+        on_delete=models.PROTECT,
+        related_name='quotation_currency',
+    )
+    exchange_rate = models.DecimalField(max_digits=19, decimal_places=6, default=1)
+    subtotal = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    tax_total = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    total = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_DRAFT)
+    terms = models.TextField(blank=True)
+    notes = models.TextField(blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    linked_sales_order = models.ForeignKey(
+        'SalesOrder',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='source_quotations',
+    )
+    linked_sales_invoice = models.ForeignKey(
+        'SalesInvoice',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='source_quotations',
+    )
+    sent_at = models.DateTimeField(null=True, blank=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    converted_at = models.DateTimeField(null=True, blank=True)
+    expired_at = models.DateTimeField(null=True, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_quotations',
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='updated_quotations',
+    )
+
+    class Meta:
+        db_table = 'quotation'
+        unique_together = ('organization', 'quotation_number')
+        ordering = ('-quotation_date', '-quotation_id')
+        indexes = [
+            models.Index(fields=['organization', 'status']),
+            models.Index(fields=['organization', 'valid_until']),
+        ]
+
+    def __str__(self):
+        return f"{self.quotation_number or 'Quote'} - {self.customer_display_name}"
+
+    @property
+    def is_expired(self):
+        if self.status == self.STATUS_EXPIRED:
+            return True
+        if self.valid_until:
+            return timezone.localdate() > self.valid_until
+        return False
+
+    @property
+    def can_be_converted(self):
+        return self.status not in {self.STATUS_CONVERTED, self.STATUS_CANCELLED, self.STATUS_EXPIRED}
+
+    def recompute_totals(self, save=True):
+        aggregates = self.lines.aggregate(
+            subtotal=Sum('line_total'),
+            tax_total=Sum('tax_amount'),
+        )
+        subtotal = aggregates.get('subtotal') or Decimal('0')
+        tax_total = aggregates.get('tax_total') or Decimal('0')
+        self.subtotal = subtotal
+        self.tax_total = tax_total
+        self.total = subtotal + tax_total
+        if save:
+            super().save(update_fields=['subtotal', 'tax_total', 'total', 'updated_at'])
+
+    def save(self, *args, **kwargs):
+        if self.customer_id and not self.customer_display_name:
+            self.customer_display_name = self.customer.display_name
+        if not self.quotation_number and self.organization_id:
+            document_date = self.quotation_date or timezone.now().date()
+            self.quotation_number = DocumentSequenceConfig.get_next_number(
+                organization=self.organization,
+                document_type='quotation',
+                document_date=document_date,
+            )
+        if self.payment_term and not self.due_date and self.quotation_date:
+            self.due_date = self.payment_term.calculate_due_date(self.quotation_date)
+        if self.is_expired and self.status not in {self.STATUS_EXPIRED, self.STATUS_CONVERTED}:
+            self.status = self.STATUS_EXPIRED
+            self.expired_at = timezone.now()
+        super().save(*args, **kwargs)
+
+
+class QuotationLine(models.Model):
+    """Line items belonging to a quotation."""
+
+    line_id = models.BigAutoField(primary_key=True)
+    quotation = models.ForeignKey(
+        Quotation,
+        on_delete=models.CASCADE,
+        related_name='lines',
+    )
+    line_number = models.PositiveIntegerField()
+    description = models.TextField(blank=True, default='')
+    product_code = models.CharField(max_length=100, blank=True)
+    quantity = models.DecimalField(max_digits=19, decimal_places=4, default=1)
+    unit_price = models.DecimalField(max_digits=19, decimal_places=6, default=0)
+    discount_amount = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    line_total = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    revenue_account = models.ForeignKey(
+        ChartOfAccount,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='quotation_lines',
+    )
+    tax_code = models.ForeignKey(
+        'TaxCode',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='quotation_lines',
+    )
+    tax_amount = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    cost_center = models.ForeignKey(
+        CostCenter,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='quotation_lines',
+    )
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='quotation_lines',
+    )
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='quotation_lines',
+    )
+    dimension_value = models.ForeignKey(
+        'DimensionValue',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='quotation_lines',
+    )
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'quotation_line'
+        unique_together = ('quotation', 'line_number')
+        ordering = ('quotation', 'line_number')
+
+    def __str__(self):
+        return f"{self.quotation.quotation_number or 'Quote'} - line {self.line_number}"
+
+    def clean(self):
+        if self.quantity <= 0:
+            raise ValidationError("Quantity must be greater than zero.")
+        if self.unit_price < 0:
+            raise ValidationError("Unit price cannot be negative.")
+        super().clean()
+
+    def save(self, *args, **kwargs):
+        self.line_total = (
+            (self.quantity or Decimal('0')) * (self.unit_price or Decimal('0'))
+            - (self.discount_amount or Decimal('0'))
+        )
+        super().save(*args, **kwargs)
+        if self.quotation_id:
+            self.quotation.recompute_totals(save=True)
 
 
 class SalesInvoice(models.Model):
@@ -2687,6 +3069,30 @@ class SalesInvoice(models.Model):
     def __str__(self):
         return f"{self.invoice_number} - {self.customer_display_name}"
 
+    def get_print_url(self):
+        """Return a reverse URL for printing, but avoid raising NoReverseMatch.
+
+        Some templates may reference the print URL even when URL patterns are not yet registered
+        (for example during a migration). Returning '#' instead of propagating the exception
+        prevents the template from crashing while keeping the intent intact.
+        """
+        from django.urls import reverse, NoReverseMatch
+        try:
+            return reverse('accounting:sales_invoice_print', args=[self.invoice_id])
+        except NoReverseMatch:
+            return '#'
+
+    def get_post_url(self):
+        """Return a reverse URL for posting the invoice, with safe fallback.
+
+        Returns '#' if the reverse lookup fails so templates won't raise NoReverseMatch.
+        """
+        from django.urls import reverse, NoReverseMatch
+        try:
+            return reverse('accounting:sales_invoice_post', args=[self.invoice_id])
+        except NoReverseMatch:
+            return '#'
+
     def recompute_totals(self, save=True):
         aggregates = self.lines.aggregate(
             subtotal=Sum('line_total'),
@@ -2718,6 +3124,132 @@ class SalesInvoice(models.Model):
                 document_date=document_date,
             )
         super().save(*args, **kwargs)
+
+
+class ReceivableReminder(models.Model):
+    reminder_id = models.BigAutoField(primary_key=True)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name='receivable_reminders',
+    )
+    customer = models.ForeignKey(
+        'Customer',
+        on_delete=models.CASCADE,
+        related_name='receivable_reminders',
+    )
+    invoice = models.ForeignKey(
+        SalesInvoice,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reminders',
+    )
+    channel = models.CharField(max_length=20, choices=REMINDER_CHANNEL_CHOICES, default=REMINDER_CHANNEL_EMAIL)
+    status = models.CharField(max_length=20, choices=REMINDER_STATUS_CHOICES, default=REMINDER_STATUS_PENDING)
+    scheduled_at = models.DateTimeField(default=timezone.now)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    attempts = models.PositiveIntegerField(default=0)
+    message = models.TextField()
+    response_payload = models.JSONField(default=dict, blank=True)
+    error_message = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_receivable_reminders',
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='updated_receivable_reminders',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'receivable_reminder'
+        ordering = ['-scheduled_at', '-sent_at']
+        indexes = [
+            models.Index(fields=['organization', 'status']),
+            models.Index(fields=['invoice', 'sent_at']),
+        ]
+class PayableReminder(models.Model):
+    reminder_id = models.BigAutoField(primary_key=True)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name='payable_reminders',
+    )
+    vendor = models.ForeignKey(
+        Vendor,
+        on_delete=models.CASCADE,
+        related_name='payable_reminders',
+    )
+    invoice = models.ForeignKey(
+        PurchaseInvoice,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='payable_reminders',
+    )
+    channel = models.CharField(max_length=20, choices=REMINDER_CHANNEL_CHOICES, default=REMINDER_CHANNEL_EMAIL)
+    status = models.CharField(max_length=20, choices=REMINDER_STATUS_CHOICES, default=REMINDER_STATUS_PENDING)
+    scheduled_at = models.DateTimeField(default=timezone.now)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    attempts = models.PositiveIntegerField(default=0)
+    message = models.TextField()
+    response_payload = models.JSONField(default=dict, blank=True)
+    error_message = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_payable_reminders',
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='updated_payable_reminders',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'payable_reminder'
+        ordering = ['-scheduled_at', '-sent_at']
+        indexes = [
+            models.Index(fields=['organization', 'status'], name='payable__organiz_idx'),
+            models.Index(fields=['invoice', 'sent_at'], name='payable__invoice_idx'),
+        ]
+
+
+    def __str__(self):
+        target = self.invoice.invoice_number if self.invoice else self.customer.display_name
+        return f"Reminder {self.reminder_id} ({self.channel}) for {target}"
+
+    def mark_sent(self, response_payload=None):
+        self.status = REMINDER_STATUS_SENT
+        self.sent_at = timezone.now()
+        self.attempts += 1
+        if response_payload is not None:
+            self.response_payload = {
+                **(self.response_payload or {}),
+                **response_payload,
+            }
+        self.save(update_fields=['status', 'sent_at', 'attempts', 'response_payload', 'updated_at'])
+
+    def mark_failed(self, error_message):
+        self.status = REMINDER_STATUS_FAILED
+        self.attempts += 1
+        self.error_message = error_message or ''
+        self.save(update_fields=['status', 'attempts', 'error_message', 'updated_at'])
 
 
 class IRDSubmissionTask(models.Model):
@@ -2873,6 +3405,187 @@ class SalesInvoiceLine(models.Model):
 
     def save(self, *args, **kwargs):
         self.line_total = (self.quantity * self.unit_price) - (self.discount_amount or Decimal('0'))
+        super().save(*args, **kwargs)
+
+
+class DeliveryNote(models.Model):
+    """Delivery Note / Challan - records goods dispatched (reduces stock)."""
+
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('confirmed', 'Confirmed'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    delivery_note_id = models.BigAutoField(primary_key=True)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.PROTECT,
+        related_name='delivery_notes',
+    )
+    customer = models.ForeignKey(
+        'Customer',
+        on_delete=models.PROTECT,
+        related_name='delivery_notes',
+    )
+    customer_display_name = models.CharField(max_length=255)
+    note_number = models.CharField(max_length=50, blank=True, default='')
+    delivery_date = models.DateField(default=timezone.now)
+    reference_number = models.CharField(max_length=100, blank=True)
+    sales_order = models.ForeignKey(
+        'SalesOrder',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='delivery_notes',
+    )
+    linked_invoice = models.ForeignKey(
+        'SalesInvoice',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='delivery_notes',
+    )
+    warehouse = models.ForeignKey(
+        'Inventory.Warehouse',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='delivery_notes',
+        help_text='Warehouse from which goods are dispatched',
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    notes = models.TextField(blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_delivery_notes',
+    )
+
+    class Meta:
+        db_table = 'delivery_note'
+        unique_together = ('organization', 'note_number')
+        ordering = ('-delivery_date', '-delivery_note_id')
+
+    def __str__(self):
+        return f"{self.note_number or 'DN?'} - {self.customer_display_name}"
+
+    def save(self, *args, **kwargs):
+        # Auto-generate note number using existing sequence mechanism if available
+        if not self.note_number and self.organization_id:
+            try:
+                self.note_number = DocumentSequenceConfig.get_next_number(
+                    organization=self.organization,
+                    document_type='delivery_note',
+                    document_date=self.delivery_date or timezone.now().date(),
+                )
+            except Exception:
+                # Best-effort: leave blank if sequence config unavailable
+                pass
+        if self.customer_id and not self.customer_display_name:
+            self.customer_display_name = self.customer.display_name
+        super().save(*args, **kwargs)
+
+    def get_print_url(self):
+        from django.urls import reverse, NoReverseMatch
+        try:
+            return reverse('accounting:delivery_note_print', args=[self.delivery_note_id])
+        except NoReverseMatch:
+            return '#'
+
+    def confirm(self, user=None):
+        """
+        Confirm the delivery: reduce stock by creating StockLedger entries and updating InventoryItem snapshots.
+        This operation is atomic and will raise ValidationError if stock is insufficient.
+        """
+        from django.core.exceptions import ValidationError
+        from django.utils import timezone as _tz
+
+        from inventory.models import InventoryItem, StockLedger, Product
+
+        if self.status != 'draft':
+            raise ValidationError('Only draft delivery notes can be confirmed.')
+
+        with transaction.atomic():
+            lines = list(self.lines.select_for_update().all())
+            if not lines:
+                raise ValidationError('Delivery note must have at least one line to confirm.')
+
+            for line in lines:
+                # lock inventory item row
+                try:
+                    inv_item = InventoryItem.objects.select_for_update().get(
+                        organization=self.organization, product=line.product, warehouse=self.warehouse
+                    )
+                except InventoryItem.DoesNotExist:
+                    raise ValidationError(f'No inventory record for product {line.product} in warehouse {self.warehouse}.')
+
+                if (inv_item.quantity_on_hand or Decimal('0')) < (line.quantity or Decimal('0')):
+                    raise ValidationError(f'Insufficient stock for product {line.product.code} (available {inv_item.quantity_on_hand}).')
+
+                # decrement
+                inv_item.quantity_on_hand = inv_item.quantity_on_hand - (line.quantity or Decimal('0'))
+                inv_item.save(update_fields=['quantity_on_hand', 'updated_at'])
+
+                # create ledger entry
+                StockLedger.objects.create(
+                    organization=self.organization,
+                    product=line.product,
+                    warehouse=self.warehouse,
+                    location=None,
+                    batch=None,
+                    txn_type='delivery_note',
+                    reference_id=self.note_number or str(self.delivery_note_id),
+                    txn_date=_tz.now(),
+                    qty_in=Decimal('0'),
+                    qty_out=line.quantity or Decimal('0'),
+                    unit_cost=inv_item.unit_cost or Decimal('0'),
+                )
+
+            self.status = 'confirmed'
+            if user:
+                self.updated_at = timezone.now()
+                self.created_by = self.created_by or user
+            self.save()
+
+
+class DeliveryNoteLine(models.Model):
+    """Line items for DeliveryNote."""
+
+    delivery_note_line_id = models.BigAutoField(primary_key=True)
+    delivery_note = models.ForeignKey(
+        DeliveryNote,
+        on_delete=models.CASCADE,
+        related_name='lines',
+    )
+    line_number = models.PositiveIntegerField()
+    product = models.ForeignKey('Inventory.Product', on_delete=models.PROTECT)
+    product_code = models.CharField(max_length=100, blank=True)
+    description = models.TextField(blank=True)
+    quantity = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'delivery_note_line'
+        unique_together = ('delivery_note', 'line_number')
+        ordering = ('delivery_note', 'line_number')
+
+    def __str__(self):
+        return f"{self.delivery_note.note_number or 'DN?'} - line {self.line_number}"
+
+    def save(self, *args, **kwargs):
+        if self.product_id and not self.product_code:
+            try:
+                self.product_code = self.product.code
+            except Exception:
+                pass
         super().save(*args, **kwargs)
 
 
@@ -3364,6 +4077,7 @@ class DocumentSequenceConfig(models.Model):
         ('purchase_invoice', 'Purchase Invoice'),
         ('sales_credit_note', 'Sales Credit Note'),
         ('purchase_debit_note', 'Purchase Debit Note'),
+        ('quotation', 'Quotation'),
     ]
     RESET_CHOICES = [
         ('fiscal_year', 'Fiscal Year'),
@@ -3375,6 +4089,7 @@ class DocumentSequenceConfig(models.Model):
         'purchase_invoice': 'PI-',
         'sales_credit_note': 'SCN-',
         'purchase_debit_note': 'PDN-',
+        'quotation': 'QUO-',
     }
 
     sequence_id = models.BigAutoField(primary_key=True)
@@ -3715,6 +4430,116 @@ class JournalLine(models.Model):
             changed_data = get_changed_data(old_instance, model_to_dict(self))
             if changed_data:
                 log_audit_event(self.updated_by, self, 'updated', changes=changed_data)
+
+
+class ExpenseEntry(models.Model):
+    PAID_VIA_CASH = 'cash'
+    PAID_VIA_BANK = 'bank'
+    PAID_VIA_PAYABLE = 'payable'
+    PAID_VIA_CHOICES = [
+        (PAID_VIA_CASH, 'Cash'),
+        (PAID_VIA_BANK, 'Bank'),
+        (PAID_VIA_PAYABLE, 'Accounts Payable'),
+    ]
+
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('awaiting_approval', 'Awaiting Approval'),
+        ('posted', 'Posted'),
+        ('rejected', 'Rejected'),
+        ('reversed', 'Reversed'),
+    ]
+
+    expense_entry_id = models.BigAutoField(primary_key=True)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.PROTECT,
+        related_name='expense_entries',
+    )
+    category = models.ForeignKey(
+        ExpenseCategory,
+        on_delete=models.PROTECT,
+        related_name='entries',
+    )
+    journal = models.ForeignKey(
+        Journal,
+        on_delete=models.PROTECT,
+        related_name='expense_entries',
+    )
+    journal_type = models.ForeignKey(
+        JournalType,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='expense_entries',
+    )
+    payment_account = models.ForeignKey(
+        ChartOfAccount,
+        on_delete=models.PROTECT,
+        related_name='expense_payment_entries',
+    )
+    entry_date = models.DateField(default=timezone.now)
+    amount = models.DecimalField(
+        max_digits=19,
+        decimal_places=4,
+        validators=[MinValueValidator(Decimal('0.01'))],
+    )
+    description = models.TextField(blank=True)
+    reference = models.CharField(max_length=100, blank=True)
+    gst_applicable = models.BooleanField(default=False)
+    gst_amount = models.DecimalField(max_digits=19, decimal_places=4, default=Decimal('0.00'))
+    paid_via = models.CharField(max_length=20, choices=PAID_VIA_CHOICES, default=PAID_VIA_BANK)
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='posted')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_expense_entries',
+    )
+    updated_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='updated_expense_entries',
+    )
+    rowversion = models.BinaryField(editable=False, null=True, blank=True, help_text="For MSSQL: ROWVERSION for optimistic concurrency.")
+
+    class Meta:
+        db_table = 'expense_entry'
+        ordering = ['-entry_date', '-expense_entry_id']
+        indexes = [
+            models.Index(fields=['organization', 'entry_date']),
+            models.Index(fields=['category']),
+            models.Index(fields=['paid_via']),
+        ]
+
+    def __str__(self):
+        return f"{self.category.name} expense of {self.amount} on {self.entry_date}"
+
+    def clean(self):
+        errors = []
+        if self.amount and self.amount <= 0:
+            errors.append(ValidationError("Amount must be greater than zero."))
+        if self.gst_amount < 0:
+            errors.append(ValidationError("GST amount cannot be negative."))
+        if self.amount and self.gst_amount > self.amount:
+            errors.append(ValidationError("GST amount cannot exceed the total amount."))
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        if self.journal:
+            self.status = self.journal.status
+            self.organization = self.journal.organization
+        super().save(*args, **kwargs)
+
+    @property
+    def receipt_attachment(self):
+        return self.journal.attachments.first()
 
 
 class JournalLineDimension(models.Model):

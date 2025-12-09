@@ -1,0 +1,42 @@
+{% if cart.items.all %}
+    {% for item in cart.items.all %}
+    <div class="cart-item" id="cart-item-{{ item.cart_item_id }}">
+        <div class="flex-grow-1">
+            <div class="fw-bold">{{ item.product_name }}</div>
+            <div class="text-muted small">{{ item.product_code }}</div>
+            <div class="text-primary">${{ item.unit_price|floatformat:2 }} each</div>
+        </div>
+
+        <div class="quantity-controls">
+            <button hx-post="{% url 'pos:update_cart_item' %}"
+                    hx-vals='{"item_id": "{{ item.cart_item_id }}", "quantity": "{{ item.quantity|add:-1 }}"}'
+                    hx-target="#cart-items,#cart-total"
+                    hx-swap="innerHTML">
+                <i class="mdi mdi-minus"></i>
+            </button>
+                    <span class="px-2">{{ item.quantity }}</span>
+            <button hx-post="{% url 'pos:update_cart_item' %}"
+                    hx-vals='{"item_id": "{{ item.cart_item_id }}", "quantity": "{{ item.quantity|add:1 }}"}'
+                    hx-target="#cart-items,#cart-total"
+                    hx-swap="innerHTML">
+                <i class="mdi mdi-plus"></i>
+            </button>
+        </div>
+
+        <div class="text-end">
+            <div class="fw-bold">${{ item.line_total|floatformat:2 }}</div>
+            <button class="btn btn-sm btn-outline-danger ms-2"
+                    hx-post="{% url 'pos:remove_cart_item' %}"
+                    hx-vals='{"item_id": "{{ item.cart_item_id }}"}'
+                    hx-target="#cart-items,#cart-total"
+                    hx-swap="innerHTML">
+                <i class="mdi mdi-delete"></i>
+            </button>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="text-center text-muted py-4">
+        No items in cart
+    </div>
+{% endif %}

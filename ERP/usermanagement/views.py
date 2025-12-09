@@ -30,6 +30,9 @@ from .forms import (
 from django.views.generic import ListView, CreateView, UpdateView
 from django.views.generic import DetailView, DeleteView
 from django.urls import reverse_lazy
+
+
+
 def custom_login(request):
     next_url = request.POST.get('next') or request.GET.get('next') or '/'
     if request.method == 'POST':

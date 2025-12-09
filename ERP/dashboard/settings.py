@@ -63,6 +63,9 @@ MAINTENANCE_STREAM_INTERVAL = int(os.getenv("MAINTENANCE_STREAM_INTERVAL", "2"))
 # Reporting toggles
 ENABLE_CUSTOM_REPORTS = env_bool("ENABLE_CUSTOM_REPORTS", default=True)
 
+# Permission logging (for audit/debugging)
+LOG_PERMISSION_CHECKS = env_bool("LOG_PERMISSION_CHECKS", default=False)
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -151,6 +154,7 @@ INSTALLED_APPS = [
     'service_management',
     'lpg_vertical',
     'notification_center',
+    'pos',
     'django_celery_results',
     'django_celery_beat',
 ]
@@ -207,6 +211,8 @@ TEMPLATES = [
                 'dashboard.context_processors.ui_metadata_context',
                     # Inject active organization into templates globally
                     'usermanagement.context_processors.active_organization',
+                    # Inject user permissions into templates globally
+                    'usermanagement.context_processors.permissions',
                     # Inject accounting default currency into all templates
                     'accounting.context_processors.default_currency',
             ],
@@ -331,6 +337,22 @@ CACHE_TTL = {
     'long': 60 * 60,        # 1 hour
     'short': 60,            # 1 minute
     'permanent': 60 * 60 * 24  # 1 day
+}
+
+# =============================================================================
+# RATE LIMITING CONFIGURATION
+# =============================================================================
+RATELIMIT_VIEW = 'usermanagement.views.rate_limit_exceeded'
+RATELIMIT_BLOCK = True  # Block requests that exceed limits
+RATELIMIT_CACHE_PREFIX = 'rl:'
+RATELIMIT_CACHE_BACKEND = 'default'
+
+# Rate limits for different operations
+RATELIMITS = {
+    'permission_check': '100/m',  # 100 permission checks per minute per user
+    'login_attempt': '5/m',       # 5 login attempts per minute per IP
+    'api_call': '1000/m',         # 1000 API calls per minute per user
+    'form_submission': '10/m',    # 10 form submissions per minute per user
 }
 
 AUTH_USER_MODEL = 'usermanagement.CustomUser'

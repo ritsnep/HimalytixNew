@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    @page { size: 80mm auto; margin: 4mm; }
+    body { font-family: Arial, sans-serif; font-size: 12px; }
+    .center { text-align: center; }
+    .bold { font-weight: bold; }
+    .line { border-top: 1px dashed #000; margin: 6px 0; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 2px 0; }
+    .right { text-align: right; }
+  </style>
+</head>
+<body>
+  <div class="center bold">{{ invoice.organization.legal_name|default:invoice.organization.name }}</div>
+  <div class="center">PAN: {{ invoice.organization.tax_id|default:"-" }}</div>
+  <div class="center">Invoice #{{ invoice.invoice_number }}</div>
+  <div class="center">Date: {{ invoice.invoice_date|date:"Y-m-d" }}</div>
+  <div class="line"></div>
+  <div><strong>To:</strong> {{ invoice.customer_display_name }}</div>
+  {% if invoice.customer.tax_id %}<div>PAN: {{ invoice.customer.tax_id }}</div>{% endif %}
+  <div class="line"></div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:40%;">Item</th>
+        <th class="right" style="width:20%;">Qty</th>
+        <th class="right" style="width:20%;">Rate</th>
+        <th class="right" style="width:20%;">Amt</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in lines %}
+      <tr>
+        <td>{{ line.description }}</td>
+        <td class="right">{{ line.quantity }}</td>
+        <td class="right">{{ line.unit_price }}</td>
+        <td class="right">{{ line.line_total }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="line"></div>
+  <table>
+    <tr>
+      <td>Subtotal</td>
+      <td class="right">{{ invoice.subtotal }}</td>
+    </tr>
+    <tr>
+      <td>Tax</td>
+      <td class="right">{{ invoice.tax_total }}</td>
+    </tr>
+    <tr class="bold">
+      <td>Total</td>
+      <td class="right">{{ invoice.total }}</td>
+    </tr>
+  </table>
+
+  {% if tax_summary %}
+  <div class="line"></div>
+  <div class="bold">Tax Breakdown</div>
+  {% for entry in tax_summary %}
+  <div>{{ entry.code }}: {{ entry.amount }}</div>
+  {% endfor %}
+  {% endif %}
+
+  {% if qr_base64 %}
+  <div class="center line"></div>
+  <div class="center"><img src="data:image/png;base64,{{ qr_base64 }}" alt="QR" style="max-width:120px;"></div>
+  {% endif %}
+
+  <div class="line"></div>
+  <div class="center">Thank you!</div>
+</body>
+</html>

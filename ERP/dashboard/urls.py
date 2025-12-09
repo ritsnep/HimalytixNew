@@ -22,6 +22,7 @@ from django.contrib.auth.decorators import login_required
 from .views import CustomLoginView
 from django.conf import settings
 from django.conf.urls.static import static
+from .views import service_worker
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 urlpatterns = [
@@ -57,6 +58,7 @@ urlpatterns = [
     
     # Include accounting app with explicit namespace for reverse('accounting:*') lookups
     path('accounting/', include(('accounting.urls', 'accounting'), namespace='accounting')),
+    path('pos/', include(('pos.urls', 'pos'), namespace='pos')),
     # path('accounting/', include('accounting.new_journal_entry_urls')),
     # path('admin/', admin.site.urls),
     path("accounts/login/", CustomLoginView.as_view(), name="account_login"),
@@ -110,6 +112,8 @@ urlpatterns = [
     # i18n / region
     path('i18n/set-language/', views.set_language, name='set_language'),
     path('i18n/set-region/', views.set_region, name='set_region'),
+    # Service worker at site root
+    path('sw.js', service_worker, name='service_worker'),
 ]
 
 if settings.ENABLE_SILK:

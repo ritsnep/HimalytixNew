@@ -11,6 +11,7 @@
         <th>Due Date</th>
         <th>Status</th>
         <th class="text-end">Total</th>
+        <th class="text-center">Actions</th>
     </tr>
 </thead>
 {% endblock table_head %}
@@ -23,12 +24,27 @@
         <td>{{ invoice.customer_display_name }}</td>
         <td>{{ invoice.invoice_date }}</td>
         <td>{{ invoice.due_date }}</td>
-        <td><span class="badge bg-info text-dark text-capitalize">{{ invoice.status }}</span></td>
+        <td>
+            <span class="badge {% if invoice.status == 'posted' %}bg-success{% elif invoice.status == 'draft' %}bg-secondary{% else %}bg-info text-dark{% endif %} text-capitalize">
+                {{ invoice.status }}
+            </span>
+        </td>
         <td class="text-end">{{ invoice.total }}</td>
+        <td class="text-center">
+            <div class="d-flex justify-content-center gap-2">
+                <a href="{{ invoice.get_print_url }}" class="btn btn-outline-secondary btn-sm" target="_blank">Print</a>
+                {% if invoice.status != 'posted' %}
+                <form method="post" action="{{ invoice.get_post_url }}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary btn-sm">Post</button>
+                </form>
+                {% endif %}
+            </div>
+        </td>
     </tr>
     {% empty %}
     <tr>
-        <td colspan="6" class="text-center text-muted">No sales invoices yet.</td>
+        <td colspan="7" class="text-center text-muted">No sales invoices yet.</td>
     </tr>
     {% endfor %}
 </tbody>

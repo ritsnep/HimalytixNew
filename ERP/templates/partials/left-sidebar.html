@@ -14,320 +14,349 @@
 
                 <li>
                     <a href="{% url 'dashboard' %}">
-                    {% comment %} <a href="{% url 'dashboard' %}" hx-get="{% url 'dashboard' %}.hx/" hx-target="#main-container" hx-push-url="true" class="nav-link"> {% endcomment %}
-                        <i data-feather="home"></i>
-                        <span class="badge rounded-pill bg-soft-success text-success float-end">9+</span>
-                        <span data-key="t-dashboard">Dashboard</span>
-                    </a>
+                        {% comment %} <a href="{% url 'dashboard' %}" hx-get="{% url 'dashboard' %}.hx/"
+                            hx-target="#main-container" hx-push-url="true" class="nav-link"> {% endcomment %}
+                            <i data-feather="home"></i>
+                            <span class="badge rounded-pill bg-soft-success text-success float-end">9+</span>
+                            <span data-key="t-dashboard">Dashboard</span>
+                        </a>
                 </li>
 
                 <li class="menu-title" data-key="t-lpg">LPG / PFG</li>
                 <li>
-                    <a href="{% url 'lpg_vertical:spa' %}"
-                       hx-get="{% url 'lpg_vertical:spa' %}"
-                       hx-target="#main-container"
-                       hx-swap="innerHTML"
-                       hx-push-url="true"
-                       class="nav-link">
+                    <a href="{% url 'lpg_vertical:spa' %}" hx-get="{% url 'lpg_vertical:spa' %}"
+                        hx-target="#main-container" hx-swap="innerHTML" hx-push-url="true" class="nav-link">
                         <i data-feather="droplet"></i>
                         <span data-key="t-lpg-module">LPG Vertical</span>
                     </a>
                 </li>
-  <!-- Accounting Section -->
-  <li>
-    <a href="javascript: void(0);" class="has-arrow">
-        <i data-feather="book"></i>
-        <span data-key="t-accounting">Accounting</span>
-    </a>
-    <ul class="sub-menu" aria-expanded="false">
-        <!-- Chart of Accounts -->
-        <li>
-            <a href="{% url 'accounting:chart_of_accounts_list' %}">
-            {% comment %} <a href="{% url 'accounting:chart_of_accounts_list' %}" hx-get="{% url 'accounting:chart_of_accounts_list' %}.hx/" hx-target="#main-container" hx-push-url="true" class="nav-link"> {% endcomment %}
-                <span>Chart of Accounts</span>
-            </a>
-        </li>
-        <!-- Account Types -->
-        <li>
-            <a href="{% url 'accounting:account_type_list' %}">
-            {% comment %} <a href="{% url 'accounting:account_type_list' %}" hx-get="{% url 'accounting:account_type_list' %}.hx/" hx-target="#main-container" hx-push-url="true" class="nav-link"> {% endcomment %}
-                <span>Account Types</span>
-            </a>
-        </li>
-        <!-- Currencies -->
-        <li>
-            <a href="{% url 'accounting:currency_list' %}" >
-                <span>Currencies</span>
-            </a>
-        </li>
-        <!-- Exchange Rates -->
-        <li>
-            <a href="{% url 'accounting:exchange_rate_list' %}" >
-                <span>Exchange Rates</span>
-            </a>
-        </li>
-        <!-- Fiscal Years -->
-        <li>
-            <a href="{% url 'accounting:fiscal_year_list' %}" >
-                <span>Fiscal Years</span>
-            </a>
-        </li>
-        <!-- Cost Centers -->
-        <li>
-            <a href="{% url 'accounting:costcenter_list' %}">
-                <span>Cost Centers</span>
-            </a>
-        </li>
-        <!-- Departments -->
-        <li>
-            <a href="{% url 'accounting:department_list' %}">
-                <span>Departments</span>
-            </a>
-        </li>
-        <!-- Journals -->
-        <li>
-            <a href="{% url 'accounting:journal_list' %}" >
-                <span>Journals</span>
-            </a>
-        </li>
-        {% if user|has_permission:'accounting_salesinvoice_view' %}
-        <li>
-            <a href="{% url 'accounting:sales_invoice_list' %}">
-                <span>Sales Invoices</span>
-            </a>
-        </li>
-        {% endif %}
-        {% if user|has_permission:'accounting_arreceipt_view' %}
-        <li>
-            <a href="{% url 'accounting:ar_receipt_list' %}">
-                <span>AR Receipts</span>
-            </a>
-        </li>
-        {% endif %}
-        {% if user|has_permission:'accounting_appayment_view' %}
-        <li>
-            <a href="{% url 'accounting:ap_payment_list' %}">
-                <span>AP Payments</span>
-            </a>
-        </li>
-        {% endif %}
-        {% if user|has_permission:'accounting_customer_view' %}
-        <li>
-            <a href="{% url 'accounting:customer_list' %}">
-                <span>Customers</span>
-            </a>
-        </li>
-        {% endif %}
-        {% if user|has_permission:'accounting_vendor_view' %}
-        <li>
-            <a href="{% url 'accounting:vendor_list' %}">
-                <span>Vendors</span>
-            </a>
-        </li>
-        {% endif %}
-        <!-- Journal Entry -->
-        <li>
-            <a href="{% url 'accounting:journal_entry' %}">
-                <span>Journal Entry</span>
-            </a>
-        </li>
-        <!-- Voucher Management -->
-        <li>
-            <a href="javascript: void(0);" class="has-arrow">
-                <i class="fas fa-file-invoice"></i>
-                <span>Vouchers</span>
-            </a>
-            <ul class="sub-menu" aria-expanded="false">
-                {% if user|has_permission:'accounting_journal_add' %}
+                <!-- Accounting Section -->
                 <li>
-                    <a href="{% url 'accounting:voucher_create' %}">
-                        <i class="fas fa-plus-circle"></i>
-                        <span>Create New Voucher</span>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="book"></i>
+                        <span data-key="t-accounting">Accounting</span>
                     </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <!-- Chart of Accounts -->
+                        <li>
+                            <a href="{% url 'accounting:chart_of_accounts_list' %}">
+                                {% comment %} <a href="{% url 'accounting:chart_of_accounts_list' %}"
+                                    hx-get="{% url 'accounting:chart_of_accounts_list' %}.hx/"
+                                    hx-target="#main-container" hx-push-url="true" class="nav-link"> {% endcomment %}
+                                    <span>Chart of Accounts</span>
+                                </a>
+                        </li>
+                        <!-- Account Types -->
+                        <li>
+                            <a href="{% url 'accounting:account_type_list' %}">
+                                {% comment %} <a href="{% url 'accounting:account_type_list' %}"
+                                    hx-get="{% url 'accounting:account_type_list' %}.hx/" hx-target="#main-container"
+                                    hx-push-url="true" class="nav-link"> {% endcomment %}
+                                    <span>Account Types</span>
+                                </a>
+                        </li>
+                        <!-- Currencies -->
+                        <li>
+                            <a href="{% url 'accounting:currency_list' %}">
+                                <span>Currencies</span>
+                            </a>
+                        </li>
+                        <!-- Exchange Rates -->
+                        <li>
+                            <a href="{% url 'accounting:exchange_rate_list' %}">
+                                <span>Exchange Rates</span>
+                            </a>
+                        </li>
+                        <!-- Fiscal Years -->
+                        <li>
+                            <a href="{% url 'accounting:fiscal_year_list' %}">
+                                <span>Fiscal Years</span>
+                            </a>
+                        </li>
+                        <!-- Cost Centers -->
+                        <li>
+                            <a href="{% url 'accounting:costcenter_list' %}">
+                                <span>Cost Centers</span>
+                            </a>
+                        </li>
+                        <!-- Departments -->
+                        <li>
+                            <a href="{% url 'accounting:department_list' %}">
+                                <span>Departments</span>
+                            </a>
+                        </li>
+                        <!-- Journals -->
+                        <li>
+                            <a href="{% url 'accounting:journal_list' %}">
+                                <span>Journals</span>
+                            </a>
+                        </li>
+                        {% if user|has_permission:'accounting_salesinvoice_view' %}
+                        <li>
+                            <a href="{% url 'accounting:sales_invoice_list' %}">
+                                <span>Sales Invoices</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if user|has_permission:'accounting_salesinvoice_add' %}
+                        <li>
+                            <a href="{% url 'pos:pos_home' %}">
+                                <span>Point of Sale</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if user|has_permission:'accounting_arreceipt_view' %}
+                        <li>
+                            <a href="{% url 'accounting:ar_receipt_list' %}">
+                                <span>AR Receipts</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if user|has_permission:'accounting_appayment_view' %}
+                        <li>
+                            <a href="{% url 'accounting:ap_payment_list' %}">
+                                <span>AP Payments</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if user|has_permission:'accounting_customer_view' %}
+                        <li>
+                            <a href="{% url 'accounting:customer_list' %}">
+                                <span>Customers</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if user|has_permission:'accounting_vendor_view' %}
+                        <li>
+                            <a href="{% url 'accounting:vendor_list' %}">
+                                <span>Vendors</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        <!-- Journal Entry -->
+                        <li>
+                            <a href="{% url 'accounting:journal_entry' %}">
+                                <span>Journal Entry</span>
+                            </a>
+                        </li>
+                        <!-- Voucher Management -->
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i class="fas fa-file-invoice"></i>
+                                <span>Vouchers</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                {% if user|has_permission:'accounting_journal_add' %}
+                                <li>
+                                    <a href="{% url 'accounting:voucher_create' %}">
+                                        <i class="fas fa-plus-circle"></i>
+                                        <span>Create New Voucher</span>
+                                    </a>
+                                </li>
+                                {% endif %}
+                                <li>
+                                    <a href="{% url 'accounting:voucher_list' %}">
+                                        <i class="fas fa-list"></i>
+                                        <span>View All Vouchers</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        <!-- Voucher Configurations -->
+                        <li>
+                            <a href="{% url 'accounting:voucher_config_list' %}">
+                                {% if user|has_permission:'accounting_salesorder_view' %}
+                                {% url 'accounting:sales_order_list' as sales_orders_url %}
+                                {% if sales_orders_url %}
+                                <span>Voucher Configurations</span>
+                            </a>
+                        </li>
+                        <!-- Voucher Settings -->
+                        <li>
+                            <a href="{% url 'accounting:voucher_settings' %}">
+                                {% endif %}
+                                {% endif %}
+                                <span>Voucher Settings</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i class="fas fa-file-invoice-dollar"></i>
+                                <span>Accounts Payable</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                {% if user|has_permission:'accounting_purchaseinvoice_add' %}
+                                <li>
+                                    <a href="{% url 'accounting:vendor_bill_create' %}">
+                                        <i class="fas fa-pen-square"></i>
+                                        <span>Vendor Bill Entry</span>
+                                    </a>
+                                </li>
+                                {% endif %}
+                                {% if user|has_permission:'accounting_appayment_change' %}
+                                <li>
+                                    <a href="{% url 'accounting:payment_scheduler' %}">
+                                        <i class="fas fa-calendar-check"></i>
+                                        <span>Payment Scheduler</span>
+                                    </a>
+                                </li>
+                                {% endif %}
+                                {% if user|has_permission:'accounting_appayment_view' %}
+                                <li>
+                                    <a href="{% url 'accounting:vendor_statement' %}">
+                                        <i class="fas fa-file-alt"></i>
+                                        <span>Vendor Statement</span>
+                                    </a>
+                                </li>
+                                {% endif %}
+                                {% if user|has_permission:'accounting_purchaseinvoice_view' %}
+                                <li>
+                                    <a href="{% url 'accounting:payable_dashboard' %}">
+                                        <i class="fas fa-chart-area"></i>
+                                        <span>Payable Dashboard</span>
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </li>
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i class="fas fa-file-invoice"></i>
+                                <span>Accounts Receivable</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                {% if user|has_permission:'accounting_salesinvoice_view' %}
+                                <li>
+                                    <a href="{% url 'accounting:sales_invoice_list' %}">
+                                        <i class="fas fa-file-invoice-dollar"></i>
+                                        <span>Sales Invoices</span>
+                                    </a>
+                                </li>
+                                {% endif %}
+                                {% if user|has_permission:'accounting_arreceipt_view' %}
+                                <li>
+                                    <a href="{% url 'accounting:ar_receipt_list' %}">
+                                        <i class="fas fa-money-check-alt"></i>
+                                        <span>Customer Receipts</span>
+                                    </a>
+                                </li>
+                                {% endif %}
+                                {% if user|has_permission:'accounting_salesinvoice_view' %}
+                                <li>
+                                    <a href="{% url 'accounting:customer_statement' %}">
+                                        <i class="fas fa-file-alt"></i>
+                                        <span>Customer Statement</span>
+                                    </a>
+                                </li>
+                                {% endif %}
+                                {% if user|has_permission:'accounting_salesinvoice_view' %}
+                                <li>
+                                    <a href="{% url 'accounting:receivable_dashboard' %}">
+                                        <i class="fas fa-chart-line"></i>
+                                        <span>Receivable Dashboard</span>
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </li>
+                        <!-- Tax Configuration -->
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i class="fas fa-receipt"></i>
+                                <span>Tax Configuration</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                <li>
+                                    <a href="{% url 'accounting:tax_authority_list' %}">
+                                        <span>Tax Authorities</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{% url 'accounting:tax_type_list' %}">
+                                        <span>Tax Types</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{% url 'accounting:tax_code_list' %}">
+                                        <span>Tax Codes</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        <!-- Projects -->
+                        <li>
+                            <a href="{% url 'accounting:project_list' %}">
+                                <span>Projects</span>
+                            </a>
+                        </li>
+                        <!-- Accounting Periods -->
+                        <li>
+                            <a href="{% url 'accounting:accounting_period_list' %}">
+                                <span>Accounting Periods</span>
+                            </a>
+                        </li>
+                        <!-- Journal Types -->
+                        <li>
+                            <a href="{% url 'accounting:journal_type_list' %}">
+                                <span>Journal Types</span>
+                            </a>
+                        </li>
+                        <!-- Financial Reports -->
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i class="fas fa-chart-pie"></i>
+                                <span>Financial Reports</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                <li>
+                                    <a href="{% url 'accounting:reports_list' %}">
+                                        <span>Standard Reports</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{% url 'accounting:report_list' %}">
+                                        <span>Advanced Reports Hub</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{% url 'accounting:report_ledger' %}">
+                                        <span>General Ledger</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{% url 'accounting:report_trial_balance' %}">
+                                        <span>Trial Balance</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{% url 'accounting:report_pl' %}">
+                                        <span>Profit &amp; Loss</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{% url 'accounting:report_bs' %}">
+                                        <span>Balance Sheet</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{% url 'accounting:report_cf' %}">
+                                        <span>Cash Flow</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{% url 'accounting:report_ar_aging' %}">
+                                        <span>A/R Aging</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{% url 'accounting:report_ap_aging' %}">
+                                        <span>A/P Aging</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
                 </li>
-                {% endif %}
-                <li>
-                    <a href="{% url 'accounting:voucher_list' %}">
-                        <i class="fas fa-list"></i>
-                        <span>View All Vouchers</span>
-                    </a>
-                </li>
-            </ul>
-        </li>
-        <!-- Voucher Configurations -->
-        <li>
-            <a href="{% url 'accounting:voucher_config_list' %}">
-                <span>Voucher Configurations</span>
-            </a>
-        </li>
-        <!-- Voucher Settings -->
-        <li>
-            <a href="{% url 'accounting:voucher_settings' %}">
-                <span>Voucher Settings</span>
-            </a>
-        </li>
-        <li>
-            <a href="javascript: void(0);" class="has-arrow">
-                <i class="fas fa-file-invoice-dollar"></i>
-                <span>Accounts Payable</span>
-            </a>
-            <ul class="sub-menu" aria-expanded="false">
-                {% if user|has_permission:'accounting_purchaseinvoice_add' %}
-                <li>
-                    <a href="{% url 'accounting:vendor_bill_create' %}">
-                        <i class="fas fa-pen-square"></i>
-                        <span>Vendor Bill Entry</span>
-                    </a>
-                </li>
-                {% endif %}
-                {% if user|has_permission:'accounting_appayment_change' %}
-                <li>
-                    <a href="{% url 'accounting:payment_scheduler' %}">
-                        <i class="fas fa-calendar-check"></i>
-                        <span>Payment Scheduler</span>
-                    </a>
-                </li>
-                {% endif %}
-                {% if user|has_permission:'accounting_appayment_view' %}
-                <li>
-                    <a href="{% url 'accounting:vendor_statement' %}">
-                        <i class="fas fa-file-alt"></i>
-                        <span>Vendor Statement</span>
-                    </a>
-                </li>
-                {% endif %}
-            </ul>
-        </li>
-        <li>
-            <a href="javascript: void(0);" class="has-arrow">
-                <i class="fas fa-file-invoice"></i>
-                <span>Accounts Receivable</span>
-            </a>
-            <ul class="sub-menu" aria-expanded="false">
-                {% if user|has_permission:'accounting_salesinvoice_view' %}
-                <li>
-                    <a href="{% url 'accounting:sales_invoice_list' %}">
-                        <i class="fas fa-file-invoice-dollar"></i>
-                        <span>Sales Invoices</span>
-                    </a>
-                </li>
-                {% endif %}
-                {% if user|has_permission:'accounting_arreceipt_view' %}
-                <li>
-                    <a href="{% url 'accounting:ar_receipt_list' %}">
-                        <i class="fas fa-money-check-alt"></i>
-                        <span>Customer Receipts</span>
-                    </a>
-                </li>
-                {% endif %}
-                {% if user|has_permission:'accounting_salesinvoice_view' %}
-                <li>
-                    <a href="{% url 'accounting:customer_statement' %}">
-                        <i class="fas fa-file-alt"></i>
-                        <span>Customer Statement</span>
-                    </a>
-                </li>
-                {% endif %}
-            </ul>
-        </li>
-        <!-- Tax Configuration -->
-        <li>
-            <a href="javascript: void(0);" class="has-arrow">
-                <i class="fas fa-receipt"></i>
-                <span>Tax Configuration</span>
-            </a>
-            <ul class="sub-menu" aria-expanded="false">
-                <li>
-                    <a href="{% url 'accounting:tax_authority_list' %}">
-                        <span>Tax Authorities</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'accounting:tax_type_list' %}">
-                        <span>Tax Types</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'accounting:tax_code_list' %}">
-                        <span>Tax Codes</span>
-                    </a>
-                </li>
-            </ul>
-        </li>
-        <!-- Projects -->
-        <li>
-            <a href="{% url 'accounting:project_list' %}" >
-                <span>Projects</span>
-            </a>
-        </li>
-         <!-- Accounting Periods -->
-        <li>
-            <a href="{% url 'accounting:accounting_period_list' %}">
-                <span>Accounting Periods</span>
-            </a>
-        </li>
-        <!-- Journal Types -->
-        <li>
-            <a href="{% url 'accounting:journal_type_list' %}">
-                <span>Journal Types</span>
-            </a>
-        </li>
-        <!-- Financial Reports -->
-        <li>
-            <a href="javascript: void(0);" class="has-arrow">
-                <i class="fas fa-chart-pie"></i>
-                <span>Financial Reports</span>
-            </a>
-            <ul class="sub-menu" aria-expanded="false">
-                <li>
-                    <a href="{% url 'accounting:reports_list' %}">
-                        <span>Standard Reports</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'accounting:report_list' %}">
-                        <span>Advanced Reports Hub</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'accounting:report_ledger' %}">
-                        <span>General Ledger</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'accounting:report_trial_balance' %}">
-                        <span>Trial Balance</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'accounting:report_pl' %}">
-                        <span>Profit &amp; Loss</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'accounting:report_bs' %}">
-                        <span>Balance Sheet</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'accounting:report_cf' %}">
-                        <span>Cash Flow</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'accounting:report_ar_aging' %}">
-                        <span>A/R Aging</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'accounting:report_ap_aging' %}">
-                        <span>A/P Aging</span>
-                    </a>
-                </li>
-            </ul>
-        </li>
-    </ul>
-</li>
 
                 <!-- Account Section -->
                 <li>
@@ -335,11 +364,16 @@
                         <i data-feather="user"></i>
                         <span data-key="t-account">Account</span>
                     </a>
+                    {% if user|has_permission:'accounting_salesinvoice_view' %}
+                    {% url 'accounting:customer_statement' as customer_statement_url %}
+                    {% if customer_statement_url %}
                     <ul class="sub-menu" aria-expanded="false">
                         <li><a href="{% url 'account:profile' %}">Profile</a></li>
                         <li><a href="{% url 'account:security' %}">Security</a></li>
                         <li><a href="{% url 'account:billing' %}">Billing</a></li>
                     </ul>
+                    {% endif %}
+                    {% endif %}
                 </li>
 
                 <!-- Inventory Section -->
@@ -383,12 +417,14 @@
                             </a>
                         </li>
                         <li>
-                            <a href="{% url 'purchasing:po_workspace' %}" hx-get="{% url 'purchasing:po_workspace' %}" hx-target="#main-container" hx-swap="innerHTML" hx-push-url="true">
+                            <a href="{% url 'purchasing:po_workspace' %}" hx-get="{% url 'purchasing:po_workspace' %}"
+                                hx-target="#main-container" hx-swap="innerHTML" hx-push-url="true">
                                 <span>PO Workspace</span>
                             </a>
                         </li>
                         <li>
-                            <a href="{% url 'purchasing:gr_workspace' %}" hx-get="{% url 'purchasing:gr_workspace' %}" hx-target="#main-container" hx-swap="innerHTML" hx-push-url="true">
+                            <a href="{% url 'purchasing:gr_workspace' %}" hx-get="{% url 'purchasing:gr_workspace' %}"
+                                hx-target="#main-container" hx-swap="innerHTML" hx-push-url="true">
                                 <span>GR Workspace</span>
                             </a>
                         </li>
@@ -448,6 +484,42 @@
                         <span data-key="t-billing">Billing</span>
                     </a>
                     <ul class="sub-menu" aria-expanded="false">
+                        {% if user|has_permission:'accounting_salesorder_view' %}
+                        <li>
+                            <a href="{% url 'accounting:sales_order_list' %}">
+                                <i class="fas fa-shopping-bag"></i>
+                                <span>Sales Orders</span>
+                            </a>
+                        </li>
+
+                        {% endif %}
+                        {% if user|has_permission:'accounting_deliverynote_view' %}
+                        {% url 'accounting:delivery_note_list' as delivery_notes_url %}
+                        {% if delivery_notes_url %}
+                        <li>
+                            <a href="{{ delivery_notes_url }}">
+                                <i class="fas fa-truck"></i>
+                                <span>Delivery Notes</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% endif %}
+                        {% if user|has_permission:'accounting_salesorder_add' %}
+                        <li>
+                            <a href="{% url 'accounting:sales_order_create' %}">
+                                <i class="fas fa-plus-circle"></i>
+                                <span>New Sales Order</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if user|has_permission:'accounting_salesinvoice_view' %}
+                        <li>
+                            <a href="{% url 'accounting:customer_statement' %}">
+                                <i class="fas fa-file-alt"></i>
+                                <span>Customer Statement</span>
+                            </a>
+                        </li>
+                        {% endif %}
                         <li><a href="{% url 'billing:subscriptionplan_list' %}">Subscription Plans</a></li>
                         <li><a href="{% url 'billing:subscription_list' %}">Subscriptions</a></li>
                         <li><a href="{% url 'billing:subscriptioninvoice_list' %}">Invoices</a></li>
@@ -456,7 +528,6 @@
                         <li><a href="{% url 'billing:subscriptionusage_list' %}">Usage Tracking</a></li>
                     </ul>
                 </li>
-
                 <!-- Service Management Section -->
                 <li>
                     <a href="javascript: void(0);" class="has-arrow">

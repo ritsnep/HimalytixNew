@@ -62,6 +62,7 @@ class CompanyConfigAdmin(admin.ModelAdmin):
         'credit_enforcement_mode',
         'calendar_mode',
         'calendar_date_seed',
+        'invoice_template',
     )
     list_filter = (
         'enable_noc_purchases',
@@ -72,6 +73,7 @@ class CompanyConfigAdmin(admin.ModelAdmin):
         'credit_enforcement_mode',
         'calendar_mode',
         'calendar_date_seed',
+        'invoice_template',
     )
     search_fields = ('company__name',)
     list_select_related = ('company',)

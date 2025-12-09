@@ -177,6 +177,9 @@ class APPaymentService:
             payment.batch.status = 'processed'
             payment.batch.updated_by = self.user
             payment.batch.save(update_fields=['status', 'updated_by', 'updated_at'])
+        invoice_ids = payment.lines.values_list('invoice_id', flat=True).distinct()
+        for invoice in PurchaseInvoice.objects.filter(invoice_id__in=invoice_ids):
+            invoice.refresh_payment_status()
         emit_integration_event(
             'ap_payment_executed',
             payment,

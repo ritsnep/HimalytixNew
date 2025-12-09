@@ -11,6 +11,7 @@
         <th>Expected Ship</th>
         <th>Status</th>
         <th class="text-end">Total</th>
+        <th>Actions</th>
     </tr>
 </thead>
 {% endblock table_head %}
@@ -25,10 +26,22 @@
         <td>{{ order.expected_ship_date|default:'-' }}</td>
         <td><span class="badge bg-info text-dark text-capitalize">{{ order.status }}</span></td>
         <td class="text-end">{{ order.total }}</td>
+        <td>
+            <form method="post" action="{% url 'accounting:sales_order_action' order.pk %}" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="confirm">
+                <button type="submit" class="btn btn-sm btn-outline-primary" {% if order.status != 'draft' %}disabled{% endif %}>Confirm</button>
+            </form>
+            <form method="post" action="{% url 'accounting:sales_order_action' order.pk %}" class="d-inline ms-1">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="invoice">
+                <button type="submit" class="btn btn-sm btn-outline-success" {% if order.status != 'confirmed' and order.status != 'fulfilled' %}disabled{% endif %}>To Invoice</button>
+            </form>
+        </td>
     </tr>
     {% empty %}
     <tr>
-        <td colspan="6" class="text-center text-muted">No sales orders yet.</td>
+        <td colspan="7" class="text-center text-muted">No sales orders yet.</td>
     </tr>
     {% endfor %}
 </tbody>

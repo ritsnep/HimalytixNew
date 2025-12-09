@@ -1,0 +1,108 @@
+{% extends 'accounting/_form_base.html' %}
+
+{% block title %}Quotation {{ quotation.quotation_number }}{% endblock %}
+
+{% block form_content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <h4 class="card-title mb-1">{{ quotation.quotation_number }}</h4>
+            <p class="text-muted mb-0">{{ quotation.customer_display_name }} &middot; {{ quotation.status|capfirst }}</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'accounting:quotation_update' quotation.pk %}" class="btn btn-outline-secondary btn-sm">Edit</a>
+            <a href="{{ print_pdf_url }}" class="btn btn-outline-primary btn-sm">Download PDF</a>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <strong>Quote Date</strong>
+                <div>{{ quotation.quotation_date }}</div>
+            </div>
+            <div class="col-md-3">
+                <strong>Valid Until</strong>
+                <div>{% if quotation.valid_until %}{{ quotation.valid_until }}{% else %}&ndash;{% endif %}</div>
+            </div>
+            <div class="col-md-3">
+                <strong>Payment Term</strong>
+                <div>{{ quotation.payment_term }}</div>
+            </div>
+            <div class="col-md-3">
+                <strong>Total</strong>
+                <div class="h5">{{ quotation.currency.code }} {{ quotation.total|floatformat:2 }}</div>
+            </div>
+        </div>
+        {% if quotation.terms %}
+        <div class="mb-3">
+            <h6>Terms</h6>
+            <p>{{ quotation.terms }}</p>
+        </div>
+        {% endif %}
+        {% if quotation.notes %}
+        <div class="mb-3">
+            <h6>Notes</h6>
+            <p>{{ quotation.notes }}</p>
+        </div>
+        {% endif %}
+
+        <h5 class="mt-4">Line Items</h5>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Description</th>
+                        <th>Product</th>
+                        <th class="text-end">Qty</th>
+                        <th class="text-end">Unit Price</th>
+                        <th class="text-end">Tax</th>
+                        <th class="text-end">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in lines %}
+                    <tr>
+                        <td>{{ line.line_number }}</td>
+                        <td>{{ line.description }}</td>
+                        <td>{{ line.product_code }}</td>
+                        <td class="text-end">{{ line.quantity }}</td>
+                        <td class="text-end">{{ line.unit_price }}</td>
+                        <td class="text-end">{{ line.tax_amount }}</td>
+                        <td class="text-end">{{ line.line_total }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex justify-content-end mt-4 gap-2">
+            <form method="post" action="{{ status_url }}" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="status_action" value="send">
+                <button type="submit" class="btn btn-outline-primary btn-sm"{% if quotation.status != 'draft' %} disabled{% endif %}>Mark as Sent</button>
+            </form>
+            <form method="post" action="{{ status_url }}" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="status_action" value="accept">
+                <button type="submit" class="btn btn-outline-success btn-sm"{% if quotation.status != 'sent' and quotation.status != 'draft' %} disabled{% endif %}>Mark as Accepted</button>
+            </form>
+            <form method="post" action="{{ status_url }}" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="status_action" value="expire">
+                <button type="submit" class="btn btn-outline-danger btn-sm">Expire</button>
+            </form>
+            <form method="post" action="{{ convert_url }}" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="target" value="invoice">
+                <button type="submit" class="btn btn-primary btn-sm"{% if not can_convert %} disabled{% endif %}>Convert to Invoice</button>
+            </form>
+            <form method="post" action="{{ convert_url }}" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="target" value="order">
+                <button type="submit" class="btn btn-secondary btn-sm"{% if not can_convert %} disabled{% endif %}>Convert to Order</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock form_content %}

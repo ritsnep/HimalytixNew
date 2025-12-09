@@ -42,7 +42,7 @@ class ProductAdmin(admin.ModelAdmin):
     search_fields = ('code', 'name', 'description', 'barcode', 'sku')
     list_filter = ('organization', 'category', 'is_inventory_item', 'uom')
     raw_id_fields = ('income_account', 'expense_account', 'inventory_account')
-    list_select_related = ('organization', 'category', 'uom')
+    list_select_related = ('organization', 'category')
 
 @admin.register(Warehouse)
 class WarehouseAdmin(admin.ModelAdmin):

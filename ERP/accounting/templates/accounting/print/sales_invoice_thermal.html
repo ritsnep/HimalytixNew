@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Invoice {{ invoice.invoice_number }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  body { background: #fff; }
+  .receipt {
+    width: 80mm;
+    margin: 0 auto;
+    font-size: 12px;
+  }
+  .receipt table { width: 100%; }
+  .receipt th, .receipt td { padding: 4px 0; }
+  @media print {
+    .no-print { display: none !important; }
+    .receipt { box-shadow: none; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="no-print text-end my-2">
+  <button class="btn btn-primary btn-sm" onclick="window.print()">Print</button>
+  <a class="btn btn-outline-secondary btn-sm" href="{% url 'accounting:sales_invoice_list' %}">Back</a>
+</div>
+
+<div class="receipt">
+  <div class="text-center mb-2">
+    {% if invoice_logo_url %}
+    <div><img src="{{ invoice_logo_url }}" alt="Logo" style="max-height:50px;"></div>
+    {% endif %}
+    <div class="fw-bold">{{ organization.name }}</div>
+    <div class="small">{{ organization.address|default_if_none:"" }}</div>
+    <div class="small">PAN/VAT: {{ organization.tax_id|default:"N/A" }}</div>
+  </div>
+
+  <div class="mb-2">
+    <div><strong>Invoice:</strong> {{ invoice.invoice_number }}</div>
+    <div><strong>Date:</strong> {{ invoice.invoice_date }}</div>
+    <div><strong>Due:</strong> {{ invoice.due_date }}</div>
+  </div>
+
+  <div class="mb-2">
+    <div><strong>To:</strong> {{ invoice.customer_display_name }}</div>
+    {% if invoice.customer %}<div class="small">VAT/PAN: {{ invoice.customer.tax_id|default:"N/A" }}</div>{% endif %}
+  </div>
+
+  <table class="table table-borderless">
+    <thead>
+      <tr>
+        <th>Description</th>
+        <th class="text-end">Amt</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in lines %}
+      <tr>
+        <td>
+          {{ line.description }}
+          <div class="small text-muted">{{ line.quantity }} x {{ line.unit_price|floatformat:2 }}</div>
+          {% if tax_breakdown[line.pk] %}
+            <div class="small text-muted">
+              {% for comp in tax_breakdown[line.pk] %}
+                {{ comp.code }} {{ comp.amount|floatformat:2 }}{% if not forloop.last %}, {% endif %}
+              {% endfor %}
+            </div>
+          {% endif %}
+        </td>
+        <td class="text-end">{{ line.line_total|add:line.tax_amount|floatformat:2 }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <table class="table table-borderless">
+    <tr>
+      <td class="text-start">Subtotal</td>
+      <td class="text-end">{{ invoice.subtotal|floatformat:2 }}</td>
+    </tr>
+    <tr>
+      <td class="text-start">Tax</td>
+      <td class="text-end">{{ invoice.tax_total|floatformat:2 }}</td>
+    </tr>
+    <tr>
+      <td class="text-start fw-bold">Total</td>
+      <td class="text-end fw-bold">{{ invoice.total|floatformat:2 }}</td>
+    </tr>
+  </table>
+
+  {% if invoice.notes %}
+  <div class="small">Notes: {{ invoice.notes }}</div>
+  {% endif %}
+
+  <div class="text-center small mt-2">
+    Thank you for your business.
+  </div>
+</div>
+{% endblock %}

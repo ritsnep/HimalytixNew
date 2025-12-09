@@ -10,10 +10,13 @@
     <div class="col-12">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h1>Invoice {{ invoice.invoice_number }}</h1>
-        <div>
+        <div class="d-flex gap-2">
           <a href="{% url 'billing:invoice_list' %}" class="btn btn-secondary btn-sm">Back to List</a>
-          <a href="{% url 'billing:invoice_pdf' invoice.invoice_id %}" class="btn btn-info btn-sm" target="_blank">
-            <i class="bi bi-file-pdf"></i> Download PDF
+          <a href="{% url 'billing:invoice_pdf' invoice.invoice_id %}?template=a4" class="btn btn-outline-info btn-sm" target="_blank">
+            <i class="bi bi-file-pdf"></i> Print A4
+          </a>
+          <a href="{% url 'billing:invoice_pdf' invoice.invoice_id %}?template=thermal" class="btn btn-outline-primary btn-sm" target="_blank">
+            <i class="bi bi-printer"></i> Thermal Receipt
           </a>
         </div>
       </div>
@@ -222,6 +225,16 @@
                 </tr>
                 {% endif %}
               </table>
+              {% if tax_summary %}
+              <div class="mt-2">
+                <small class="text-muted text-uppercase">Tax Breakdown</small>
+                <ul class="small mb-0">
+                  {% for entry in tax_summary %}
+                  <li>{{ entry.name }} ({{ entry.code }}): {{ invoice.currency.currency_code }} {{ entry.amount }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+              {% endif %}
             </div>
           </div>
         </div>

@@ -1,0 +1,141 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    @page { size: A4; margin: 18mm; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; color: #111; }
+    .header, .summary { display: flex; justify-content: space-between; align-items: flex-start; }
+    .brand { max-width: 220px; }
+    .brand img { max-width: 180px; height: auto; }
+    .meta { text-align: right; }
+    .box { background: #f8fafc; padding: 10px 12px; border-radius: 6px; border: 1px solid #e5e7eb; }
+    .table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+    .table th, .table td { border: 1px solid #e5e7eb; padding: 8px; font-size: 13px; }
+    .table th { background: #f3f4f6; text-align: left; }
+    .right { text-align: right; }
+    .totals { width: 320px; margin-left: auto; }
+    .totals td { padding: 6px 0; }
+    .tax-breakdown { margin-top: 8px; font-size: 12px; }
+    .qr { text-align: right; margin-top: 12px; }
+    .footer { margin-top: 18px; font-size: 12px; color: #555; display: flex; justify-content: space-between; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">
+      {% if branding.logo_light_url %}
+      <img src="{{ branding.logo_light_url }}" alt="Logo">
+      {% endif %}
+      <p style="margin:6px 0 0;font-size:13px;">
+        <strong>{{ invoice.organization.legal_name|default:invoice.organization.name }}</strong><br>
+        PAN: {{ invoice.organization.tax_id|default:"N/A" }}<br>
+        {{ invoice.organization.address|linebreaksbr }}
+      </p>
+    </div>
+    <div class="meta">
+      <h2 style="margin:0;">Invoice</h2>
+      <div class="box" style="margin-top:6px;">
+        <div><strong>No:</strong> {{ invoice.invoice_number }}</div>
+        <div><strong>Date:</strong> {{ invoice.invoice_date|date:"Y-m-d" }}</div>
+        <div><strong>Due:</strong> {{ invoice.due_date|date:"Y-m-d"|default:"-" }}</div>
+        <div><strong>Currency:</strong> {{ invoice.currency.currency_code }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="summary" style="margin-top:14px;">
+    <div class="box" style="flex:1; margin-right:10px;">
+      <strong>Bill To</strong><br>
+      {{ invoice.customer_display_name }}<br>
+      {% if invoice.customer.legal_name %}{{ invoice.customer.legal_name }}<br>{% endif %}
+      {% if invoice.customer.tax_id %}PAN: {{ invoice.customer.tax_id }}<br>{% endif %}
+      {% if invoice.customer.email %}Email: {{ invoice.customer.email }}<br>{% endif %}
+      {% if invoice.customer.phone_number %}Phone: {{ invoice.customer.phone_number }}{% endif %}
+    </div>
+    <div class="box" style="width: 280px;">
+      <strong>Payment</strong><br>
+      {% if invoice.payment_term %}Term: {{ invoice.payment_term.name }} ({{ invoice.payment_term.net_due_days }} days)<br>{% endif %}
+      Reference: {{ invoice.reference_number|default:"-" }}<br>
+      Status: {{ invoice.get_status_display }}
+    </div>
+  </div>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th style="width:40px;">#</th>
+        <th>Description</th>
+        <th style="width:80px;" class="right">Qty</th>
+        <th style="width:100px;" class="right">Rate</th>
+        <th style="width:100px;" class="right">Tax</th>
+        <th style="width:110px;" class="right">Line Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in lines %}
+      <tr>
+        <td class="right">{{ forloop.counter }}</td>
+        <td>{{ line.description }}</td>
+        <td class="right">{{ line.quantity }}</td>
+        <td class="right">{{ line.unit_price }}</td>
+        <td class="right">
+          {% if line.tax_code %}{{ line.tax_code.name }}{% else %}{% if line.tax_amount %}Multi-tax{% else %}-{% endif %}{% endif %}
+          {% if line.tax_amount %}<br>{{ line.tax_amount }}{% endif %}
+        </td>
+        <td class="right">{{ line.line_total }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <table class="totals">
+    <tr>
+      <td><strong>Subtotal</strong></td>
+      <td class="right">{{ invoice.currency.currency_code }} {{ invoice.subtotal }}</td>
+    </tr>
+    <tr>
+      <td><strong>Tax</strong></td>
+      <td class="right">{{ invoice.currency.currency_code }} {{ invoice.tax_total }}</td>
+    </tr>
+    <tr>
+      <td><strong>Total</strong></td>
+      <td class="right"><strong>{{ invoice.currency.currency_code }} {{ invoice.total }}</strong></td>
+    </tr>
+    {% if invoice.exchange_rate != 1 %}
+    <tr>
+      <td>Base Currency</td>
+      <td class="right">{{ invoice.base_currency_total }}</td>
+    </tr>
+    {% endif %}
+  </table>
+
+  {% if tax_summary %}
+  <div class="tax-breakdown">
+    <strong>Tax Breakdown:</strong>
+    <ul style="margin:6px 0 0; padding-left:16px;">
+      {% for entry in tax_summary %}
+      <li>{{ entry.name }} ({{ entry.code }}): {{ invoice.currency.currency_code }} {{ entry.amount }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if qr_base64 %}
+  <div class="qr">
+    <img src="data:image/png;base64,{{ qr_base64 }}" alt="QR Code" style="max-width:140px;">
+  </div>
+  {% endif %}
+
+  <div class="footer">
+    <div>
+      <strong>Notes</strong><br>
+      {{ invoice.notes|default:"Thank you for your business." }}
+    </div>
+    <div>
+      <strong>Tax Compliance</strong><br>
+      This invoice includes VAT/tax totals above. Keep this copy for record-keeping.
+    </div>
+  </div>
+</body>
+</html>

@@ -52,6 +52,10 @@
             </div>
 
             <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label" for="{{ form.warehouse.id_for_label }}">Warehouse</label>
+                    {{ form.warehouse }}
+                </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label" for="{{ form.currency.id_for_label }}">Currency</label>
                     {{ form.currency }}
@@ -69,6 +73,7 @@
                         <tr>
                             <th>Description</th>
                             <th>Product</th>
+                            <th>Available</th>
                             <th>Qty</th>
                             <th>Unit Price</th>
                             <th>Discount</th>
@@ -84,6 +89,7 @@
                             {% for hidden in line_form.hidden_fields %}{{ hidden }}{% endfor %}
                             <td>{{ line_form.description }}</td>
                             <td>{{ line_form.product_code }}</td>
+                            <td class="availability" hx-target="this" hx-swap="outerHTML"></td>
                             <td>{{ line_form.quantity }}</td>
                             <td>{{ line_form.unit_price }}</td>
                             <td>{{ line_form.discount_amount }}</td>
@@ -120,7 +126,8 @@
         {% with form=formset.empty_form %}
             {% for hidden in form.hidden_fields %}{{ hidden.as_widget|safe }}{% endfor %}
             <td>{{ form.description.as_widget }}</td>
-            <td>{{ form.product_code.as_widget }}</td>
+                <td>{{ form.product_code.as_widget }}</td>
+                <td class="availability" hx-target="this" hx-swap="outerHTML"></td>
             <td>{{ form.quantity.as_widget }}</td>
             <td>{{ form.unit_price.as_widget }}</td>
             <td>{{ form.discount_amount.as_widget }}</td>
@@ -164,7 +171,21 @@
         });
         totalForms.value = nextIndex + 1;
         tableBody.appendChild(clone);
+        wireAvailability(tableBody.lastElementChild);
     });
+
+    function wireAvailability(row) {
+        const productInput = row.querySelector('input[name$="product_code"]');
+        const availabilityCell = row.querySelector('.availability');
+        if (!productInput || !availabilityCell) { return; }
+        productInput.setAttribute('hx-get', '{% url "accounting:sales_order_availability" %}');
+        productInput.setAttribute('hx-target', 'closest .availability');
+        productInput.setAttribute('hx-trigger', 'change delay:300ms');
+        productInput.setAttribute('hx-include', '#{{ form.warehouse.id_for_label }}');
+    }
+
+    // Wire existing rows on load
+    document.querySelectorAll('#line-items tr.line-row').forEach(wireAvailability);
 })();
 </script>
 {% endblock extra_js %}

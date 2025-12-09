@@ -105,6 +105,64 @@ class SalesInvoiceLineForm(BootstrapFormMixin, forms.ModelForm):
         }
 
 
+class DeliveryNoteForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        from accounting.models import DeliveryNote
+        model = DeliveryNote
+        fields = (
+            "organization",
+            "customer",
+            "note_number",
+            "reference_number",
+            "delivery_date",
+            "warehouse",
+            "notes",
+        )
+        widgets = {
+            "note_number": forms.TextInput(attrs={"class": "form-control"}),
+            "reference_number": forms.TextInput(attrs={"class": "form-control"}),
+            "delivery_date": forms.TextInput(attrs={"class": "form-control datepicker"}),
+            "warehouse": forms.Select(attrs={"class": "form-select"}),
+            "notes": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.organization = kwargs.pop("organization", None)
+        super().__init__(*args, **kwargs)
+        self.fields["note_number"].required = False
+        self.fields["note_number"].widget.attrs.setdefault("placeholder", "Auto-generated")
+        self.fields["note_number"].widget.attrs["readonly"] = True
+        if self.organization:
+            self.fields["customer"].queryset = self.fields["customer"].queryset.filter(
+                organization=self.organization
+            )
+
+
+class DeliveryNoteLineForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        from accounting.models import DeliveryNoteLine
+        model = DeliveryNoteLine
+        fields = (
+            "description",
+            "product",
+            "product_code",
+            "quantity",
+        )
+        widgets = {
+            "description": forms.TextInput(attrs={"class": "form-control"}),
+            "product": forms.Select(attrs={"class": "form-select"}),
+            "product_code": forms.TextInput(attrs={"class": "form-control"}),
+            "quantity": forms.NumberInput(attrs={"class": "form-control", "step": "0.0001"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.organization = kwargs.pop("organization", None)
+        super().__init__(*args, **kwargs)
+        if self.organization:
+            # product queryset limited by organization
+            self.fields["product"].queryset = self.fields["product"].queryset.filter(organization=self.organization)
+
+
 class ARReceiptForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = ARReceipt

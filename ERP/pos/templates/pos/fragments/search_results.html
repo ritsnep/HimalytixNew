@@ -1,0 +1,17 @@
+{% if products %}
+    <h6>Search Results</h6>
+    <div class="product-grid">
+        {% for product in products %}
+        <div class="product-card"
+             onclick="addProduct('{{ product.code }}')">
+            <div class="fw-bold">{{ product.name }}</div>
+            <div class="text-muted small">{{ product.code }}</div>
+            <div class="text-primary">${{ product.sale_price|floatformat:2 }}</div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="text-center text-muted py-4">
+        No products found
+    </div>
+{% endif %}

@@ -1,0 +1,247 @@
+{% extends 'components/base/form_base.html' %}
+{% load static i18n %}
+
+{% block page_title %}{% trans "Permission System Performance" %}{% endblock %}
+
+{% block form_content %}
+<div class="row">
+    <!-- Basic Metrics Cards -->
+    <div class="col-xl-3 col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-sm flex-shrink-0">
+                        <span class="avatar-title bg-light text-primary rounded-circle fs-3">
+                            <i class="mdi mdi-shield-check"></i>
+                        </span>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <p class="text-muted mb-1">Total Permissions</p>
+                        <h4 class="mb-0">{{ metrics.total_permissions }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-sm flex-shrink-0">
+                        <span class="avatar-title bg-light text-success rounded-circle fs-3">
+                            <i class="mdi mdi-account-group"></i>
+                        </span>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <p class="text-muted mb-1">User Roles</p>
+                        <h4 class="mb-0">{{ metrics.total_user_roles }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-sm flex-shrink-0">
+                        <span class="avatar-title bg-light text-warning rounded-circle fs-3">
+                            <i class="mdi mdi-account-check"></i>
+                        </span>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <p class="text-muted mb-1">User Permissions</p>
+                        <h4 class="mb-0">{{ metrics.total_user_permissions }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-sm flex-shrink-0">
+                        <span class="avatar-title bg-light text-info rounded-circle fs-3">
+                            <i class="mdi mdi-office-building"></i>
+                        </span>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <p class="text-muted mb-1">Organizations</p>
+                        <h4 class="mb-0">{{ metrics.total_organizations }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <!-- Cache Performance -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">Cache Performance</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-borderless">
+                        <tbody>
+                            <tr>
+                                <td><strong>Backend:</strong></td>
+                                <td>{{ cache_stats.backend|title }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Keys:</strong></td>
+                                <td>{{ cache_stats.keys }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Hit Rate:</strong></td>
+                                <td>
+                                    <span class="badge bg-{% if cache_stats.hit_rate > 80 %}success{% elif cache_stats.hit_rate > 60 %}warning{% else %}danger{% endif %}">
+                                        {{ cache_stats.hit_rate }}%
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Hits/Misses:</strong></td>
+                                <td>{{ cache_stats.hits }} / {{ cache_stats.misses }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Memory Usage:</strong></td>
+                                <td>{{ cache_stats.memory_usage }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Permission Checks -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">Recent Permission Checks</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Permission</th>
+                                <th>Result</th>
+                                <th>Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for check in recent_checks %}
+                            <tr>
+                                <td>{{ check.user }}</td>
+                                <td><code>{{ check.permission }}</code></td>
+                                <td>
+                                    <span class="badge bg-{% if check.granted %}success{% else %}danger{% endif %}">
+                                        {% if check.granted %}Granted{% else %}Denied{% endif %}
+                                    </span>
+                                </td>
+                                <td>{{ check.duration_ms }}ms</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slow Queries -->
+{% if slow_queries %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title text-danger">Slow Permission Queries (>10ms)</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Query</th>
+                                <th>Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for query in slow_queries %}
+                            <tr>
+                                <td><code>{{ query.sql }}</code></td>
+                                <td><span class="badge bg-danger">{{ query.duration_ms }}ms</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Action Buttons -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5>Management Actions</h5>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-primary" onclick="runBenchmark()">
+                        <i class="mdi mdi-speedometer"></i> Run Performance Benchmark
+                    </button>
+                    <button type="button" class="btn btn-info" onclick="clearPermissionCache()">
+                        <i class="mdi mdi-refresh"></i> Clear Permission Cache
+                    </button>
+                    <button type="button" class="btn btn-warning" onclick="runManagementCommand()">
+                        <i class="mdi mdi-console"></i> Run Full Analysis
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+function runBenchmark() {
+    fetch('{% url "usermanagement:permission_metrics_api" %}')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Benchmark results:', data);
+            // Update UI with results
+            alert(`Benchmark completed!\nPermission check: ${data.benchmarks.permission_check_time_ms}ms\nCache operation: ${data.benchmarks.cache_operation_time_ms}ms`);
+        })
+        .catch(error => {
+            console.error('Benchmark failed:', error);
+            alert('Benchmark failed. Check console for details.');
+        });
+}
+
+function clearPermissionCache() {
+    if (confirm('Are you sure you want to clear the permission cache? This may temporarily slow down permission checks.')) {
+        // This would need a backend endpoint to clear cache
+        alert('Cache clearing not implemented in this demo.');
+    }
+}
+
+function runManagementCommand() {
+    alert('Run: python manage.py monitor_permissions --cache-analysis');
+}
+</script>
+{% endblock %}

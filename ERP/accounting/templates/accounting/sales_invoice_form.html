@@ -3,98 +3,118 @@
 {% block title %}Sales Invoice{% endblock %}
 
 {% block form_content %}
-<div class="card">
+<div class="card shadow-sm">
     <div class="card-header d-flex justify-content-between align-items-center">
         <div>
             <h4 class="card-title mb-0">{{ form_title|default:"Sales Invoice" }}</h4>
-            <p class="text-muted mb-0">Capture customer billing details and line items.</p>
+            <p class="text-muted mb-0">Pick customers, stocked items, and let due dates and VAT calculate automatically.</p>
         </div>
-        <a href="{% url back_url %}" class="btn btn-secondary btn-sm">Back</a>
+        <a href="{% url back_url %}" class="btn btn-outline-secondary btn-sm">Back</a>
     </div>
     <div class="card-body">
         <form method="post" novalidate>
             {% csrf_token %}
-
             {% if form.non_field_errors %}
-            <div class="alert alert-danger">
-                {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+            <div class="alert alert-danger small mb-3">
+                {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
             </div>
             {% endif %}
 
-            <div class="row">
-                <div class="col-12 col-md-4 mb-3">
-                    <label class="form-label" for="{{ form.invoice_number.id_for_label }}">Invoice Number</label>
-                    {{ form.invoice_number }}
-                </div>
-                <div class="col-12 col-md-4 mb-3">
+            <div class="row g-3">
+                <div class="col-md-4">
                     <label class="form-label" for="{{ form.customer.id_for_label }}">Customer</label>
                     {{ form.customer }}
+                    <div class="form-text" id="customer-tax-hint">Tax ID will appear after selecting a customer.</div>
                 </div>
-                <div class="col-12 col-md-4 mb-3">
-                    <label class="form-label" for="{{ form.payment_term.id_for_label }}">Payment Term</label>
-                    {{ form.payment_term }}
+                <div class="col-md-4">
+                    <label class="form-label" for="{{ form.invoice_number.id_for_label }}">Invoice Number</label>
+                    {{ form.invoice_number }}
+                    <div class="form-text">Auto-numbered on save.</div>
                 </div>
-            </div>
-
-            <div class="row">
-                <div class="col-12 col-md-4 mb-3">
-                    <label class="form-label" for="{{ form.invoice_date.id_for_label }}">Invoice Date</label>
-                    {{ form.invoice_date }}
-                </div>
-                <div class="col-12 col-md-4 mb-3">
-                    <label class="form-label" for="{{ form.due_date.id_for_label }}">Due Date</label>
-                    {{ form.due_date }}
-                </div>
-                <div class="col-12 col-md-4 mb-3">
+                <div class="col-md-4">
                     <label class="form-label" for="{{ form.reference_number.id_for_label }}">Reference</label>
                     {{ form.reference_number }}
                 </div>
             </div>
 
-            <div class="row">
-                <div class="col-12 col-md-4 mb-3">
+            <div class="row g-3 mt-1">
+                <div class="col-md-4">
+                    <label class="form-label" for="{{ form.invoice_date.id_for_label }}">Invoice Date</label>
+                    {{ form.invoice_date }}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="{{ form.due_date.id_for_label }}">Payment Due Date</label>
+                    {{ form.due_date }}
+                    <div class="form-text">Auto-calculated from the payment term.</div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="{{ form.payment_term.id_for_label }}">Payment Term</label>
+                    {{ form.payment_term }}
+                </div>
+            </div>
+
+            <div class="row g-3 mt-1">
+                <div class="col-md-4">
                     <label class="form-label" for="{{ form.currency.id_for_label }}">Currency</label>
                     {{ form.currency }}
                 </div>
-                <div class="col-12 col-md-4 mb-3">
+                <div class="col-md-4">
                     <label class="form-label" for="{{ form.exchange_rate.id_for_label }}">Exchange Rate</label>
                     {{ form.exchange_rate }}
                 </div>
-                <div class="col-12 col-md-4 mb-3">
+                <div class="col-md-4">
+                    <label class="form-label" for="{{ form.warehouse.id_for_label }}">Warehouse (for inventory items)</label>
+                    {{ form.warehouse }}
+                </div>
+            </div>
+
+            <div class="row g-3 mt-1">
+                <div class="col-md-12">
                     <label class="form-label" for="{{ form.notes.id_for_label }}">Notes</label>
                     {{ form.notes }}
                 </div>
             </div>
 
-            <div class="table-responsive mt-4">
+            <div class="table-responsive border rounded mt-4">
                 {{ formset.management_form }}
-                <table class="table table-bordered align-middle">
+                <table class="table align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>Description</th>
-                            <th>Product</th>
-                            <th>Qty</th>
-                            <th>Unit Price</th>
-                            <th>Discount</th>
-                            <th>Revenue Account</th>
-                            <th>Tax Code</th>
-                            <th>Tax</th>
-                            <th></th>
+                            <th style="width: 18%">Item / Code</th>
+                            <th style="width: 18%">Description</th>
+                            <th class="text-end" style="width: 8%">Qty</th>
+                            <th class="text-end" style="width: 10%">Rate</th>
+                            <th class="text-end" style="width: 10%">Discount</th>
+                            <th style="width: 13%">Revenue Account</th>
+                            <th style="width: 13%">Taxes</th>
+                            <th class="text-end" style="width: 8%">Tax</th>
+                            <th class="text-end" style="width: 10%">Line Total</th>
+                            <th class="text-center" style="width: 6%"></th>
                         </tr>
                     </thead>
                     <tbody id="line-items">
                         {% for line_form in formset %}
                         <tr class="line-row">
                             {% for hidden in line_form.hidden_fields %}{{ hidden }}{% endfor %}
-                            <td>{{ line_form.description }}</td>
-                            <td>{{ line_form.product_code }}</td>
-                            <td>{{ line_form.quantity }}</td>
-                            <td>{{ line_form.unit_price }}</td>
-                            <td>{{ line_form.discount_amount }}</td>
-                            <td>{{ line_form.revenue_account }}</td>
-                            <td>{{ line_form.tax_code }}</td>
-                            <td>{{ line_form.tax_amount }}</td>
                             <td>
+                                {{ line_form.product_code }}
+                                {% if line_form.product_code.errors %}<div class="text-danger small">{{ line_form.product_code.errors|join:", " }}</div>{% endif %}
+                            </td>
+                            <td>
+                                {{ line_form.description }}
+                                {% if line_form.description.errors %}<div class="text-danger small">{{ line_form.description.errors|join:", " }}</div>{% endif %}
+                            </td>
+                            <td class="text-end">{{ line_form.quantity }}</td>
+                            <td class="text-end">{{ line_form.unit_price }}</td>
+                            <td class="text-end">{{ line_form.discount_amount }}</td>
+                            <td>{{ line_form.revenue_account }}</td>
+                            <td>
+                                {{ line_form.tax_codes }}
+                                {% if line_form.tax_codes.errors %}<div class="text-danger small">{{ line_form.tax_codes.errors|join:", " }}</div>{% endif %}
+                            </td>
+                            <td class="text-end">{{ line_form.tax_amount }}</td>
+                            <td class="text-end"><span class="line-total fw-semibold">0.00</span></td>
+                            <td class="text-center">
                                 {% if formset.can_delete %}
                                 <div class="form-check">
                                     {{ line_form.DELETE }}
@@ -105,33 +125,43 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="9" class="text-center text-muted">Add at least one line.</td>
+                            <td colspan="10" class="text-center text-muted py-3">Add at least one line item.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
-                <button type="button" class="btn btn-outline-primary btn-sm" id="add-line">Add Line</button>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-2">
+                <button type="button" class="btn btn-outline-primary btn-sm" id="add-line">Add line</button>
+                <div class="text-end small">
+                    <div>Subtotal: <span id="subtotal-display" class="fw-semibold">0.00</span></div>
+                    <div>Tax: <span id="tax-display" class="fw-semibold">0.00</span></div>
+                    <div class="fs-5">Total: <span id="total-display" class="fw-bold">0.00</span></div>
+                </div>
             </div>
 
-            <div class="d-flex justify-content-end mt-4">
-                <button type="submit" class="btn btn-primary">Save Invoice</button>
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <button type="submit" name="action" value="save" class="btn btn-outline-secondary">Save Draft</button>
+                <button type="submit" name="action" value="post" class="btn btn-primary">Save &amp; Post</button>
             </div>
         </form>
     </div>
 </div>
+
 <template id="empty-line-template">
     <tr class="line-row">
         {% with form=formset.empty_form %}
             {% for hidden in form.hidden_fields %}{{ hidden.as_widget|safe }}{% endfor %}
-            <td>{{ form.description.as_widget }}</td>
             <td>{{ form.product_code.as_widget }}</td>
-            <td>{{ form.quantity.as_widget }}</td>
-            <td>{{ form.unit_price.as_widget }}</td>
-            <td>{{ form.discount_amount.as_widget }}</td>
+            <td>{{ form.description.as_widget }}</td>
+            <td class="text-end">{{ form.quantity.as_widget }}</td>
+            <td class="text-end">{{ form.unit_price.as_widget }}</td>
+            <td class="text-end">{{ form.discount_amount.as_widget }}</td>
             <td>{{ form.revenue_account.as_widget }}</td>
-            <td>{{ form.tax_code.as_widget }}</td>
-            <td>{{ form.tax_amount.as_widget }}</td>
-            <td>
+            <td>{{ form.tax_codes.as_widget }}</td>
+            <td class="text-end">{{ form.tax_amount.as_widget }}</td>
+            <td class="text-end"><span class="line-total fw-semibold">0.00</span></td>
+            <td class="text-center">
                 <div class="form-check">
                     {{ form.DELETE }}
                     <label class="form-check-label" for="{{ form.DELETE.id_for_label }}">Delete</label>
@@ -140,35 +170,214 @@
         {% endwith %}
     </tr>
 </template>
+<datalist id="product-options"></datalist>
 {% endblock form_content %}
 
 {% block extra_js %}
 {{ block.super }}
 <script>
 (function() {
-    const addBtn = document.getElementById('add-line');
-    const tableBody = document.getElementById('line-items');
-    const totalForms = document.getElementById('id_lines-TOTAL_FORMS');
-    const template = document.getElementById('empty-line-template');
-    if (!addBtn || !tableBody || !totalForms || !template) { return; }
+    const productData = JSON.parse('{{ product_data_json|escapejs }}');
+    const taxCodes = JSON.parse('{{ tax_code_data_json|escapejs }}');
+    const customers = JSON.parse('{{ customer_data_json|escapejs }}');
+    const paymentTerms = JSON.parse('{{ payment_term_data_json|escapejs }}');
 
-    addBtn.addEventListener('click', function() {
+    const productLookup = Object.fromEntries(productData.map(p => [String(p.code), p]));
+    const taxLookup = Object.fromEntries(taxCodes.map(t => [String(t.id), t]));
+    const paymentLookup = Object.fromEntries(paymentTerms.map(t => [String(t.id), t]));
+    const customerLookup = Object.fromEntries(customers.map(c => [String(c.id), c]));
+
+    const subtotalEl = document.getElementById('subtotal-display');
+    const taxEl = document.getElementById('tax-display');
+    const totalEl = document.getElementById('total-display');
+    const dueDateInput = document.getElementById('{{ form.due_date.id_for_label }}');
+    const invoiceDateInput = document.getElementById('{{ form.invoice_date.id_for_label }}');
+    const customerTaxHint = document.getElementById('customer-tax-hint');
+    const productOptions = document.getElementById('product-options');
+
+    function formatMoney(value) {
+        return Number(value || 0).toFixed(2);
+    }
+
+    function populateProductOptions() {
+        if (!productOptions) return;
+        productData.forEach((prod) => {
+            const opt = document.createElement('option');
+            opt.value = prod.code;
+            opt.label = `${prod.code} — ${prod.name}`;
+            productOptions.appendChild(opt);
+        });
+    }
+
+    function updateDueDate() {
+        if (!invoiceDateInput || !dueDateInput) return;
+        const paymentTermSelect = document.getElementById('{{ form.payment_term.id_for_label }}');
+        const paymentTermId = paymentTermSelect ? paymentTermSelect.value : null;
+        const seedDate = invoiceDateInput.value ? new Date(invoiceDateInput.value) : null;
+        if (!paymentTermId || !seedDate || !paymentLookup[paymentTermId]) return;
+        const days = paymentLookup[paymentTermId].net_due_days || 0;
+        const due = new Date(seedDate);
+        due.setDate(seedDate.getDate() + Number(days));
+        const iso = due.toISOString().slice(0, 10);
+        dueDateInput.value = iso;
+    }
+
+    function syncCustomerDefaults() {
+        const customerSelect = document.getElementById('{{ form.customer.id_for_label }}');
+        if (!customerSelect) return;
+        const customer = customerLookup[customerSelect.value];
+        if (!customer) return;
+        if (customer.tax_id && customerTaxHint) {
+            customerTaxHint.textContent = `Tax ID: ${customer.tax_id}`;
+        }
+        const paymentTermSelect = document.getElementById('{{ form.payment_term.id_for_label }}');
+        if (paymentTermSelect && !paymentTermSelect.value && customer.payment_term) {
+            paymentTermSelect.value = customer.payment_term;
+            updateDueDate();
+        }
+        const currencySelect = document.getElementById('{{ form.currency.id_for_label }}');
+        if (currencySelect && customer.currency) {
+            currencySelect.value = customer.currency;
+        }
+        if (customer.revenue_account) {
+            document.querySelectorAll('#line-items [name$="-revenue_account"]').forEach((sel) => {
+                if (!sel.value) sel.value = customer.revenue_account;
+            });
+        }
+    }
+
+    function calculateLine(row) {
+        const qtyInput = row.querySelector('[name$="-quantity"]');
+        const priceInput = row.querySelector('[name$="-unit_price"]');
+        const discountInput = row.querySelector('[name$="-discount_amount"]');
+        const taxSelect = row.querySelector('[name$="-tax_codes"]');
+        const taxAmountInput = row.querySelector('[name$="-tax_amount"]');
+        const revenueAccountSelect = row.querySelector('[name$="-revenue_account"]');
+        const productInput = row.querySelector('[name$="-product_code"]');
+
+        const qty = parseFloat(qtyInput?.value || '0') || 0;
+        const rate = parseFloat(priceInput?.value || '0') || 0;
+        const discount = parseFloat(discountInput?.value || '0') || 0;
+        const baseAmount = Math.max((qty * rate) - discount, 0);
+
+        // Auto-fill revenue account from product if provided
+        if (productInput && productLookup[productInput.value] && revenueAccountSelect && !revenueAccountSelect.value) {
+            const income = productLookup[productInput.value].revenue_account;
+            if (income) {
+                revenueAccountSelect.value = income;
+            }
+        }
+
+        let runningTax = 0;
+        if (taxSelect) {
+            if (defaultTaxId && taxSelect.selectedOptions.length === 0) {
+                Array.from(taxSelect.options).forEach((opt) => {
+                    if (opt.value === defaultTaxId) opt.selected = true;
+                });
+            }
+            const selections = Array.from(taxSelect.selectedOptions);
+            selections.forEach((opt) => {
+                const tax = taxLookup[opt.value];
+                if (!tax) return;
+                const ratePct = parseFloat(tax.rate || '0') || 0;
+                const taxableBase = tax.is_compound ? (baseAmount + runningTax) : baseAmount;
+                const taxAmount = (taxableBase * ratePct) / 100;
+                runningTax += taxAmount;
+            });
+        }
+
+        if (taxAmountInput) {
+            taxAmountInput.value = formatMoney(runningTax);
+        }
+        const lineTotal = baseAmount + runningTax;
+        const lineTotalCell = row.querySelector('.line-total');
+        if (lineTotalCell) {
+            lineTotalCell.textContent = formatMoney(lineTotal);
+        }
+        return { baseAmount, runningTax, lineTotal };
+    }
+
+    function recalcTotals() {
+        let subtotal = 0;
+        let taxTotal = 0;
+        document.querySelectorAll('#line-items .line-row').forEach((row) => {
+            const { baseAmount, runningTax } = calculateLine(row);
+            subtotal += baseAmount;
+            taxTotal += runningTax;
+        });
+        if (subtotalEl) subtotalEl.textContent = formatMoney(subtotal);
+        if (taxEl) taxEl.textContent = formatMoney(taxTotal);
+        if (totalEl) totalEl.textContent = formatMoney(subtotal + taxTotal);
+    }
+
+    function attachRowBehavior(row) {
+        const inputs = row.querySelectorAll('[name$="-quantity"], [name$="-unit_price"], [name$="-discount_amount"], [name$="-tax_codes"], [name$="-product_code"]');
+        inputs.forEach((el) => {
+            el.addEventListener('change', recalcTotals);
+            el.addEventListener('keyup', recalcTotals);
+        });
+        const productField = row.querySelector('[name$="-product_code"]');
+        if (productField) {
+            productField.setAttribute('list', 'product-options');
+        }
+        const taxSelect = row.querySelector('[name$="-tax_codes"]');
+        if (taxSelect && defaultTaxId && taxSelect.selectedOptions.length === 0) {
+            Array.from(taxSelect.options).forEach((opt) => {
+                if (opt.value === defaultTaxId) opt.selected = true;
+            });
+        }
+    }
+
+    function wireExistingRows() {
+        document.querySelectorAll('#line-items .line-row').forEach((row) => attachRowBehavior(row));
+        recalcTotals();
+    }
+
+    function addNewLine() {
+        const tableBody = document.getElementById('line-items');
+        const totalForms = document.getElementById('id_lines-TOTAL_FORMS');
+        const template = document.getElementById('empty-line-template');
+        if (!tableBody || !totalForms || !template) return;
+
         const nextIndex = parseInt(totalForms.value, 10);
         const clone = template.content.cloneNode(true);
         clone.querySelectorAll('[name]').forEach((element) => {
             element.name = element.name.replace('__prefix__', nextIndex);
             element.id = element.id.replace('__prefix__', nextIndex);
-            if (element.type !== 'hidden') {
-                if (element.type === 'checkbox') {
-                    element.checked = false;
-                } else {
-                    element.value = '';
-                }
+            if (element.type === 'checkbox') {
+                element.checked = false;
+            } else if (element.type !== 'hidden') {
+                element.value = '';
             }
         });
         totalForms.value = nextIndex + 1;
+        const newRow = clone.querySelector('tr');
         tableBody.appendChild(clone);
-    });
+        const appendedRow = tableBody.querySelectorAll('tr.line-row')[tableBody.querySelectorAll('tr.line-row').length - 1];
+        attachRowBehavior(appendedRow);
+        recalcTotals();
+    }
+
+    function bindEvents() {
+        const addBtn = document.getElementById('add-line');
+        if (addBtn) addBtn.addEventListener('click', addNewLine);
+        if (invoiceDateInput) invoiceDateInput.addEventListener('change', updateDueDate);
+        const paymentTermSelect = document.getElementById('{{ form.payment_term.id_for_label }}');
+        if (paymentTermSelect) paymentTermSelect.addEventListener('change', updateDueDate);
+        const customerSelect = document.getElementById('{{ form.customer.id_for_label }}');
+        if (customerSelect) customerSelect.addEventListener('change', syncCustomerDefaults);
+    }
+
+    populateProductOptions();
+    bindEvents();
+    wireExistingRows();
+    syncCustomerDefaults();
+    updateDueDate();
 })();
 </script>
 {% endblock extra_js %}
+    const defaultTax =
+        taxCodes.find((t) => (t.code || "").toUpperCase().includes("VAT")) ||
+        taxCodes.find((t) => Math.abs(parseFloat(t.rate || "0") - 13) < 0.0001) ||
+        taxCodes[0];
+    const defaultTaxId = defaultTax ? String(defaultTax.id) : null;

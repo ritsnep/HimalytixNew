@@ -37,8 +37,13 @@ def invalidate_cache_on_userpermission_delete(sender, instance, **kwargs):
 def invalidate_cache_on_role_permission_change(sender, instance, action, **kwargs):
     if action not in {'post_add', 'post_remove', 'post_clear'}:
         return
-    for user_role in instance.user_roles.all():
-        _invalidate(user_role.user_id, user_role.organization_id)
+    # Invalidate all users with this role
+    user_ids = instance.user_roles.filter(
+        is_active=True
+    ).values_list('user_id', flat=True)
+    
+    org_id = instance.organization_id
+    PermissionUtils.bulk_invalidate(user_ids, org_id)
 
 
 def _seed_noc_vendor(company: Organization):

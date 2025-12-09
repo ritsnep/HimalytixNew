@@ -1,90 +1,75 @@
-<div class="invoice-line-row">
+<div class="invoice-line-row border rounded p-3 mb-3" id="lineRow_{{ line_index }}">
     <input type="hidden" name="line_index[]" value="{{ line_index }}">
-    
-    <div class="row">
-        <!-- Description / Product -->
+    <input type="hidden" name="product_id_{{ line_index }}" id="productId_{{ line_index }}">
+    <input type="hidden" name="product_code_{{ line_index }}" id="productCode_{{ line_index }}">
+
+    <div class="row g-2">
         <div class="col-md-4">
-            <div class="form-group">
-                <label class="small">Description *</label>
-                <input type="text" 
-                       class="form-control form-control-sm" 
+            <label class="small text-uppercase text-muted">Item / Description *</label>
+            <div class="position-relative">
+                <input type="text"
+                       class="form-control form-control-sm"
                        name="description_{{ line_index }}"
-                       placeholder="Item description"
+                       id="description_{{ line_index }}"
+                       placeholder="Search products or type description"
+                       autocomplete="off"
+                       hx-get="{% url 'billing:product_search' %}?line_index={{ line_index }}"
+                       hx-trigger="keyup changed delay:300ms"
+                       hx-target="#productResults_{{ line_index }}"
                        required>
-                <input type="hidden" name="product_id_{{ line_index }}" id="productId_{{ line_index }}">
+                <div id="productResults_{{ line_index }}" class="customer-search-results d-none"></div>
             </div>
         </div>
-        
-        <!-- Quantity -->
         <div class="col-md-2">
-            <div class="form-group">
-                <label class="small">Quantity *</label>
-                <input type="number" 
-                       class="form-control form-control-sm" 
-                       name="quantity_{{ line_index }}"
-                       step="0.01"
-                       min="0"
-                       value="1"
-                       required>
-            </div>
+            <label class="small text-uppercase text-muted">Quantity *</label>
+            <input type="number"
+                   class="form-control form-control-sm"
+                   name="quantity_{{ line_index }}"
+                   step="0.01"
+                   min="0"
+                   value="1"
+                   required>
         </div>
-        
-        <!-- Unit Price -->
         <div class="col-md-2">
-            <div class="form-group">
-                <label class="small">Unit Price *</label>
-                <input type="number" 
-                       class="form-control form-control-sm" 
-                       name="unit_price_{{ line_index }}"
-                       step="0.01"
-                       min="0"
-                       value="0"
-                       required>
-            </div>
+            <label class="small text-uppercase text-muted">Unit Price *</label>
+            <input type="number"
+                   class="form-control form-control-sm"
+                   name="unit_price_{{ line_index }}"
+                   step="0.01"
+                   min="0"
+                   value="0"
+                   required>
         </div>
-        
-        <!-- Tax Rate -->
         <div class="col-md-2">
-            <div class="form-group">
-                <label class="small">Tax Rate</label>
-                <select class="form-control form-control-sm" 
-                        name="tax_rate_{{ line_index }}">
-                    <option value="">No Tax</option>
-                    {% for tax in tax_rates %}
-                    <option value="{{ tax.tax_code_id }}">{{ tax.name }} ({{ tax.rate }}%)</option>
-                    {% endfor %}
-                </select>
-            </div>
+            <label class="small text-uppercase text-muted">Tax Codes</label>
+            <select class="form-control form-control-sm"
+                    name="tax_codes_{{ line_index }}"
+                    multiple
+                    onchange="recalculateTotal()">
+                {% for tax in tax_rates %}
+                <option value="{{ tax.tax_code_id }}">{{ tax.name }} ({{ tax.rate }}%)</option>
+                {% endfor %}
+            </select>
+            <small class="text-muted">Select multiple for compound taxes.</small>
         </div>
-        
-        <!-- Revenue Account -->
         <div class="col-md-2">
-            <div class="form-group">
-                <label class="small">Account</label>
-                <select class="form-control form-control-sm" 
-                        name="revenue_account_{{ line_index }}">
-                    {% for account in revenue_accounts %}
-                    <option value="{{ account.account_id }}">{{ account.account_code }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+            <label class="small text-uppercase text-muted">Revenue Account</label>
+            <select class="form-control form-control-sm"
+                    name="revenue_account_{{ line_index }}"
+                    onchange="recalculateTotal()">
+                {% for account in revenue_accounts %}
+                <option value="{{ account.account_id }}">{{ account.account_code }} - {{ account.account_name }}</option>
+                {% endfor %}
+            </select>
         </div>
     </div>
-    
-    <div class="row align-items-center">
-        <div class="col-md-10">
-            <div class="text-end">
-                <small class="text-muted">
-                    Line Total: <strong id="lineTotal_{{ line_index }}">0.00</strong>
-                </small>
-            </div>
-        </div>
-        <div class="col-md-2 text-end">
-            <button type="button" 
-                    class="btn btn-sm btn-danger"
-                    onclick="removeLine(this)">
-                <i class="fas fa-trash"></i>
-            </button>
-        </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-2">
+        <small class="text-muted">Line Total: <strong id="lineTotal_{{ line_index }}">0.00</strong></small>
+        <button type="button"
+                class="btn btn-outline-danger btn-sm"
+                onclick="removeLine(this)">
+            <i class="fas fa-trash"></i>
+        </button>
     </div>
 </div>

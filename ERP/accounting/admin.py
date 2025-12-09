@@ -47,6 +47,8 @@ from .models import (
     LandedCostAllocation,
     SalesInvoice,
     SalesInvoiceLine,
+    DeliveryNote,
+    DeliveryNoteLine,
     ARReceipt,
     ARReceiptLine,
     APPayment,
@@ -591,6 +593,29 @@ class SalesInvoiceAdmin(admin.ModelAdmin):
         'ird_last_response_pretty',
     )
     inlines = [SalesInvoiceLineInline]
+
+    @admin.display(description="IRD response")
+    def ird_last_response_pretty(self, obj):
+        if not getattr(obj, 'ird_last_response', None):
+            return "—"
+        return json.dumps(obj.ird_last_response, indent=2, sort_keys=True)
+
+
+class DeliveryNoteLineInline(admin.TabularInline):
+    model = DeliveryNoteLine
+    extra = 1
+    fields = [
+        'line_number', 'product', 'product_code', 'description', 'quantity'
+    ]
+    readonly_fields = []
+
+
+@admin.register(DeliveryNote)
+class DeliveryNoteAdmin(admin.ModelAdmin):
+    list_display = ('note_number', 'customer_display_name', 'delivery_date', 'warehouse', 'status')
+    search_fields = ('note_number', 'customer_display_name', 'reference_number')
+    list_filter = ('organization', 'warehouse', 'status')
+    inlines = [DeliveryNoteLineInline]
     list_select_related = ('customer', 'organization')
     actions = ['action_queue_ird_submission', 'action_reset_ird_metadata']
 

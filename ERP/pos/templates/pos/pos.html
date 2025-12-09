@@ -1,0 +1,584 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+{% load permission_tags %}
+
+{% block title %}Point of Sale - {{ organization.name }}{% endblock %}
+
+{% block css %}
+{{ block.super }}
+<link rel="manifest" href="{% static 'manifest.json' %}">
+<meta name="theme-color" content="#007bff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Himalytix POS">
+<link rel="apple-touch-icon" href="{% static 'images/icon-192.png' %}">
+<style>
+.pos-container {
+    height: calc(100vh - 120px);
+    display: flex;
+    gap: 1rem;
+}
+
+.products-section {
+    flex: 2;
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.cart-section {
+    flex: 1;
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+}
+
+.cart-items {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.cart-total {
+    border-top: 2px solid #e9ecef;
+    padding-top: 1rem;
+    margin-top: 1rem;
+}
+
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.product-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 0.75rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.product-card:hover {
+    border-color: #0d6efd;
+    box-shadow: 0 2px 8px rgba(13, 110, 253, 0.2);
+}
+
+.product-card.selected {
+    border-color: #0d6efd;
+    background-color: #e7f3ff;
+}
+
+.barcode-input {
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-align: center;
+}
+
+.numpad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin: 1rem 0;
+}
+
+.numpad button {
+    padding: 1rem;
+    font-size: 1.2rem;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.numpad button:hover {
+    background-color: #f8f9fa;
+}
+
+.numpad button:active {
+    background-color: #e9ecef;
+}
+
+.cart-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+.cart-item:last-child {
+    border-bottom: none;
+}
+
+.quantity-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.quantity-controls button {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1px solid #dee2e6;
+    background: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.payment-section {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #dee2e6;
+}
+
+.payment-methods {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.payment-method {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+}
+
+.payment-method.active {
+    border-color: #0d6efd;
+    background-color: #e7f3ff;
+}
+
+.cash-input {
+    margin-top: 0.5rem;
+}
+
+.receipt-actions {
+    margin-top: 1rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+}
+
+.search-results-container {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.htmx-indicator {
+    opacity: 0.5;
+}
+
+.htmx-request .htmx-indicator {
+    opacity: 1;
+}
+
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <div class="page-title-box">
+                        <h4 class="page-title">Point of Sale</h4>
+                        <div class="page-title-right">
+                            <button class="btn btn-outline-primary"
+                                    hx-post="{% url 'pos:clear_cart' %}"
+                                    hx-target="#cart-items,#cart-total,#customer-name"
+                                    hx-swap="innerHTML"
+                                    hx-vals='{"customer_name": ""}'>
+                                <i class="mdi mdi-refresh"></i> New Transaction
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pos-container">
+                <!-- Products Section -->
+                <div class="products-section">
+                    <div class="mb-3">
+                        <h5>Product Search</h5>
+                        <div class="input-group">
+                            <input type="text"
+                                   id="search-input"
+                                   class="form-control barcode-input"
+                                   name="search_query"
+                                   placeholder="Scan barcode or enter product code..."
+                                   hx-get="{% url 'pos:search_products' %}"
+                                   hx-target="#search-results"
+                                   hx-trigger="input changed delay:300ms, keyup[key=='Enter']"
+                                   hx-indicator="#search-indicator">
+                            <button class="btn btn-outline-secondary">
+                                <i class="mdi mdi-barcode-scan"></i>
+                            </button>
+                            <div id="search-indicator" class="htmx-indicator loading" style="display:none;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Number Pad -->
+                    <div class="numpad" id="numpad">
+                        <button onclick="appendToSearch('1')">1</button>
+                        <button onclick="appendToSearch('2')">2</button>
+                        <button onclick="appendToSearch('3')">3</button>
+                        <button onclick="appendToSearch('4')">4</button>
+                        <button onclick="appendToSearch('5')">5</button>
+                        <button onclick="appendToSearch('6')">6</button>
+                        <button onclick="appendToSearch('7')">7</button>
+                        <button onclick="appendToSearch('8')">8</button>
+                        <button onclick="appendToSearch('9')">9</button>
+                        <button onclick="appendToSearch('0')">0</button>
+                        <button onclick="clearSearchInput()">
+                            <i class="mdi mdi-backspace"></i>
+                        </button>
+                        <button onclick="addProductByCode()">
+                            <i class="mdi mdi-check"></i>
+                        </button>
+                    </div>
+
+                    <!-- Search Results -->
+                    <div id="search-results" class="search-results-container">
+                        <!-- Initial popular products will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Cart Section -->
+                <div class="cart-section">
+                    <h5>Current Order</h5>
+
+                    <!-- Customer Info -->
+                    <div class="mb-3">
+                        <label class="form-label">Customer</label>
+                        <input type="text"
+                               id="customer-name"
+                               class="form-control"
+                               name="customer_name"
+                               value="{{ cart.customer_name|default:'Walk-in Customer' }}"
+                               placeholder="Walk-in Customer">
+                    </div>
+
+                    <!-- Cart Items -->
+                    <div id="cart-items" class="cart-items">
+                        {% include 'pos/fragments/cart_items.html' %}
+                    </div>
+
+                    <!-- Cart Total -->
+                    <div id="cart-total" class="cart-total">
+                        <div class="d-flex justify-content-between">
+                            <span>Subtotal:</span>
+                            <span>${{ cart.subtotal|floatformat:2 }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Tax:</span>
+                            <span>${{ cart.tax_total|floatformat:2 }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between fw-bold fs-5">
+                            <span>Total:</span>
+                            <span>${{ cart.total|floatformat:2 }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Payment Section -->
+                    <div class="payment-section">
+                        <h6>Payment</h6>
+
+                        <div class="payment-methods">
+                            <div class="payment-method active"
+                                 id="payment-cash"
+                                 onclick="selectPaymentMethod('cash')">
+                                Cash
+                            </div>
+                            <div class="payment-method"
+                                 id="payment-card"
+                                 onclick="selectPaymentMethod('card')">
+                                Card
+                            </div>
+                            <div class="payment-method"
+                                 id="payment-other"
+                                 onclick="selectPaymentMethod('other')">
+                                Other
+                            </div>
+                        </div>
+
+                        <div id="cash-input-section" class="cash-input">
+                            <label class="form-label">Cash Received</label>
+                            <input type="number"
+                                   id="cash-received"
+                                   class="form-control"
+                                   name="cash_received"
+                                   step="0.01"
+                                   placeholder="0.00"
+                                   oninput="calculateChange()">
+                            <div class="mt-2 d-flex justify-content-between">
+                                <span>Change:</span>
+                                <span id="change-amount" class="fw-bold">$0.00</span>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-success w-100 mt-3"
+                                id="checkout-btn"
+                                onclick="checkout()">
+                            <i class="mdi mdi-cash-register"></i>
+                            Complete Sale
+                        </button>
+                    </div>
+
+                    <!-- Receipt Actions -->
+                    <div id="receipt-actions" class="receipt-actions" style="display: none;">
+                        <button class="btn btn-outline-primary btn-sm" onclick="printReceipt()">
+                            <i class="mdi mdi-printer"></i> Print Receipt
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="emailReceipt()">
+                            <i class="mdi mdi-email"></i> Email Receipt
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notifications -->
+<div id="toast-container" class="toast-container"></div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+
+<!-- Service Worker Registration for PWA -->
+<script>
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+        // Register at root path so the service worker controls the site
+        navigator.serviceWorker.register('/sw.js')
+            .then(function(registration) {
+                console.log('POS Service Worker registered successfully:', registration.scope);
+
+                // Handle service worker updates
+                registration.addEventListener('updatefound', function() {
+                    const newWorker = registration.installing;
+                    newWorker.addEventListener('statechange', function() {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            // New version available
+                            if (confirm('A new version of POS is available. Reload to update?')) {
+                                newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                window.location.reload();
+                            }
+                        }
+                    });
+                });
+            })
+            .catch(function(error) {
+                console.log('POS Service Worker registration failed:', error);
+            });
+    });
+
+    // Handle offline/online status
+    window.addEventListener('online', function() {
+        console.log('Back online - retrying queued requests...');
+        // Trigger sync if supported
+        if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
+            navigator.serviceWorker.ready.then(function(registration) {
+                return registration.sync.register('retry-queued-requests');
+            });
+        }
+    });
+
+    window.addEventListener('offline', function() {
+        console.log('Gone offline - requests will be queued');
+    });
+}
+
+// PWA install prompt
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    deferredPrompt = e;
+
+    // Show install button if desired
+    const installButton = document.createElement('button');
+    installButton.innerHTML = 'Install POS App';
+    installButton.className = 'btn btn-primary position-fixed';
+    installButton.style.cssText = 'bottom: 20px; right: 20px; z-index: 1000;';
+    installButton.onclick = function() {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(function(choiceResult) {
+            if (choiceResult.outcome === 'accepted') {
+                console.log('User accepted the install prompt');
+            }
+            deferredPrompt = null;
+            installButton.remove();
+        });
+    };
+    document.body.appendChild(installButton);
+});
+
+// Minimal HTMX-friendly JavaScript for POS
+let currentPaymentMethod = 'cash';
+let lastInvoiceId = null;
+
+function appendToSearch(digit) {
+    const input = document.getElementById('search-input');
+    input.value += digit;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function clearSearchInput() {
+    const input = document.getElementById('search-input');
+    input.value = '';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function addProduct(productCode) {
+    htmx.ajax('POST', '{% url "pos:add_to_cart" %}', {
+        values: { product_code: productCode, quantity: 1 },
+        target: '#cart-items,#cart-total',
+        swap: 'innerHTML'
+    }).then(() => {
+        showToast('Product added to cart');
+    }).catch(() => {
+        showToast('Error adding product', 'error');
+    });
+}
+
+function selectPaymentMethod(method) {
+    currentPaymentMethod = method;
+
+    // Update active payment method styling
+    document.querySelectorAll('.payment-method').forEach(el => {
+        el.classList.remove('active');
+    });
+    document.getElementById(`payment-${method}`).classList.add('active');
+
+    // Show/hide cash input
+    const cashSection = document.getElementById('cash-input-section');
+    if (method === 'cash') {
+        cashSection.style.display = 'block';
+    } else {
+        cashSection.style.display = 'none';
+    }
+}
+
+function calculateChange() {
+    const cashReceived = parseFloat(document.getElementById('cash-received').value) || 0;
+    const totalElement = document.querySelector('#cart-total .fw-bold.fs-5 span:last-child');
+    const totalText = totalElement ? totalElement.textContent.replace('$', '') : '0';
+    const total = parseFloat(totalText) || 0;
+    const change = cashReceived - total;
+    document.getElementById('change-amount').textContent = `$${change.toFixed(2)}`;
+}
+
+function checkout() {
+    const totalElement = document.querySelector('#cart-total .fw-bold.fs-5 span:last-child');
+    const totalText = totalElement ? totalElement.textContent.replace('$', '') : '0';
+    const cartTotal = parseFloat(totalText) || 0;
+    const customerName = document.getElementById('customer-name').value;
+    const cashReceived = currentPaymentMethod === 'cash' ?
+        parseFloat(document.getElementById('cash-received').value) || 0 : cartTotal;
+
+    if (cartTotal === 0) {
+        showToast('Cart is empty', 'error');
+        return;
+    }
+
+    if (currentPaymentMethod === 'cash' && cashReceived < cartTotal) {
+        showToast('Insufficient cash received', 'error');
+        return;
+    }
+
+    htmx.ajax('POST', '{% url "pos:checkout" %}', {
+        values: {
+            payment_method: currentPaymentMethod,
+            cash_received: cashReceived,
+            customer_name: customerName
+        },
+        target: '#cart-items,#cart-total,#receipt-actions',
+        swap: 'innerHTML'
+    }).then(() => {
+        lastInvoiceId = 'completed'; // Set flag for receipt actions
+        document.getElementById('receipt-actions').style.display = 'flex';
+        showToast('Sale completed successfully!');
+        // Reset form
+        document.getElementById('cash-received').value = '';
+        document.getElementById('change-amount').textContent = '$0.00';
+    }).catch(() => {
+        showToast('Checkout failed', 'error');
+    });
+}
+
+function printReceipt() {
+    if (lastInvoiceId) {
+        window.open(`/accounting/sales-invoice/${lastInvoiceId}/print/`, '_blank');
+    }
+}
+
+function emailReceipt() {
+    showToast('Email receipt feature coming soon');
+}
+
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'error' ? 'danger' : 'success'} alert-dismissible fade show`;
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    container.appendChild(toast);
+
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.remove();
+        }
+    }, 3000);
+}
+
+// Focus search input on load
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        searchInput.focus();
+    }
+});
+</script>
+{% endblock %}

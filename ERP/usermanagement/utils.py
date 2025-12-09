@@ -3,13 +3,18 @@ from urllib.parse import quote
 
 from django.contrib import messages
 from django.core.cache import cache
-from django.http import HttpResponseForbidden, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseForbidden, HttpResponseRedirect
 from django.urls import reverse_lazy
+from django_ratelimit.decorators import ratelimit
+from django_ratelimit.core import get_usage
+import logging
 
 from usermanagement.models import Permission, UserPermission
+from utils.logging_utils import StructuredLogger
 
+logger = logging.getLogger(__name__)
 
-def permission_required(permission, *, require_organization: bool = True):
+def permission_required(permission, *, require_organization: bool = True, ratelimit_enabled: bool = False):
     """
     Organization-aware permission decorator.
 
@@ -17,9 +22,18 @@ def permission_required(permission, *, require_organization: bool = True):
     system or a plain permission codename string. Automatically redirects
     unauthenticated users to login and users without an active organization
     to the organization selector.
+
+    Args:
+        permission: Permission codename string or (module, entity, action) tuple
+        require_organization: Whether organization context is required
+        ratelimit_enabled: Whether to apply rate limiting (100 checks/minute per user)
     """
 
     def decorator(view_func):
+        # Apply rate limiting if enabled
+        if ratelimit_enabled:
+            view_func = ratelimit(key='user', rate='100/m', method='GET', block=True)(view_func)
+
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
             user = getattr(request, "user", None)
@@ -34,6 +48,12 @@ def permission_required(permission, *, require_organization: bool = True):
                 return HttpResponseRedirect(
                     f"{reverse_lazy('usermanagement:select_organization')}?next={quote(request.get_full_path())}"
                 )
+
+            # Check rate limit for permission checks
+            if ratelimit_enabled:
+                usage = get_usage(request, 'user', '100/m', 'GET')
+                if usage['should_limit']:
+                    return HttpResponse("Rate limit exceeded for permission checks.", status=429)
 
             if isinstance(permission, tuple):
                 allowed = PermissionUtils.has_permission(user, organization, *permission)
@@ -51,29 +71,52 @@ def permission_required(permission, *, require_organization: bool = True):
     return decorator
 
 class PermissionUtils:
-    CACHE_TIMEOUT = 300  # seconds
+    CACHE_TIMEOUT = 900  # Increased to 15 minutes
+    CACHE_VERSION = 1  # Add versioning for cache busting
+    logger = StructuredLogger('permissions')
 
     @staticmethod
     def _cache_key(user_id, organization_id):
-        return f'user_permissions:{user_id}:{organization_id}'
+        """Versioned cache key to enable global invalidation."""
+        return f'user_permissions:v{PermissionUtils.CACHE_VERSION}:{user_id}:{organization_id}'
 
     @staticmethod
     def get_user_permissions(user, organization):
-        # Super admin has all permissions
+        """Get permissions with fallback on cache failure."""
+        # Superuser check
         if not user or not getattr(user, 'is_authenticated', False):
             return set()
 
         if getattr(user, 'role', None) == 'superadmin' or getattr(user, 'is_superuser', False):
-            return ['*']  # Special marker for all permissions
+            return {'*'}  # Use set instead of list
 
         if not organization:
             return set()
 
         cache_key = PermissionUtils._cache_key(user.id, organization.id)
-        permissions = cache.get(cache_key)
-        if permissions is not None:
-            return permissions
 
+        try:
+            permissions = cache.get(cache_key)
+            if permissions is not None:
+                return permissions
+        except Exception as e:
+            # Log but don't fail - fall through to DB query
+            logger.warning(f"Cache read failed for {cache_key}: {e}")
+
+        # Query permissions (existing logic)
+        permissions = PermissionUtils._query_permissions(user, organization)
+
+        # Try to cache, but don't fail if it doesn't work
+        try:
+            cache.set(cache_key, permissions, PermissionUtils.CACHE_TIMEOUT)
+        except Exception as e:
+            logger.warning(f"Cache write failed for {cache_key}: {e}")
+
+        return permissions
+
+    @staticmethod
+    def _query_permissions(user, organization):
+        """Separate method for DB query logic."""
         role_permissions = set(
             Permission.objects.filter(
                 roles__user_roles__user=user,
@@ -84,7 +127,7 @@ class PermissionUtils:
             ).values_list('codename', flat=True)
         )
 
-        # Apply user-specific overrides
+        # Apply overrides with select_related to reduce queries
         overrides = UserPermission.objects.filter(
             user=user,
             organization=organization,
@@ -97,8 +140,24 @@ class PermissionUtils:
             else:
                 role_permissions.discard(codename)
 
-        cache.set(cache_key, role_permissions, PermissionUtils.CACHE_TIMEOUT)
         return role_permissions
+
+    @staticmethod
+    def invalidate_user_cache(user_id, organization_id):
+        """Invalidate specific user cache."""
+        cache.delete(PermissionUtils._cache_key(user_id, organization_id))
+
+    @staticmethod
+    def invalidate_all_caches():
+        """Global cache bust by incrementing version."""
+        PermissionUtils.CACHE_VERSION += 1
+        # Persist version to settings or database if needed
+
+    @staticmethod
+    def bulk_invalidate(user_ids, organization_id):
+        """Efficiently invalidate multiple users."""
+        keys = [PermissionUtils._cache_key(uid, organization_id) for uid in user_ids]
+        cache.delete_many(keys)
 
     @staticmethod
     def has_codename(user, organization, permission_codename: str):
@@ -115,19 +174,38 @@ class PermissionUtils:
             return False
 
         permissions = PermissionUtils.get_user_permissions(user, organization)
-        if permissions == ['*']:  # Handle super admin case
+        if permissions == {'*'}:  # Handle super admin case
             return True
 
         return permission_codename in permissions
 
     @staticmethod
+    @ratelimit(key='user', rate='100/m', method='GET', block=True)
+    def has_codename_ratelimited(user, organization, permission_codename: str):
+        """Rate-limited version of has_codename (100 checks per minute per user)."""
+        return PermissionUtils.has_codename(user, organization, permission_codename)
+
+    @staticmethod
     def has_permission(user, organization, module, entity, action):
         codename = f"{module}_{entity}_{action}"
-        return PermissionUtils.has_codename(user, organization, codename)
+        granted = PermissionUtils.has_codename(user, organization, codename)
+
+        PermissionUtils.logger.log_permission_check(
+            user, organization, codename, granted
+        )
+
+        return granted
+
+    @staticmethod
+    @ratelimit(key='user', rate='100/m', method='GET', block=True)
+    def has_permission_ratelimited(user, organization, module, entity, action):
+        """Rate-limited version of has_permission (100 checks per minute per user)."""
+        return PermissionUtils.has_permission(user, organization, module, entity, action)
 
     @staticmethod
     def invalidate_cache(user_id, organization_id):
-        cache.delete(PermissionUtils._cache_key(user_id, organization_id))
+        """Invalidate specific user cache. (Legacy method for backward compatibility)"""
+        PermissionUtils.invalidate_user_cache(user_id, organization_id)
 
 def require_permission(module, entity, action):
     def decorator(view_func):

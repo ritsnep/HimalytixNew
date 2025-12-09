@@ -1,0 +1,165 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="{{ current_language|default:'en' }}">
+
+<head>
+    <meta charset="utf-8" />
+    <title>{% block title %}{% endblock title %} | Himalytix </title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        // Migrate any legacy storage keys from older Dason branding to Himalytix
+        (function(){
+          try {
+            var oldLang = localStorage.getItem('Dason-language');
+            if (oldLang && !localStorage.getItem('himalytix-language')) {
+              localStorage.setItem('himalytix-language', oldLang);
+            }
+          } catch (e) { /* ignore: localStorage may be blocked */ }
+        })();
+    </script>
+    <meta content="Premium Multipurpose Admin & Dashboard Template" name="description" />
+    <meta content="Themesdesign" name="author" />
+    <!-- App favicon -->
+    <link rel="shortcut icon" href="{{ branding.favicon_url }}">
+
+    {% block css %}
+    {% block extra_css %}
+    {% endblock extra_css %}
+    <!-- Bootstrap Css -->
+    <link href="{% static 'reporting/css/bootstrap.min.css'%}" id="bootstrap-style" rel="stylesheet" type="text/css" />
+    <!-- Icons Css -->
+    <link href="{% static 'reporting/css/icons.min.css'%}" rel="stylesheet" type="text/css" />
+    {% endblock css %}
+
+</head>
+
+<body {% block extra_body %}{% endblock extra_body %}
+  data-layout-mode="{{ theme|default:ui_theme_default|default:'light' }}"
+  data-topbar="{{ ui_topbar_default|default:'light' }}"
+  data-text-scale="{{ text_scale|default:ui_text_scale_default|default:'m' }}"
+  data-font-family="{{ ui_font_family_default }}"
+  data-sidebar="light"
+  data-sidebar-size="lg"
+  class="ui-scale-{{ text_scale|default:ui_text_scale_default|default:'m' }}">
+
+  <script>
+    (function() {
+      function getCookie(name) {
+        var value = "; " + document.cookie;
+        var parts = value.split("; " + name + "=");
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return null;
+      }
+      var body = document.body;
+      if (!body) return;
+      var theme = getCookie('theme') || localStorage.getItem('theme') || body.getAttribute('data-layout-mode') || 'light';
+      body.setAttribute('data-layout-mode', theme);
+      var topbar = getCookie('ui-topbar-color') || localStorage.getItem('ui-topbar-color') || body.getAttribute('data-topbar') || 'light';
+      var sidebar = getCookie('ui-sidebar-color') || localStorage.getItem('ui-sidebar-color') || body.getAttribute('data-sidebar') || 'light';
+      var sidebarSize = getCookie('ui-sidebar-size') || localStorage.getItem('ui-sidebar-size') || body.getAttribute('data-sidebar-size') || 'lg';
+      var layout = getCookie('ui-layout') || localStorage.getItem('ui-layout') || body.getAttribute('data-layout') || 'vertical';
+      var layoutWidth = getCookie('ui-layout-width') || localStorage.getItem('ui-layout-width') || body.getAttribute('data-layout-size') || 'fluid';
+      var layoutPos = getCookie('ui-layout-position') || localStorage.getItem('ui-layout-position') || (body.getAttribute('data-layout-scrollable') === 'true' ? 'scrollable' : 'fixed');
+      var direction = getCookie('ui-layout-direction') || localStorage.getItem('ui-layout-direction') || document.documentElement.getAttribute('dir') || 'ltr';
+
+      body.setAttribute('data-topbar', topbar);
+      body.setAttribute('data-sidebar', sidebar);
+      body.setAttribute('data-sidebar-size', sidebarSize);
+      body.setAttribute('data-layout', layout);
+      body.setAttribute('data-layout-size', layoutWidth);
+      body.setAttribute('data-layout-scrollable', layoutPos === 'scrollable' ? 'true' : 'false');
+      document.documentElement.setAttribute('dir', direction === 'rtl' ? 'rtl' : 'ltr');
+    })();
+  </script>
+    <!-- Begin page -->
+    <div id="layout-wrapper">
+        <main class="flex-grow-1" id="main-container">
+        {% block content %}
+            {# Django messages block #}
+            {% if messages %}
+              <div class="container mt-2">
+                <ul class="list-unstyled">
+                  {% for message in messages %}
+                    <li class="alert alert-{{ message.tags }}">{{ message }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% endif %}
+            {% block footer %}
+            {% endblock footer %}
+        {% endblock content %}
+        </main>
+    </div>
+    {% if messages %}
+      <script id="django-messages-json" type="application/json">[
+      {% for message in messages %}
+        {"level": "{{ message.tags|default:'info' }}", "text": "{{ message|escapejs }}"}{% if not forloop.last %},{% endif %}
+      {% endfor %}
+      ]</script>
+    {% endif %}
+    <!-- END layout-wrapper -->
+
+    {% block javascript %}
+    <!-- JAVASCRIPT -->
+    <script src="{% static 'reporting/js/jquery.min.js'%}"></script>
+    <script src="{% static 'reporting/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'reporting/js/metisMenu.min.js'%}"></script>
+    <script src="{% static 'reporting/js/simplebar.min.js'%}"></script>
+    <script src="{% static 'reporting/js/waves.min.js'%}"></script>
+    <script src="{% static 'reporting/js/feather.min.js'%}"></script>
+    <!-- pace js -->
+    <script src="{% static 'reporting/js/pace.min.js'%}"></script>
+    <!-- HTMX -->
+    <script src="{% static 'reporting/js/htmx.min.js' %}"></script>
+    <!-- Pristine.js (local) to avoid CDN/tracking blocks -->
+    <script src="{% static 'reporting/js/pristine.min.js' %}"></script>
+    <script>
+      // Ensure HTMX sends the Django CSRF token for POST/PUT/DELETE.
+      (function() {
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        document.body.addEventListener('htmx:configRequest', function (evt) {
+          const token = getCookie('csrftoken');
+          if (token) {
+            evt.detail.headers['X-CSRFToken'] = token;
+          }
+        });
+      })();
+    </script>
+    {% block extra_js %}
+    {% endblock extra_js %}
+    {# Expose i18n to JS safely #}
+    <script id="i18n-json" type="application/json">{{ i18n|json_script:"i18n-json" }}</script>
+    <script>
+      (function(){
+        try {
+          var node = document.getElementById('i18n-json');
+          var raw = node ? node.textContent : '{}';
+          window.I18N = JSON.parse(raw || '{}');
+        } catch (e) {
+          window.I18N = {};
+        }
+        window.CURRENT_LANGUAGE = '{{ current_language|default:"en" }}';
+        window.CURRENT_REGION = '{{ current_region|default:"US" }}';
+        window.t = function(key, fallback){
+          if (window.I18N && Object.prototype.hasOwnProperty.call(window.I18N, key)) return window.I18N[key];
+          return fallback || key;
+        };
+      })();
+    </script>
+    {% endblock javascript %}
+</body>
+
+</html>

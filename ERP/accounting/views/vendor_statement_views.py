@@ -6,7 +6,7 @@ from io import StringIO
 from django.conf import settings
 from django.contrib import messages
 from django.core.mail import EmailMessage
-from django.db.models import F, Sum
+from django.db.models import F, Sum, Q
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.shortcuts import render
@@ -57,6 +57,8 @@ class VendorStatementView(AccountsPayablePermissionMixin, View):
         return render(request, self.template_name, context)
 
     def _invoice_rows(self, organization, vendor, start_date, end_date):
+        settled_statuses = PurchaseInvoice.PAYMENT_SETTLED_STATUSES
+        settled_filter = Q(payment_lines__payment__status__in=settled_statuses)
         invoices = (
             PurchaseInvoice.objects.filter(
                 organization=organization,
@@ -64,8 +66,14 @@ class VendorStatementView(AccountsPayablePermissionMixin, View):
                 invoice_date__range=(start_date, end_date),
             )
             .annotate(
-                paid_amount=Coalesce(Sum("payment_lines__applied_amount"), Decimal("0")),
-                discount_amount=Coalesce(Sum("payment_lines__discount_taken"), Decimal("0")),
+                paid_amount=Coalesce(
+                    Sum("payment_lines__applied_amount", filter=settled_filter),
+                    Decimal("0"),
+                ),
+                discount_amount=Coalesce(
+                    Sum("payment_lines__discount_taken", filter=settled_filter),
+                    Decimal("0"),
+                ),
             )
             .annotate(outstanding=F("total") - F("paid_amount") - F("discount_amount"))
             .order_by("invoice_date")

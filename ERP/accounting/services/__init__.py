@@ -8,6 +8,7 @@ from .ocr_service import process_receipt_with_ocr
 from .trial_balance_service import get_trial_balance
 from .chart_of_account_service import ChartOfAccountService
 from .journal_entry_service import JournalEntryService
+from .expense_service import ExpenseEntryService
 from .suggestion_service import SuggestionService
 from .tax_helpers import calculate_tax
 from .raw_sql import run_trial_balance, run_year_end_close
@@ -40,6 +41,7 @@ __all__ = [
     'get_trial_balance',
     'ChartOfAccountService',
     'JournalEntryService',
+    'ExpenseEntryService',
     'SuggestionService',
     'calculate_tax',
     'run_trial_balance',

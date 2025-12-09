@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Delivery Note {{ object.note_number }}</title>
+  <style>
+    body { font-family: Arial, sans-serif; }
+    .header { text-align: center; margin-bottom: 20px; }
+    .lines { width: 100%; border-collapse: collapse; }
+    .lines th, .lines td { border: 1px solid #333; padding: 6px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Delivery Note</h1>
+    <div>Note: {{ object.note_number }}</div>
+    <div>Date: {{ object.delivery_date }}</div>
+  </div>
+  <div>
+    <strong>Customer:</strong> {{ object.customer_display_name }}<br>
+    <strong>Reference:</strong> {{ object.reference_number }}
+  </div>
+
+  <table class="lines">
+    <thead>
+      <tr><th>#</th><th>Product</th><th>Description</th><th>Quantity</th></tr>
+    </thead>
+    <tbody>
+      {% for line in object.lines.all %}
+      <tr>
+        <td>{{ line.line_number }}</td>
+        <td>{{ line.product.code }} - {{ line.product.name }}</td>
+        <td>{{ line.description }}</td>
+        <td>{{ line.quantity }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div style="margin-top:40px;">
+    <div style="float:left; width:40%;">Delivered By: ____________________</div>
+    <div style="float:right; width:40%;">Received By: ____________________</div>
+  </div>
+  <div style="clear:both; margin-top:20px;">
+    {% if object.status == 'confirmed' %}
+      <form method="post" action="{% url 'accounting:delivery_note_invoice_create' object.pk %}">
+        {% csrf_token %}
+        <button type="submit">Invoice This Delivery</button>
+      </form>
+    {% endif %}
+</body>
+</html>
