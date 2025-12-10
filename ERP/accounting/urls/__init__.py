@@ -15,6 +15,10 @@ from ..views.report_views import (
     CashFlowView,
     AccountsReceivableAgingView,
     AccountsPayableAgingView,
+    SalesSummaryView,
+    InventorySummaryView,
+    TaxSummaryView,
+    ExpenseSummaryView,
     ReportExportView,
     CustomReportView,
 )
@@ -84,9 +88,15 @@ from ..views import views_api
 from ..views import recurring_journal_views
 from ..views import views_htmx
 from ..views import wizard
-from ..views import purchase_invoice_views, payment_scheduler_views, vendor_statement_views, customer_statement_views, sales_invoice_views, ar_receipt_views, commerce_views, sales_order_views
+from ..views import purchase_invoice_views, payment_scheduler_views, vendor_statement_views, customer_statement_views, sales_invoice_views, ar_receipt_views, commerce_views, sales_order_views, expense_views
 from ..views import sales_invoice_views, ar_receipt_views, commerce_views, sales_order_views
 from ..views import delivery_note_views
+from ..views.voucher_create_view import (
+    VoucherCreateView,
+    VoucherCreateHtmxView,
+    VoucherAccountLookupHtmxView,
+    VoucherTaxCalculationHtmxView,
+)
 
 app_name = "accounting"
 
@@ -174,7 +184,17 @@ urlpatterns = [
     path('voucher-udfs/<int:pk>/delete/', VoucherUDFConfigDeleteView.as_view(), name='voucher_udf_delete'),
     
     path('voucher-entry/', VoucherEntryView.as_view(), name='voucher_entry'),
+    path('voucher-entry/list/', voucher_crud_views.VoucherListView.as_view(), name='voucher_entry_list'),
+    path('voucher-entry/create/', VoucherCreateView.as_view(), name='voucher_entry_create'),
+    path('voucher-entry/create/<str:journal_type>/', VoucherCreateView.as_view(), name='voucher_entry_create_typed'),
+    # HTMX helpers for voucher entry
+    path('voucher-entry/htmx/add-line/', VoucherCreateHtmxView.as_view(), name='voucher_entry_add_line_hx'),
+    path('voucher-entry/htmx/account-lookup/', VoucherAccountLookupHtmxView.as_view(), name='voucher_entry_account_lookup_hx'),
+    path('voucher-entry/htmx/tax-calculation/', VoucherTaxCalculationHtmxView.as_view(), name='voucher_entry_tax_calculation_hx'),
     # path('voucher-entry/<int:config_id>/', VoucherEntryView.as_view(), name='voucher_entry_config'),
+    path('expenses/new/', expense_views.ExpenseEntryCreateView.as_view(), name='expense_entry_new'),
+    path('expenses/ocr/', expense_views.ExpenseReceiptOCRView.as_view(), name='expense_receipt_ocr'),
+    path('expenses/ocr/<str:task_id>/status/', expense_views.ExpenseReceiptOCRStatusView.as_view(), name='expense_receipt_ocr_status'),
     
     # Voucher CRUD URLs (order matters - specific routes before generic!)
     path('vouchers/', voucher_views.VoucherListView.as_view(), name='voucher_list'),
@@ -299,6 +319,10 @@ urlpatterns = [
     path('advanced-reports/cash-flow/', CashFlowView.as_view(), name='report_cf'),
     path('advanced-reports/ar-aging/', AccountsReceivableAgingView.as_view(), name='report_ar_aging'),
     path('advanced-reports/ap-aging/', AccountsPayableAgingView.as_view(), name='report_ap_aging'),
+    path('advanced-reports/sales-summary/', SalesSummaryView.as_view(), name='report_sales_summary'),
+    path('advanced-reports/inventory-summary/', InventorySummaryView.as_view(), name='report_inventory_summary'),
+    path('advanced-reports/tax-summary/', TaxSummaryView.as_view(), name='report_tax_summary'),
+    path('advanced-reports/expense-summary/', ExpenseSummaryView.as_view(), name='report_expense_summary'),
     path('advanced-reports/custom/<slug:code>/', CustomReportView.as_view(), name='custom_report'),
     path('advanced-reports/export/', ReportExportView.as_view(), name='report_export'),
     path('receivable-dashboard/', ReceivableDashboardView.as_view(), name='receivable_dashboard'),

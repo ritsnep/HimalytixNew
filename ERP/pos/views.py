@@ -1,10 +1,10 @@
 import json
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, QueryDict
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.utils import timezone
 from django.db import transaction, models
 from django.contrib import messages
@@ -16,14 +16,49 @@ from usermanagement.utils import PermissionUtils
 from .models import Cart, CartItem, POSSettings
 
 
-@login_required
-def pos_home(request):
-    """Main POS interface."""
-    if not PermissionUtils.has_codename(request.user, request.organization, 'accounting_salesinvoice_add'):
-        messages.error(request, "You don't have permission to access POS.")
-        return redirect('dashboard')
+def _is_htmx(request):
+    return bool(request.META.get('HTTP_HX_REQUEST'))
 
-    # Get or create active cart for user
+
+def _hx_trigger(response, message, level='success'):
+    """Attach HX-Trigger header to surface toast messages on the client."""
+    response['HX-Trigger'] = json.dumps({
+        'showMessage': {
+            'message': message,
+            'type': level
+        }
+    })
+    return response
+
+
+def _get_payload(request):
+    """Extract payload from HTMX form posts or JSON API calls."""
+    if _is_htmx(request):
+        return request.POST
+    try:
+        if request.body:
+            return json.loads(request.body.decode('utf-8'))
+    except json.JSONDecodeError:
+        try:
+            # Fallback for incorrectly labeled form posts (urlencoded)
+            parsed = QueryDict(request.body.decode('utf-8'))
+            return parsed
+        except Exception:
+            return {}
+    return {}
+
+
+def _get_or_create_active_cart(request, customer_name=None):
+    """Return the user's active cart or create one with sane defaults."""
+    settings_obj, _ = POSSettings.objects.get_or_create(
+        organization=request.organization,
+        defaults={
+            'default_customer_name': 'Walk-in Customer',
+            'enable_barcode_scanner': True,
+            'auto_print_receipt': True,
+        }
+    )
+
     cart = Cart.objects.filter(
         user=request.user,
         organization=request.organization,
@@ -34,11 +69,15 @@ def pos_home(request):
         cart = Cart.objects.create(
             user=request.user,
             organization=request.organization,
-            customer_name='Walk-in Customer'
+            customer_name=customer_name or settings_obj.default_customer_name or 'Walk-in Customer'
         )
 
-    # Get POS settings
-    pos_settings, created = POSSettings.objects.get_or_create(
+    return cart, settings_obj
+
+
+def _create_fresh_cart(request, customer_name=None):
+    """Create a brand new active cart for the user."""
+    settings_obj, _ = POSSettings.objects.get_or_create(
         organization=request.organization,
         defaults={
             'default_customer_name': 'Walk-in Customer',
@@ -46,6 +85,29 @@ def pos_home(request):
             'auto_print_receipt': True,
         }
     )
+    return Cart.objects.create(
+        user=request.user,
+        organization=request.organization,
+        customer_name=customer_name or settings_obj.default_customer_name or 'Walk-in Customer'
+    )
+
+
+def _render_cart_fragments(request, cart):
+    """Return combined HTML fragments for cart items and totals."""
+    cart_items_html = render_cart_items(request, cart)
+    cart_total_html = render_cart_total(request, cart)
+    return cart_items_html + cart_total_html
+
+
+@login_required
+@ensure_csrf_cookie
+def pos_home(request):
+    """Main POS interface."""
+    if not PermissionUtils.has_codename(request.user, request.organization, 'accounting_salesinvoice_add'):
+        messages.error(request, "You don't have permission to access POS.")
+        return redirect('dashboard')
+
+    cart, pos_settings = _get_or_create_active_cart(request)
 
     # Prepare cart data for JavaScript
     cart_data = {
@@ -82,48 +144,38 @@ def pos_home(request):
 def add_to_cart(request):
     """Add item to cart via AJAX or HTMX."""
     try:
-        if request.META.get('HTTP_HX_REQUEST'):
-            # HTMX request - get data from POST
-            product_code = request.POST.get('product_code', '').strip()
-            quantity = Decimal(request.POST.get('quantity', 1))
-        else:
-            # JSON API request
-            data = json.loads(request.body)
-            product_code = data.get('product_code', '').strip()
-            barcode = data.get('barcode', '').strip()
+        data = _get_payload(request)
+        product_code = (data.get('product_code') or data.get('code') or '').strip()
+        barcode = (data.get('barcode') or '').strip()
+        try:
             quantity = Decimal(data.get('quantity', 1))
+        except (InvalidOperation, TypeError):
+            quantity = Decimal(0)
 
         if quantity <= 0:
-            if request.META.get('HTTP_HX_REQUEST'):
-                messages.error(request, 'Quantity must be positive')
-                return redirect('pos:pos_home')
-            return JsonResponse({'success': False, 'error': 'Quantity must be positive'})
+            msg = 'Quantity must be positive'
+            if _is_htmx(request):
+                resp = HttpResponse(render_cart_items(request, None))
+                return _hx_trigger(resp, msg, 'error')
+            return JsonResponse({'success': False, 'error': msg}, status=400)
 
-        # Find product by code
+        # Find product by code or barcode
         product = Product.objects.filter(
-            organization=request.organization,
-            code=product_code
+            organization=request.organization
+        ).filter(
+            models.Q(code=product_code) |
+            models.Q(barcode=barcode) |
+            models.Q(barcode=product_code)
         ).first()
 
         if not product:
-            if request.META.get('HTTP_HX_REQUEST'):
-                messages.error(request, 'Product not found')
-                return redirect('pos:pos_home')
-            return JsonResponse({'success': False, 'error': 'Product not found'})
+            msg = 'Product not found'
+            if _is_htmx(request):
+                resp = HttpResponse(render_cart_items(request, None))
+                return _hx_trigger(resp, msg, 'error')
+            return JsonResponse({'success': False, 'error': msg}, status=404)
 
-        # Get or create active cart
-        cart = Cart.objects.filter(
-            user=request.user,
-            organization=request.organization,
-            status='active'
-        ).first()
-
-        if not cart:
-            cart = Cart.objects.create(
-                user=request.user,
-                organization=request.organization,
-                customer_name='Walk-in Customer'
-            )
+        cart, _settings = _get_or_create_active_cart(request)
 
         # Check if item already in cart
         cart_item = CartItem.objects.filter(
@@ -148,23 +200,22 @@ def add_to_cart(request):
         # Recalculate cart totals
         cart.recalculate_totals()
 
-        if request.META.get('HTTP_HX_REQUEST'):
-            # Return HTML fragments for HTMX
-            cart_items_html = render_cart_items(request, cart)
-            cart_total_html = render_cart_total(request, cart)
-            return HttpResponse(cart_items_html + cart_total_html)
-        else:
-            return JsonResponse({
-                'success': True,
-                'cart_total': float(cart.total),
-                'item_count': cart.items.count()
-            })
+        if _is_htmx(request):
+            fragments = _render_cart_fragments(request, cart)
+            resp = HttpResponse(fragments)
+            return _hx_trigger(resp, 'Product added to cart')
+
+        return JsonResponse({
+            'success': True,
+            'cart_total': float(cart.total),
+            'item_count': cart.items.count()
+        })
 
     except Exception as e:
-        if request.META.get('HTTP_HX_REQUEST'):
-            messages.error(request, f'Error adding product: {str(e)}')
-            return redirect('pos:pos_home')
-        return JsonResponse({'success': False, 'error': str(e)})
+        if _is_htmx(request):
+            resp = HttpResponse(render_cart_items(request, None))
+            return _hx_trigger(resp, f'Error adding product: {str(e)}', 'error')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 @login_required
@@ -172,21 +223,19 @@ def add_to_cart(request):
 def update_cart_item(request):
     """Update cart item quantity via AJAX or HTMX."""
     try:
-        if request.META.get('HTTP_HX_REQUEST'):
-            # HTMX request - get data from POST
-            item_id = request.POST.get('item_id')
-            quantity = Decimal(request.POST.get('quantity', 0))
-        else:
-            # JSON API request
-            data = json.loads(request.body)
-            item_id = data.get('item_id')
+        data = _get_payload(request)
+        item_id = data.get('item_id')
+        try:
             quantity = Decimal(data.get('quantity', 0))
+        except (InvalidOperation, TypeError):
+            quantity = Decimal(-1)
 
         if quantity < 0:
-            if request.META.get('HTTP_HX_REQUEST'):
-                messages.error(request, 'Quantity cannot be negative')
-                return redirect('pos:pos_home')
-            return JsonResponse({'success': False, 'error': 'Quantity cannot be negative'})
+            msg = 'Quantity cannot be negative'
+            if _is_htmx(request):
+                resp = HttpResponse(render_cart_items(request, None))
+                return _hx_trigger(resp, msg, 'error')
+            return JsonResponse({'success': False, 'error': msg}, status=400)
 
         cart_item = get_object_or_404(
             CartItem,
@@ -205,23 +254,22 @@ def update_cart_item(request):
         # Recalculate cart totals
         cart_item.cart.recalculate_totals()
 
-        if request.META.get('HTTP_HX_REQUEST'):
-            # Return HTML fragments for HTMX
-            cart_items_html = render_cart_items(request, cart_item.cart)
-            cart_total_html = render_cart_total(request, cart_item.cart)
-            return HttpResponse(cart_items_html + cart_total_html)
-        else:
-            return JsonResponse({
-                'success': True,
-                'cart_total': float(cart_item.cart.total),
-                'item_count': cart_item.cart.items.count()
-            })
+        if _is_htmx(request):
+            fragments = _render_cart_fragments(request, cart_item.cart)
+            resp = HttpResponse(fragments)
+            return _hx_trigger(resp, 'Cart updated')
+
+        return JsonResponse({
+            'success': True,
+            'cart_total': float(cart_item.cart.total),
+            'item_count': cart_item.cart.items.count()
+        })
 
     except Exception as e:
-        if request.META.get('HTTP_HX_REQUEST'):
-            messages.error(request, f'Error updating item: {str(e)}')
-            return redirect('pos:pos_home')
-        return JsonResponse({'success': False, 'error': str(e)})
+        if _is_htmx(request):
+            resp = HttpResponse(render_cart_items(request, None))
+            return _hx_trigger(resp, f'Error updating item: {str(e)}', 'error')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 @login_required
@@ -229,13 +277,8 @@ def update_cart_item(request):
 def remove_cart_item(request):
     """Remove item from cart via AJAX or HTMX."""
     try:
-        if request.META.get('HTTP_HX_REQUEST'):
-            # HTMX request - get data from POST
-            item_id = request.POST.get('item_id')
-        else:
-            # JSON API request
-            data = json.loads(request.body)
-            item_id = data.get('item_id')
+        data = _get_payload(request)
+        item_id = data.get('item_id')
 
         cart_item = get_object_or_404(
             CartItem,
@@ -251,23 +294,22 @@ def remove_cart_item(request):
         # Recalculate cart totals
         cart.recalculate_totals()
 
-        if request.META.get('HTTP_HX_REQUEST'):
-            # Return HTML fragments for HTMX
-            cart_items_html = render_cart_items(request, cart)
-            cart_total_html = render_cart_total(request, cart)
-            return HttpResponse(cart_items_html + cart_total_html)
-        else:
-            return JsonResponse({
-                'success': True,
-                'cart_total': float(cart.total),
-                'item_count': cart.items.count()
-            })
+        if _is_htmx(request):
+            fragments = _render_cart_fragments(request, cart)
+            resp = HttpResponse(fragments)
+            return _hx_trigger(resp, 'Item removed')
+
+        return JsonResponse({
+            'success': True,
+            'cart_total': float(cart.total),
+            'item_count': cart.items.count()
+        })
 
     except Exception as e:
-        if request.META.get('HTTP_HX_REQUEST'):
-            messages.error(request, f'Error removing item: {str(e)}')
-            return redirect('pos:pos_home')
-        return JsonResponse({'success': False, 'error': str(e)})
+        if _is_htmx(request):
+            resp = HttpResponse(render_cart_items(request, None))
+            return _hx_trigger(resp, f'Error removing item: {str(e)}', 'error')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 @login_required
@@ -275,31 +317,26 @@ def remove_cart_item(request):
 def clear_cart(request):
     """Clear all items from cart."""
     try:
-        cart = Cart.objects.filter(
-            user=request.user,
-            organization=request.organization,
-            status='active'
-        ).first()
+        cart, _settings = _get_or_create_active_cart(request)
 
-        if cart:
-            cart.items.all().delete()
-            cart.customer_name = 'Walk-in Customer'
-            cart.recalculate_totals()
-            cart.save()
+        cart.items.all().delete()
+        cart.customer_name = _settings.default_customer_name or 'Walk-in Customer'
+        cart.recalculate_totals()
+        cart.save(update_fields=['customer_name'])
 
-        if request.META.get('HTTP_HX_REQUEST'):
-            # Return HTML fragments for HTMX
-            cart_items_html = render_cart_items(request, cart) if cart else '<div class="text-center text-muted py-4">No items in cart</div>'
-            cart_total_html = render_cart_total(request, cart) if cart else '<div class="d-flex justify-content-between fw-bold fs-5"><span>Total:</span><span>$0.00</span></div>'
-            return HttpResponse(cart_items_html + cart_total_html)
-        else:
-            return JsonResponse({'success': True})
+        if _is_htmx(request):
+            fragments = _render_cart_fragments(request, cart)
+            receipt_reset = '<div id="receipt-actions" hx-swap-oob="true" style="display:none;"></div>'
+            resp = HttpResponse(fragments + receipt_reset)
+            return _hx_trigger(resp, 'Cart cleared')
+
+        return JsonResponse({'success': True})
 
     except Exception as e:
-        if request.META.get('HTTP_HX_REQUEST'):
-            messages.error(request, f'Error clearing cart: {str(e)}')
-            return redirect('pos:pos_home')
-        return JsonResponse({'success': False, 'error': str(e)})
+        if _is_htmx(request):
+            resp = HttpResponse(render_cart_items(request, None))
+            return _hx_trigger(resp, f'Error clearing cart: {str(e)}', 'error')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 @login_required
@@ -307,35 +344,43 @@ def clear_cart(request):
 def checkout(request):
     """Process checkout and create sales invoice."""
     try:
-        data = json.loads(request.body)
+        data = _get_payload(request)
         payment_method = data.get('payment_method', 'cash')
-        cash_received = Decimal(data.get('cash_received', 0))
-        customer_name = data.get('customer_name', 'Walk-in Customer')
+        try:
+            cash_received = Decimal(data.get('cash_received', 0))
+        except (InvalidOperation, TypeError):
+            cash_received = Decimal(0)
+        customer_name = data.get('customer_name') or 'Walk-in Customer'
 
-        cart = Cart.objects.filter(
-            user=request.user,
-            organization=request.organization,
-            status='active'
-        ).first()
+        cart, _settings = _get_or_create_active_cart(request, customer_name=customer_name)
 
         if not cart or not cart.items.exists():
-            return JsonResponse({'success': False, 'error': 'Cart is empty'})
+            msg = 'Cart is empty'
+            if _is_htmx(request):
+                resp = HttpResponse(render_cart_items(request, cart))
+                return _hx_trigger(resp, msg, 'error')
+            return JsonResponse({'success': False, 'error': msg}, status=400)
 
         if payment_method == 'cash' and cash_received < cart.total:
-            return JsonResponse({'success': False, 'error': 'Insufficient cash received'})
+            msg = 'Insufficient cash received'
+            if _is_htmx(request):
+                resp = HttpResponse(render_cart_items(request, cart))
+                return _hx_trigger(resp, msg, 'error')
+            return JsonResponse({'success': False, 'error': msg}, status=400)
 
         with transaction.atomic():
             # Get default customer or create walk-in customer
             customer = Customer.objects.filter(
                 organization=request.organization,
-                customer_name='Walk-in Customer'
+                display_name='Walk-in Customer'
             ).first()
 
             if not customer:
                 customer = Customer.objects.create(
                     organization=request.organization,
-                    customer_name='Walk-in Customer',
-                    customer_type='individual',
+                    display_name='Walk-in Customer',
+                    legal_name='Walk-in Customer',
+                    status='active'
                 )
 
             # Get default currency
@@ -389,6 +434,23 @@ def checkout(request):
             # Calculate change
             change = cash_received - cart.total if payment_method == 'cash' else Decimal(0)
 
+            if _is_htmx(request):
+                # Prepare fresh cart for next sale
+                new_cart, _ = _get_or_create_active_cart(request)
+                new_cart.items.all().delete()
+                new_cart.recalculate_totals()
+
+                fragments = _render_cart_fragments(request, new_cart)
+                receipt_html = render(request, 'pos/fragments/receipt_actions.html', {
+                    'invoice': invoice,
+                    'change': change
+                }).content.decode('utf-8')
+                response = HttpResponse(fragments + receipt_html)
+                response['HX-Trigger'] = json.dumps({
+                    'showMessage': {'message': 'Sale completed', 'type': 'success'}
+                })
+                return response
+
             return JsonResponse({
                 'success': True,
                 'invoice_id': invoice.invoice_id,
@@ -399,17 +461,24 @@ def checkout(request):
             })
 
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)})
+        if _is_htmx(request):
+            resp = HttpResponse(render_cart_items(request, None))
+            return _hx_trigger(resp, f'Checkout failed: {str(e)}', 'error')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 @login_required
 def search_products(request):
     """Search products for POS lookup."""
-    query = request.GET.get('q', '').strip()
-    limit = int(request.GET.get('limit', 10))
+    query = request.GET.get('search_query') or request.GET.get('q') or ''
+    query = query.strip()
+    try:
+        limit = int(request.GET.get('limit', 10))
+    except (ValueError, TypeError):
+        limit = 10
 
     if len(query) < 2:
-        if request.META.get('HTTP_HX_REQUEST'):
+        if _is_htmx(request):
             return HttpResponse('<div class="text-center text-muted py-4">Type at least 2 characters to search</div>')
         return JsonResponse({'products': []})
 
@@ -424,7 +493,8 @@ def search_products(request):
     if request.META.get('HTTP_HX_REQUEST'):
         # Return HTML fragment for HTMX
         return render(request, 'pos/fragments/search_results.html', {
-            'products': products
+            'products': products,
+            'heading': 'Search Results'
         })
     else:
         product_data = []
@@ -444,7 +514,10 @@ def search_products(request):
 @login_required
 def top_products(request):
     """Return top products (for initial POS grid)"""
-    limit = int(request.GET.get('limit', 20))
+    try:
+        limit = int(request.GET.get('limit', 20))
+    except (ValueError, TypeError):
+        limit = 20
     products = Product.objects.filter(
         organization=request.organization
     ).order_by('name')[:limit]
@@ -452,7 +525,8 @@ def top_products(request):
     if request.META.get('HTTP_HX_REQUEST'):
         # Return HTML fragment for HTMX
         return render(request, 'pos/fragments/search_results.html', {
-            'products': products
+            'products': products,
+            'heading': 'Popular Products'
         })
     else:
         product_data = []
@@ -472,11 +546,7 @@ def top_products(request):
 @login_required
 def get_cart(request):
     """Get current cart data."""
-    cart = Cart.objects.filter(
-        user=request.user,
-        organization=request.organization,
-        status='active'
-    ).first()
+    cart, _settings = _get_or_create_active_cart(request)
 
     if not cart:
         return JsonResponse({'cart': None})
@@ -504,6 +574,132 @@ def get_cart(request):
     })
 
 
+@login_required
+@require_POST
+def hold_cart(request):
+    """Place the current active cart on hold and start a fresh cart."""
+    cart, _settings = _get_or_create_active_cart(request)
+    if not cart or not cart.items.exists():
+        msg = 'Nothing to hold'
+        if _is_htmx(request):
+            resp = HttpResponse(_render_cart_fragments(request, cart))
+            return _hx_trigger(resp, msg, 'error')
+        return JsonResponse({'success': False, 'error': msg}, status=400)
+
+    cart.status = 'held'
+    cart.save(update_fields=['status', 'updated_at'])
+
+    new_cart = _create_fresh_cart(request)
+    fragments = _render_cart_fragments(request, new_cart)
+    held_fragment = render_held_orders(request)
+
+    if _is_htmx(request):
+        resp = HttpResponse(fragments + held_fragment)
+        return _hx_trigger(resp, 'Order held')
+
+    return JsonResponse({'success': True})
+
+
+@login_required
+def list_held_carts(request):
+    """Return held carts fragment."""
+    html = render_held_orders(request)
+    if _is_htmx(request):
+        return HttpResponse(html)
+    return JsonResponse({'html': html})
+
+
+@login_required
+@require_POST
+def resume_cart(request):
+    """Resume a held cart as the active one."""
+    data = _get_payload(request)
+    cart_id = data.get('cart_id')
+    held_cart = get_object_or_404(
+        Cart,
+        cart_id=cart_id,
+        user=request.user,
+        organization=request.organization,
+        status='held'
+    )
+
+    Cart.objects.filter(
+        user=request.user,
+        organization=request.organization,
+        status='active'
+    ).update(status='cancelled')
+
+    held_cart.status = 'active'
+    held_cart.save(update_fields=['status', 'updated_at'])
+
+    fragments = _render_cart_fragments(request, held_cart)
+    held_fragment = render_held_orders(request)
+
+    if _is_htmx(request):
+        resp = HttpResponse(fragments + held_fragment)
+        return _hx_trigger(resp, 'Order resumed')
+
+    return JsonResponse({'success': True})
+
+
+@login_required
+@require_POST
+def update_cart_meta(request):
+    """Update customer name and notes on the active cart."""
+    cart, _settings = _get_or_create_active_cart(request)
+    if not cart:
+        return JsonResponse({'success': False, 'error': 'No active cart'}, status=400)
+
+    data = _get_payload(request)
+    customer_name = data.get('customer_name') or cart.customer_name
+    notes = data.get('notes') or ''
+
+    cart.customer_name = customer_name
+    cart.notes = notes
+    cart.save(update_fields=['customer_name', 'notes', 'updated_at'])
+
+    if _is_htmx(request):
+        resp = HttpResponse('')
+        return _hx_trigger(resp, 'Details saved')
+
+    return JsonResponse({'success': True})
+
+
+@login_required
+def search_customers(request):
+    """Quick customer search."""
+    query = request.GET.get('q', '').strip()
+    try:
+        limit = int(request.GET.get('limit', 5) or 5)
+    except (ValueError, TypeError):
+        limit = 5
+    if len(query) < 2:
+        if _is_htmx(request):
+            return HttpResponse('<div class="text-center text-muted py-2">Type 2+ letters</div>')
+        return JsonResponse({'customers': []})
+
+    customers = Customer.objects.filter(
+        organization=request.organization
+    ).filter(
+        models.Q(display_name__icontains=query) |
+        models.Q(phone_number__icontains=query) |
+        models.Q(email__icontains=query)
+    ).order_by('customer_name')[:limit]
+
+    if _is_htmx(request):
+        return render(request, 'pos/fragments/customer_search_results.html', {
+            'customers': customers
+        })
+
+    data = [{
+        'id': c.customer_id,
+        'name': c.display_name,
+        'phone': getattr(c, 'phone_number', ''),
+        'email': getattr(c, 'email', '')
+    } for c in customers]
+    return JsonResponse({'customers': data})
+
+
 # HTMX Helper Functions
 def render_cart_items(request, cart):
     """Render cart items HTML fragment for HTMX."""
@@ -516,4 +712,15 @@ def render_cart_total(request, cart):
     """Render cart total HTML fragment for HTMX."""
     return render(request, 'pos/fragments/cart_total.html', {
         'cart': cart
+    }).content.decode('utf-8')
+
+
+def render_held_orders(request):
+    held_carts = Cart.objects.filter(
+        user=request.user,
+        organization=request.organization,
+        status='held'
+    ).order_by('-updated_at')[:10]
+    return render(request, 'pos/fragments/held_orders.html', {
+        'held_carts': held_carts
     }).content.decode('utf-8')

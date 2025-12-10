@@ -1,0 +1,27 @@
+<div id="held-orders" hx-swap-oob="true">
+  <div class="d-flex justify-content-between align-items-center mb-1">
+    <strong>Held Orders</strong>
+    <small class="text-muted">{{ held_carts|length }} open</small>
+  </div>
+  {% if held_carts %}
+    <div class="list-group small">
+      {% for cart in held_carts %}
+      <div class="list-group-item d-flex justify-content-between align-items-center">
+        <div>
+          <div class="fw-bold">{{ cart.customer_name|default:"Walk-in" }}</div>
+          <div class="text-muted">Items: {{ cart.items.count }} • {{ cart.updated_at|date:"M j, H:i" }}</div>
+        </div>
+        <button class="btn btn-sm btn-primary"
+                hx-post="{% url 'pos:resume_cart' %}"
+                hx-vals='{"cart_id": "{{ cart.cart_id }}"}'
+                hx-target="#cart-items,#cart-total,#held-orders"
+                hx-swap="innerHTML">
+          Resume
+        </button>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="text-muted small">No held orders</div>
+  {% endif %}
+</div>

@@ -207,6 +207,19 @@ class PermissionUtils:
         """Invalidate specific user cache. (Legacy method for backward compatibility)"""
         PermissionUtils.invalidate_user_cache(user_id, organization_id)
 
+    @staticmethod
+    def is_org_admin(user, organization):
+        """Check if user is an organization admin."""
+        if not user or not organization:
+            return False
+        if getattr(user, "role", None) == "superadmin" or getattr(user, "is_superuser", False):
+            return True
+        
+        # Check for specific org admin permission or role
+        # Assuming 'org_admin' role or 'organization_manage' permission
+        # Let's check for 'organization_manage' permission which is common for admins
+        return PermissionUtils.has_codename(user, organization, 'usermanagement_organization_manage')
+
 def require_permission(module, entity, action):
     def decorator(view_func):
         @wraps(view_func)
@@ -245,4 +258,4 @@ def get_form_fields(user, form):
     for field in form.fields:
         if user.has_perm(f'edit_{field}'):
             fields.append(field)
-    return fields 
+    return fields

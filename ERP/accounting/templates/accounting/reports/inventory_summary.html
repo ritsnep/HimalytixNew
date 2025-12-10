@@ -1,0 +1,301 @@
+{% extends "partials/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Inventory Summary" %}{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-1">
+                        <i class="fas fa-boxes me-2"></i>
+                        {% trans "Inventory Summary" %}
+                    </h1>
+                    <p class="text-muted mb-0">
+                        {% trans "Current stock levels, valuation, and alerts." %}
+                    </p>
+                </div>
+                <a href="{% url 'accounting:report_list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>
+                    {% trans "Back to Reports" %}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="warehouse_id" class="form-label">{% trans "Warehouse" %}</label>
+                    <select id="warehouse_id" name="warehouse_id" class="form-select">
+                        <option value="">{% trans "All Warehouses" %}</option>
+                        {% for warehouse in warehouses %}
+                            <option value="{{ warehouse.id }}" {% if selected_warehouse == warehouse.id|stringformat:"s" %}selected{% endif %}>
+                                {{ warehouse.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="low_stock_threshold" class="form-label">{% trans "Low Stock Threshold" %}</label>
+                    <input type="number" id="low_stock_threshold" name="low_stock_threshold" value="{{ low_stock_threshold }}" class="form-control" min="0">
+                </div>
+                <div class="col-md-2 d-grid">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-sync me-2"></i>
+                        {% trans "Generate" %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if error %}
+        <div class="alert alert-danger" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+        </div>
+    {% endif %}
+
+    {% if report_data %}
+        <!-- Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-xl-3 col-md-6">
+                <div class="card card-h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-grow-1">
+                                <span class="text-muted mb-3 lh-1 d-block text-truncate">{% trans "Total Items" %}</span>
+                                <h4 class="mb-3">{{ report_data.total_items }}</h4>
+                            </div>
+                            <div class="flex-shrink-0 text-end dash-widget">
+                                <i class="fas fa-box fa-2x text-primary"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="card card-h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-grow-1">
+                                <span class="text-muted mb-3 lh-1 d-block text-truncate">{% trans "Total Valuation" %}</span>
+                                <h4 class="mb-3">${{ report_data.total_valuation|floatformat:2 }}</h4>
+                            </div>
+                            <div class="flex-shrink-0 text-end dash-widget">
+                                <i class="fas fa-dollar-sign fa-2x text-success"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="card card-h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-grow-1">
+                                <span class="text-muted mb-3 lh-1 d-block text-truncate">{% trans "Low Stock Items" %}</span>
+                                <h4 class="mb-3">{{ report_data.low_stock_items|length }}</h4>
+                            </div>
+                            <div class="flex-shrink-0 text-end dash-widget">
+                                <i class="fas fa-exclamation-triangle fa-2x text-warning"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="card card-h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-grow-1">
+                                <span class="text-muted mb-3 lh-1 d-block text-truncate">{% trans "Out of Stock" %}</span>
+                                <h4 class="mb-3">{{ report_data.out_of_stock_items|length }}</h4>
+                            </div>
+                            <div class="flex-shrink-0 text-end dash-widget">
+                                <i class="fas fa-times-circle fa-2x text-danger"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Stock Summary -->
+            <div class="col-xl-8">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">{% trans "Stock Summary" %}</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>{% trans "Product" %}</th>
+                                        <th>{% trans "Warehouse" %}</th>
+                                        <th class="text-end">{% trans "Quantity" %}</th>
+                                        <th class="text-end">{% trans "Value" %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in report_data.stock_summary %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ item.product__code }}</strong><br>
+                                                <small class="text-muted">{{ item.product__name }}</small>
+                                            </td>
+                                            <td>{{ item.warehouse__name }}</td>
+                                            <td class="text-end">{{ item.total_quantity|floatformat:2 }}</td>
+                                            <td class="text-end">${{ item.total_value|floatformat:2 }}</td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr>
+                                            <td colspan="4" class="text-center text-muted py-4">
+                                                {% trans "No inventory data found." %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alerts -->
+            <div class="col-xl-4">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            {% trans "Low Stock Alert" %}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>{% trans "Product" %}</th>
+                                        <th class="text-end">{% trans "Qty" %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in report_data.low_stock_items %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ item.product.code }}</strong><br>
+                                                <small>{{ item.warehouse.name }}</small>
+                                            </td>
+                                            <td class="text-end">{{ item.quantity_on_hand|floatformat:2 }}</td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr>
+                                            <td colspan="2" class="text-center text-muted py-2">
+                                                {% trans "No low stock items." %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-times-circle me-2"></i>
+                            {% trans "Out of Stock" %}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>{% trans "Product" %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in report_data.out_of_stock_items %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ item.product.code }}</strong><br>
+                                                <small>{{ item.warehouse.name }}</small>
+                                            </td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr>
+                                            <td class="text-center text-muted py-2">
+                                                {% trans "No out of stock items." %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slow Moving Items -->
+        {% if report_data.slow_moving_items %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-clock me-2"></i>
+                            {% trans "Slow Moving Items (90+ days no movement)" %}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>{% trans "Product" %}</th>
+                                        <th>{% trans "Warehouse" %}</th>
+                                        <th class="text-end">{% trans "Current Stock" %}</th>
+                                        <th class="text-end">{% trans "Value" %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in report_data.slow_moving_items %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ item.product.code }}</strong><br>
+                                                <small class="text-muted">{{ item.product.name }}</small>
+                                            </td>
+                                            <td>{{ item.warehouse.name }}</td>
+                                            <td class="text-end">{{ item.quantity_on_hand|floatformat:2 }}</td>
+                                            <td class="text-end">${{ item.total_value|floatformat:2 }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            {% trans "Select warehouse and click Generate to produce the inventory summary." %}
+        </div>
+    {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

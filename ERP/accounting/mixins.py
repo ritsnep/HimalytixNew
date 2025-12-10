@@ -113,6 +113,8 @@ class PermissionRequiredMixin(LoginRequiredMixin, UserOrganizationMixin):
         # Normalize to list of tuples
         if isinstance(self.permission_required, tuple) and len(self.permission_required) == 3:
             return [self.permission_required]
+        if isinstance(self.permission_required, str):
+            return [self.permission_required]
         return self.permission_required
 
     def has_permission(self):
@@ -124,10 +126,14 @@ class PermissionRequiredMixin(LoginRequiredMixin, UserOrganizationMixin):
         organization = self.get_organization()
         user = self.request.user
 
-        checks = [
-            PermissionUtils.has_permission(user, organization, module, entity, action)
-            for module, entity, action in perms_required
-        ]
+        checks = []
+        for perm in perms_required:
+            if isinstance(perm, tuple) and len(perm) == 3:
+                module, entity, action = perm
+                checks.append(PermissionUtils.has_permission(user, organization, module, entity, action))
+            else:
+                # Allow direct codename strings such as "accounting_expenseentry_add"
+                checks.append(PermissionUtils.has_codename(user, organization, perm))
 
         if self.permission_required_any:
             return any(checks)  # OR logic

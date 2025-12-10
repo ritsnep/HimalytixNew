@@ -1,17 +1,18 @@
 import json
 import time
+from datetime import timedelta
 from decimal import Decimal
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView
-from django.db.models import Q, Sum, Count
+from django.db.models import Q, Sum, Count, F
 from django.http import HttpResponseRedirect, JsonResponse, StreamingHttpResponse, HttpResponse
 import os
 from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
-from django.utils import translation
+from django.utils import timezone, translation
 from django.views import View
 from django.views.decorators.http import require_POST  # Added this line
 from django.views.generic import TemplateView
@@ -23,8 +24,9 @@ from utils.maintenance import get_maintenance_state, serialize_state
 
 from accounting.models import (
     ChartOfAccount, Journal, JournalLine, GeneralLedger,
-    FiscalYear, AccountingPeriod, AccountType
+    FiscalYear, AccountingPeriod, AccountType, SalesInvoice, ARReceipt
 )
+from inventory.models import InventoryItem
 from usermanagement.models import Organization
 
 # Dashboard
@@ -79,6 +81,11 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         # Get financial summary
         financial_summary = self.get_financial_summary(organization, current_period)
         
+        # Get additional KPIs
+        sales_metrics = self.get_sales_metrics(organization)
+        inventory_metrics = self.get_inventory_metrics(organization)
+        receivables_metrics = self.get_receivables_metrics(organization)
+        
         context.update({
             'organization': organization,
             'current_fiscal_year': current_fiscal_year,
@@ -86,6 +93,9 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             'account_balances': account_balances,
             'recent_journals': recent_journals,
             'financial_summary': financial_summary,
+            'sales_metrics': sales_metrics,
+            'inventory_metrics': inventory_metrics,
+            'receivables_metrics': receivables_metrics,
         })
         
         return context
@@ -161,6 +171,112 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             'total_journals': journal_stats['total_journals'] or 0,
             'posted_journals': journal_stats['posted_journals'] or 0,
             'draft_journals': journal_stats['draft_journals'] or 0,
+        }
+    
+    def get_sales_metrics(self, organization):
+        """Get sales KPIs for the dashboard"""
+        from accounting.models import SalesInvoice
+        
+        # Today's sales
+        today = timezone.localdate()
+        today_sales = SalesInvoice.objects.filter(
+            organization=organization,
+            invoice_date=today,
+            status__in=['posted', 'paid']
+        ).aggregate(
+            total=Sum('total'),
+            count=Count('invoice_id')
+        )
+        
+        # This month's sales
+        month_start = today.replace(day=1)
+        month_sales = SalesInvoice.objects.filter(
+            organization=organization,
+            invoice_date__gte=month_start,
+            status__in=['posted', 'paid']
+        ).aggregate(
+            total=Sum('total'),
+            count=Count('invoice_id')
+        )
+        
+        return {
+            'today_sales': today_sales['total'] or Decimal('0'),
+            'today_invoices': today_sales['count'] or 0,
+            'month_sales': month_sales['total'] or Decimal('0'),
+            'month_invoices': month_sales['count'] or 0,
+        }
+    
+    def get_inventory_metrics(self, organization):
+        """Get inventory KPIs for the dashboard"""
+        from inventory.models import InventoryItem
+        
+        # Total inventory value
+        total_value = InventoryItem.objects.filter(
+            organization=organization
+        ).aggregate(
+            total_value=Sum(F('quantity_on_hand') * F('unit_cost'))
+        )['total_value'] or Decimal('0')
+        
+        # Low stock items (assuming threshold of 10)
+        low_stock_count = InventoryItem.objects.filter(
+            organization=organization,
+            quantity_on_hand__lte=10,
+            quantity_on_hand__gt=0
+        ).count()
+        
+        # Out of stock items
+        out_of_stock_count = InventoryItem.objects.filter(
+            organization=organization,
+            quantity_on_hand__lte=0
+        ).count()
+        
+        # Total items
+        total_items = InventoryItem.objects.filter(
+            organization=organization
+        ).count()
+        
+        return {
+            'total_value': total_value,
+            'low_stock_count': low_stock_count,
+            'out_of_stock_count': out_of_stock_count,
+            'total_items': total_items,
+        }
+    
+    def get_receivables_metrics(self, organization):
+        """Get receivables KPIs for the dashboard"""
+        from accounting.models import ARReceipt, SalesInvoice
+        
+        # Outstanding receivables - total invoiced minus total paid
+        invoices = SalesInvoice.objects.filter(
+            organization=organization,
+            status__in=['posted', 'paid']
+        ).aggregate(
+            total_invoiced=Sum('total'),
+            total_paid=Sum('receipt_lines__applied_amount') + Sum('receipt_lines__discount_taken')
+        )
+        
+        total_invoiced = invoices['total_invoiced'] or Decimal('0')
+        total_paid = invoices['total_paid'] or Decimal('0')
+        outstanding_receivables = total_invoiced - total_paid
+        
+        # Overdue receivables (30+ days past due)
+        thirty_days_ago = timezone.now().date() - timedelta(days=30)
+        overdue_invoices = SalesInvoice.objects.filter(
+            organization=organization,
+            due_date__lt=thirty_days_ago,
+            status__in=['posted', 'paid']
+        ).aggregate(
+            total_overdue=Sum('total'),
+            paid_overdue=Sum('receipt_lines__applied_amount') + Sum('receipt_lines__discount_taken')
+        )
+        
+        total_overdue = overdue_invoices['total_overdue'] or Decimal('0')
+        paid_overdue = overdue_invoices['paid_overdue'] or Decimal('0')
+        overdue_receivables = total_overdue - paid_overdue
+        
+        return {
+            'outstanding_receivables': max(outstanding_receivables, Decimal('0')),
+            'overdue_receivables': max(overdue_receivables, Decimal('0')),
         }
 
 class Settings(LoginRequiredMixin, View):

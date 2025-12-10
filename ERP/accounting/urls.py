@@ -23,6 +23,10 @@ from .views.report_views import (
     CashFlowView,
     AccountsReceivableAgingView,
     AccountsPayableAgingView,
+    SalesSummaryView,
+    InventorySummaryView,
+    TaxSummaryView,
+    ExpenseSummaryView,
     ReportExportView,
     CustomReportView,
 )
@@ -191,6 +195,8 @@ urlpatterns = [
     path('manual-journals/<int:pk>/edit/', ManualJournalUpdateView.as_view(), name='manual_journal_update'),
     path('manual-journals/<int:pk>/post/', ManualJournalPostView.as_view(), name='manual_journal_post'),
     path('expenses/new/', expense_views.ExpenseEntryCreateView.as_view(), name='expense_entry_new'),
+    path('expenses/ocr/', expense_views.ExpenseReceiptOCRView.as_view(), name='expense_receipt_ocr'),
+    path('expenses/ocr/<str:task_id>/status/', expense_views.ExpenseReceiptOCRStatusView.as_view(), name='expense_receipt_ocr_status'),
     
     # General Ledger URLs
     path('general-ledger/', GeneralLedgerListView.as_view(), name='general_ledger_list'),
@@ -356,6 +362,10 @@ urlpatterns = [
     path('advanced-reports/cash-flow/', CashFlowView.as_view(), name='report_cf'),
     path('advanced-reports/ar-aging/', AccountsReceivableAgingView.as_view(), name='report_ar_aging'),
     path('advanced-reports/ap-aging/', AccountsPayableAgingView.as_view(), name='report_ap_aging'),
+    path('advanced-reports/sales-summary/', SalesSummaryView.as_view(), name='report_sales_summary'),
+    path('advanced-reports/inventory-summary/', InventorySummaryView.as_view(), name='report_inventory_summary'),
+    path('advanced-reports/tax-summary/', TaxSummaryView.as_view(), name='report_tax_summary'),
+    path('advanced-reports/expense-summary/', ExpenseSummaryView.as_view(), name='report_expense_summary'),
     path('advanced-reports/custom/<slug:code>/', CustomReportView.as_view(), name='custom_report'),
     path('advanced-reports/export/', ReportExportView.as_view(), name='report_export'),
     path('receivable-dashboard/', ReceivableDashboardView.as_view(), name='receivable_dashboard'),

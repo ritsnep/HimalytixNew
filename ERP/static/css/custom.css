@@ -1,5 +1,5 @@
 /* Design tokens and responsive helpers */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Source+Sans+Pro:wght@400;500;600;700&family=Poppins:wght@400;500;600&display=swap');
+/* Google Fonts import removed to satisfy CSP; using system stack fallback */
 
 :root {
   --ui-font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;

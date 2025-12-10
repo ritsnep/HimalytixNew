@@ -378,10 +378,11 @@ class POSTestingSuite:
                 # Check for key elements
                 checks = [
                     ('POS title', 'Point of Sale' in content),
-                    ('Alpine.js data', 'x-data="posApp()"' in content),
+                    ('HTMX wiring', 'hx-get' in content or 'hx-post' in content),
                     ('Cart section', 'Current Order' in content),
-                    ('Product search', 'Product Search' in content),
+                    ('Product search', 'Scan barcode' in content or 'Products' in content),
                     ('Payment section', 'Payment' in content),
+                    ('Amount due', 'Amount Due' in content),
                 ]
 
                 for check_name, check_result in checks:

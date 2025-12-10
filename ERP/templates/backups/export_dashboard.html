@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Data Export & Backup{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                <h4 class="mb-sm-0 font-size-18">Data Export & Backup</h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-xl-6">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title">Quick Exports</h4>
+                    <p class="card-title-desc">Download your data in CSV or Excel format.</p>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-nowrap mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Dataset</th>
+                                    <th>Description</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Products</td>
+                                    <td>All inventory items with stock levels</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{% url 'backups:download' 'products' 'csv' %}" class="btn btn-sm btn-outline-primary">CSV</a>
+                                            <a href="{% url 'backups:download' 'products' 'xlsx' %}" class="btn btn-sm btn-outline-success">Excel</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Customers</td>
+                                    <td>Customer list with contact info and balances</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{% url 'backups:download' 'customers' 'csv' %}" class="btn btn-sm btn-outline-primary">CSV</a>
+                                            <a href="{% url 'backups:download' 'customers' 'xlsx' %}" class="btn btn-sm btn-outline-success">Excel</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Invoices</td>
+                                    <td>Sales invoices summary</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{% url 'backups:download' 'invoices' 'csv' %}" class="btn btn-sm btn-outline-primary">CSV</a>
+                                            <a href="{% url 'backups:download' 'invoices' 'xlsx' %}" class="btn btn-sm btn-outline-success">Excel</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-6">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title">Full Backup</h4>
+                    <p class="card-title-desc">Create a complete backup of your organization's data.</p>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="mdi mdi-information-outline me-2"></i>
+                        Automated backups run nightly. You can trigger a manual backup here.
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <form action="{% url 'backups:trigger' %}" method="post" onsubmit="return confirm('This process may take a few minutes. Are you sure you want to start a new backup?');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-primary btn-lg waves-effect waves-light w-100">
+                                <i class="mdi mdi-cloud-upload-outline me-1"></i> Backup My Data Now
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h5 class="font-size-14 mb-3">Recent Backups</h5>
+                        <div class="table-responsive">
+                            {% include "backups/partials/backup_list.html" %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

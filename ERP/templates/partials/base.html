@@ -197,6 +197,37 @@
         });
       })();
     </script>
+    <script>
+      // HTMX safety: if an hx-get/hx-post would target a selector that doesn't exist,
+      // cancel the request and fallback to a full navigation. This prevents accidental
+      // fragment swaps from replacing the entire page when a target container is missing.
+      document.body.addEventListener('htmx:beforeRequest', function(evt) {
+        try {
+          const elt = evt.detail.elt;
+          if (!elt) return;
+          // If element specifies a target selector, ensure it resolves to at least one node
+          const targetAttr = elt.getAttribute && (elt.getAttribute('hx-target') || elt.getAttribute('data-hx-target'));
+          if (targetAttr) {
+            try {
+              const nodes = document.querySelectorAll(targetAttr);
+              if (!nodes || nodes.length === 0) {
+                // No target found: cancel htmx request and do full navigation
+                evt.preventDefault();
+                const url = elt.getAttribute('hx-get') || elt.getAttribute('hx-post') || elt.href;
+                if (url) {
+                  window.location.href = url;
+                }
+              }
+            } catch (e) {
+              // If the selector is invalid, be conservative and cancel the request
+              evt.preventDefault();
+            }
+          }
+        } catch (err) {
+          // Non-blocking guard
+        }
+      });
+    </script>
     {% block extra_js %}
     {% endblock extra_js %}
     {# Expose i18n to JS safely #}

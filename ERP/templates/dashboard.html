@@ -146,6 +146,105 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Additional KPIs -->
+            <div class="row mt-4">
+                <div class="col-xl-3 col-md-6">
+                    <div class="card card-h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1">
+                                    <span class="text-muted mb-3 lh-1 d-block text-truncate">Today's Sales</span>
+                                    <h4 class="mb-3">
+                                        $<span class="counter-value"
+                                            data-target="{{ sales_metrics.today_sales|floatformat:'0' }}">{{ sales_metrics.today_sales|floatformat:'0' }}</span>
+                                    </h4>
+                                    <div class="text-nowrap">
+                                        <span class="badge bg-soft-primary text-primary">{{ sales_metrics.today_invoices }} invoices</span>
+                                    </div>
+                                </div>
+                                <div class="flex-shrink-0 text-end dash-widget">
+                                    <i class="fas fa-shopping-cart fa-2x text-success"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6">
+                    <div class="card card-h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1">
+                                    <span class="text-muted mb-3 lh-1 d-block text-truncate">Monthly Sales</span>
+                                    <h4 class="mb-3">
+                                        $<span class="counter-value"
+                                            data-target="{{ sales_metrics.month_sales|floatformat:'0' }}">{{ sales_metrics.month_sales|floatformat:'0' }}</span>
+                                    </h4>
+                                    <div class="text-nowrap">
+                                        <span class="badge bg-soft-success text-success">{{ sales_metrics.month_invoices }} invoices</span>
+                                    </div>
+                                </div>
+                                <div class="flex-shrink-0 text-end dash-widget">
+                                    <i class="fas fa-calendar fa-2x text-primary"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6">
+                    <div class="card card-h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1">
+                                    <span class="text-muted mb-3 lh-1 d-block text-truncate">Outstanding Receivables</span>
+                                    <h4 class="mb-3">
+                                        $<span class="counter-value"
+                                            data-target="{{ receivables_metrics.outstanding_receivables|floatformat:'0' }}">{{ receivables_metrics.outstanding_receivables|floatformat:'0' }}</span>
+                                    </h4>
+                                    <div class="text-nowrap">
+                                        {% if receivables_metrics.overdue_receivables > 0 %}
+                                        <span class="badge bg-soft-danger text-danger">${{ receivables_metrics.overdue_receivables|floatformat:'0' }} overdue</span>
+                                        {% else %}
+                                        <span class="ms-1 text-muted font-size-13">All current</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="flex-shrink-0 text-end dash-widget">
+                                    <i class="fas fa-user-clock fa-2x text-warning"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6">
+                    <div class="card card-h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1">
+                                    <span class="text-muted mb-3 lh-1 d-block text-truncate">Inventory Value</span>
+                                    <h4 class="mb-3">
+                                        $<span class="counter-value"
+                                            data-target="{{ inventory_metrics.total_value|floatformat:'0' }}">{{ inventory_metrics.total_value|floatformat:'0' }}</span>
+                                    </h4>
+                                    <div class="text-nowrap">
+                                        {% if inventory_metrics.low_stock_count > 0 %}
+                                        <span class="badge bg-soft-warning text-warning">{{ inventory_metrics.low_stock_count }} low stock</span>
+                                        {% else %}
+                                        <span class="badge bg-soft-success text-success">{{ inventory_metrics.total_items }} items</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="flex-shrink-0 text-end dash-widget">
+                                    <i class="fas fa-boxes fa-2x text-info"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div> <!-- container-fluid -->
     </div>
     <!-- End Page-content -->

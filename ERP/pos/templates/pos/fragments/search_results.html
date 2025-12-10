@@ -1,5 +1,5 @@
 {% if products %}
-    <h6>Search Results</h6>
+    <h6>{{ heading|default:"Products" }}</h6>
     <div class="product-grid">
         {% for product in products %}
         <div class="product-card"

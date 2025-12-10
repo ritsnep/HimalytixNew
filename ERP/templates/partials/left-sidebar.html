@@ -24,8 +24,7 @@
 
                 <li class="menu-title" data-key="t-lpg">LPG / PFG</li>
                 <li>
-                    <a href="{% url 'lpg_vertical:spa' %}" hx-get="{% url 'lpg_vertical:spa' %}"
-                        hx-target="#main-container" hx-swap="innerHTML" hx-push-url="true" class="nav-link">
+                    <a href="{% url 'lpg_vertical:spa' %}" class="nav-link">
                         <i data-feather="droplet"></i>
                         <span data-key="t-lpg-module">LPG Vertical</span>
                     </a>
@@ -91,6 +90,13 @@
                                 <span>Journals</span>
                             </a>
                         </li>
+                        {% if user|has_permission:'accounting_expenseentry_add' %}
+                        <li>
+                            <a href="{% url 'accounting:expense_entry_new' %}">
+                                <span>Quick Expense Entry</span>
+                            </a>
+                        </li>
+                        {% endif %}
                         {% if user|has_permission:'accounting_salesinvoice_view' %}
                         <li>
                             <a href="{% url 'accounting:sales_invoice_list' %}">
@@ -417,14 +423,12 @@
                             </a>
                         </li>
                         <li>
-                            <a href="{% url 'purchasing:po_workspace' %}" hx-get="{% url 'purchasing:po_workspace' %}"
-                                hx-target="#main-container" hx-swap="innerHTML" hx-push-url="true">
+                            <a href="{% url 'purchasing:po_workspace' %}">
                                 <span>PO Workspace</span>
                             </a>
                         </li>
                         <li>
-                            <a href="{% url 'purchasing:gr_workspace' %}" hx-get="{% url 'purchasing:gr_workspace' %}"
-                                hx-target="#main-container" hx-swap="innerHTML" hx-push-url="true">
+                            <a href="{% url 'purchasing:gr_workspace' %}">
                                 <span>GR Workspace</span>
                             </a>
                         </li>
@@ -839,6 +843,12 @@
                     <a href="{% url 'usermanagement:permission_list' %}">
                         <i data-feather="shield"></i>
                         <span data-key="t-permissions">Permissions</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'backups:dashboard' %}">
+                        <i data-feather="database"></i>
+                        <span data-key="t-backups">Data Export & Backup</span>
                     </a>
                 </li>
 

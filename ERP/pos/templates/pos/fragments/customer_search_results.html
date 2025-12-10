@@ -1,0 +1,22 @@
+<div id="customer-search-results" hx-swap-oob="true" class="mt-2">
+  {% if customers %}
+    <div class="list-group">
+      {% for customer in customers %}
+      <button type="button"
+              class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+              onclick="selectCustomer('{{ customer.customer_name|escapejs }}')">
+        <span>
+          <div class="fw-bold">{{ customer.customer_name }}</div>
+          <div class="text-muted small">
+            {% if customer.phone %}{{ customer.phone }}{% endif %}
+            {% if customer.email %}&nbsp;{{ customer.email }}{% endif %}
+          </div>
+        </span>
+        <i class="mdi mdi-account-check-outline text-primary"></i>
+      </button>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="text-muted small">No customers found</div>
+  {% endif %}
+</div>

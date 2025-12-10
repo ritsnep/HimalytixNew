@@ -14,7 +14,11 @@ from django.utils.translation import gettext as _
 from django.views import View
 from django.views.generic import TemplateView
 
-from accounting.models import ChartOfAccount, Journal, JournalLine, ReportDefinition
+from accounting.models import (
+    ChartOfAccount, Journal, JournalLine, ReportDefinition, 
+    SalesInvoice, Customer, JournalType, SalesInvoiceLine
+)
+from inventory.models import InventoryItem, Product as InventoryProduct, Warehouse
 from accounting.services.report_export_service import ReportExportService
 from accounting.services.report_service import ReportService
 from accounting.utils.udf import filterable_udfs, pivot_udfs, serialize_udf_definition
@@ -73,6 +77,34 @@ REPORT_DEFINITIONS: List[Dict[str, Any]] = [
         "description": _("Review vendor balances by due date bucket."),
         "url_name": "report_ap_aging",
         "icon": "fas fa-file-invoice-dollar",
+    },
+    {
+        "id": "sales_summary",
+        "name": _("Sales Summary"),
+        "description": _("Sales by period, product, customer, and top-selling items."),
+        "url_name": "report_sales_summary",
+        "icon": "fas fa-shopping-cart",
+    },
+    {
+        "id": "inventory_summary",
+        "name": _("Inventory Summary"),
+        "description": _("Current stock levels, slow/fast-moving items, and valuation."),
+        "url_name": "report_inventory_summary",
+        "icon": "fas fa-boxes",
+    },
+    {
+        "id": "tax_summary",
+        "name": _("Tax Summary"),
+        "description": _("VAT/GST summary for filing and tax reporting."),
+        "url_name": "report_tax_summary",
+        "icon": "fas fa-calculator",
+    },
+    {
+        "id": "expense_summary",
+        "name": _("Expense Summary"),
+        "description": _("Expenditures by category over time."),
+        "url_name": "report_expense_summary",
+        "icon": "fas fa-receipt",
     },
 ]
 
@@ -346,6 +378,354 @@ class AccountsPayableAgingView(UserOrganizationMixin, View):
             "error": error,
         }
         return render(request, self.template_name, context)
+
+
+class SalesSummaryView(UserOrganizationMixin, View):
+    template_name = "accounting/reports/sales_summary.html"
+
+    def get(self, request):
+        start_raw = request.GET.get("start_date")
+        end_raw = request.GET.get("end_date")
+        group_by = request.GET.get("group_by", "month")  # month, week, day
+
+        start_date, end_date = _default_period()
+        if start := _parse_date(start_raw):
+            start_date = start
+        if end := _parse_date(end_raw):
+            end_date = end
+
+        report_data = None
+        error = None
+        if start_raw and end_raw:
+            try:
+                report_data = self.generate_sales_summary(start_date, end_date, group_by)
+            except ValueError as exc:
+                error = str(exc)
+                logger.warning("Sales summary generation error: %s", exc)
+
+        context = {
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "group_by": group_by,
+            "report_data": report_data,
+            "error": error,
+        }
+        return render(request, self.template_name, context)
+
+    def generate_sales_summary(self, start_date, end_date, group_by):
+        """Generate sales summary report"""
+        from django.db.models import Sum, Count, F, Q
+        from django.db.models.functions import TruncMonth, TruncWeek, TruncDay
+
+        # Get sales invoices in date range
+        sales = SalesInvoice.objects.filter(
+            organization=self.organization,
+            invoice_date__range=(start_date, end_date),
+            status__in=['posted', 'paid']
+        ).select_related('customer')
+
+        # Group by time period
+        if group_by == 'month':
+            trunc_func = TruncMonth('invoice_date')
+        elif group_by == 'week':
+            trunc_func = TruncWeek('invoice_date')
+        else:  # day
+            trunc_func = TruncDay('invoice_date')
+
+        # Sales by period
+        sales_by_period = sales.annotate(
+            period=trunc_func
+        ).values('period').annotate(
+            total_sales=Sum('total'),
+            total_tax=Sum('tax_total'),
+            invoice_count=Count('invoice_id')
+        ).order_by('period')
+
+        # Top customers
+        top_customers = sales.values('customer__display_name').annotate(
+            total_sales=Sum('total'),
+            invoice_count=Count('invoice_id')
+        ).order_by('-total_sales')[:10]
+
+        # Sales by product (from invoice lines)
+        sales_by_product = SalesInvoiceLine.objects.filter(
+            invoice__organization=self.organization,
+            invoice__invoice_date__range=(start_date, end_date),
+            invoice__status__in=['posted', 'paid']
+        ).values(
+            'product_code', 'description'
+        ).annotate(
+            total_quantity=Sum('quantity'),
+            total_amount=Sum('line_total')
+        ).order_by('-total_amount')[:10]
+
+        return {
+            'sales_by_period': list(sales_by_period),
+            'top_customers': list(top_customers),
+            'top_products': list(sales_by_product),
+            'total_sales': sales.aggregate(total=Sum('total'))['total'] or 0,
+            'total_invoices': sales.count(),
+        }
+
+
+class InventorySummaryView(UserOrganizationMixin, View):
+    template_name = "accounting/reports/inventory_summary.html"
+
+    def get(self, request):
+        warehouse_id = request.GET.get("warehouse_id")
+        low_stock_threshold = request.GET.get("low_stock_threshold", "10")
+
+        try:
+            low_stock_threshold = int(low_stock_threshold)
+        except ValueError:
+            low_stock_threshold = 10
+
+        warehouses = Warehouse.objects.filter(
+            organization=self.organization, is_active=True
+        ).order_by("name")
+
+        report_data = None
+        error = None
+        try:
+            report_data = self.generate_inventory_summary(warehouse_id, low_stock_threshold)
+        except ValueError as exc:
+            error = str(exc)
+            logger.warning("Inventory summary generation error: %s", exc)
+
+        context = {
+            "warehouses": warehouses,
+            "selected_warehouse": warehouse_id or "",
+            "low_stock_threshold": low_stock_threshold,
+            "report_data": report_data,
+            "error": error,
+        }
+        return render(request, self.template_name, context)
+
+    def generate_inventory_summary(self, warehouse_id, low_stock_threshold):
+        """Generate inventory summary report"""
+        from django.db.models import Sum, F, Q
+        from inventory.models import StockLedger
+
+        # Filter by warehouse if specified
+        inventory_filter = {'organization': self.organization}
+        if warehouse_id:
+            inventory_filter['warehouse_id'] = warehouse_id
+
+        # Current stock levels
+        stock_summary = InventoryItem.objects.filter(
+            **inventory_filter
+        ).select_related('product', 'warehouse').values(
+            'product__name', 'product__code', 'warehouse__name', 'quantity_on_hand', 'unit_cost'
+        ).annotate(
+            total_quantity=Sum('quantity_on_hand'),
+            total_value=Sum(F('quantity_on_hand') * F('unit_cost'))
+        ).order_by('product__name')
+
+        # Add calculated total_value_per_item to each item
+        for item in stock_summary:
+            item['total_value_per_item'] = item['quantity_on_hand'] * item['unit_cost']
+
+        # Low stock items
+        low_stock = InventoryItem.objects.filter(
+            **inventory_filter,
+            quantity_on_hand__lte=low_stock_threshold,
+            quantity_on_hand__gt=0
+        ).select_related('product', 'warehouse').order_by('quantity_on_hand')
+
+        # Out of stock
+        out_of_stock = InventoryItem.objects.filter(
+            **inventory_filter,
+            quantity_on_hand__lte=0
+        ).select_related('product', 'warehouse')
+
+        # Slow moving items (no movement in last 90 days)
+        ninety_days_ago = timezone.now().date() - timedelta(days=90)
+        slow_moving = InventoryItem.objects.filter(
+            **inventory_filter,
+            quantity_on_hand__gt=0
+        ).exclude(
+            product__stockledger__txn_date__gte=ninety_days_ago
+        ).select_related('product', 'warehouse').distinct()
+
+        # Add calculated total_value to slow moving items
+        for item in slow_moving:
+            item.total_value = item.quantity_on_hand * item.unit_cost
+
+        # Total valuation
+        total_valuation = InventoryItem.objects.filter(
+            **inventory_filter
+        ).aggregate(
+            total_value=Sum(F('quantity_on_hand') * F('unit_cost'))
+        )['total_value'] or 0
+
+        return {
+            'stock_summary': list(stock_summary),
+            'low_stock_items': list(low_stock),
+            'out_of_stock_items': list(out_of_stock),
+            'slow_moving_items': list(slow_moving),
+            'total_valuation': total_valuation,
+            'total_items': len(stock_summary),
+        }
+
+
+class TaxSummaryView(UserOrganizationMixin, View):
+    template_name = "accounting/reports/tax_summary.html"
+
+    def get(self, request):
+        start_raw = request.GET.get("start_date")
+        end_raw = request.GET.get("end_date")
+
+        start_date, end_date = _default_period()
+        if start := _parse_date(start_raw):
+            start_date = start
+        if end := _parse_date(end_raw):
+            end_date = end
+
+        report_data = None
+        error = None
+        if start_raw and end_raw:
+            try:
+                report_data = self.generate_tax_summary(start_date, end_date)
+            except ValueError as exc:
+                error = str(exc)
+                logger.warning("Tax summary generation error: %s", exc)
+
+        context = {
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "report_data": report_data,
+            "error": error,
+        }
+        return render(request, self.template_name, context)
+
+    def generate_tax_summary(self, start_date, end_date):
+        """Generate tax summary report for Nepal VAT filing"""
+        from django.db.models import Sum, Q
+
+        # Sales tax collected (VAT on sales)
+        sales_tax = SalesInvoice.objects.filter(
+            organization=self.organization,
+            invoice_date__range=(start_date, end_date),
+            status__in=['posted', 'paid']
+        ).aggregate(
+            taxable_sales=Sum('subtotal'),
+            tax_collected=Sum('tax_total')
+        )
+
+        # Purchase tax paid (VAT on purchases)
+        purchase_tax = JournalLine.objects.filter(
+            journal__organization=self.organization,
+            journal__journal_date__range=(start_date, end_date),
+            journal__status='posted',
+            account__account_type__nature='liability',  # VAT payable account
+            credit_amount__gt=0
+        ).aggregate(
+            tax_paid=Sum('credit_amount')
+        )
+
+        # Tax payable/receivable
+        tax_payable = (sales_tax['tax_collected'] or 0) - (purchase_tax['tax_paid'] or 0)
+
+        return {
+            'taxable_sales': sales_tax['taxable_sales'] or 0,
+            'tax_collected': sales_tax['tax_collected'] or 0,
+            'tax_paid': purchase_tax['tax_paid'] or 0,
+            'tax_payable': abs(tax_payable),
+            'is_payable': tax_payable >= 0,
+            'period': f"{start_date} to {end_date}",
+        }
+
+
+class ExpenseSummaryView(UserOrganizationMixin, View):
+    template_name = "accounting/reports/expense_summary.html"
+
+    def get(self, request):
+        start_raw = request.GET.get("start_date")
+        end_raw = request.GET.get("end_date")
+        category_filter = request.GET.get("category")
+
+        start_date, end_date = _default_period()
+        if start := _parse_date(start_raw):
+            start_date = start
+        if end := _parse_date(end_raw):
+            end_date = end
+
+        report_data = None
+        error = None
+        if start_raw and end_raw:
+            try:
+                report_data = self.generate_expense_summary(start_date, end_date, category_filter)
+            except ValueError as exc:
+                error = str(exc)
+                logger.warning("Expense summary generation error: %s", exc)
+
+        # Get expense categories
+        expense_accounts = ChartOfAccount.objects.filter(
+            organization=self.organization,
+            account_type__nature='expense',
+            is_active=True
+        ).order_by('account_code')
+
+        context = {
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "category_filter": category_filter or "",
+            "expense_accounts": expense_accounts,
+            "report_data": report_data,
+            "error": error,
+        }
+        return render(request, self.template_name, context)
+
+    def generate_expense_summary(self, start_date, end_date, category_filter):
+        """Generate expense summary report"""
+        from django.db.models import Sum, F, Q
+        from django.db.models.functions import TruncMonth
+
+        # Filter for expense accounts
+        expense_filter = {
+            'journal__organization': self.organization,
+            'journal__journal_date__range': (start_date, end_date),
+            'journal__status': 'posted',
+            'debit_amount__gt': 0,
+            'account__account_type__nature': 'expense'
+        }
+        
+        if category_filter:
+            expense_filter['account_id'] = category_filter
+
+        # Expenses by category
+        expenses_by_category = JournalLine.objects.filter(
+            **expense_filter
+        ).select_related('account').values(
+            'account__account_name', 'account__account_code'
+        ).annotate(
+            total_expense=Sum('debit_amount')
+        ).order_by('-total_expense')
+
+        # Expenses by month
+        expenses_by_month = JournalLine.objects.filter(
+            **expense_filter
+        ).annotate(
+            month=TruncMonth('journal__journal_date')
+        ).values('month').annotate(
+            total_expense=Sum('debit_amount')
+        ).order_by('month')
+
+        # Total expenses
+        total_expenses = JournalLine.objects.filter(
+            **expense_filter
+        ).aggregate(total=Sum('debit_amount'))['total'] or 0
+
+        # Calculate average monthly expense
+        num_months = len(expenses_by_month) if expenses_by_month else 1
+        avg_monthly_expense = total_expenses / num_months if num_months > 0 else 0
+
+        return {
+            'expenses_by_category': list(expenses_by_category),
+            'expenses_by_month': list(expenses_by_month),
+            'total_expenses': total_expenses,
+            'avg_monthly_expense': avg_monthly_expense,
+        }
 
 
 class CustomReportView(UserOrganizationMixin, View):

@@ -3,6 +3,13 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+# Celery crontab helper (optional dependency in some environments)
+try:
+    from celery.schedules import crontab  # type: ignore
+except Exception:
+    def crontab(*args, **kwargs):  # type: ignore
+        raise ImportError("celery is required for crontab schedules")
+
 from django.conf import settings
 from django.contrib.messages import constants as messages
 
@@ -155,6 +162,7 @@ INSTALLED_APPS = [
     'lpg_vertical',
     'notification_center',
     'pos',
+    'backups',
     'django_celery_results',
     'django_celery_beat',
 ]
@@ -848,6 +856,10 @@ CELERY_BEAT_SCHEDULE = {
     "reporting-dispatch-due": {
         "task": "reporting.tasks.dispatch_due_reports",
         "schedule": int(os.environ.get("REPORTING_SCHEDULE_INTERVAL_SECONDS", "300")),
+    },
+    "nightly-backups": {
+        "task": "backups.tasks.run_nightly_backups",
+        "schedule": crontab(hour=2, minute=30),
     },
 }
 

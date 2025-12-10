@@ -1,12 +1,14 @@
-<div class="d-flex justify-content-between">
-    <span>Subtotal:</span>
-    <span>${{ cart.subtotal|floatformat:2 }}</span>
-</div>
-<div class="d-flex justify-content-between">
-    <span>Tax:</span>
-    <span>${{ cart.tax_total|floatformat:2 }}</span>
-</div>
-<div class="d-flex justify-content-between fw-bold fs-5">
-    <span>Total:</span>
-    <span>${{ cart.total|floatformat:2 }}</span>
+<div id="cart-total" hx-swap-oob="true" data-total="{{ cart.total|default:0|floatformat:2 }}">
+  <div class="cart-total-row">
+      <span>Subtotal</span>
+      <span>${{ cart.subtotal|default:0|floatformat:2 }}</span>
+  </div>
+  <div class="cart-total-row">
+      <span>Tax</span>
+      <span>${{ cart.tax_total|default:0|floatformat:2 }}</span>
+  </div>
+  <div class="cart-total-row cart-total-grand">
+      <span>Total</span>
+      <span class="grand-total-amount">${{ cart.total|default:0|floatformat:2 }}</span>
+  </div>
 </div>

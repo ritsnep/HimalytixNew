@@ -1,0 +1,11 @@
+<div id="receipt-actions" hx-swap-oob="true" data-invoice-id="{{ invoice.invoice_id }}" style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+    <button class="btn btn-outline-primary btn-sm" type="button" onclick="window.open('/accounting/sales-invoice/{{ invoice.invoice_id }}/print/', '_blank')">
+        <i class="mdi mdi-printer"></i> Print Receipt
+    </button>
+    <button class="btn btn-outline-secondary btn-sm" type="button" onclick="showToast('Emailing receipt...')">
+        <i class="mdi mdi-email-outline"></i> Email Receipt
+    </button>
+    <div class="btn btn-outline-success btn-sm disabled" aria-disabled="true">
+        Change: ${{ change|default:0|floatformat:2 }}
+    </div>
+</div>

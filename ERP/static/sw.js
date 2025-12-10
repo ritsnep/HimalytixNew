@@ -5,27 +5,26 @@ const DYNAMIC_CACHE_NAME = 'himalytix-pos-dynamic-v1';
 
 // Resources to cache for offline use
 const STATIC_ASSETS = [
-  '/',
-  '/pos/',
   '/static/css/bootstrap.min.css',
   '/static/css/app.min.css',
-  '/static/css/pos.css',
   '/static/libs/jquery/dist/jquery.min.js',
   '/static/libs/bootstrap/dist/js/bootstrap.bundle.min.js',
+  '/static/libs/htmx.org/dist/htmx.min.js',
   '/static/js/app.js',
-  '/static/libs/alpinejs.min.js',
   '/static/manifest.json',
-  '/static/images/icon-192.png',
-  '/static/images/icon-512.png'
+  '/static/images/icon-192.svg',
+  '/static/images/icon-512.svg',
+  '/static/images/favicon.ico',
+  '/static/pwa/offline.html'
 ];
 
 // API endpoints that should work offline (will be queued)
-const API_ENDPOINTS = [
+// Only non-idempotent endpoints should be queued for retry (POST/PUT/DELETE)
+const API_QUEUE_ENDPOINTS = [
   '/pos/api/cart/add/',
   '/pos/api/cart/update/',
   '/pos/api/cart/remove/',
-  '/pos/api/checkout/',
-  '/pos/api/products/search/'
+  '/pos/api/checkout/'
 ];
 
 // Install event - cache static assets
@@ -84,9 +83,22 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // Handle API requests
-  if (API_ENDPOINTS.some(endpoint => url.pathname.startsWith(endpoint))) {
+  // Handle API requests (queue only non-GET endpoints)
+  if (API_QUEUE_ENDPOINTS.some(endpoint => url.pathname.startsWith(endpoint))) {
     event.respondWith(handleApiRequest(event.request));
+    return;
+  }
+
+  // Skip or short-circuit third-party font requests blocked by CSP to avoid noisy errors
+  if (url.hostname.includes('fonts.googleapis.com') || url.hostname.includes('fonts.gstatic.com')) {
+    event.respondWith(
+      Promise.resolve(
+        new Response('', {
+          status: 204,
+          headers: { 'Content-Type': 'text/plain' }
+        })
+      )
+    );
     return;
   }
 
@@ -101,92 +113,106 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Handle navigation requests
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      caches.match('/pos/')
-        .then(response => {
-          return response || fetch(event.request);
-        })
-    );
-    return;
-  }
+  // Navigation requests now handled by default: network first, then cache
+  // Removed offline fallback to prevent blocking the app
 
-  // Default: try cache first, then network
+  // Default: try network first, then cache
   event.respondWith(
-    caches.match(event.request)
+    fetch(event.request)
       .then(response => {
-        if (response) {
-          return response;
+        // Cache successful GET requests
+        if (event.request.method === 'GET' && response.status === 200) {
+          const responseClone = response.clone();
+          caches.open(DYNAMIC_CACHE_NAME)
+            .then(cache => {
+              cache.put(event.request, responseClone);
+            });
         }
-
-        return fetch(event.request)
-          .then(response => {
-            // Cache successful GET requests
-            if (event.request.method === 'GET' && response.status === 200) {
-              const responseClone = response.clone();
-              caches.open(DYNAMIC_CACHE_NAME)
-                .then(cache => {
-                  cache.put(event.request, responseClone);
-                });
-            }
-            return response;
-          })
-          .catch(() => {
-            // Return offline fallback for HTML pages
-            if (event.request.headers.get('accept').includes('text/html')) {
-              return caches.match('/pos/');
-            }
-          });
+        return response;
+      })
+      .catch(async () => {
+        const cached = await caches.match(event.request);
+        return cached || new Response('', { status: 504 });
       })
   );
 });
 
 // Handle API requests with offline queuing
 async function handleApiRequest(request) {
+  // Only queue non-GET methods. For GETs (search) don't queue - return cached or an informative HTML/JSON.
+  if (request.method === 'GET' || request.method === 'HEAD') {
+    // Try network first, else serve cached response or a friendly message
+    try {
+      const response = await fetch(request);
+      return response;
+    } catch (err) {
+      const cached = await caches.match(request);
+      // If this was an HTMX request (HX-Request header), return an HTML fragment fallback
+      const isHtmx = request.headers.get('HX-Request') === 'true' || request.headers.get('HX-Request') === '1';
+      if (cached) return cached;
+      if (isHtmx) {
+        return new Response('<div class="text-center text-muted py-4">Offline - search unavailable</div>', {
+          status: 200,
+          headers: { 'Content-Type': 'text/html' }
+        });
+      }
+      return new Response(JSON.stringify({ success: false, offline: true, message: 'Offline' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  // For non-GET methods (POST/PUT/DELETE) attempt network and queue on network failure
   try {
-    // Try to make the request
     const response = await fetch(request);
     return response;
   } catch (error) {
-    // If offline, queue the request
-    console.log('API request failed, queuing for later:', request.url);
-
-    // Store the request for later retry
-    const requestData = {
-      url: request.url,
-      method: request.method,
-      headers: Object.fromEntries(request.headers.entries()),
-      body: null,
-      timestamp: Date.now()
-    };
-
-    // Read request body if it exists
-    if (request.method !== 'GET' && request.method !== 'HEAD') {
-      try {
-        requestData.body = await request.clone().text();
-      } catch (e) {
-        console.warn('Could not read request body for queuing');
-      }
+    if (!navigator.onLine || error.name === 'TypeError') {
+      return queueApiRequest(request, error);
     }
-
-    // Store in IndexedDB
-    await storeRequestForRetry(requestData);
-
-    // Return a synthetic response indicating offline mode
-    return new Response(
-      JSON.stringify({
-        success: false,
-        offline: true,
-        message: 'Request queued for when connection is restored',
-        queued: true
-      }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      }
-    );
+    throw error;
   }
+}
+
+// Queue API request for later retry
+async function queueApiRequest(request, error) {
+  console.log('API request failed, queuing for later:', request.url, error);
+
+  // Store the request for later retry
+  const requestData = {
+    url: request.url,
+    method: request.method,
+    headers: Object.fromEntries(request.headers.entries()),
+    body: null,
+    timestamp: Date.now()
+  };
+
+  // Read request body if it exists
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    try {
+      requestData.body = await request.clone().text();
+    } catch (e) {
+      console.warn('Could not read request body for queuing');
+    }
+  }
+
+  // Store in IndexedDB
+  await storeRequestForRetry(requestData);
+
+  // Return a synthetic response indicating offline mode
+  return new Response(
+    JSON.stringify({
+      success: false,
+      offline: true,
+      message: 'Request queued for when connection is restored',
+      queued: true
+    }),
+    {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    }
+  );
 }
 
 // Store failed requests for retry when back online
@@ -231,17 +257,18 @@ async function retryQueuedRequests() {
       const request = new Request(requestData.url, {
         method: requestData.method,
         headers: requestData.headers,
-        body: requestData.body
+        body: requestData.body,
+        credentials: 'same-origin'
       });
 
       const response = await fetch(request);
 
-      if (response.ok) {
+      if (response && response.ok) {
         // Remove from queue on success
         await removeQueuedRequest(requestData.timestamp);
         console.log('Successfully retried request:', requestData.url);
       } else {
-        console.warn('Request still failed:', requestData.url, response.status);
+        console.warn('Request still failed:', requestData.url, response && response.status);
       }
     } catch (error) {
       console.warn('Request retry failed:', requestData.url, error);

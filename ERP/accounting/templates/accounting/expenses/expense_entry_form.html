@@ -1,107 +1,302 @@
-{% extends "accounting/base.html" %}
+{% extends "accounting/_form_base.html" %}
 {% load static %}
 
 {% block title %}Quick Expense Entry{% endblock %}
+{% block form_title %}Quick Expense Entry{% endblock %}
 
-{% block content %}
-<div class="container py-4">
-    <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Record a Non-Inventory Expense</h5>
+{% block form_content %}
+<form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="mb-0">Record a Non-Inventory Expense</h5>
+                <div class="text-muted small">Attach a receipt, scan it, and we will prefill date/amount/vendor/tax where possible.</div>
+            </div>
+            <span class="badge bg-info text-dark">OCR Beta</span>
+        </div>
+        <div class="card-body">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} mb-3" role="alert">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {{ form.non_field_errors }}
                 </div>
-                <div class="card-body">
-                    {% if messages %}
-                        {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }}" role="alert">
-                                {{ message }}
-                            </div>
-                        {% endfor %}
-                    {% endif %}
+            {% endif %}
 
-                    {% if form.non_field_errors %}
-                        <div class="alert alert-danger">
-                            {{ form.non_field_errors }}
-                        </div>
-                    {% endif %}
-
-                    <form method="post" enctype="multipart/form-data" novalidate>
-                        {% csrf_token %}
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label" for="{{ form.category.id_for_label }}">Expense Category</label>
-                                {{ form.category }}
-                                <div class="text-danger small">{{ form.category.errors }}</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" for="{{ form.entry_date.id_for_label }}">Date</label>
-                                {{ form.entry_date }}
-                                <div class="text-danger small">{{ form.entry_date.errors }}</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" for="{{ form.amount.id_for_label }}">Amount</label>
-                                {{ form.amount }}
-                                <div class="text-danger small">{{ form.amount.errors }}</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" for="{{ form.payment_account.id_for_label }}">Paid via account</label>
-                                {{ form.payment_account }}
-                                <div class="text-danger small">{{ form.payment_account.errors }}</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" for="{{ form.paid_via.id_for_label }}">Payment mode</label>
-                                {{ form.paid_via }}
-                                <div class="form-text small">{{ form.paid_via.help_text }}</div>
-                                <div class="text-danger small">{{ form.paid_via.errors }}</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" for="{{ form.journal_type.id_for_label }}">Journal type (optional)</label>
-                                {{ form.journal_type }}
-                                <div class="text-danger small">{{ form.journal_type.errors }}</div>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label" for="{{ form.reference.id_for_label }}">Reference</label>
-                                {{ form.reference }}
-                                <div class="text-danger small">{{ form.reference.errors }}</div>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label" for="{{ form.description.id_for_label }}">Description</label>
-                                {{ form.description }}
-                                <div class="text-muted small">Use this to capture supplier name, vendor bill number, or purpose.</div>
-                                <div class="text-danger small">{{ form.description.errors }}</div>
-                            </div>
-                            <div class="col-12">
-                                <div class="form-check">
-                                    {{ form.gst_applicable }}
-                                    <label class="form-check-label" for="{{ form.gst_applicable.id_for_label }}">GST/VAT applied</label>
-                                </div>
-                                <div class="text-danger small">{{ form.gst_applicable.errors }}</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" for="{{ form.gst_amount.id_for_label }}">GST/VAT amount</label>
-                                {{ form.gst_amount }}
-                                <div class="text-danger small">{{ form.gst_amount.errors }}</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" for="{{ form.receipt.id_for_label }}">Receipt (optional)</label>
-                                {{ form.receipt }}
-                                <div class="text-muted small">Supports JPG/PNG/PDF under configured upload limits.</div>
-                                <div class="text-danger small">{{ form.receipt.errors }}</div>
-                            </div>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center mt-4">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label" for="{{ form.category.id_for_label }}">Expense Category</label>
+                    {{ form.category }}
+                    <div class="text-danger small">{{ form.category.errors }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="{{ form.entry_date.id_for_label }}">Date</label>
+                    {{ form.entry_date }}
+                    <div class="text-danger small">{{ form.entry_date.errors }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="{{ form.amount.id_for_label }}">Amount</label>
+                    {{ form.amount }}
+                    <div class="text-danger small">{{ form.amount.errors }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="{{ form.payment_account.id_for_label }}">Paid via account</label>
+                    {{ form.payment_account }}
+                    <div class="text-danger small">{{ form.payment_account.errors }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="{{ form.paid_via.id_for_label }}">Payment mode</label>
+                    {{ form.paid_via }}
+                    <div class="form-text small">{{ form.paid_via.help_text }}</div>
+                    <div class="text-danger small">{{ form.paid_via.errors }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="{{ form.journal_type.id_for_label }}">Journal type (optional)</label>
+                    {{ form.journal_type }}
+                    <div class="text-danger small">{{ form.journal_type.errors }}</div>
+                </div>
+                <div class="col-12">
+                    <label class="form-label" for="{{ form.reference.id_for_label }}">Reference</label>
+                    {{ form.reference }}
+                    <div class="text-danger small">{{ form.reference.errors }}</div>
+                </div>
+                <div class="col-12">
+                    <label class="form-label" for="{{ form.description.id_for_label }}">Description</label>
+                    {{ form.description }}
+                    <div class="text-muted small">Use this to capture supplier name, vendor bill number, or purpose.</div>
+                    <div class="text-danger small">{{ form.description.errors }}</div>
+                </div>
+                <div class="col-12">
+                    <div class="form-check">
+                        {{ form.gst_applicable }}
+                        <label class="form-check-label" for="{{ form.gst_applicable.id_for_label }}">GST/VAT applied</label>
+                    </div>
+                    <div class="text-danger small">{{ form.gst_applicable.errors }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="{{ form.gst_amount.id_for_label }}">GST/VAT amount</label>
+                    {{ form.gst_amount }}
+                    <div class="text-danger small">{{ form.gst_amount.errors }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="{{ form.receipt.id_for_label }}">Receipt (optional)</label>
+                    {{ form.receipt }}
+                    <div class="text-muted small">Supports JPG/PNG/PDF under configured upload limits.</div>
+                    <div class="d-flex align-items-center mt-2 gap-2 flex-wrap">
+                        <button type="button" class="btn btn-outline-primary btn-sm d-flex align-items-center" id="scan-receipt-btn">
+                            <span class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true" id="ocr-spinner"></span>
+                            <span id="scan-btn-text">Scan receipt (beta)</span>
+                        </button>
+                        <span class="small text-muted" id="ocr-status"></span>
+                    </div>
+                    <div class="text-muted small mt-1">We will attempt to read vendor, date, total, and tax and prefill the form. Works with JPG/PNG/PDF.</div>
+                    <div class="text-danger small">{{ form.receipt.errors }}</div>
+                </div>
+                <div class="col-12">
+                    <div class="alert alert-info d-none" id="ocr-results">
+                        <div class="d-flex justify-content-between">
                             <div>
-                                <button type="submit" class="btn btn-primary">Record Expense</button>
-                                <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary ms-2">Cancel</a>
+                                <div class="fw-semibold mb-1">OCR Suggestions</div>
+                                <div class="small text-muted">We try to map date, amount, vendor, and tax so you can review quickly.</div>
                             </div>
-                            <span class="text-muted small">Records a journal entry with the debit and credit lines handled automatically.</span>
+                            <span class="badge bg-light text-dark" id="ocr-engine"></span>
                         </div>
-                    </form>
+                        <dl class="row mb-0 mt-2">
+                            <dt class="col-sm-3">Vendor</dt>
+                            <dd class="col-sm-9" id="ocr-vendor">-</dd>
+                            <dt class="col-sm-3">Date</dt>
+                            <dd class="col-sm-9" id="ocr-date">-</dd>
+                            <dt class="col-sm-3">Total</dt>
+                            <dd class="col-sm-9" id="ocr-total">-</dd>
+                            <dt class="col-sm-3">Tax</dt>
+                            <dd class="col-sm-9" id="ocr-tax">-</dd>
+                            <dt class="col-sm-3">Raw text</dt>
+                            <dd class="col-sm-9">
+                                <pre class="small mb-0" id="ocr-raw" style="max-height: 140px; overflow:auto; background: #f8f9fa;"></pre>
+                            </dd>
+                        </dl>
+                    </div>
+                    <div id="ocr-status-template" data-url="{% url 'accounting:expense_receipt_ocr_status' task_id='TASK_ID_PLACEHOLDER' %}" hidden></div>
                 </div>
             </div>
         </div>
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <div>
+                <button type="submit" class="btn btn-primary">Record Expense</button>
+                <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary ms-2">Cancel</a>
+            </div>
+            <span class="text-muted small">Records a journal entry with debit/credit handled automatically.</span>
+        </div>
     </div>
-</div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+    (function() {
+        const scanBtn = document.getElementById('scan-receipt-btn');
+        const statusEl = document.getElementById('ocr-status');
+        const resultsEl = document.getElementById('ocr-results');
+        const rawTextEl = document.getElementById('ocr-raw');
+        const engineEl = document.getElementById('ocr-engine');
+        const vendorEl = document.getElementById('ocr-vendor');
+        const dateEl = document.getElementById('ocr-date');
+        const totalEl = document.getElementById('ocr-total');
+        const taxEl = document.getElementById('ocr-tax');
+        const statusTemplateEl = document.getElementById('ocr-status-template');
+        const receiptInput = document.getElementById('{{ form.receipt.id_for_label }}');
+        const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+
+        const entryDateInput = document.getElementById('{{ form.entry_date.id_for_label }}');
+        const amountInput = document.getElementById('{{ form.amount.id_for_label }}');
+        const referenceInput = document.getElementById('{{ form.reference.id_for_label }}');
+        const descriptionInput = document.getElementById('{{ form.description.id_for_label }}');
+        const gstCheckbox = document.getElementById('{{ form.gst_applicable.id_for_label }}');
+        const gstAmountInput = document.getElementById('{{ form.gst_amount.id_for_label }}');
+        const spinnerEl = document.getElementById('ocr-spinner');
+        const scanBtnText = document.getElementById('scan-btn-text');
+
+        const ocrEndpoint = "{% url 'accounting:expense_receipt_ocr' %}";
+
+        function setStatus(message, tone = 'muted') {
+            statusEl.className = `ms-2 small text-${tone}`;
+            statusEl.textContent = message || '';
+        }
+
+        function setLoading(isLoading) {
+            if (isLoading) {
+                scanBtn.disabled = true;
+                scanBtnText.textContent = 'Scanning...';
+                spinnerEl.classList.remove('d-none');
+            } else {
+                scanBtn.disabled = false;
+                scanBtnText.textContent = 'Scan receipt (beta)';
+                spinnerEl.classList.add('d-none');
+            }
+        }
+
+        function applySuggestions(data) {
+            if (!data) {
+                return;
+            }
+
+            resultsEl.classList.remove('d-none');
+            vendorEl.textContent = data.vendor || '—';
+            dateEl.textContent = data.date || '—';
+            totalEl.textContent = data.total || '—';
+            taxEl.textContent = data.tax_amount || '—';
+            rawTextEl.textContent = (data.raw_text || '').trim().slice(0, 1500) || 'n/a';
+            engineEl.textContent = data.engine ? `Engine: ${data.engine}` : 'Engine: OCR';
+
+            if (data.date && entryDateInput && !entryDateInput.value) {
+                entryDateInput.value = data.date;
+            }
+            if (data.total && amountInput && !amountInput.value) {
+                amountInput.value = data.total;
+            }
+            if (data.tax_amount && gstAmountInput) {
+                gstAmountInput.value = data.tax_amount;
+                if (gstCheckbox) {
+                    gstCheckbox.checked = true;
+                }
+            }
+            if (data.vendor) {
+                if (referenceInput && !referenceInput.value) {
+                    referenceInput.value = data.vendor;
+                }
+                if (descriptionInput && !descriptionInput.value) {
+                    descriptionInput.value = `Expense from ${data.vendor}`;
+                }
+            }
+        }
+
+        function pollStatus(taskId, attempt = 0) {
+            const statusUrlTemplate = statusTemplateEl?.dataset.url;
+            if (!statusUrlTemplate) {
+                return;
+            }
+            const pollUrl = statusUrlTemplate.replace('TASK_ID_PLACEHOLDER', taskId);
+            fetch(pollUrl, {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+                .then((res) => res.json())
+                .then((payload) => {
+                    if (payload.success === false) {
+                        setStatus(payload.error || 'OCR task failed.', 'danger');
+                        setLoading(false);
+                        return;
+                    }
+                    if (payload.extracted_data) {
+                        setStatus('Scan complete', 'success');
+                        applySuggestions(payload.extracted_data);
+                        setLoading(false);
+                        return;
+                    }
+                    if (attempt < 6) {
+                        setTimeout(() => pollStatus(taskId, attempt + 1), 1200);
+                    } else {
+                        setStatus('Still processing in background. You can keep working.', 'warning');
+                        setLoading(false);
+                    }
+                })
+                .catch(() => {
+                    setStatus('Could not retrieve OCR status.', 'danger');
+                    setLoading(false);
+                });
+        }
+
+        if (scanBtn) {
+            scanBtn.addEventListener('click', () => {
+                if (!receiptInput || !receiptInput.files.length) {
+                    setStatus('Select a receipt file first.', 'danger');
+                    return;
+                }
+                const formData = new FormData();
+                formData.append('receipt', receiptInput.files[0]);
+                if (csrfToken) {
+                    formData.append('csrfmiddlewaretoken', csrfToken);
+                }
+                setLoading(true);
+                setStatus('Processing receipt...', 'muted');
+
+                fetch(ocrEndpoint, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {'X-Requested-With': 'XMLHttpRequest'},
+                })
+                    .then((res) => res.json())
+                    .then((payload) => {
+                        if (!payload.success) {
+                            throw new Error(payload.error || 'OCR failed.');
+                        }
+                        if (payload.extracted_data) {
+                            setStatus('Scan complete', 'success');
+                            applySuggestions(payload.extracted_data);
+                            setLoading(false);
+                            return;
+                        }
+                        if (payload.task_id) {
+                            setStatus('Queued for OCR. We will fill fields automatically.', 'primary');
+                            pollStatus(payload.task_id);
+                        } else {
+                            setStatus('Queued for OCR.', 'primary');
+                            setLoading(false);
+                        }
+                    })
+                    .catch((err) => {
+                        console.error(err);
+                        setStatus(err.message || 'Unable to scan receipt.', 'danger');
+                        setLoading(false);
+                    });
+            });
+        }
+    })();
+</script>
 {% endblock %}
 *** End of File

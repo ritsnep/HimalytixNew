@@ -6,10 +6,12 @@ from datetime import date, timedelta
 
 from celery import shared_task
 from django.db import transaction
+from django.core.files.base import ContentFile
 from django.utils import timezone
 
 from accounting.ird_service import submit_invoice_to_ird
 from accounting.models import IRDSubmissionTask, RecurringJournal
+from accounting.services import process_receipt_with_ocr
 from accounting.services.create_voucher import create_voucher
 from accounting.utils.event_utils import emit_integration_event
 
@@ -159,3 +161,33 @@ def process_ird_submission(self, submission_id: int) -> dict:
         ack_id=result.ack_id,
     )
     return {"status": "succeeded", "ack_id": result.ack_id}
+
+
+def _run_receipt_ocr(file_bytes: bytes, filename: str | None = None) -> dict:
+    """Shared helper to process OCR from raw bytes."""
+    safe_file = ContentFile(file_bytes)
+    safe_file.name = filename or "receipt_upload"
+    return process_receipt_with_ocr(safe_file)
+
+
+@shared_task(bind=True, autoretry_for=(), max_retries=0)
+def analyze_document_ocr(self, file_bytes: bytes, filename: str | None = None) -> dict:
+    """
+    Generic OCR task for any module to extract receipt/invoice data.
+    Accepts raw bytes to avoid persisting temp files.
+    """
+    try:
+        data = _run_receipt_ocr(file_bytes, filename)
+        return {"success": True, "extracted_data": data}
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("document_ocr.task_failed", extra={"filename": filename})
+        return {"success": False, "error": str(exc)}
+
+
+@shared_task(bind=True, autoretry_for=(), max_retries=0)
+def analyze_expense_receipt(self, file_bytes: bytes, filename: str | None = None) -> dict:
+    """
+    Lightweight Celery task to OCR an expense receipt and return structured data.
+    The task accepts raw bytes to avoid storing temp files on disk.
+    """
+    return analyze_document_ocr(file_bytes, filename)
