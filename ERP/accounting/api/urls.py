@@ -2,7 +2,7 @@ from django.urls import path
 
 from rest_framework.routers import DefaultRouter
 
-from accounting.api import views, dashboard_views
+from accounting.api import views, dashboard_views, audit
 
 router = DefaultRouter()
 router.register(r'vendors', views.VendorViewSet, basename='vendor')
@@ -14,6 +14,7 @@ router.register(r'ar-receipts', views.ARReceiptViewSet, basename='arreceipt')
 router.register(r'bank-accounts', views.BankAccountViewSet, basename='bankaccount')
 router.register(r'assets', views.AssetViewSet, basename='asset')
 router.register(r'events', views.IntegrationEventViewSet, basename='event')
+router.register(r'audit-logs', audit.AuditLogViewSet, basename='auditlog')
 
 urlpatterns = router.urls
 

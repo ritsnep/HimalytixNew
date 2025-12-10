@@ -191,3 +191,195 @@ def analyze_expense_receipt(self, file_bytes: bytes, filename: str | None = None
     The task accepts raw bytes to avoid storing temp files on disk.
     """
     return analyze_document_ocr(file_bytes, filename)
+
+
+# ============================================================================
+# AUDIT LOGGING TASKS (Async)
+# ============================================================================
+
+@shared_task(bind=True, max_retries=3)
+def log_audit_event_async(self, user_id, action, content_type_id, object_id, 
+                         changes=None, details=None, ip_address=None, organization_id=None):
+    """
+    Asynchronously log a model change to AuditLog.
+    
+    Useful for high-volume events (e.g., GL entries) that don't need
+    synchronous audit guarantees. Reduces transaction latency.
+    
+    Args:
+        user_id: CustomUser.id
+        action: 'create', 'update', 'delete', etc.
+        content_type_id: Django ContentType.id
+        object_id: PK of the model being audited
+        changes: JSON dict of before/after values
+        details: Optional description
+        ip_address: Optional IP address
+        organization_id: Organization.id for multi-tenant isolation
+    """
+    try:
+        from django.contrib.auth import get_user_model
+        from django.contrib.contenttypes.models import ContentType
+        from usermanagement.models import Organization
+        
+        User = get_user_model()
+        
+        user = User.objects.get(id=user_id)
+        content_type = ContentType.objects.get(id=content_type_id)
+        organization = Organization.objects.get(id=organization_id) if organization_id else None
+        
+        AuditLog.objects.create(
+            user=user,
+            action=action,
+            content_type=content_type,
+            object_id=object_id,
+            changes=changes or {},
+            details=details,
+            ip_address=ip_address,
+            organization=organization
+        )
+        
+        logger.info(
+            "audit_log.created",
+            user_id=user_id,
+            action=action,
+            content_type=content_type.model,
+            object_id=object_id
+        )
+    
+    except Exception as exc:
+        logger.exception("log_audit_event_async.failed")
+        # Retry with exponential backoff
+        raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
+
+
+@shared_task(bind=True, max_retries=2)
+def seal_audit_logs_batch(self, organization_id=None, batch_size=1000):
+    """
+    Asynchronously seal audit logs with hash-chaining for immutability.
+    
+    Should be run as a scheduled task (e.g., daily) to seal logs older than 24 hours.
+    
+    Args:
+        organization_id: Optional organization to seal (all if None)
+        batch_size: Number of logs to seal per task invocation
+    """
+    try:
+        from datetime import timedelta
+        from usermanagement.models import Organization
+        from accounting.utils.audit_integrity import compute_content_hash
+        
+        cutoff_date = timezone.now() - timedelta(hours=24)
+        logs = AuditLog.objects.filter(
+            timestamp__lt=cutoff_date,
+            is_immutable=False
+        ).order_by('timestamp')[:batch_size]
+        
+        if organization_id:
+            logs = logs.filter(organization_id=organization_id)
+        
+        count = 0
+        prev_hash = None
+        
+        for log in logs:
+            try:
+                log_dict = {
+                    'user_id': log.user_id,
+                    'action': log.action,
+                    'content_type_id': log.content_type_id,
+                    'object_id': log.object_id,
+                    'changes': log.changes,
+                    'timestamp': log.timestamp,
+                }
+                
+                log.content_hash = compute_content_hash(log_dict)
+                log.previous_hash_id = prev_hash
+                log.is_immutable = True
+                log.save(update_fields=['content_hash', 'previous_hash_id', 'is_immutable'])
+                
+                prev_hash = log.id
+                count += 1
+            
+            except Exception as e:
+                logger.warning(f"Failed to seal audit log {log.id}: {str(e)}")
+        
+        logger.info(
+            "seal_audit_logs_batch.completed",
+            sealed_count=count,
+            batch_size=batch_size
+        )
+        
+        # Schedule next batch if there are more logs
+        if count == batch_size:
+            seal_audit_logs_batch.delay(organization_id=organization_id, batch_size=batch_size)
+    
+    except Exception as exc:
+        logger.exception("seal_audit_logs_batch.failed")
+        raise self.retry(exc=exc, countdown=300)
+
+
+@shared_task(bind=True, max_retries=1)
+def check_suspicious_login_activity(self, organization_id=None):
+    """
+    Periodic task to detect suspicious login patterns.
+    
+    Detects:
+    - Multiple failed attempts from same IP
+    - Logins from unusual locations
+    - Account lockouts
+    - MFA bypass attempts
+    
+    Triggered: Daily or on-demand
+    """
+    try:
+        from datetime import timedelta
+        from usermanagement.models import LoginEventLog, Organization
+        
+        cutoff_date = timezone.now() - timedelta(hours=24)
+        
+        filters = {
+            'timestamp__gte': cutoff_date,
+            'event_type__in': [
+                'login_failed_invalid_creds',
+                'login_failed_account_locked',
+                'login_failed_mfa',
+            ]
+        }
+        
+        if organization_id:
+            filters['organization_id'] = organization_id
+        
+        # Find IPs with multiple failures
+        from django.db.models import Count
+        suspicious_ips = (
+            LoginEventLog.objects
+            .filter(**filters)
+            .values('ip_address')
+            .annotate(count=Count('ip_address'))
+            .filter(count__gt=5)  # More than 5 failures
+        )
+        
+        for ip_data in suspicious_ips:
+            ip = ip_data['ip_address']
+            count = ip_data['count']
+            
+            # Mark recent login events from this IP as suspicious
+            LoginEventLog.objects.filter(
+                ip_address=ip,
+                timestamp__gte=cutoff_date
+            ).update(is_suspicious=True, risk_score=75)
+            
+            logger.warning(
+                "suspicious_login_activity.detected",
+                ip_address=ip,
+                failure_count=count
+            )
+        
+        logger.info(
+            "check_suspicious_login_activity.completed",
+            suspicious_ips_count=len(list(suspicious_ips))
+        )
+    
+    except Exception as exc:
+        logger.exception("check_suspicious_login_activity.failed")
+        raise self.retry(exc=exc, countdown=300)
+

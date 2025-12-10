@@ -244,20 +244,18 @@ class BaseModel(models.Model):
     class Meta:
         abstract = True
 class LoginLog(models.Model):
+    """Legacy login tracking. Kept for backward compatibility."""
     login_datetime = models.DateTimeField(auto_now_add=True)
-    # user = models.ForeignKey('usermanagement.CustomUser', on_delete=models.CASCADE)
     user = models.ForeignKey('usermanagement.CustomUser', on_delete=models.SET_NULL, null=True, blank=True)
-    # user = models.ForeignKey('usermanagement.CustomUser', on_delete=models.CASCADE, null=True, blank=True)
     login_method = models.CharField(max_length=50, choices=[("email", "Email"), ("google", "Google"), ("facebook", "Facebook")])
     success = models.BooleanField(default=False)
     failure_reason = models.CharField(max_length=100, null=True, blank=True)
     logout_time = models.DateTimeField(null=True, blank=True)
     session_time = models.DurationField(null=True, blank=True)
-    session_id =  models.CharField(max_length=64, null=True, blank=True)
+    session_id = models.CharField(max_length=64, null=True, blank=True)
     ip_address = models.GenericIPAddressField()
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey('usermanagement.CustomUser', on_delete=models.SET_NULL, null=True, blank=True, related_name='created_logs')
-    # created_by = models.ForeignKey('usermanagement.CustomUser', on_delete=models.CASCADE,  null=True, blank=True,related_name='created_by')
     
     def is_password_expired(self):
         return (timezone.now() - self.password_changed_at) > timezone.timedelta(days=90)
@@ -269,6 +267,80 @@ class LoginLog(models.Model):
             models.Index(fields=['user', 'login_datetime']),
             models.Index(fields=['session_id']),
         ]
+
+
+class LoginEventLog(models.Model):
+    """
+    Enhanced login event tracking for security auditing.
+    Records both successful and failed login attempts with detailed context.
+    """
+    EVENT_TYPE_CHOICES = [
+        ('login_success', 'Login Success'),
+        ('login_failed', 'Login Failed'),
+        ('login_failed_invalid_creds', 'Failed - Invalid Credentials'),
+        ('login_failed_account_locked', 'Failed - Account Locked'),
+        ('login_failed_mfa', 'Failed - MFA Required/Failed'),
+        ('login_failed_disabled_account', 'Failed - Account Disabled'),
+        ('logout', 'Logout'),
+        ('session_timeout', 'Session Timeout'),
+        ('password_changed', 'Password Changed'),
+        ('mfa_enabled', 'MFA Enabled'),
+        ('mfa_disabled', 'MFA Disabled'),
+        ('account_locked', 'Account Locked'),
+        ('account_unlocked', 'Account Unlocked'),
+    ]
+    
+    user = models.ForeignKey('usermanagement.CustomUser', on_delete=models.CASCADE, related_name='login_events')
+    organization = models.ForeignKey('usermanagement.Organization', on_delete=models.CASCADE, null=True, blank=True)
+    event_type = models.CharField(max_length=50, choices=EVENT_TYPE_CHOICES, db_index=True)
+    
+    # Network & Session
+    ip_address = models.GenericIPAddressField(help_text="IP address of login attempt")
+    user_agent = models.TextField(blank=True, help_text="Browser user agent string")
+    session_id = models.CharField(max_length=128, null=True, blank=True)
+    
+    # Authentication Details
+    auth_method = models.CharField(max_length=50, choices=[
+        ('email', 'Email/Password'),
+        ('google', 'Google OAuth'),
+        ('facebook', 'Facebook OAuth'),
+        ('saml', 'SAML'),
+        ('api_token', 'API Token'),
+    ], default='email')
+    mfa_method = models.CharField(max_length=50, choices=[
+        ('totp', 'TOTP App'),
+        ('sms', 'SMS'),
+        ('email', 'Email'),
+        ('backup_code', 'Backup Code'),
+    ], null=True, blank=True)
+    
+    # Timing & Metadata
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    login_duration = models.DurationField(null=True, blank=True, help_text="How long session lasted")
+    failure_reason = models.CharField(max_length=255, blank=True, help_text="Reason for failed login")
+    
+    # Geolocation (optional integration with MaxMind, etc.)
+    country_code = models.CharField(max_length=2, blank=True, help_text="Two-letter country code")
+    city = models.CharField(max_length=100, blank=True)
+    
+    # Risk Assessment
+    is_suspicious = models.BooleanField(default=False, help_text="Flagged by anomaly detection")
+    risk_score = models.SmallIntegerField(default=0, help_text="0-100 risk score")
+    
+    class Meta:
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['user', 'timestamp']),
+            models.Index(fields=['organization', 'timestamp']),
+            models.Index(fields=['timestamp']),
+            models.Index(fields=['event_type']),
+            models.Index(fields=['ip_address']),
+            models.Index(fields=['is_suspicious']),
+        ]
+        verbose_name_plural = "Login Event Logs"
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.get_event_type_display()} - {self.timestamp}"
 PERMISSION_ACTION_CHOICES = [
     ('view', 'View'),
     ('add', 'Add'),

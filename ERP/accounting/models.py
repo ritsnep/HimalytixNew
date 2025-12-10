@@ -40,22 +40,56 @@ REMINDER_STATUS_CHOICES = [
 ]
 
 class AuditLog(models.Model):
-    timestamp = models.DateTimeField(auto_now_add=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
-    action = models.CharField(max_length=50)
+    """
+    Immutable audit trail for tracking changes to important models.
+    - Scoped by organization (multi-tenant isolation)
+    - Supports hash-chaining for integrity verification
+    - Captures before/after changes as JSON
+    - Indexed for efficient querying by time and model
+    """
+    ACTION_CHOICES = [
+        ('create', 'Create'),
+        ('update', 'Update'),
+        ('delete', 'Delete'),
+        ('export', 'Export'),
+        ('print', 'Print'),
+        ('approve', 'Approve'),
+        ('reject', 'Reject'),
+        ('post', 'Post'),
+        ('sync', 'Sync'),
+    ]
+    
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True)
+    organization = models.ForeignKey('usermanagement.Organization', on_delete=models.CASCADE, null=True)
+    action = models.CharField(max_length=50, choices=ACTION_CHOICES)
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
-    changes = models.JSONField()
+    changes = models.JSONField(default=dict, help_text="Diff of before/after values")
     details = models.TextField(null=True, blank=True)
     ip_address = models.GenericIPAddressField(null=True)
+    
+    # Hash-chaining for immutability (ADR-003)
+    content_hash = models.CharField(max_length=64, null=True, blank=True, 
+                                   help_text="SHA256 hash of record content")
+    previous_hash = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True,
+                                     help_text="Hash of previous audit record in chain")
+    
+    # Metadata
+    is_immutable = models.BooleanField(default=False, help_text="If True, this record cannot be modified")
 
     class Meta:
         ordering = ['-timestamp']
         indexes = [
             models.Index(fields=['content_type', 'object_id']),
             models.Index(fields=['timestamp']),
+            models.Index(fields=['organization', 'timestamp']),
+            models.Index(fields=['user', 'timestamp']),
+            models.Index(fields=['action']),
         ]
+        unique_together = [('organization', 'id')]  # Prevent cross-tenant leaks
+        verbose_name_plural = "Audit Logs"
 
 def generate_numeric_id():
     """Generate a random numeric identifier for non-PK helper fields."""

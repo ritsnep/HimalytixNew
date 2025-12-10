@@ -1,0 +1,361 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block title %}Audit Log Detail - Himalytix ERP{% endblock %}
+
+{% block page_title %}Audit Log Detail{% endblock %}
+
+{% block content %}
+<div class="container-xxl">
+    <!-- Breadcrumb & Header -->
+    <div class="page-header d-print-none mb-4">
+        <div class="row align-items-center">
+            <div class="col">
+                <h2 class="page-title">
+                    <a href="{% url 'accounting:audit_log_list' %}" class="text-decoration-none">
+                        <i class="bi bi-shield-check"></i> Audit Trail
+                    </a>
+                </h2>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'accounting:audit_log_list' %}">Audit Logs</a></li>
+                        <li class="breadcrumb-item active">Log #{{ audit_log.id }}</li>
+                    </ol>
+                </nav>
+            </div>
+            <div class="col-auto">
+                <a href="{% url 'accounting:audit_log_list' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Basic Information Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="bi bi-info-circle"></i> Event Information
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-2">Action</h6>
+                            <span class="badge bg-{% if audit_log.action == 'create' %}success{% elif audit_log.action == 'delete' %}danger{% elif audit_log.action == 'update' %}primary{% else %}info{% endif %} fs-5">
+                                {{ audit_log.get_action_display }}
+                            </span>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-2">Timestamp</h6>
+                            <p class="mb-0">
+                                <strong>{{ audit_log.timestamp|date:"M d, Y - H:i:s" }}</strong>
+                                <br>
+                                <small class="text-muted">({{ audit_log.timestamp|timesince }} ago)</small>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-2">Affected Entity</h6>
+                            {% if audit_log.content_type %}
+                            <p class="mb-0">
+                                <strong>{{ audit_log.content_type.model|title }}</strong>
+                                <br>
+                                <small class="text-muted">Object ID: #{{ audit_log.object_id }}</small>
+                            </p>
+                            {% else %}
+                            <p class="text-muted">N/A</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-2">Organization</h6>
+                            {% if audit_log.organization %}
+                            <p class="mb-0">{{ audit_log.organization.name }}</p>
+                            {% else %}
+                            <p class="text-muted">N/A</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if audit_log.details %}
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="text-muted mb-2">Details</h6>
+                            <p class="mb-0">{{ audit_log.details }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Changes Card -->
+            {% if formatted_changes %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="bi bi-arrow-left-right"></i> Changes
+                    </h3>
+                </div>
+                <div class="card-body">
+                    {% for change in formatted_changes %}
+                    <div class="mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
+                        <h6 class="text-muted mb-2">{{ change.field|title }}</h6>
+                        {% if change.old is not None and change.new is not None %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <small class="text-muted d-block">Old Value</small>
+                                <div class="bg-light p-2 rounded">
+                                    <code class="small">{{ change.old }}</code>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted d-block">New Value</small>
+                                <div class="bg-light p-2 rounded">
+                                    <code class="small">{{ change.new }}</code>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="bg-light p-2 rounded">
+                            <code class="small">{{ change.value }}</code>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Content Object Card -->
+            {% if content_object %}
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="bi bi-box"></i> Affected Object
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-2">{{ audit_log.content_type.model|title }} #{{ audit_log.object_id }}</p>
+                    <pre class="mb-0"><code>{{ content_object }}</code></pre>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- User Information Card -->
+            {% if audit_log.user %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="bi bi-person"></i> User Information
+                    </h3>
+                </div>
+                <div class="card-body text-center">
+                    <div class="avatar avatar-lg bg-primary text-white mb-3">
+                        {{ audit_log.user.first_name|first|default:audit_log.user.username|first|upper }}
+                    </div>
+                    <h4 class="mb-1">{{ audit_log.user.get_full_name|default:audit_log.user.username }}</h4>
+                    <p class="text-muted mb-2">{{ audit_log.user.email }}</p>
+                    <a href="?user_id={{ audit_log.user.id }}" class="btn btn-sm btn-outline-primary btn-block">
+                        <i class="bi bi-search"></i> View Other Changes
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Network Information Card -->
+            {% if audit_log.ip_address or audit_log.user %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="bi bi-cloud"></i> Network Information
+                    </h3>
+                </div>
+                <div class="card-body">
+                    {% if audit_log.ip_address %}
+                    <div class="mb-3">
+                        <small class="text-muted d-block">IP Address</small>
+                        <strong>{{ audit_log.ip_address }}</strong>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <small class="text-muted d-block">Session</small>
+                        <strong class="text-monospace">{{ audit_log.id }}</strong>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Integrity Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="bi bi-shield-lock"></i> Integrity Status
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        {% if is_sealed %}
+                        <div class="alert alert-success alert-icon mb-3">
+                            <i class="bi bi-lock-fill"></i>
+                            <div>
+                                <strong>Sealed</strong>
+                                <p class="text-sm mb-0">This record is immutable and cannot be modified</p>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-warning alert-icon mb-3">
+                            <i class="bi bi-unlock"></i>
+                            <div>
+                                <strong>Active</strong>
+                                <p class="text-sm mb-0">This record is still being tracked</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if audit_log.content_hash %}
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Content Hash</small>
+                        <code class="text-monospace small text-truncate d-block">{{ audit_log.content_hash }}</code>
+                    </div>
+                    {% endif %}
+
+                    {% if has_previous %}
+                    <div>
+                        <small class="text-muted d-block">Previous Hash Reference</small>
+                        <a href="{% url 'accounting:audit_log_detail' audit_log.previous_hash.pk %}" class="btn btn-sm btn-link">
+                            View Previous Entry #{{ audit_log.previous_hash.id }}
+                        </a>
+                    </div>
+                    {% else %}
+                    <div>
+                        <small class="text-muted">No previous hash in chain</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Related Actions Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="bi bi-link-45deg"></i> Related
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-sm">
+                        {% if audit_log.content_type %}
+                        <a href="{% url 'accounting:audit_log_list' %}?model={{ audit_log.content_type.model }}" class="list-group-item list-group-item-action">
+                            <i class="bi bi-search"></i> Same Model Changes
+                        </a>
+                        {% endif %}
+                        {% if audit_log.user %}
+                        <a href="{% url 'accounting:audit_log_list' %}?user_id={{ audit_log.user.id }}" class="list-group-item list-group-item-action">
+                            <i class="bi bi-person"></i> User Activity
+                        </a>
+                        {% endif %}
+                        <a href="{% url 'accounting:audit_log_summary' %}" class="list-group-item list-group-item-action">
+                            <i class="bi bi-graph-up"></i> Audit Summary
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.avatar.bg-primary {
+    background-color: #0d6efd;
+    color: white;
+}
+
+.text-monospace {
+    font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', 'Courier New', monospace;
+}
+
+.btn-block {
+    width: 100%;
+}
+
+.alert {
+    display: flex;
+    align-items: flex-start;
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin: 0;
+}
+
+.alert-icon i {
+    margin-right: 8px;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    color: #856404;
+}
+
+.list-group-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid #dee2e6;
+}
+
+.list-group-item:first-child {
+    border-radius: 4px 4px 0 0;
+}
+
+.list-group-item:last-child {
+    border-radius: 0 0 4px 4px;
+}
+
+.list-group-item:not(:last-child) {
+    border-bottom: none;
+}
+
+.list-group-item i {
+    margin-right: 8px;
+    color: #6c757d;
+}
+
+.breadcrumb {
+    margin-top: 8px;
+    margin-bottom: 0;
+    padding: 0;
+    background: transparent;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    content: '/';
+}
+</style>
+{% endblock %}

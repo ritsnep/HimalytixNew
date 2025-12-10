@@ -4,6 +4,10 @@ from accounting.api import dashboard_views as api_dashboard_views
 from accounting.views import dashboard_views
 from accounting.views import views_import
 from accounting.views.analytics_views import PayableDashboardView, ReceivableDashboardView
+from accounting.views.audit_log_views import (
+    AuditLogListView, AuditLogDetailView, AuditLogSummaryView,
+    audit_log_export_csv, audit_log_export_json
+)
 from ..views import journal_entry, journal_entry_view, voucher_views, voucher_crud_views
 from ..views import views_journal_grid as journal_grid_view
 from ..views.report_views import (
@@ -418,6 +422,13 @@ urlpatterns += [
 # Import/Export URLs (Phase 3 Task 3)
 urlpatterns += [
     path('', include('accounting.urls.import_export_urls')),
+    
+    # Audit Log URLs
+    path('audit-logs/', AuditLogListView.as_view(), name='audit_log_list'),
+    path('audit-logs/<int:pk>/', AuditLogDetailView.as_view(), name='audit_log_detail'),
+    path('audit-logs/summary/', AuditLogSummaryView.as_view(), name='audit_log_summary'),
+    path('audit-logs/export/csv/', audit_log_export_csv, name='audit_log_export_csv'),
+    path('audit-logs/export/json/', audit_log_export_json, name='audit_log_export_json'),
 ]
 
 # Scheduled Tasks URLs (Phase 3 Task 4)

@@ -839,12 +839,24 @@
                     </ul>
                 </li>
                 <li class="menu-title" data-key="t-settings">Settings</li>
+                
+                <!-- Audit Log & Activity Reporting -->
+                <li>
+                    <a href="{% url 'accounting:audit_log_list' %}" class="nav-link">
+                        <i data-feather="activity"></i>
+                        <span data-key="t-audit-log">Audit Log</span>
+                    </a>
+                </li>
+                
+                <!-- Permissions Management -->
                 <li>
                     <a href="{% url 'usermanagement:permission_list' %}">
                         <i data-feather="shield"></i>
                         <span data-key="t-permissions">Permissions</span>
                     </a>
                 </li>
+                
+                <!-- Data Export & Backup -->
                 <li>
                     <a href="{% url 'backups:dashboard' %}">
                         <i data-feather="database"></i>

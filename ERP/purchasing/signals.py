@@ -1,3 +1,8 @@
+"""
+Signal handlers for Purchase Order and Goods Receipt audit logging.
+Ensures all purchasing transactions are tracked in the AuditLog.
+"""
+
 from django.db.models.signals import post_save, post_delete, pre_save
 from django.dispatch import receiver
 from django.contrib.contenttypes.models import ContentType
@@ -6,29 +11,19 @@ from datetime import date, datetime
 from decimal import Decimal
 from threading import local
 
-from ..models import (
-    Journal,
-    JournalLine,
-    JournalType,
-    VoucherModeConfig,
-    AuditLog,
-    FiscalYear,
-    AccountingPeriod,
-    ChartOfAccount,
-    GeneralLedger,
-    SalesOrder,
-    SalesOrderLine,
-    SalesInvoice,
-    SalesInvoiceLine,
-    DeliveryNote,
-    DeliveryNoteLine,
-    BudgetLine,
+from .models import (
+    PurchaseOrder,
+    PurchaseOrderLine,
+    GoodsReceipt,
+    GoodsReceiptLine,
+    PurchaseInvoice,
+    PurchaseInvoiceLine,
+    LandedCostDocument,
+    LandedCostLine,
+    LandedCostAllocation,
 )
-from ..utils.request import get_current_user, get_client_ip, get_current_request
-
-__all__ = [
-    'create_default_voucher_config'
-]
+from accounting.models import AuditLog
+from accounting.utils.request import get_current_user, get_client_ip, get_current_request
 
 _audit_state = local()
 
@@ -57,6 +52,26 @@ def _pop_old_state(sender, instance):
     return _get_state_bucket().pop(_state_key(sender, instance), None)
 
 
+def _to_json_safe(value):
+    """Recursively convert common Python/Django types to JSON-serializable forms."""
+    if value is None:
+        return None
+    if isinstance(value, (str, int, bool)):
+        return value
+    if isinstance(value, (date, datetime)):
+        return value.isoformat()
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, dict):
+        return {k: _to_json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_to_json_safe(v) for v in value]
+    try:
+        return str(value)
+    except Exception:
+        return "<unserializable>"
+
+
 def _calculate_changes(previous_state, current_state):
     if previous_state is None:
         return {field: {'old': None, 'new': _to_json_safe(value)} for field, value in current_state.items()}
@@ -70,32 +85,10 @@ def _calculate_changes(previous_state, current_state):
             changes[field] = {'old': old_serialized, 'new': new_serialized}
     return changes
 
-def _to_json_safe(value):
-    """Recursively convert common Python/Django types to JSON-serializable forms."""
-    if value is None:
-        return None
-    if isinstance(value, (str, int, bool)):
-        return value
-    if isinstance(value, (date, datetime)):
-        return value.isoformat()
-    if isinstance(value, Decimal):
-        # Use float for readability; switch to str if exact precision is required for audit
-        return float(value)
-    if isinstance(value, dict):
-        return {k: _to_json_safe(v) for k, v in value.items()}
-    if isinstance(value, (list, tuple, set)):
-        return [_to_json_safe(v) for v in value]
-    # Fallback to string representation
-    try:
-        return str(value)
-    except Exception:
-        return "<unserializable>"
 
-
-def log_change(instance, action, changes=None):
+def log_purchase_change(instance, action, changes=None):
     """
-    Generic function to log model changes to AuditLog with organization scoping.
-    Automatically detects organization from instance or request context.
+    Generic function to log purchase model changes to AuditLog with organization scoping.
     """
     user = get_current_user()
     request = get_current_request()
@@ -117,7 +110,6 @@ def log_change(instance, action, changes=None):
         organization = getattr(request, 'active_organization', None)
     
     if user and user.is_authenticated:
-        # Build a safe changes payload
         payload = {}
         try:
             if changes is not None:
@@ -154,61 +146,33 @@ def _audit_pre_save(sender, instance, **kwargs):
 def _audit_post_save(sender, instance, created, **kwargs):
     current_state = model_to_dict(instance)
     if created:
-        log_change(instance, 'create', {'created': _to_json_safe(current_state)})
+        log_purchase_change(instance, 'create', {'created': _to_json_safe(current_state)})
         return
 
     previous_state = _pop_old_state(sender, instance)
     changes = _calculate_changes(previous_state, current_state)
     if changes:
-        log_change(instance, 'update', changes)
+        log_purchase_change(instance, 'update', changes)
 
 
 def _audit_post_delete(sender, instance, **kwargs):
-    log_change(instance, 'delete', {'deleted': _to_json_safe(model_to_dict(instance))})
+    log_purchase_change(instance, 'delete', {'deleted': _to_json_safe(model_to_dict(instance))})
 
 
-# Register audit signal handlers for audited models
-AUDITED_MODELS = (
-    Journal,
-    JournalLine,
-    FiscalYear,
-    AccountingPeriod,
-    ChartOfAccount,
-    GeneralLedger,
-    SalesOrder,
-    SalesOrderLine,
-    SalesInvoice,
-    SalesInvoiceLine,
-    DeliveryNote,
-    DeliveryNoteLine,
-    BudgetLine,
+# Register audit signal handlers for purchasing models
+AUDITED_PURCHASE_MODELS = (
+    PurchaseOrder,
+    PurchaseOrderLine,
+    GoodsReceipt,
+    GoodsReceiptLine,
+    PurchaseInvoice,
+    PurchaseInvoiceLine,
+    LandedCostDocument,
+    LandedCostLine,
+    LandedCostAllocation,
 )
 
-for audited_model in AUDITED_MODELS:
+for audited_model in AUDITED_PURCHASE_MODELS:
     pre_save.connect(_audit_pre_save, sender=audited_model, weak=False)
     post_save.connect(_audit_post_save, sender=audited_model, weak=False)
     post_delete.connect(_audit_post_delete, sender=audited_model, weak=False)
-
-
-@receiver(post_save, sender=JournalType)
-def create_default_voucher_config(sender, instance, created, **kwargs):
-    """Automatically create a VoucherModeConfig for new journal types"""
-    if not created:
-        return
-
-    VoucherModeConfig.objects.get_or_create(
-        organization=instance.organization,
-        journal_type=instance,
-        is_default=True,
-        defaults={
-            "name": f"Default Config for {instance.name}",
-            "layout_style": "standard",
-            "show_account_balances": True,
-            "show_tax_details": True,
-            "show_dimensions": True,
-            "allow_multiple_currencies": False,
-            "require_line_description": True,
-            # Ensure a 3-letter code string is used here; fallback to USD if not set.
-            "default_currency": getattr(instance.organization, 'base_currency_code_id', None) or 'USD',
-        },
-    )

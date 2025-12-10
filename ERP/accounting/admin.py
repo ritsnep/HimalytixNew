@@ -58,6 +58,7 @@ from .models import (
     BankAccount,
     CashAccount,
     BankTransaction,
+    AuditLog,
     BankStatement,
     BankStatementLine,
     Budget,
@@ -805,6 +806,8 @@ class BudgetAdmin(admin.ModelAdmin):
     search_fields = ('name',)
     inlines = [BudgetLineInline]
     list_select_related = ('fiscal_year', 'organization')
+
+
 @admin.register(PaymentBatch)
 class PaymentBatchAdmin(admin.ModelAdmin):
     list_display = ('batch_number', 'scheduled_date', 'status', 'total_amount')
@@ -812,3 +815,149 @@ class PaymentBatchAdmin(admin.ModelAdmin):
     list_filter = ('organization', 'status')
     inlines = [APPaymentInline]
     list_select_related = ('organization',)
+
+
+# ============================================================================
+# AUDIT LOG & ACTIVITY TRACKING ADMIN
+# ============================================================================
+
+@admin.register(AuditLog)
+class AuditLogAdmin(admin.ModelAdmin):
+    """
+    Read-only Activity Log for admins to view all system changes.
+    Scoped by organization, filterable by date, user, and action type.
+    Enforces RBAC: only staff with audit permission can view.
+    """
+    # Read-only fields to prevent modification
+    readonly_fields = (
+        'timestamp', 'user', 'organization', 'action', 'content_type',
+        'object_id', 'content_object', 'changes', 'details', 'ip_address',
+        'content_hash', 'previous_hash', 'is_immutable'
+    )
+    
+    # Display configuration
+    list_display = ('get_action_badge', 'get_model_name', 'user', 'timestamp', 'organization', 'ip_address')
+    list_filter = (
+        ('timestamp', admin.DateFieldListFilter),
+        'action',
+        'organization',
+        'user',
+        'content_type',
+    )
+    search_fields = (
+        'user__username',
+        'user__first_name',
+        'user__last_name',
+        'ip_address',
+        'details',
+    )
+    
+    fieldsets = (
+        ('Change Details', {
+            'fields': ('timestamp', 'user', 'organization', 'action', 'details')
+        }),
+        ('Audit Target', {
+            'fields': ('content_type', 'object_id', 'content_object')
+        }),
+        ('Change Data', {
+            'fields': ('changes',),
+            'classes': ('collapse',)
+        }),
+        ('Network & Security', {
+            'fields': ('ip_address',),
+            'classes': ('collapse',)
+        }),
+        ('Integrity (Hash-Chaining)', {
+            'fields': ('content_hash', 'previous_hash', 'is_immutable'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    list_select_related = ('user', 'organization', 'content_type')
+    ordering = ('-timestamp',)
+    date_hierarchy = 'timestamp'
+    
+    def has_view_permission(self, request, obj=None):
+        """Check if user is allowed to view audit logs."""
+        if not request.user.is_staff:
+            return False
+        # Superusers and admins can view
+        if request.user.is_superuser:
+            return True
+        if hasattr(request.user, 'role') and request.user.role in ['superadmin', 'admin']:
+            return True
+        return False
+    
+    def has_add_permission(self, request):
+        """Prevent manual creation of audit records."""
+        return False
+    
+    def has_change_permission(self, request, obj=None):
+        """Prevent modification of audit records."""
+        return False
+    
+    def has_delete_permission(self, request, obj=None):
+        """Only superadmin can delete (for archival/compliance)."""
+        return request.user.is_superuser
+    
+    def get_queryset(self, request):
+        """Filter audit logs to current organization for non-superusers."""
+        qs = super().get_queryset(request)
+        if not request.user.is_superuser:
+            # Non-superusers only see their organization's logs
+            active_org = getattr(request, 'active_organization', None)
+            if active_org:
+                qs = qs.filter(organization=active_org)
+        return qs
+    
+    def get_action_badge(self, obj):
+        """Display action as colored badge."""
+        action_colors = {
+            'create': '#28a745',    # green
+            'update': '#ffc107',    # yellow
+            'delete': '#dc3545',    # red
+            'export': '#17a2b8',    # cyan
+            'print': '#6f42c1',     # purple
+            'approve': '#20c997',   # teal
+            'reject': '#fd7e14',    # orange
+            'post': '#007bff',      # blue
+            'sync': '#6c757d',      # gray
+        }
+        color = action_colors.get(obj.action, '#6c757d')
+        return f'<span style="background-color: {color}; color: white; padding: 3px 8px; border-radius: 3px; font-size: 11px;">{obj.get_action_display()}</span>'
+    get_action_badge.short_description = 'Action'
+    get_action_badge.allow_tags = True
+    
+    def get_model_name(self, obj):
+        """Display the model name that was changed."""
+        return obj.content_type.model if obj.content_type else '-'
+    get_model_name.short_description = 'Model'
+    
+    actions = ['export_as_csv']
+    
+    def export_as_csv(self, request, queryset):
+        """Export selected audit logs to CSV."""
+        import csv
+        from django.http import HttpResponse
+        
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="audit_logs.csv"'
+        
+        writer = csv.writer(response)
+        writer.writerow(['Timestamp', 'User', 'Organization', 'Action', 'Model', 'Object ID', 'IP Address', 'Details'])
+        
+        for audit in queryset:
+            writer.writerow([
+                audit.timestamp.isoformat(),
+                str(audit.user),
+                str(audit.organization) if audit.organization else '',
+                audit.get_action_display(),
+                audit.content_type.model if audit.content_type else '',
+                audit.object_id,
+                audit.ip_address or '',
+                audit.details or '',
+            ])
+        
+        return response
+    export_as_csv.short_description = 'Export selected audit logs to CSV'
+

@@ -1,0 +1,346 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block title %}Audit Summary Dashboard - Himalytix ERP{% endblock %}
+
+{% block page_title %}Audit Summary Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-xxl">
+    <!-- Page Header -->
+    <div class="page-header d-print-none mb-4">
+        <div class="row align-items-center">
+            <div class="col">
+                <h2 class="page-title">
+                    <i class="bi bi-graph-up"></i> Audit Summary
+                </h2>
+                <p class="text-muted">System-wide audit activity and compliance dashboard</p>
+            </div>
+            <div class="col-auto">
+                <div class="btn-list">
+                    <form method="GET" class="d-flex gap-2 align-items-center">
+                        <label class="form-label mb-0">Date Range:</label>
+                        <select name="days" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
+                            <option value="7" {% if date_range == 7 %}selected{% endif %}>Last 7 Days</option>
+                            <option value="30" {% if date_range == 30 %}selected{% endif %}>Last 30 Days</option>
+                            <option value="60" {% if date_range == 60 %}selected{% endif %}>Last 60 Days</option>
+                            <option value="90" {% if date_range == 90 %}selected{% endif %}>Last 90 Days</option>
+                        </select>
+                    </form>
+                    <a href="{% url 'accounting:audit_log_list' %}" class="btn btn-primary">
+                        <i class="bi bi-list"></i> View All Logs
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Key Statistics -->
+    <div class="row row-deck mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-baseline">
+                        <div class="flex-grow-1">
+                            <div class="h3 mb-0">{{ total_logs }}</div>
+                            <div class="text-muted">Total Audit Logs</div>
+                        </div>
+                        <div class="h2 text-primary opacity-10">
+                            <i class="bi bi-shield-check"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-baseline">
+                        <div class="flex-grow-1">
+                            <div class="h3 mb-0">{{ total_users }}</div>
+                            <div class="text-muted">Active Users</div>
+                        </div>
+                        <div class="h2 text-success opacity-10">
+                            <i class="bi bi-people"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-baseline">
+                        <div class="flex-grow-1">
+                            <div class="h3 mb-0">{{ total_entities }}</div>
+                            <div class="text-muted">Models Modified</div>
+                        </div>
+                        <div class="h2 text-warning opacity-10">
+                            <i class="bi bi-box"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-baseline">
+                        <div class="flex-grow-1">
+                            <div class="h3 mb-0">{{ date_range }}</div>
+                            <div class="text-muted">Day Period</div>
+                        </div>
+                        <div class="h2 text-info opacity-10">
+                            <i class="bi bi-calendar"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row row-deck mb-4">
+        <!-- Daily Activity Chart -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="bi bi-graph-up"></i> Daily Activity Trend
+                    </h3>
+                </div>
+                <div class="card-body" id="chart-daily"></div>
+            </div>
+        </div>
+
+        <!-- Action Breakdown -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="bi bi-pie-chart"></i> Action Breakdown
+                    </h3>
+                </div>
+                <div class="card-body">
+                    {% for action_stat in action_breakdown %}
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="text-muted">{{ action_stat.action|title }}</span>
+                            <span class="badge bg-primary">{{ action_stat.count }}</span>
+                        </div>
+                        <div class="progress progress-sm">
+                            <div class="progress-bar bg-{% if action_stat.action == 'create' %}success{% elif action_stat.action == 'delete' %}danger{% elif action_stat.action == 'update' %}primary{% else %}info{% endif %}" 
+                                 style="width: {% widthratio action_stat.count total_logs 100 %}%"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row row-deck">
+        <!-- Top Users -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="bi bi-trophy"></i> Most Active Users
+                    </h3>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-vcenter">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th style="width: 30%;">Actions</th>
+                                <th class="text-end">Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user_stat in active_users %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'accounting:audit_log_list' %}?user_id={{ user_stat.user_id }}" class="text-decoration-none">
+                                        <strong>{{ user_stat.user__first_name|default:user_stat.user__username }}</strong>
+                                    </a>
+                                </td>
+                                <td>
+                                    <div class="progress progress-sm">
+                                        <div class="progress-bar" style="width: {% widthratio user_stat.count total_logs 100 %}%"></div>
+                                    </div>
+                                </td>
+                                <td class="text-end">
+                                    <strong>{{ user_stat.count }}</strong>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center text-muted py-3">No user activity</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Most Modified Models -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="bi bi-box"></i> Most Modified Models
+                    </h3>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-vcenter">
+                        <thead>
+                            <tr>
+                                <th>Model</th>
+                                <th style="width: 30%;">Changes</th>
+                                <th class="text-end">Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entity in modified_entities %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'accounting:audit_log_list' %}?model={{ entity.model }}" class="text-decoration-none">
+                                        <strong>{{ entity.model|title }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ entity.app }}</small>
+                                    </a>
+                                </td>
+                                <td>
+                                    <div class="progress progress-sm">
+                                        <div class="progress-bar bg-success" style="width: {% widthratio entity.count total_logs 100 %}%"></div>
+                                    </div>
+                                </td>
+                                <td class="text-end">
+                                    <strong>{{ entity.count }}</strong>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center text-muted py-3">No model changes</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js for activity chart -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dailyActivityData = {{ daily_activity_json|safe }};
+    
+    const ctx = document.getElementById('chart-daily');
+    if (ctx) {
+        const labels = dailyActivityData.map(d => d.date);
+        const data = dailyActivityData.map(d => d.count);
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Audit Events',
+                    data: data,
+                    borderColor: '#0d6efd',
+                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 3,
+                    pointBackgroundColor: '#0d6efd',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: '#e0e0e0'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+
+<style>
+.card {
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #e0e0e0;
+    background-color: #f8f9fa;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+.h3 {
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.progress {
+    height: 6px;
+    background-color: #e0e0e0;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    background-color: #0d6efd;
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 4px;
+    background-color: #0d6efd;
+    color: white;
+}
+
+.text-muted {
+    color: #6c757d;
+}
+
+.opacity-10 {
+    opacity: 0.1;
+}
+</style>
+{% endblock %}

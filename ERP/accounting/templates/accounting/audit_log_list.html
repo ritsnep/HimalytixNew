@@ -1,0 +1,183 @@
+{% extends 'accounting/_list_base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}Audit Log - Himalytix ERP{% endblock %}
+
+{% block create_button %}
+<div class="d-flex align-items-center gap-2 flex-wrap">
+    <a href="{% url 'accounting:audit_log_summary' %}" class="btn btn-primary btn-sm">
+        <i class="mdi mdi-chart-line me-1"></i> Summary Dashboard
+    </a>
+    <a href="?export=csv" class="btn btn-outline-secondary btn-sm" title="Export as CSV">
+        <i class="mdi mdi-download me-1"></i> CSV
+    </a>
+    <a href="?export=json" class="btn btn-outline-secondary btn-sm" title="Export as JSON">
+        <i class="mdi mdi-download me-1"></i> JSON
+    </a>
+</div>
+{% endblock %}
+
+{% block custom_filters %}
+<form method="GET" class="row g-3 align-items-end mb-0">
+    <!-- Date From -->
+    <div class="col-md-2">
+        <label class="form-label">From Date</label>
+        <input type="date" name="date_from" class="form-control form-control-sm" value="{{ date_from }}">
+    </div>
+
+    <!-- Date To -->
+    <div class="col-md-2">
+        <label class="form-label">To Date</label>
+        <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to }}">
+    </div>
+
+    <!-- User Filter -->
+    <div class="col-md-2">
+        <label class="form-label">User</label>
+        <select name="user_id" class="form-select form-select-sm">
+            <option value="">All Users</option>
+            {% for user in users %}
+            <option value="{{ user.id }}" {% if user.id|stringformat:"s" == current_user %}selected{% endif %}>
+                {{ user.get_full_name|default:user.username }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Action Filter -->
+    <div class="col-md-2">
+        <label class="form-label">Action</label>
+        <select name="action" class="form-select form-select-sm">
+            <option value="">All Actions</option>
+            {% for value, label in actions %}
+            <option value="{{ value }}" {% if value == current_action %}selected{% endif %}>
+                {{ label }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Search -->
+    <div class="col-md-3">
+        <label class="form-label">Search</label>
+        <input type="text" name="q" class="form-control form-control-sm" placeholder="Search..." value="{{ current_search }}">
+    </div>
+
+    <!-- Buttons -->
+    <div class="col-md-1 d-flex gap-1">
+        <button type="submit" class="btn btn-primary btn-sm" title="Apply filters">
+            <i class="mdi mdi-magnify"></i>
+        </button>
+        <a href="?clear=1" class="btn btn-outline-secondary btn-sm" title="Reset filters">
+            <i class="mdi mdi-refresh"></i>
+        </a>
+    </div>
+</form>
+{% endblock %}
+
+{% block table_head %}
+<thead>
+    <tr>
+        <th style="width: 20%;">Timestamp</th>
+        <th style="width: 15%;">User</th>
+        <th style="width: 12%;">Action</th>
+        <th style="width: 20%;">Model / Entity</th>
+        <th style="width: 15%;">Details</th>
+        <th style="width: 8%;" class="text-center">Status</th>
+        <th style="width: 10%;" class="text-center">Actions</th>
+    </tr>
+</thead>
+{% endblock %}
+
+{% block table_body %}
+<tbody>
+{% for log in audit_logs %}
+<tr>
+    <!-- Timestamp -->
+    <td>
+        <div class="d-flex flex-column">
+            <span class="fw-medium">{{ log.timestamp|date:"M d, Y" }}</span>
+            <small class="text-muted">{{ log.timestamp|date:"H:i:s" }}</small>
+        </div>
+    </td>
+
+    <!-- User -->
+    <td>
+        {% if log.user %}
+        <div class="d-flex align-items-center">
+            <div class="avatar avatar-sm bg-light">
+                <span>{{ log.user.first_name|first|default:log.user.username|first|upper }}</span>
+            </div>
+            <div class="ms-2">
+                <div class="fw-medium">{{ log.user.get_full_name|default:log.user.username }}</div>
+                {% if log.ip_address %}
+                <small class="text-muted">{{ log.ip_address }}</small>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <span class="text-muted">System</span>
+        {% endif %}
+    </td>
+
+    <!-- Action -->
+    <td>
+        <span class="badge bg-{% if log.action == 'create' %}success{% elif log.action == 'delete' %}danger{% elif log.action == 'update' %}primary{% else %}info{% endif %}">
+            {{ log.get_action_display }}
+        </span>
+    </td>
+
+    <!-- Model / Entity -->
+    <td>
+        {% if log.content_type %}
+        <div class="d-flex flex-column">
+            <span class="fw-medium">{{ log.content_type.model|title }}</span>
+            <small class="text-muted">#{{ log.object_id }}</small>
+        </div>
+        {% else %}
+        <span class="text-muted">N/A</span>
+        {% endif %}
+    </td>
+
+    <!-- Details -->
+    <td>
+        {% if log.details %}
+        <span class="text-truncate" title="{{ log.details }}">{{ log.details|truncatewords:5 }}</span>
+        {% else %}
+        <span class="text-muted">-</span>
+        {% endif %}
+    </td>
+
+    <!-- Status -->
+    <td class="text-center">
+        {% if log.is_immutable %}
+        <span class="badge bg-success" title="This record is sealed and cannot be modified">
+            <i class="mdi mdi-lock-outline"></i> Sealed
+        </span>
+        {% else %}
+        <span class="badge bg-warning">
+            <i class="mdi mdi-lock-open-outline"></i> Active
+        </span>
+        {% endif %}
+    </td>
+
+    <!-- Actions -->
+    <td class="text-center">
+        <a href="{% url 'accounting:audit_log_detail' log.pk %}" class="btn btn-sm btn-icon btn-ghost-primary" title="View Details">
+            <i class="mdi mdi-eye"></i>
+        </a>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="7" class="text-center py-4">
+        <div class="text-muted">
+            <i class="mdi mdi-inbox" style="font-size: 2rem;"></i>
+            <p class="mt-2">No audit logs found</p>
+        </div>
+    </td>
+</tr>
+{% endfor %}
+</tbody>
+{% endblock %}

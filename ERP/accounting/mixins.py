@@ -4,6 +4,9 @@ from django.http import HttpResponseRedirect
 from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
+from django.contrib.admin.views.decorators import staff_member_required
+from django.core.exceptions import PermissionDenied
+from django.utils import timezone
 import logging
 
 from usermanagement.utils import PermissionUtils
@@ -228,3 +231,194 @@ class AdvancedFormMixin:
             context['list_url'] = self.success_url
         
         return context
+
+
+class AuditLogAccessMixin:
+    """
+    Mixin to enforce access control on audit log views.
+    
+    Requirements:
+    - User must be staff (is_staff=True)
+    - User must have 'can_view_audit_log' permission OR be superuser/admin
+    - Non-superusers only see logs for their organization
+    """
+    
+    def dispatch(self, request, *args, **kwargs):
+        """Check permissions before dispatching request."""
+        if not request.user.is_authenticated:
+            raise PermissionDenied("You must be logged in to view audit logs")
+        
+        if not request.user.is_staff:
+            raise PermissionDenied("You must be a staff member to view audit logs")
+        
+        # Check for audit view permission
+        if not self._has_audit_permission(request.user):
+            raise PermissionDenied("You do not have permission to view audit logs")
+        
+        return super().dispatch(request, *args, **kwargs)
+    
+    def _has_audit_permission(self, user):
+        """
+        Check if user has audit log viewing permission.
+        Returns True for superusers/admins or users with explicit permission.
+        """
+        if user.is_superuser:
+            return True
+        
+        # Check if user is admin
+        if hasattr(user, 'role') and user.role in ['superadmin', 'admin']:
+            return True
+        
+        # Check for explicit 'can_view_audit_log' permission
+        from usermanagement.models import UserPermission
+        try:
+            # Try to find permission for active organization
+            active_org = getattr(self.request, 'active_organization', None)
+            return UserPermission.objects.filter(
+                user=user,
+                organization=active_org,
+                permission__action='view',  # Or custom 'audit' action
+            ).exists()
+        except Exception:
+            return False
+    
+    def get_queryset(self):
+        """Override queryset to scope by organization for non-superusers."""
+        qs = super().get_queryset()
+        
+        if self.request.user.is_superuser:
+            return qs
+        
+        # Non-superusers only see their organization's logs
+        active_org = getattr(self.request, 'active_organization', None)
+        if active_org:
+            qs = qs.filter(organization=active_org)
+        
+        return qs
+
+
+class AuditLogExportMixin:
+    """
+    Mixin to control export of audit logs.
+    Restricts to superusers/admins and logs the export action.
+    """
+    
+    def export_action_allowed(self, user):
+        """
+        Check if user is allowed to export audit logs.
+        More restrictive than viewing.
+        """
+        if user.is_superuser:
+            return True
+        
+        if hasattr(user, 'role') and user.role in ['superadmin', 'admin']:
+            return True
+        
+        return False
+    
+    def log_export_action(self, user, count, export_format):
+        """
+        Log the audit log export action itself for compliance.
+        """
+        from accounting.models import AuditLog
+        from accounting.utils.request import get_client_ip
+        from django.contrib.contenttypes.models import ContentType
+        
+        active_org = getattr(self.request, 'active_organization', None)
+        
+        AuditLog.objects.create(
+            user=user,
+            organization=active_org,
+            action='export',
+            content_type=ContentType.objects.get_for_model(AuditLog),
+            object_id=0,  # Virtual object
+            changes={
+                'export_format': export_format,
+                'export_count': count,
+                'export_time': str(timezone.now())
+            },
+            details=f"Exported {count} audit logs in {export_format} format",
+            ip_address=get_client_ip(self.request) if self.request else None
+        )
+
+
+def require_audit_permission(view_func):
+    """
+    Decorator for function-based views to enforce audit log access control.
+    
+    Usage:
+        @require_audit_permission
+        def my_audit_view(request):
+            ...
+    """
+    @method_decorator(staff_member_required)
+    def wrapper(request, *args, **kwargs):
+        user = request.user
+        
+        if not _has_audit_permission(user):
+            raise PermissionDenied("You do not have permission to view audit logs")
+        
+        return view_func(request, *args, **kwargs)
+    
+    return wrapper
+
+
+def _has_audit_permission(user):
+    """Helper function to check audit permission."""
+    if user.is_superuser:
+        return True
+    
+    if hasattr(user, 'role') and user.role in ['superadmin', 'admin']:
+        return True
+    
+    # Could add more sophisticated RBAC here
+    return False
+
+
+class AuditLogPermissionChecker:
+    """
+    Utility class for checking audit log permissions.
+    Can be used in templates, views, or API endpoints.
+    """
+    
+    @staticmethod
+    def can_view(user, organization=None):
+        """Check if user can view audit logs."""
+        if not user.is_authenticated or not user.is_staff:
+            return False
+        
+        if user.is_superuser:
+            return True
+        
+        if hasattr(user, 'role') and user.role in ['superadmin', 'admin']:
+            return True
+        
+        return False
+    
+    @staticmethod
+    def can_export(user):
+        """Check if user can export audit logs."""
+        if not user.is_authenticated or not user.is_staff:
+            return False
+        
+        # Only superusers and admins
+        return user.is_superuser or (hasattr(user, 'role') and user.role in ['superadmin', 'admin'])
+    
+    @staticmethod
+    def can_delete(user):
+        """Check if user can delete audit logs."""
+        # Very restrictive - only superusers for compliance/archival
+        return user.is_superuser
+    
+    @staticmethod
+    def get_accessible_organizations(user):
+        """Get list of organizations user can view audit logs for."""
+        if user.is_superuser:
+            from usermanagement.models import Organization
+            return Organization.objects.all()
+        
+        # Return user's organization(s)
+        if hasattr(user, 'organization'):
+            return [user.organization]
+        
+        return []
