@@ -1,0 +1,36 @@
+{% extends 'partials/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Product Details" %}{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title">{% trans "Product Details" %}</h4>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row">
+                                <dt class="col-sm-3">{% trans "Code" %}</dt>
+                                <dd class="col-sm-9">{{ product.code }}</dd>
+                                <dt class="col-sm-3">{% trans "Name" %}</dt>
+                                <dd class="col-sm-9">{{ product.name }}</dd>
+                                <dt class="col-sm-3">{% trans "Category" %}</dt>
+                                <dd class="col-sm-9">{{ product.category.name|default:"Uncategorized" }}</dd>
+                                <dt class="col-sm-3">{% trans "UOM" %}</dt>
+                                <dd class="col-sm-9">{{ product.uom }}</dd>
+                            </dl>
+                            <a href="{% url 'inventory:product_list' %}" class="btn btn-secondary">{% trans "Back to List" %}</a>
+                            <a href="{% url 'inventory:product_update' product.pk %}" class="btn btn-primary">{% trans "Edit" %}</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

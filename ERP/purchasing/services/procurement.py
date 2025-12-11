@@ -12,6 +12,7 @@ from accounting.models import (
     JournalLine,
     JournalType,
 )
+from accounting.services.posting_service import PostingService
 from accounting.services.post_journal import post_journal
 
 from purchasing.models import (
@@ -211,6 +212,77 @@ def post_purchase_invoice(pi: PurchaseInvoice) -> PurchaseInvoice:
     pi.journal = journal
     PurchaseInvoice.objects.filter(pk=pi.pk).update(status=pi.status, journal=journal)
 
+    return pi
+
+
+@transaction.atomic
+def reverse_purchase_invoice(pi: PurchaseInvoice, *, user=None) -> PurchaseInvoice:
+    """Reverse a posted purchase invoice by creating reversing GL and stock movements.
+
+    - Creates a reversing journal via PostingService
+    - Pushes negative stock movements for inventory lines and updates InventoryItem
+    - Marks the invoice back to draft and detaches the posted journal
+    """
+    if pi.status != PurchaseInvoice.Status.POSTED:
+        raise ProcurementPostingError("Only posted purchase invoices can be reversed.")
+    if not pi.journal:
+        raise ProcurementPostingError("Posted purchase invoice is missing its journal; cannot reverse.")
+
+    # Reverse GL first
+    if not user:
+        raise ProcurementPostingError("User is required to reverse a purchase invoice.")
+    PostingService(user).reverse(pi.journal)
+
+    # Reverse inventory movements
+    for line in pi.lines.select_related("product", "warehouse"):
+        if not line.product.is_inventory_item:
+            continue
+
+        try:
+            item = InventoryItem.objects.select_for_update().get(
+                organization=pi.organization,
+                product=line.product,
+                warehouse=line.warehouse,
+            )
+        except InventoryItem.DoesNotExist as exc:
+            raise ProcurementPostingError(
+                f"Inventory snapshot missing for {line.product} @ {line.warehouse}; cannot reverse."
+            ) from exc
+
+        old_qty = item.quantity_on_hand
+        if old_qty < line.quantity:
+            raise ProcurementPostingError(
+                f"Cannot reverse {line.product}: on hand {old_qty} < reversal qty {line.quantity}."
+            )
+
+        reverse_qty = line.quantity
+        reversal_reference = f"REV-PI-{pi.number}"
+        StockLedger.objects.create(
+            organization=pi.organization,
+            product=line.product,
+            warehouse=line.warehouse,
+            txn_type="purchase_return",
+            reference_id=reversal_reference,
+            txn_date=pi.invoice_date,
+            qty_in=Decimal("0"),
+            qty_out=reverse_qty,
+            unit_cost=line.unit_price,
+        )
+
+        new_total_value = (old_qty * item.unit_cost) - (reverse_qty * line.unit_price)
+        new_qty = old_qty - reverse_qty
+        item.quantity_on_hand = new_qty
+        item.unit_cost = (
+            (new_total_value / new_qty).quantize(Decimal("0.0001")) if new_qty > 0 else Decimal("0")
+        )
+        item.save(update_fields=["quantity_on_hand", "unit_cost", "updated_at"])
+
+    # Move invoice back to draft and detach journal
+    PurchaseInvoice.objects.filter(pk=pi.pk).update(
+        status=PurchaseInvoice.Status.DRAFT,
+        journal=None,
+    )
+    pi.refresh_from_db()
     return pi
 
 

@@ -25,6 +25,10 @@
     {{ form.inventory_account }} {{ form.inventory_account.errors }}
   </div>
   <div class="col-md-4">
+    <label class="form-label">Category</label>
+    {{ form.category }} {{ form.category.errors }}
+  </div>
+  <div class="col-md-4">
     <div class="form-check mt-4">
       {{ form.is_active }} {{ form.is_active.errors }}
       <label class="form-check-label ms-1">Active?</label>

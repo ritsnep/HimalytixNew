@@ -1,4 +1,5 @@
 from utils.calendars import CalendarMode, DateSeedStrategy, get_calendar_mode
+from tenancy.models import TenantConfig
 
 
 def active_organization(request):
@@ -21,6 +22,41 @@ def active_organization(request):
         'calendar_date_seed': DateSeedStrategy.normalize(
             getattr(getattr(org, "config", None), "calendar_date_seed", None)
         ),
+    }
+
+
+def theme_branding(request):
+    """Add theme branding colors from tenant/organization configuration to template context.
+    
+    Returns:
+        dict: Contains 'brand_color' (org-level or default #1c84ee)
+    """
+    brand_color = '#1c84ee'  # Default brand color
+    
+    # Try to get organization-specific brand color
+    user = getattr(request, 'user', None)
+    if user and getattr(user, 'is_authenticated', False):
+        try:
+            org = getattr(user, 'get_active_organization', lambda: None)()
+            if org:
+                # Try to get brand color from tenant config
+                try:
+                    from tenancy.models import Tenant
+                    tenant = Tenant.objects.filter(code=org.code).first()
+                    if tenant:
+                        brand_config = TenantConfig.objects.filter(
+                            tenant=tenant,
+                            config_key='brand_color'
+                        ).first()
+                        if brand_config and brand_config.config_value:
+                            brand_color = brand_config.config_value
+                except Exception:
+                    pass
+        except Exception:
+            pass
+    
+    return {
+        'brand_color': brand_color,
     }
 from usermanagement.models import Entity, Module
 from usermanagement.utils import PermissionUtils

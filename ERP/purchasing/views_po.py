@@ -9,6 +9,7 @@ from django.contrib.auth.decorators import permission_required, login_required
 from django.db.models import Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views import View
@@ -113,6 +114,23 @@ class POListView(ListView):
         return context
 
 
+class POListPageView(POListView):
+    """Full-page list using Dason list base."""
+
+    template_name = "purchasing/po_list_page.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(
+            {
+                "page_title": "Purchase Orders",
+                "create_url": reverse("purchasing:po_create"),
+                "create_button_text": "New Purchase Order",
+            }
+        )
+        return context
+
+
 @method_decorator(login_required, name="dispatch")
 @method_decorator(permission_required("purchasing.view_purchaseorder"), name="dispatch")
 class PODetailView(DetailView):
@@ -181,7 +199,13 @@ class POCreateView(CreateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["title"] = "Create Purchase Order"
+        context.update(
+            {
+                "page_title": "Create Purchase Order",
+                "form_title": "Purchase Order",
+                "breadcrumbs": [("Purchasing", reverse("purchasing:po_table")), ("New PO", None)],
+            }
+        )
         return context
 
 
@@ -202,6 +226,17 @@ class POUpdateView(UpdateView):
         kwargs = super().get_form_kwargs()
         kwargs["organization"] = _get_active_org(self.request)
         return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(
+            {
+                "page_title": "Edit Purchase Order",
+                "form_title": "Purchase Order",
+                "breadcrumbs": [("Purchasing", reverse("purchasing:po_table")), ("Edit PO", None)],
+            }
+        )
+        return context
     
     def form_valid(self, form):
         po = self.object

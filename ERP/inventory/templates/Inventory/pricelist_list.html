@@ -1,4 +1,4 @@
-{% extends "components/base/list_base.html" %}
+{% extends "inventory/_list_base.html" %}
 {% load static %}
 
 {% block title %}Price Lists{% endblock %}
@@ -13,12 +13,26 @@
       </a>
     {% endif %}
   </div>
-{% endblock %}
+  {% endblock %}
+
+  {% block custom_filters %}
+  <form method="get" class="d-flex gap-2 align-items-center mb-3">
+      <label class="mb-0">Category:</label>
+      <select name="category" class="form-select w-auto">
+          <option value="">All</option>
+          {% for cat in categories %}
+              <option value="{{ cat.id }}" {% if selected_category|stringformat:"s" == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+          {% endfor %}
+      </select>
+      <button class="btn btn-outline-secondary btn-sm">Filter</button>
+  </form>
+  {% endblock %}
 
 {% block table_head %}
   <tr>
     <th>Code</th>
     <th>Name</th>
+    <th>Category</th>
     <th>Currency</th>
     <th>Effective Date</th>
     <th>Status</th>
@@ -31,6 +45,7 @@
     <tr>
       <td class="fw-semibold">{{ pricelist.code }}</td>
       <td>{{ pricelist.name }}</td>
+      <td>{{ pricelist.category.name if pricelist.category }}</td>
       <td>{{ pricelist.currency }}</td>
       <td>{{ pricelist.effective_date|date:"SHORT_DATE_FORMAT" }}</td>
       <td>

@@ -1,0 +1,15 @@
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+  {{ alert_message|default:"Purchase invoice deleted." }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+<div class="text-center text-muted py-5">
+  <h5 class="mb-2">Select or create a purchase invoice</h5>
+  <p class="mb-3">Use the list on the left to pick another invoice, or start a new one.</p>
+  <a
+    class="btn btn-outline-primary"
+    hx-get="{% url 'purchasing:invoice-create' %}"
+    hx-target="#purchasing-detail-panel"
+    hx-swap="innerHTML">
+    New Purchase Invoice
+  </a>
+</div>

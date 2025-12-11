@@ -1,0 +1,41 @@
+{% extends 'components/base/form_base.html' %}
+{% load i18n %}
+
+{% block title %}
+    {% if form.instance.pk %}
+        {% trans "Edit RMA" %}
+    {% else %}
+        {% trans "Create RMA" %}
+    {% endif %}
+{% endblock %}
+
+{% block form_title_text %}
+    {% if form.instance.pk %}
+        {% trans "Edit RMA" %}: {{ form.instance.rma_number }}
+    {% else %}
+        {% trans "Create New RMA" %}
+    {% endif %}
+{% endblock %}
+
+{% block form_fields %}
+    <div class="row">
+        <div class="col-md-6">
+            {{ form.rma_number|as_crispy_field }}
+        </div>
+        <div class="col-md-6">
+            {{ form.status|as_crispy_field }}
+        </div>
+    </div>
+    <!-- Add more fields as needed -->
+{% endblock %}
+
+{% block form_actions %}
+  <div class="d-flex gap-2 ms-auto">
+    <a href="{% url 'inventory:rma_list' %}" class="btn btn-outline-secondary">
+        {% trans "Cancel" %}
+    </a>
+    <button type="submit" class="btn btn-primary" data-form-submit>
+        {% trans "Save" %}
+    </button>
+  </div>
+{% endblock %}

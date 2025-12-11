@@ -12,6 +12,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views import View
@@ -147,6 +148,23 @@ class GRListView(ListView):
         return context
 
 
+class GRListPageView(GRListView):
+    """Full-page list using Dason list base."""
+
+    template_name = "purchasing/gr_list_page.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(
+            {
+                "page_title": "Goods Receipts",
+                "create_url": reverse("purchasing:gr_create"),
+                "create_button_text": "New Goods Receipt",
+            }
+        )
+        return context
+
+
 @method_decorator(login_required, name="dispatch")
 @method_decorator(permission_required("purchasing.view_goodsreceipt"), name="dispatch")
 class GRDetailView(DetailView):
@@ -215,7 +233,13 @@ class GRCreateView(CreateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["title"] = "Create Goods Receipt"
+        context.update(
+            {
+                "page_title": "Create Goods Receipt",
+                "form_title": "Goods Receipt",
+                "breadcrumbs": [("Purchasing", reverse("purchasing:gr_table")), ("New GR", None)],
+            }
+        )
         
         # Get available POs
         organization = _get_active_org(self.request)
@@ -291,8 +315,19 @@ class GRUpdateView(UpdateView):
         gr.reference_number = form.cleaned_data.get("reference_number", "")
         gr.notes = form.cleaned_data.get("notes", "")
         gr.save()
-        
+
         return redirect("gr_detail", pk=gr.id)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(
+            {
+                "page_title": "Edit Goods Receipt",
+                "form_title": "Goods Receipt",
+                "breadcrumbs": [("Purchasing", reverse("purchasing:gr_table")), ("Edit GR", None)],
+            }
+        )
+        return context
 
 
 @method_decorator(login_required, name="dispatch")

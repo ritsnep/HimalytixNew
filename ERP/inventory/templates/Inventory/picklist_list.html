@@ -1,4 +1,4 @@
-{% extends "components/base/list_base.html" %}
+{% extends "inventory/_list_base.html" %}
 {% load static %}
 
 {% block title %}Pick Lists{% endblock %}
@@ -14,10 +14,23 @@
     {% endif %}
   </div>
 {% endblock %}
+  {% block custom_filters %}
+  <form method="get" class="d-flex gap-2 align-items-center mb-3">
+      <label class="mb-0">Category:</label>
+      <select name="category" class="form-select w-auto">
+          <option value="">All</option>
+          {% for cat in categories %}
+              <option value="{{ cat.id }}" {% if selected_category|stringformat:"s" == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+          {% endfor %}
+      </select>
+      <button class="btn btn-outline-secondary btn-sm">Filter</button>
+  </form>
+  {% endblock %}
 
 {% block table_head %}
   <tr>
     <th>Number</th>
+    <th>Category</th>
     <th>Shipment</th>
     <th>Warehouse</th>
     <th>Items</th>
@@ -31,6 +44,7 @@
   {% for picklist in object_list %}
     <tr>
       <td class="fw-semibold">{{ picklist.number }}</td>
+      <td>{{ picklist.category.name if picklist.category }}</td>
       <td>{{ picklist.shipment.shipment_number }}</td>
       <td>{{ picklist.warehouse.code }}</td>
       <td>

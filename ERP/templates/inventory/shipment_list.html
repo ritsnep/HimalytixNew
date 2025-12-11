@@ -1,0 +1,20 @@
+{% extends 'Inventory/_list_base.html' %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Shipments" %}{% endblock %}
+
+{% block list_title %}{% trans "Shipment List" %}{% endblock %}
+
+{% block create_url %}{% url 'inventory:shipment_create' %}{% endblock %}
+
+{% block table_headers %}
+    <th>{% trans "Shipment Number" %}</th>
+    <th>{% trans "Status" %}</th>
+    <th>{% trans "Created" %}</th>
+{% endblock %}
+
+{% block table_columns %}
+    { data: 'shipment_number' },
+    { data: 'status' },
+    { data: 'created_at', render: function(data) { return new Date(data).toLocaleDateString(); } }
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends 'Inventory/_list_base.html' %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Bill of Materials" %}{% endblock %}
+
+{% block list_title %}{% trans "Bill of Materials List" %}{% endblock %}
+
+{% block create_url %}{% url 'inventory:billofmaterial_create' %}{% endblock %}
+
+{% block table_headers %}
+    <th>{% trans "Name" %}</th>
+    <th>{% trans "Product" %}</th>
+    <th>{% trans "Revision" %}</th>
+    <th>{% trans "Active" %}</th>
+{% endblock %}
+
+{% block table_columns %}
+    { data: 'name' },
+    { data: 'product_name' },
+    { data: 'revision', defaultContent: '-' },
+    { 
+        data: 'is_active',
+        render: function(data) {
+            return data ? '<span class="badge bg-success">{% trans "Active" %}</span>' : '<span class="badge bg-secondary">{% trans "Inactive" %}</span>';
+        }
+    }
+{% endblock %}

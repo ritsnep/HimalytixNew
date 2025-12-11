@@ -82,6 +82,34 @@ function setFontFamily(font) {
   try { localStorage.setItem('ui-font-family', font); } catch (e) {}
 }
 
+function setBrandColor(color) {
+  if (!color || !/^#[0-9A-F]{6}$/i.test(color)) return;
+  document.documentElement.style.setProperty('--ui-brand-color', color);
+  setCookie('brand_color', color);
+  try { localStorage.setItem('brand_color', color); } catch (e) {}
+}
+
+function applyPersistedBrandColor() {
+  const storedColor = getCookie('brand_color') || localStorage.getItem('brand_color');
+  if (storedColor && /^#[0-9A-F]{6}$/i.test(storedColor)) {
+    setBrandColor(storedColor);
+  }
+}
+
+function resetBrandColor() {
+  const defaultColor = '#1c84ee';
+  setBrandColor(defaultColor);
+  const picker = document.getElementById('brand-color-picker');
+  const input = document.getElementById('brand-color-input');
+  if (picker) picker.value = defaultColor;
+  if (input) input.value = defaultColor;
+  // Also clear from storage
+  try {
+    localStorage.removeItem('brand_color');
+    document.cookie = 'brand_color=;path=/;max-age=0';
+  } catch (e) {}
+}
+
 function applyPersistedLayout() {
   const theme = getPersisted('theme', root.getAttribute('data-layout-mode') || 'light');
   const topbar = getPersisted('ui-topbar-color', root.getAttribute('data-topbar') || 'light');
@@ -163,6 +191,7 @@ function hydratePreferences() {
 
   applyFontFamily();
   applyPersistedLayout();
+  applyPersistedBrandColor();
 }
 
 function bindRightBarControls() {
@@ -179,7 +208,18 @@ function bindRightBarControls() {
   document.querySelectorAll('[data-setting]').forEach((input) => {
     if (['layout-mode','text-scale','font-family'].includes(input.dataset.setting)) return;
     const key = input.dataset.setting;
-    const current = localStorage.getItem(`ui-${key}`) || (key === 'layout-direction' ? document.documentElement.getAttribute('dir') || 'ltr' : root.getAttribute(`data-${key.replace(/-/g,'-')}`));
+    // Map setting keys to their data attributes
+    const attrMap = {
+      'topbar-color': 'data-topbar',
+      'sidebar-color': 'data-sidebar',
+      'sidebar-size': 'data-sidebar-size',
+      'layout': 'data-layout',
+      'layout-width': 'data-layout-size',
+      'layout-position': 'data-layout-scrollable',
+      'layout-direction': 'dir'
+    };
+    const attrName = attrMap[key] || `data-${key}`;
+    const current = localStorage.getItem(`ui-${key}`) || (key === 'layout-direction' ? document.documentElement.getAttribute('dir') || 'ltr' : root.getAttribute(attrName));
     input.checked = input.value === current;
     input.addEventListener('change', () => setLayoutAttr(key, input.value));
   });
@@ -200,6 +240,45 @@ document.addEventListener('DOMContentLoaded', () => {
   setTimeout(applyPersistedLayout, 50);
   setTimeout(applyPersistedLayout, 150);
   setTimeout(applyPersistedLayout, 400);
+
+  // Initialize brand color picker
+  const colorPicker = document.getElementById('brand-color-picker');
+  const colorInput = document.getElementById('brand-color-input');
+  const resetBtn = document.getElementById('reset-brand-color');
+
+  if (colorPicker && colorInput) {
+    // Sync color picker with text input
+    colorPicker.addEventListener('change', (e) => {
+      const color = e.target.value;
+      colorInput.value = color;
+      setBrandColor(color);
+    });
+
+    // Sync text input with color picker (validate hex color)
+    colorInput.addEventListener('change', (e) => {
+      let color = e.target.value.trim();
+      if (!/^#[0-9A-F]{6}$/i.test(color)) {
+        // Invalid format, revert to current
+        const stored = getCookie('brand_color') || localStorage.getItem('brand_color') || '#1c84ee';
+        color = stored;
+        colorInput.value = color;
+      }
+      colorPicker.value = color;
+      setBrandColor(color);
+    });
+
+    colorInput.addEventListener('input', (e) => {
+      let color = e.target.value.trim();
+      if (/^#[0-9A-F]{6}$/i.test(color)) {
+        colorPicker.value = color;
+      }
+    });
+  }
+
+  // Reset brand color button
+  if (resetBtn) {
+    resetBtn.addEventListener('click', resetBrandColor);
+  }
 });
 
 if (window.htmx) {

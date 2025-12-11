@@ -1,0 +1,287 @@
+{% extends "components/base/list_base.html" %}
+{% load static %}
+
+{% block title %}Inventory Reports{% endblock %}
+{% block list_page_title %}Reporting & Analytics{% endblock %}
+{% block list_title %}Inventory Reports Dashboard{% endblock %}
+{% block list_subtitle %}Monitor stock levels, movements, and inventory metrics{% endblock %}
+
+{% block list_content %}
+<div class="row mb-4">
+  <!-- Stock Summary Cards -->
+  <div class="col-md-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div class="flex-grow-1">
+            <h6 class="text-muted mb-1">Total Warehouses</h6>
+            <h3 class="mb-0">{{ warehouse_count }}</h3>
+          </div>
+          <div class="avatar-md">
+            <i class="mdi mdi-warehouse text-warning" style="font-size: 2rem;"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div class="flex-grow-1">
+            <h6 class="text-muted mb-1">Total Products</h6>
+            <h3 class="mb-0">{{ product_count }}</h3>
+          </div>
+          <div class="avatar-md">
+            <i class="mdi mdi-package text-info" style="font-size: 2rem;"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div class="flex-grow-1">
+            <h6 class="text-muted mb-1">Total Categories</h6>
+            <h3 class="mb-0">{{ category_count }}</h3>
+          </div>
+          <div class="avatar-md">
+            <i class="mdi mdi-folder-multiple text-success" style="font-size: 2rem;"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div class="flex-grow-1">
+            <h6 class="text-muted mb-1">Low Stock Items</h6>
+            <h3 class="mb-0 {% if low_stock_count > 0 %}text-danger{% else %}text-success{% endif %}">
+              {{ low_stock_count }}
+            </h3>
+          </div>
+          <div class="avatar-md">
+            <i class="mdi mdi-alert-circle {% if low_stock_count > 0 %}text-danger{% else %}text-success{% endif %}" style="font-size: 2rem;"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Access Reports -->
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Quick Access Reports</h5>
+      </div>
+      <div class="card-body">
+        <div class="row g-2">
+          <div class="col-md-4">
+            <a href="{% url 'inventory:stock_report' %}" class="btn btn-outline-primary w-100">
+              <i class="mdi mdi-chart-bar"></i> Current Stock Levels
+            </a>
+          </div>
+          <div class="col-md-4">
+            <a href="{% url 'inventory:ledger_report' %}" class="btn btn-outline-info w-100">
+              <i class="mdi mdi-clipboard-list"></i> Stock Movements
+            </a>
+          </div>
+          <div class="col-md-4">
+            <a href="{% url 'inventory:product_list' %}" class="btn btn-outline-success w-100">
+              <i class="mdi mdi-package-multiple"></i> Product Catalog
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Movements -->
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Recent Stock Movements</h5>
+        <a href="{% url 'inventory:ledger_report' %}" class="btn btn-sm btn-outline-primary">
+          View All <i class="mdi mdi-arrow-right"></i>
+        </a>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Date</th>
+              <th>Product</th>
+              <th>Warehouse</th>
+              <th>Type</th>
+              <th class="text-end">Qty In</th>
+              <th class="text-end">Qty Out</th>
+              <th>Reference</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for movement in recent_movements %}
+              <tr>
+                <td>{{ movement.txn_date|date:"Y-m-d H:i" }}</td>
+                <td>
+                  <a href="{% url 'inventory:product_detail' pk=movement.product.pk %}">
+                    {{ movement.product.code }}
+                  </a>
+                </td>
+                <td>{{ movement.warehouse.name }}</td>
+                <td>
+                  <span class="badge {% if movement.txn_type == 'purchase' %}bg-success{% elif movement.txn_type == 'sale' %}bg-danger{% elif movement.txn_type == 'transfer' %}bg-info{% else %}bg-secondary{% endif %}">
+                    {{ movement.get_txn_type_display }}
+                  </span>
+                </td>
+                <td class="text-end">{{ movement.qty_in }}</td>
+                <td class="text-end">{{ movement.qty_out }}</td>
+                <td><small>{{ movement.reference_id }}</small></td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="7" class="text-center text-muted py-3">
+                  No recent movements
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Master Data Management Section -->
+<div class="row mt-4">
+  <div class="col-12">
+    <h6 class="text-muted mb-3">Master Data Management</h6>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <i class="mdi mdi-folder-multiple" style="font-size: 3rem; color: #17a2b8;"></i>
+        <h6 class="mt-3 mb-2">Categories</h6>
+        <p class="text-muted mb-3">Organize products hierarchically</p>
+        <a href="{% url 'inventory:product_category_list' %}" class="btn btn-sm btn-outline-info">
+          Manage <i class="mdi mdi-arrow-right"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <i class="mdi mdi-warehouse" style="font-size: 3rem; color: #ffc107;"></i>
+        <h6 class="mt-3 mb-2">Warehouses</h6>
+        <p class="text-muted mb-3">Configure storage locations</p>
+        <a href="{% url 'inventory:warehouse_list' %}" class="btn btn-sm btn-outline-warning">
+          Manage <i class="mdi mdi-arrow-right"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <i class="mdi mdi-map-marker" style="font-size: 3rem; color: #28a745;"></i>
+        <h6 class="mt-3 mb-2">Locations</h6>
+        <p class="text-muted mb-3">Manage bins and shelves</p>
+        <a href="{% url 'inventory:location_list' %}" class="btn btn-sm btn-outline-success">
+          Manage <i class="mdi mdi-arrow-right"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <i class="mdi mdi-tag-multiple" style="font-size: 3rem; color: #6f42c1;"></i>
+        <h6 class="mt-3 mb-2">Price Lists</h6>
+        <p class="text-muted mb-3">Multi-tier pricing management</p>
+        <a href="{% url 'inventory:pricelist_list' %}" class="btn btn-sm btn-outline-primary">
+          Manage <i class="mdi mdi-arrow-right"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Fulfillment & Logistics -->
+<div class="row mt-4">
+  <div class="col-12">
+    <h6 class="text-muted mb-3">Fulfillment & Logistics</h6>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <i class="mdi mdi-clipboard-list" style="font-size: 3rem; color: #20c997;"></i>
+        <h6 class="mt-3 mb-2">Pick Lists</h6>
+        <p class="text-muted mb-3">Warehouse picking operations</p>
+        <a href="{% url 'inventory:picklist_list' %}" class="btn btn-sm btn-outline-info">
+          Manage <i class="mdi mdi-arrow-right"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <i class="mdi mdi-truck" style="font-size: 3rem; color: #fd7e14;"></i>
+        <h6 class="mt-3 mb-2">Shipments</h6>
+        <p class="text-muted mb-3">Track outbound deliveries</p>
+        <a href="{% url 'inventory:shipment_list' %}" class="btn btn-sm btn-outline-warning">
+          Manage <i class="mdi mdi-arrow-right"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <i class="mdi mdi-undo" style="font-size: 3rem; color: #dc3545;"></i>
+        <h6 class="mt-3 mb-2">RMA</h6>
+        <p class="text-muted mb-3">Return merchandise authorization</p>
+        <a href="{% url 'inventory:rma_list' %}" class="btn btn-sm btn-outline-danger">
+          Manage <i class="mdi mdi-arrow-right"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <i class="mdi mdi-puzzle" style="font-size: 3rem; color: #6c757d;"></i>
+        <h6 class="mt-3 mb-2">Bill of Materials</h6>
+        <p class="text-muted mb-3">Product assembly configuration</p>
+        <a href="{% url 'inventory:bom_list' %}" class="btn btn-sm btn-outline-secondary">
+          Manage <i class="mdi mdi-arrow-right"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends 'accounting/_list_base.html' %}
+
+{% block title %}{{ page_title|default:"Purchase Invoices" }}{% endblock %}
+
+{% block table_head %}
+<thead>
+  <tr>
+    <th style="width: 140px;">Invoice #</th>
+    <th>Supplier</th>
+    <th>Invoice Date</th>
+    <th>Due Date</th>
+    <th>Status</th>
+    <th class="text-end">Total</th>
+    <th class="text-end" style="width: 160px;">Actions</th>
+  </tr>
+</thead>
+{% endblock table_head %}
+
+{% block custom_filters %}
+<form class="row g-2 align-items-end mb-2" method="get">
+  <div class="col-sm-4">
+    <label class="form-label visually-hidden" for="inv-search">Search</label>
+    <input id="inv-search" type="search" name="q" class="form-control form-control-sm" placeholder="Search by invoice # or supplier" value="{{ query }}">
+  </div>
+  <div class="col-auto">
+    <button class="btn btn-outline-secondary btn-sm" type="submit">Filter</button>
+  </div>
+</form>
+{% endblock custom_filters %}
+
+{% block table_body %}
+<tbody>
+  {% for invoice in invoices %}
+  <tr>
+    <td class="fw-semibold">PI-{{ invoice.number|default:invoice.pk }}</td>
+    <td>{{ invoice.supplier.display_name }}</td>
+    <td>{{ invoice.invoice_date }}</td>
+    <td>{{ invoice.due_date|default:"-" }}</td>
+    <td><span class="badge bg-light text-dark text-uppercase">{{ invoice.status }}</span></td>
+    <td class="text-end">{{ invoice.currency.currency_code }} {{ invoice.total_amount }}</td>
+    <td class="text-end">
+      <div class="btn-group btn-group-sm">
+        <a href="{% url 'purchasing:invoice-detail' invoice.pk %}" class="btn btn-light">View</a>
+        {% if invoice.status == invoice.Status.DRAFT %}
+        <a href="{% url 'purchasing:invoice-edit' invoice.pk %}" class="btn btn-outline-secondary">Edit</a>
+        <form method="post" action="{% url 'purchasing:invoice-delete' invoice.pk %}" class="d-inline" onsubmit="return confirm('Delete this draft invoice?');">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-danger">Delete</button>
+        </form>
+        <form method="post" action="{% url 'purchasing:invoice-post' invoice.pk %}" class="d-inline" onsubmit="return confirm('Post this purchase invoice?');">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-success">Post</button>
+        </form>
+        {% else %}
+        <form method="post" action="{% url 'purchasing:invoice-reverse' invoice.pk %}" class="d-inline" onsubmit="return confirm('Reverse this purchase invoice?');">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-warning">Reverse</button>
+        </form>
+        <form method="post" action="{% url 'purchasing:invoice-return' invoice.pk %}" class="d-inline" onsubmit="return confirm('Return (reverse) this purchase invoice?');">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-warning">Return</button>
+        </form>
+        {% endif %}
+      </div>
+      <div class="text-muted small mt-1">Auto GL on post</div>
+    </td>
+  </tr>
+  {% empty %}
+  <tr>
+    <td colspan="6" class="text-center text-muted py-3">No purchase invoices found.</td>
+  </tr>
+  {% endfor %}
+</tbody>
+{% endblock table_body %}

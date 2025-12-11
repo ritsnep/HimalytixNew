@@ -1,0 +1,67 @@
+{% extends 'accounting/_list_base.html' %}
+
+{% block title %}{{ page_title|default:"Purchase Orders" }}{% endblock %}
+
+{% block table_head %}
+<thead>
+  <tr>
+    <th style="width: 140px;">PO #</th>
+    <th>Vendor</th>
+    <th>Order Date</th>
+    <th>Due Date</th>
+    <th>Status</th>
+    <th class="text-end">Total</th>
+    <th class="text-end" style="width: 140px;">Actions</th>
+  </tr>
+</thead>
+{% endblock table_head %}
+
+{% block custom_filters %}
+<form class="row g-2 align-items-end mb-2" method="get">
+  <div class="col-sm-4">
+    <label class="form-label visually-hidden" for="po-search">Search</label>
+    <input id="po-search" type="search" name="search" class="form-control form-control-sm" placeholder="Search PO or vendor" value="{{ request.GET.search|default:'' }}">
+  </div>
+  <div class="col-sm-3">
+    <label class="form-label visually-hidden" for="po-status">Status</label>
+    <select id="po-status" name="status" class="form-select form-select-sm">
+      <option value="">All statuses</option>
+      {% for value, label in status_choices %}
+      <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <button class="btn btn-outline-secondary btn-sm" type="submit">Filter</button>
+  </div>
+</form>
+{% endblock custom_filters %}
+
+{% block table_body %}
+<tbody>
+  {% for po in pos %}
+  <tr>
+    <td class="fw-semibold">{{ po.number|default:po.pk }}</td>
+    <td>{{ po.vendor.display_name }}</td>
+    <td>{{ po.order_date }}</td>
+    <td>{{ po.due_date|default:"-" }}</td>
+    <td><span class="badge bg-light text-dark text-uppercase">{{ po.get_status_display }}</span></td>
+    <td class="text-end">{{ po.currency.currency_code }} {{ po.total_amount }}</td>
+    <td class="text-end">
+      <div class="btn-group btn-group-sm">
+        <a href="{% url 'purchasing:po_detail' po.pk %}" class="btn btn-light">View</a>
+        {% if po.status == po.Status.DRAFT %}
+        <a href="{% url 'purchasing:po_edit' po.pk %}" class="btn btn-outline-secondary">Edit</a>
+        {% else %}
+        <span class="btn btn-outline-success disabled">Locked</span>
+        {% endif %}
+      </div>
+    </td>
+  </tr>
+  {% empty %}
+  <tr>
+    <td colspan="6" class="text-center text-muted py-3">No purchase orders found.</td>
+  </tr>
+  {% endfor %}
+</tbody>
+{% endblock table_body %}

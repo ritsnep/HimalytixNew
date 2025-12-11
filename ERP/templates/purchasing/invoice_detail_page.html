@@ -1,0 +1,71 @@
+{% extends "partials/base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title|default:'Purchase Invoice' }}{% endblock %}
+
+{% block content %}
+<div class="main-content">
+  <div class="page-content">
+    <div class="container-fluid">
+      <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+        <div>
+          <h4 class="mb-sm-0">{{ page_title|default:'Purchase Invoice' }}</h4>
+          <p class="text-muted mb-0">Review the supplier bill, totals, and landed cost allocation.</p>
+        </div>
+        <div class="d-flex gap-2">
+          <a href="{% url 'purchasing:invoice-table' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="mdi mdi-arrow-left"></i> Back to list
+          </a>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-xl-8">
+          {% include 'purchasing/partials/invoice_detail.html' %}
+        </div>
+        <div class="col-xl-4">
+          <div class="card h-100 shadow-sm">
+            <div class="card-header">
+              <h6 class="mb-0">Actions</h6>
+            </div>
+            <div class="card-body">
+              <div class="vstack gap-2">
+                <a href="{% url 'purchasing:invoice-edit' invoice.pk %}" class="btn btn-outline-secondary" {% if invoice.status == invoice.Status.POSTED %}aria-disabled="true"{% endif %}>
+                  <i class="mdi mdi-pencil"></i> Edit
+                </a>
+                {% if invoice.status == invoice.Status.DRAFT %}
+                <form method="post" action="{% url 'purchasing:invoice-post' invoice.pk %}">
+                  {% csrf_token %}
+                  <button class="btn btn-success w-100" type="submit">
+                    <i class="mdi mdi-upload"></i> Post
+                  </button>
+                </form>
+                <form method="post" action="{% url 'purchasing:invoice-delete' invoice.pk %}" onsubmit="return confirm('Delete this draft purchase invoice?');">
+                  {% csrf_token %}
+                  <button class="btn btn-outline-danger w-100" type="submit">
+                    <i class="mdi mdi-trash-can"></i> Delete
+                  </button>
+                </form>
+                {% else %}
+                <form method="post" action="{% url 'purchasing:invoice-reverse' invoice.pk %}" onsubmit="return confirm('Reverse this purchase invoice?');">
+                  {% csrf_token %}
+                  <button class="btn btn-warning w-100" type="submit">
+                    <i class="mdi mdi-backup-restore"></i> Reverse
+                  </button>
+                </form>
+                <form method="post" action="{% url 'purchasing:invoice-return' invoice.pk %}" onsubmit="return confirm('Return (reverse) this purchase invoice?');">
+                  {% csrf_token %}
+                  <button class="btn btn-outline-warning w-100" type="submit">
+                    <i class="mdi mdi-truck-remove"></i> Return
+                  </button>
+                </form>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

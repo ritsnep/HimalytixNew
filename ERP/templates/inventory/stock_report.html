@@ -1,0 +1,77 @@
+{% extends 'partials/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Stock Report" %}{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title">{% trans "Stock Report" %}</h4>
+                        </div>
+                        <div class="card-body">
+                            <form method="get" class="mb-4">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <label for="warehouse">{% trans "Warehouse" %}</label>
+                                        <select name="warehouse" id="warehouse" class="form-select">
+                                            <option value="">{% trans "All" %}</option>
+                                            {% for wh in warehouses %}
+                                            <option value="{{ wh.id }}" {% if selected_warehouse == wh.id|stringformat:"s" %}selected{% endif %}>{{ wh.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="product">{% trans "Product" %}</label>
+                                        <select name="product" id="product" class="form-select">
+                                            <option value="">{% trans "All" %}</option>
+                                            {% for prod in products %}
+                                            <option value="{{ prod.id }}" {% if selected_product == prod.id|stringformat:"s" %}selected{% endif %}>{{ prod.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <button type="submit" class="btn btn-primary mt-4">{% trans "Filter" %}</button>
+                                    </div>
+                                </div>
+                            </form>
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>{% trans "Product" %}</th>
+                                            <th>{% trans "Warehouse" %}</th>
+                                            <th>{% trans "Location" %}</th>
+                                            <th>{% trans "Batch" %}</th>
+                                            <th>{% trans "Quantity" %}</th>
+                                            <th>{% trans "Unit Cost" %}</th>
+                                            <th>{% trans "Total Value" %}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in stock_items %}
+                                        <tr>
+                                            <td>{{ item.product.name }}</td>
+                                            <td>{{ item.warehouse.name }}</td>
+                                            <td>{{ item.location.name|default:"" }}</td>
+                                            <td>{{ item.batch.batch_number|default:"" }}</td>
+                                            <td>{{ item.quantity_on_hand }}</td>
+                                            <td>{{ item.unit_cost }}</td>
+                                            <td>{{ item.total_value }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

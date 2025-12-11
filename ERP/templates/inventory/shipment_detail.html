@@ -1,0 +1,32 @@
+{% extends 'partials/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Shipment Details" %}{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title">{% trans "Shipment Details" %}</h4>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row">
+                                <dt class="col-sm-3">{% trans "Shipment Number" %}</dt>
+                                <dd class="col-sm-9">{{ shipment.shipment_number }}</dd>
+                                <dt class="col-sm-3">{% trans "Status" %}</dt>
+                                <dd class="col-sm-9">{{ shipment.status }}</dd>
+                            </dl>
+                            <a href="{% url 'inventory:shipment_list' %}" class="btn btn-secondary">{% trans "Back to List" %}</a>
+                            <a href="{% url 'inventory:shipment_update' shipment.pk %}" class="btn btn-primary">{% trans "Edit" %}</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

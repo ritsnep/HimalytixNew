@@ -1,0 +1,34 @@
+{% load static %}
+<div class="row g-3" id="beta-product-grid">
+    {% for product in products %}
+    <div class="col-12 col-md-6 col-lg-4">
+        <div class="card beta-product-card h-100">
+            <img src="{% static product.image %}"
+                 alt="{{ product.name }}"
+                 class="card-img-top">
+            <div class="card-body">
+                <div class="small text-uppercase text-muted fw-semibold">{{ product.sku }}</div>
+                <div class="fw-semibold text-truncate" title="{{ product.name }}">{{ product.name }}</div>
+                <div class="d-flex justify-content-between align-items-center small mt-1">
+                    <span class="text-muted">Current Stock: <span class="fw-semibold text-dark">{{ product.stock }}</span></span>
+                    <form hx-post="{% url 'pages:beta.purchase_cart' %}"
+                          hx-target="#beta-order-summary"
+                          hx-swap="outerHTML"
+                          class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="sku" value="{{ product.sku }}">
+                        <input type="hidden" name="action" value="add">
+                        <button class="btn btn-link btn-sm text-primary fw-semibold px-0">+ Add</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="text-center text-muted py-4">
+            No products match "{{ search_query }}".
+        </div>
+    </div>
+    {% endfor %}
+</div>

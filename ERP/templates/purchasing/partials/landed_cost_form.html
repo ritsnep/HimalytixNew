@@ -18,7 +18,7 @@
       <div class="d-flex justify-content-between align-items-start mb-3">
         <div>
           <h4 class="mb-1">Allocate Landed Cost</h4>
-          <p class="text-muted mb-0">{{ invoice }} · {{ invoice.supplier.display_name }} · {{ invoice.invoice_date }}</p>
+          <p class="text-muted mb-0">{{ invoice }} - {{ invoice.supplier.display_name }} - {{ invoice.invoice_date }}</p>
         </div>
         <span class="badge bg-light text-dark">Invoice Total {{ invoice.currency.currency_code }} {{ invoice.total_amount }}</span>
       </div>

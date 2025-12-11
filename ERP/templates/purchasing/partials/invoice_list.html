@@ -31,7 +31,7 @@
     hx-swap="innerHTML">
     <div class="text-start">
       <div class="fw-semibold">PI-{{ invoice.number|default:invoice.pk }}</div>
-      <small class="text-muted">{{ invoice.invoice_date }} · {{ invoice.supplier.display_name }}</small>
+      <small class="text-muted">{{ invoice.invoice_date }} - {{ invoice.supplier.display_name }}</small>
     </div>
     <div class="text-end">
       <div class="fw-semibold">{{ invoice.currency.currency_code }} {{ invoice.total_amount }}</div>

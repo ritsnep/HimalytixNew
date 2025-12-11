@@ -219,6 +219,8 @@ TEMPLATES = [
                 'dashboard.context_processors.ui_metadata_context',
                     # Inject active organization into templates globally
                     'usermanagement.context_processors.active_organization',
+                    # Inject theme branding (brand color) into templates globally
+                    'usermanagement.context_processors.theme_branding',
                     # Inject user permissions into templates globally
                     'usermanagement.context_processors.permissions',
                     # Inject accounting default currency into all templates

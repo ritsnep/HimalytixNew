@@ -2,7 +2,8 @@
 /collected_static_files/
 .coverage
 
-
+/erp/logs/
+logs
 # # --- Python bytecode & build ---
 # __pycache__/
 # *.py[cod]

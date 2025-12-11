@@ -1,0 +1,48 @@
+{% extends 'accounting/_list_base.html' %}
+
+{% block title %}{{ page_title|default:"Landed Cost Documents" }}{% endblock %}
+
+{% block table_head %}
+<thead>
+  <tr>
+    <th style="width: 160px;">Document</th>
+    <th>Invoice</th>
+    <th>Supplier</th>
+    <th>Document Date</th>
+    <th>Status</th>
+    <th class="text-end" style="width: 160px;">Total Cost</th>
+  </tr>
+</thead>
+{% endblock table_head %}
+
+{% block custom_filters %}
+<div class="mb-2">
+  <span class="badge bg-soft-warning text-warning">Pending: {{ documents|length }}</span>
+</div>
+{% endblock custom_filters %}
+
+{% block table_body %}
+<tbody>
+  {% for doc in documents %}
+  <tr>
+    <td class="fw-semibold">LC-{{ doc.pk }}</td>
+    <td>PI-{{ doc.purchase_invoice.number|default:doc.purchase_invoice.pk }}</td>
+    <td>{{ doc.purchase_invoice.supplier.display_name }}</td>
+    <td>{{ doc.document_date }}</td>
+    <td>
+      {% if doc.is_applied %}
+      <span class="badge bg-soft-success text-success">Applied</span>
+      {% else %}
+      <span class="badge bg-soft-warning text-warning">Pending</span>
+      {% endif %}
+    </td>
+    <td class="text-end">
+      {{ doc.cost_count|default:0 }} lines /
+      {{ doc.cost_total|default:0 }}
+    </td>
+  </tr>
+  {% empty %}
+  <tr><td colspan="6" class="text-center text-muted py-3">No landed cost documents found.</td></tr>
+  {% endfor %}
+</tbody>
+{% endblock table_body %}

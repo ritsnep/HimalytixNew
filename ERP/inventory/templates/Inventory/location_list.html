@@ -1,27 +1,40 @@
-{% extends "components/base/list_base.html" %}
+{% extends "accouting/_list_base.html" %}
 {% load static %}
 
 {% block title %}Locations{% endblock %}
-{% block list_page_title %}Locations{% endblock %}
 {% block list_title %}Storage Locations{% endblock %}
+{% block list_subtitle %}Manage warehouse bins, shelves, and storage locations{% endblock %}
 
 {% block list_actions %}
   <div class="d-flex flex-wrap gap-2">
     <a href="{% url 'inventory:warehouse_list' %}" class="btn btn-outline-secondary btn-sm">
       <i class="mdi mdi-arrow-left"></i> Warehouses
     </a>
-    {% if can_add and create_url %}
+    {% if create_url %}
       <a href="{{ create_url }}" class="btn btn-success btn-sm">
         <i class="mdi mdi-plus"></i> Add Location
       </a>
     {% endif %}
   </div>
 {% endblock %}
+{% block custom_filters %}
+<form method="get" class="d-flex gap-2 align-items-center mb-3">
+    <label class="mb-0">Category:</label>
+    <select name="category" class="form-select w-auto">
+        <option value="">All</option>
+        {% for cat in categories %}
+            <option value="{{ cat.id }}" {% if selected_category|stringformat:"s" == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+        {% endfor %}
+    </select>
+    <button class="btn btn-outline-secondary btn-sm">Filter</button>
+</form>
+{% endblock %}
 
 {% block table_head %}
   <tr>
     <th>Code</th>
     <th>Name</th>
+    <th>Category</th>
     <th>Type</th>
     <th>Active</th>
     <th style="width:140px;">Actions</th>
@@ -33,6 +46,7 @@
     <tr>
       <td class="fw-semibold">{{ location.code }}</td>
       <td>{{ location.name }}</td>
+        <td>{{ location.category.name if location.category }}</td>
       <td>{{ location.location_type }}</td>
       <td>
         {% if location.is_active %}
@@ -44,8 +58,8 @@
       <td>
         <div class="btn-group btn-group-sm" role="group">
           <a href="{% url 'inventory:location_detail' location.pk %}" class="btn btn-outline-info">View</a>
-          {% if can_change %}<a href="{% url 'inventory:location_update' location.pk %}" class="btn btn-outline-primary">Edit</a>{% endif %}
-          {% if can_delete %}<a href="{% url 'inventory:location_delete' location.pk %}" class="btn btn-outline-danger">Delete</a>{% endif %}
+          <a href="{% url 'inventory:location_update' location.pk %}" class="btn btn-outline-primary">Edit</a>
+          <a href="{% url 'inventory:location_delete' location.pk %}" class="btn btn-outline-danger">Delete</a>
         </div>
       </td>
     </tr>

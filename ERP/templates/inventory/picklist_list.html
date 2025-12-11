@@ -9,6 +9,7 @@
 
 {% block table_headers %}
     <th>{% trans "Number" %}</th>
+    <th>{% trans "Category" %}</th>
     <th>{% trans "Warehouse" %}</th>
     <th>{% trans "Status" %}</th>
     <th>{% trans "Created Date" %}</th>
@@ -17,6 +18,7 @@
 
 {% block table_columns %}
     { data: 'pick_number' },
+    { data: 'category' },
     { data: 'warehouse__name' },
     { data: 'status' },
     { data: 'created_date' },

@@ -1,0 +1,105 @@
+{% extends 'components/base/list_base.html' %}
+{% load static %}
+
+{% block title %}Beta Model List{% endblock %}
+
+{% block list_page_title %}Beta Model Library{% endblock %}
+{% block list_title %}Beta Models{% endblock %}
+{% block list_subtitle %}Prototype list view built on Dason list base.{% endblock %}
+
+{% block list_header_extras %}
+    <a href="{% url 'pages:beta.model_form' %}" class="btn btn-primary btn-sm">
+        <i class="mdi mdi-plus me-1"></i> New Model
+    </a>
+{% endblock %}
+
+{% block list_metrics %}
+<div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-2 list-quick-metrics mb-3">
+    <div class="col">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase">Total Models</div>
+                <div class="h4 mb-0">{{ model_metrics.total }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase">Active</div>
+                <div class="h4 mb-0 text-success">{{ model_metrics.active }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase">Draft</div>
+                <div class="h4 mb-0 text-primary">{{ model_metrics.draft }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block list_toolbar %}
+<div class="list-toolbar d-flex flex-wrap gap-2 align-items-center">
+    <div class="input-group input-group-sm" style="max-width: 260px;">
+        <span class="input-group-text bg-light border-end-0">
+            <i class="mdi mdi-magnify"></i>
+        </span>
+        <input type="search" class="form-control border-start-0" placeholder="Search code or name">
+    </div>
+    <select class="form-select form-select-sm" style="max-width: 160px;">
+        <option value="">All statuses</option>
+        <option value="Active">Active</option>
+        <option value="Draft">Draft</option>
+        <option value="On Hold">On Hold</option>
+    </select>
+    <button class="btn btn-outline-secondary btn-sm" type="button">Filter</button>
+</div>
+{% endblock %}
+
+{% block table_content %}
+<div class="table-responsive">
+    <table class="table table-hover mb-0" id="{{ datatable_id|default:'datatable-buttons' }}">
+        <thead class="table-light">
+            <tr>
+                <th style="width: 120px;">Code</th>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Owner</th>
+                <th>Status</th>
+                <th class="text-end">Updated</th>
+                <th class="text-end" style="width: 140px;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for model in beta_models %}
+            <tr>
+                <td class="fw-semibold">{{ model.code }}</td>
+                <td>{{ model.name }}</td>
+                <td>{{ model.category }}</td>
+                <td>{{ model.owner }}</td>
+                <td>
+                    {% if model.status == "Active" %}
+                    <span class="badge bg-soft-success text-success">Active</span>
+                    {% elif model.status == "On Hold" %}
+                    <span class="badge bg-soft-warning text-warning">On Hold</span>
+                    {% else %}
+                    <span class="badge bg-soft-secondary text-secondary">Draft</span>
+                    {% endif %}
+                </td>
+                <td class="text-end text-muted">{{ model.updated }}</td>
+                <td class="text-end">
+                    <div class="btn-group btn-group-sm">
+                        <a href="{% url 'pages:beta.model_form' %}" class="btn btn-light">Open</a>
+                        <button class="btn btn-outline-secondary" type="button">Actions</button>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

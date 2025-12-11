@@ -124,6 +124,11 @@
                         id="topbar-color-dark" value="dark" data-setting="topbar-color">
                     <label class="form-check-label" for="topbar-color-dark">Dark</label>
                 </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="topbar-color"
+                        id="topbar-color-brand" value="brand" data-setting="topbar-color">
+                    <label class="form-check-label" for="topbar-color-brand">Brand</label>
+                </div>
 
                 <h6 class="mt-4 mb-3 pt-2 sidebar-setting">Sidebar Size</h6>
 
@@ -159,6 +164,18 @@
                     <input class="form-check-input" type="radio" name="sidebar-color"
                         id="sidebar-color-brand" value="brand" data-setting="sidebar-color">
                     <label class="form-check-label" for="sidebar-color-brand">Brand</label>
+                </div>
+
+                <h6 class="mt-4 mb-3 pt-2 sidebar-setting">Brand Color</h6>
+                <div class="sidebar-setting">
+                    <div class="d-flex gap-2 align-items-center">
+                        <input class="form-control form-control-color" type="color" id="brand-color-picker" 
+                            value="{{ brand_color|default:'#1c84ee' }}" style="width: 50px; height: 40px; cursor: pointer;">
+                        <input type="text" class="form-control form-control-sm" id="brand-color-input" 
+                            value="{{ brand_color|default:'#1c84ee' }}" placeholder="#1c84ee" maxlength="7">
+                    </div>
+                    <small class="text-muted d-block mt-2">Organization-level branding color for sidebar and topbar</small>
+                    <button id="reset-brand-color" class="btn btn-sm btn-secondary mt-2" style="width: 100%;">Reset to Default</button>
                 </div>
 
                 <h6 class="mt-4 mb-3 pt-2">Direction</h6>

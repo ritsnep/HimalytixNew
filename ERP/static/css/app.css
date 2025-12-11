@@ -203,14 +203,49 @@ body[data-layout-mode=dark] .layout-mode-light {
 }
 
 body[data-topbar=dark] #page-topbar {
-  background-color: #1c84ee;
-  border-color: #1c84ee;
+  background-color: #1f2733;
+  border-color: #1f2733;
   -webkit-box-shadow: 0 0.2rem 0.5rem rgba(18, 38, 63, 0.3);
           box-shadow: 0 0.2rem 0.5rem rgba(18, 38, 63, 0.3);
 }
 body[data-topbar=dark] .navbar-brand-box {
-  background-color: #1c84ee;
-  border-color: #1c84ee;
+  background-color: #1f2733;
+  border-color: #1f2733;
+}
+body[data-topbar=brand] #page-topbar {
+  background-color: var(--ui-brand-color) !important;
+  border-color: var(--ui-brand-color) !important;
+  -webkit-box-shadow: 0 0.2rem 0.5rem rgba(18, 38, 63, 0.3);
+          box-shadow: 0 0.2rem 0.5rem rgba(18, 38, 63, 0.3);
+}
+body[data-topbar=brand] .navbar-brand-box {
+  background-color: var(--ui-brand-color) !important;
+  border-color: var(--ui-brand-color) !important;
+}
+body[data-topbar=brand] .navbar-brand-box .logo {
+  color: #fff !important;
+}
+body[data-topbar=brand] .navbar-header .dropdown .show.header-item {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+body[data-topbar=brand] .navbar-header .waves-effect .waves-ripple {
+  background: rgba(255, 255, 255, 0.4);
+}
+body[data-topbar=brand] .header-item {
+  color: #e9ecef !important;
+}
+body[data-topbar=brand] .header-item:hover {
+  color: #fff !important;
+}
+body[data-topbar=brand] .header-item.border-start,
+body[data-topbar=brand] .header-item.border-end {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+body[data-topbar=brand] .header-item.bg-soft-light {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+body[data-topbar=brand] .header-profile-user {
+  background-color: rgba(255, 255, 255, 0.25);
 }
 body[data-topbar=dark] .navbar-brand-box .logo {
   color: #fff !important;
@@ -982,12 +1017,12 @@ body[data-sidebar-size=md][data-sidebar-size=sm] .footer {
 }
 
 body[data-sidebar=brand] .vertical-menu {
-  background-color: #1c84ee;
+  background-color: var(--ui-brand-color);
 }
 body[data-sidebar=brand] .navbar-brand-box {
-  background-color: #1c84ee;
-  -webkit-box-shadow: 0px 1px 0px #1c84ee;
-          box-shadow: 0px 1px 0px #1c84ee;
+  background-color: var(--ui-brand-color);
+  -webkit-box-shadow: 0px 1px 0px var(--ui-brand-color);
+          box-shadow: 0px 1px 0px var(--ui-brand-color);
 }
 body[data-sidebar=brand] .navbar-brand-box .logo-dark {
   display: none;

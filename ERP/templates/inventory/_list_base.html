@@ -1,0 +1,404 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+    <!-- DataTables + Buttons CSS -->
+    <link href="{% static 'libs/datatables.net-bs4/css/dataTables.bootstrap4.min.css' %}" rel="stylesheet" type="text/css" />
+    <link href="{% static 'libs/datatables.net-buttons-bs4/css/buttons.bootstrap4.min.css' %}" rel="stylesheet" type="text/css" />
+    <link href="{% static 'libs/datatables.net-responsive-bs4/css/responsive.bootstrap4.min.css' %}" rel="stylesheet" type="text/css" />
+    <link href="{% static 'libs/datatables.net-fixedheader-bs4/css/fixedHeader.bootstrap4.min.css' %}" rel="stylesheet" type="text/css" />
+    <style>
+        /* Compact table and controls */
+        .dataTables_wrapper .dt-buttons {
+            margin-bottom: 0 !important;
+        }
+        .dataTables_wrapper .dataTables_filter {
+            margin-bottom: 0 !important;
+        }
+        .dataTables_wrapper .row {
+            margin-left: 0;
+            margin-right: 0;
+        }
+        .dataTables_wrapper .row > div {
+            padding-left: 0;
+            padding-right: 0;
+        }
+        .card-body {
+            padding: 1rem 1.25rem;
+        }
+        .table {
+            margin-bottom: 0;
+        }
+        .dt-buttons .btn {
+            margin-right: 0.25rem;
+        }
+        .dataTables_filter label {
+            margin-bottom: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        /* Focus styles for accessibility */
+        a:focus, button:focus, input:focus, select:focus, textarea:focus {
+            outline: 2px solid #007bff !important;
+            outline-offset: 2px;
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25) !important;
+        }
+
+        /* Loading indicator */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1050;
+            transition: opacity 0.2s;
+        }
+
+        /* Layout tightening for list pages */
+        .list-layout-shell {
+            position: relative;
+            min-height: 100vh;
+        }
+        .page-content--list {
+            padding: calc(70px + 12px) 12px 32px 12px;
+        }
+        @media (min-width: 992px) {
+            .page-content--list {
+                padding-left: 20px;
+                padding-right: 20px;
+            }
+        }
+        @media (max-width: 767.98px) {
+            .page-content--list {
+                padding: calc(70px + 8px) 10px 28px 10px;
+            }
+        }
+        .list-layout-shell .container-fluid {
+            padding-left: 0;
+            padding-right: 0;
+        }
+        .list-card {
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+            border: 1px solid #e5e7eb;
+        }
+        .list-layout-footer .footer {
+            position: static;
+            left: auto;
+            right: auto;
+            bottom: auto;
+            height: auto;
+            padding: 12px 20px;
+            margin: 0;
+        }
+        .list-layout-shell .loading-overlay {
+            position: fixed;
+        }
+    </style>
+{% endblock extra_css %}
+
+{% block content %}
+<div class="list-layout-shell">
+    <div class="loading-overlay" style="display: none;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+    <div id="toast-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1055"></div>
+    <div class="main-content">
+        <div class="page-content page-content--list">
+            <div class="container-fluid">
+                <div class="card list-card mb-3">
+                    <div class="card-body pb-2 pt-3">
+                        <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+                            <div class="d-flex flex-column gap-1">
+                                <h4 class="card-title mb-0">
+                                    {{ page_title|default:"List" }}
+                                </h4>
+                                {% if breadcrumbs %}
+                                <nav aria-label="breadcrumb" class="small">
+                                    <ol class="breadcrumb mb-0">
+                                        {% for name, url in breadcrumbs %}
+                                            {% if not forloop.last %}
+                                                <li class="breadcrumb-item"><a href="{{ url }}">{{ name }}</a></li>
+                                            
+                                            {% endif %}
+                                        {% endfor %}
+                                    </ol>
+                                </nav>
+                                {% endif %}
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-wrap" id="list-actions">
+                                {% block create_button %}
+                                {% if create_url and create_button_text %}
+                                <a href="{{ create_url }}" class="btn btn-success btn-sm">
+                                    <i class="mdi mdi-plus me-1"></i> {{ create_button_text }}
+                                </a>
+                                {% endif %}
+                                {% endblock create_button %}
+                                <!-- DataTables search and export buttons will be injected here -->
+                                <div id="datatable-controls" class="d-flex align-items-center flex-wrap gap-2"></div>
+                            </div>
+                        </div>
+                        {% if smart_filter_config %}
+                            {% include 'inventory/partials/smart_filters.html' %}
+                        {% endif %}
+                        {% block custom_filters %}
+                        {% endblock custom_filters %}
+                        <div class="table-rep-plugin">
+                            <div class="table-responsive mb-0">
+                                <table id="datatable-buttons" class="table table-bordered table-sm dt-responsive nowrap w-100 mb-0" data-view-key="{{ view_key|default:page_title|default:'list'|slugify }}">
+                                    {% block table_head %}{% endblock table_head %}
+                                    {% block table_body %}{% endblock table_body %}
+                                    <tfoot>
+                                        {% block table_foot %}{% endblock table_foot %}
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="list-layout-footer">
+        {% include 'partials/footer.html' %}
+    </div>
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+<!-- DataTables core -->
+<script src="{% static 'libs/datatables.net/js/jquery.dataTables.min.js' %}"></script>
+<script src="{% static 'libs/datatables.net-bs4/js/dataTables.bootstrap4.min.js' %}"></script>
+<!-- DataTables Buttons -->
+<script src="{% static 'libs/datatables.net-buttons/js/dataTables.buttons.min.js' %}"></script>
+<script src="{% static 'libs/datatables.net-buttons-bs4/js/buttons.bootstrap4.min.js' %}"></script>
+<script src="{% static 'libs/jszip/jszip.min.js' %}"></script>
+<script src="{% static 'libs/pdfmake/build/pdfmake.min.js' %}"></script>
+<script src="{% static 'libs/pdfmake/build/vfs_fonts.js' %}"></script>
+<script src="{% static 'libs/datatables.net-buttons/js/buttons.html5.min.js' %}"></script>
+<script src="{% static 'libs/datatables.net-buttons/js/buttons.print.min.js' %}"></script>
+<script src="{% static 'libs/datatables.net-buttons/js/buttons.colVis.min.js' %}"></script>
+<!-- DataTables Responsive -->
+<script src="{% static 'libs/datatables.net-responsive/js/dataTables.responsive.min.js' %}"></script>
+<script src="{% static 'libs/datatables.net-responsive-bs4/js/responsive.bootstrap4.min.js' %}"></script>
+<!-- DataTables FixedHeader -->
+<script src="{% static 'libs/datatables.net-fixedheader/js/dataTables.fixedHeader.min.js' %}"></script>
+<script>
+$(document).ready(function() {
+    var tableEl = $('#datatable-buttons');
+    var headCells = tableEl.find('thead th');
+
+    // Determine default visibility from data-default-visible attr (default is true)
+    var hiddenTargets = [];
+    headCells.each(function(idx) {
+        var th = $(this);
+        var defVisible = th.data('default-visible');
+        if (defVisible === false || defVisible === "false") {
+            hiddenTargets.push(idx);
+        }
+    });
+
+    // Build column filter inputs in the table footer if not provided
+    var tfoot = tableEl.find('tfoot');
+    if (headCells.length && !tfoot.find('tr').length) {
+        var filterRow = $('<tr/>');
+        headCells.each(function() {
+            var th = $(this);
+            var searchableAttr = th.attr('data-searchable');
+            var isSearchable = searchableAttr === undefined || searchableAttr === "true";
+            if (th.hasClass('no-search') || searchableAttr === "false") {
+                filterRow.append('<th></th>');
+                return;
+            }
+            var placeholder = th.text().trim();
+            var input = $('<input/>', {
+                type: 'text',
+                class: 'form-control form-control-sm column-search',
+                placeholder: placeholder ? ('Search ' + placeholder) : 'Search'
+            });
+            filterRow.append($('<th/>').append(input));
+        });
+        tfoot.append(filterRow);
+    }
+
+    // Allow injecting per-page DataTables options via a JSON script element with id='datatable-config'
+    var extra = {};
+    var cfgEl = document.getElementById('datatable-config');
+    if (cfgEl) {
+        try { extra = JSON.parse(cfgEl.textContent || '{}'); } catch(e) { extra = {}; }
+    }
+    var baseOpts = {
+        dom: 'Blfrtip',
+        buttons: [
+            { 
+                extend: 'copy', 
+                className: 'btn btn-light btn-sm',
+                text: '<i class="mdi mdi-content-copy"></i>',
+                attr: { title: 'Copy', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' },
+                exportOptions: { columns: ':visible' }
+            },
+            { 
+                extend: 'csv', 
+                className: 'btn btn-light btn-sm',
+                text: '<i class="mdi mdi-file-delimited"></i>',
+                attr: { title: 'CSV', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' },
+                exportOptions: { columns: ':visible' }
+            },
+            { 
+                extend: 'excel', 
+                className: 'btn btn-light btn-sm',
+                text: '<i class="mdi mdi-file-excel"></i>',
+                attr: { title: 'Excel', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' },
+                exportOptions: { columns: ':visible' }
+            },
+            { 
+                extend: 'pdf', 
+                className: 'btn btn-light btn-sm',
+                text: '<i class="mdi mdi-file-pdf"></i>',
+                attr: { title: 'PDF', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' },
+                exportOptions: { columns: ':visible' }
+            },
+            { 
+                extend: 'print', 
+                className: 'btn btn-light btn-sm',
+                text: '<i class="mdi mdi-printer"></i>',
+                attr: { title: 'Print', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' },
+                exportOptions: { columns: ':visible' }
+            },
+            { 
+                extend: 'colvis', 
+                className: 'btn btn-light btn-sm',
+                text: '<i class="mdi mdi-view-column"></i>',
+                attr: { title: 'Column Visibility', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' }
+            },
+            {
+                text: '<i class="mdi mdi-content-save"></i>',
+                className: 'btn btn-light btn-sm',
+                attr: { title: 'Save View', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' },
+                action: function (e, dt) {
+                    var vis = [];
+                    dt.columns().every(function(idx) {
+                        vis.push(this.visible());
+                    });
+                    var key = tableEl.data('view-key') || 'datatable';
+                    localStorage.setItem('dt-view-' + key, JSON.stringify({ visible: vis }));
+                    if (window.bootstrap && typeof showToast === 'function') {
+                        showToast('List view saved.', 'success');
+                    }
+                }
+            }
+        ],
+        responsive: true,
+        fixedHeader: true,
+        lengthMenu: [[10, 20, 40, 50, -1], [10, 20, 40, 50, "All"]],
+        pageLength: {{ request.GET.rows|default:10 }},
+        columnDefs: hiddenTargets.length ? [{ targets: hiddenTargets, visible: false }] : []
+    };
+    // If smart bulk adds a checkbox column, ensure it is not orderable/searchable by default
+    if (extra && extra.columnDefs) {
+        baseOpts.columnDefs = (baseOpts.columnDefs || []).concat(extra.columnDefs);
+    }
+    var opts = Object.assign({}, baseOpts, extra || {});
+    var table = $('#datatable-buttons').DataTable(opts);
+    window.DT_MAIN = table;
+
+    // Apply saved view (column visibility)
+    try {
+        var viewKey = tableEl.data('view-key') || 'datatable';
+        var savedRaw = localStorage.getItem('dt-view-' + viewKey);
+        if (savedRaw) {
+            var saved = JSON.parse(savedRaw);
+            if (saved && Array.isArray(saved.visible)) {
+                saved.visible.forEach(function(val, idx) {
+                    if (typeof val === 'boolean') {
+                        table.column(idx).visible(val, false);
+                    }
+                });
+                table.columns.adjust().draw(false);
+            }
+        }
+    } catch(e) { /* non-blocking */ }
+
+    // Column search (if tfoot inputs are present)
+    table.columns().every(function() {
+        var that = this;
+        $('input', this.footer()).on('keyup change clear', function() {
+            if (that.search() !== this.value) {
+                that.search(this.value).draw();
+            }
+        });
+    });
+    // Move search and buttons to the custom controls div
+    var wrapper = $('#datatable-buttons_wrapper');
+    var filter = wrapper.find('.dataTables_filter');
+    var buttons = wrapper.find('.dt-buttons');
+    var controls = $('#datatable-controls');
+    controls.append(buttons.addClass('me-2'));
+    controls.append(filter);
+    // Initialize Bootstrap tooltips for DataTables buttons
+    if (window.bootstrap) {
+        buttons.find('[data-bs-toggle="tooltip"]').each(function() {
+            new bootstrap.Tooltip(this);
+        });
+    }
+});
+
+// Loading indicator logic
+// Show loading overlay for any HTMX requests that target content areas like table bodies
+document.addEventListener('htmx:beforeRequest', function(evt) {
+    try {
+        const target = evt && evt.detail && evt.detail.target;
+        // Show overlay if a request targets a table or table container
+        if (!target || (target.closest && target.closest('.table-responsive'))) {
+            document.querySelector('.loading-overlay').style.display = 'flex';
+        }
+    } catch(e) { /* Safe guard: don't let an error prevent the request */ }
+});
+document.addEventListener('htmx:afterRequest', function(evt) {
+    try {
+        const target = evt && evt.detail && evt.detail.target;
+        if (!target || (target.closest && target.closest('.table-responsive'))) {
+            document.querySelector('.loading-overlay').style.display = 'none';
+        }
+    } catch(e) { /* Safe guard */ }
+});
+
+// Toast notification logic
+function showToast(message, type = 'success') {
+    const toastContainer = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white bg-${type} border-0`;
+    toast.role = 'alert';
+    toast.ariaLive = 'assertive';
+    toast.ariaAtomic = 'true';
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    `;
+    toastContainer.appendChild(toast);
+    const bootstrapToast = new bootstrap.Toast(toast);
+    bootstrapToast.show();
+}
+
+document.body.addEventListener('htmx:afterOnLoad', function(evt) {
+    if (evt.detail.xhr.status >= 200 && evt.detail.xhr.status < 300) {
+        const message = evt.detail.xhr.getResponseHeader("X-Message");
+        if (message) {
+            showToast(decodeURIComponent(message));
+        }
+    }
+});
+</script>
+{% endblock extra_js %}

@@ -1,0 +1,117 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block title %}Beta Purchase Flow{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    .beta-surface {
+        background: #f7f8fb;
+        border-radius: 18px;
+        padding: 4px 4px 2px;
+    }
+    .beta-search .input-group {
+        box-shadow: 0 10px 40px rgba(15, 23, 42, 0.08);
+        border-radius: 14px;
+        overflow: hidden;
+    }
+    .beta-search .form-control {
+        border: none;
+        padding-left: 0;
+    }
+    .beta-product-card {
+        border: 1px solid #edf0f5;
+        border-radius: 14px;
+        transition: all 0.15s ease;
+        box-shadow: 0 6px 22px rgba(17, 24, 39, 0.06);
+    }
+    .beta-product-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 28px rgba(17, 24, 39, 0.08);
+    }
+    .beta-product-card .card-img-top {
+        border-top-left-radius: 14px;
+        border-top-right-radius: 14px;
+        object-fit: cover;
+        height: 120px;
+    }
+    .beta-summary {
+        border-radius: 16px;
+        box-shadow: 0 14px 40px rgba(0, 12, 46, 0.14);
+        position: sticky;
+        top: 88px;
+        border: 1px solid #eef1f6;
+    }
+    .beta-pill {
+        border-radius: 10px;
+        background: #f3f5fb;
+        padding: 6px 12px;
+        font-weight: 600;
+    }
+    .beta-line-stack {
+        max-height: 420px;
+        overflow-y: auto;
+    }
+    .beta-line-stack::-webkit-scrollbar {
+        width: 6px;
+    }
+    .beta-line-stack::-webkit-scrollbar-thumb {
+        background: rgba(55, 65, 81, 0.2);
+        border-radius: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                <div>
+                    <h4 class="mb-0">Beta Purchase Flow (HTMX)</h4>
+                    <p class="text-muted mb-0">Card-to-cart layout powered by HTMX partial swaps.</p>
+                </div>
+                <span class="badge bg-soft-primary text-primary text-uppercase">Beta</span>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-xl-7">
+                    <div class="card h-100 border-0 shadow-sm beta-surface">
+                        <div class="card-body">
+                            <form class="beta-search mb-3"
+                                  hx-get="{% url 'pages:beta.purchase_flow' %}"
+                                  hx-trigger="keyup changed delay:250ms"
+                                  hx-target="#beta-product-grid"
+                                  hx-select="#beta-product-grid"
+                                  hx-swap="outerHTML">
+                                <input type="hidden" name="fragment" value="grid">
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text bg-white border-end-0 ps-3">
+                                        <i class="mdi mdi-magnify text-muted"></i>
+                                    </span>
+                                    <input type="search"
+                                           class="form-control border-start-0"
+                                           name="search"
+                                           placeholder="Search products to restock..."
+                                           value="{{ search_query }}">
+                                </div>
+                            </form>
+
+                            <div id="beta-product-grid">
+                                {% include "pages/beta/_product_grid.html" %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-5">
+                    <div id="beta-order-summary">
+                        {% include "pages/beta/_order_summary.html" %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

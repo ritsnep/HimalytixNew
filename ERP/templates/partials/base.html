@@ -41,7 +41,12 @@
     <!-- Dual calendar / Nepali datepicker -->
     <link href="{% static 'libs/nepali-datepicker/css/nepali.datepicker.v5.0.6.min.css' %}" rel="stylesheet" type="text/css" />
     {% endblock css %}
-
+    <style>
+      /* Set brand color from organization configuration */
+      :root {
+        --ui-brand-color: {{ brand_color|default:'#1c84ee' }};
+      }
+    </style>
 </head>
 
 <body {% block extra_body %}{% endblock extra_body %}

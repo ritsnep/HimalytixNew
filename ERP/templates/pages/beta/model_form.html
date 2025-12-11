@@ -1,0 +1,97 @@
+{% extends 'components/base/form_base.html' %}
+{% load static %}
+
+{% block title %}Beta Model Form{% endblock %}
+
+{% block form_content %}
+<form class="form-shell" id="beta-model-form" method="post" novalidate>
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="card-title mb-0">{{ form_title }}</h5>
+                <small class="text-muted">{{ form_subtitle }}</small>
+            </div>
+            <span class="badge bg-soft-info text-info text-uppercase">Dason Form Base</span>
+        </div>
+        <div class="card-body">
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Model Name</label>
+                    <input type="text" class="form-control" placeholder="Example: Warehouse Refit">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Code</label>
+                    <input type="text" class="form-control" placeholder="BETA-005">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Status</label>
+                    <select class="form-select">
+                        {% for state in model_states %}
+                        <option value="{{ state }}">{{ state }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Owner</label>
+                    <select class="form-select">
+                        {% for owner in owners %}
+                        <option value="{{ owner }}">{{ owner }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Effective Date</label>
+                    <input type="date" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Currency</label>
+                    <select class="form-select">
+                        <option value="USD" selected>USD</option>
+                        <option value="CAD">CAD</option>
+                        <option value="EUR">EUR</option>
+                    </select>
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">Dimensions</label>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for dim in dimensions %}
+                        <span class="badge bg-light text-dark border">{{ dim }}</span>
+                        {% endfor %}
+                        <button class="btn btn-sm btn-outline-secondary" type="button">
+                            <i class="mdi mdi-plus"></i> Add Dimension
+                        </button>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" rows="3" placeholder="What is this model used for?"></textarea>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="beta-approvals" checked>
+                        <label class="form-check-label" for="beta-approvals">Require approvals before posting</label>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="beta-sync">
+                        <label class="form-check-label" for="beta-sync">Sync to journal entry workspace</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <div class="text-muted small">Follows Dason component guidance with breadcrumb and sticky actions.</div>
+            <div class="d-flex gap-2">
+                <a href="{% url 'pages:beta.model_list' %}" class="btn btn-light">Cancel</a>
+                <button type="submit" class="btn btn-primary">Save Model</button>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}

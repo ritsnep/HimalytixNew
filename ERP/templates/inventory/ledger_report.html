@@ -1,0 +1,114 @@
+{% extends 'partials/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Ledger Report" %}{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title">{% trans "Stock Ledger Report" %}</h4>
+                        </div>
+                        <div class="card-body">
+                            <form method="get" class="mb-4">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <label for="warehouse">{% trans "Warehouse" %}</label>
+                                        <select name="warehouse" id="warehouse" class="form-select">
+                                            <option value="">{% trans "All" %}</option>
+                                            {% for wh in warehouses %}
+                                            <option value="{{ wh.id }}" {% if selected_warehouse == wh.id|stringformat:"s" %}selected{% endif %}>{{ wh.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="product">{% trans "Product" %}</label>
+                                        <select name="product" id="product" class="form-select">
+                                            <option value="">{% trans "All" %}</option>
+                                            {% for prod in products %}
+                                            <option value="{{ prod.id }}" {% if selected_product == prod.id|stringformat:"s" %}selected{% endif %}>{{ prod.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="txn_type">{% trans "Transaction Type" %}</label>
+                                        <select name="txn_type" id="txn_type" class="form-select">
+                                            <option value="">{% trans "All" %}</option>
+                                            {% for type in txn_types %}
+                                            <option value="{{ type }}" {% if selected_txn_type == type %}selected{% endif %}>{{ type }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="date_from">{% trans "From Date" %}</label>
+                                        <input type="date" name="date_from" id="date_from" class="form-control" value="{{ date_from }}">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="date_to">{% trans "To Date" %}</label>
+                                        <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to }}">
+                                    </div>
+                                </div>
+                                {% if calendar_mode == 'BS' %}
+                                <div class="row mt-2">
+                                    <div class="col-md-3">
+                                        <label for="date_from_bs">{% trans "From Date (BS)" %}</label>
+                                        <input type="text" name="date_from_bs" id="date_from_bs" class="form-control" value="{{ date_from_bs }}">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="date_to_bs">{% trans "To Date (BS)" %}</label>
+                                        <input type="text" name="date_to_bs" id="date_to_bs" class="form-control" value="{{ date_to_bs }}">
+                                    </div>
+                                </div>
+                                {% endif %}
+                                <div class="row mt-2">
+                                    <div class="col">
+                                        <button type="submit" class="btn btn-primary">{% trans "Filter" %}</button>
+                                    </div>
+                                </div>
+                            </form>
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>{% trans "Date" %}</th>
+                                            <th>{% trans "Product" %}</th>
+                                            <th>{% trans "Warehouse" %}</th>
+                                            <th>{% trans "Location" %}</th>
+                                            <th>{% trans "Batch" %}</th>
+                                            <th>{% trans "Type" %}</th>
+                                            <th>{% trans "Reference" %}</th>
+                                            <th>{% trans "Qty In" %}</th>
+                                            <th>{% trans "Qty Out" %}</th>
+                                            <th>{% trans "Balance" %}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for entry in ledger_entries %}
+                                        <tr>
+                                            <td>{{ entry.txn_date }}</td>
+                                            <td>{{ entry.product.name }}</td>
+                                            <td>{{ entry.warehouse.name }}</td>
+                                            <td>{{ entry.location.name|default:"" }}</td>
+                                            <td>{{ entry.batch.batch_number|default:"" }}</td>
+                                            <td>{{ entry.txn_type }}</td>
+                                            <td>{{ entry.reference_id }}</td>
+                                            <td>{{ entry.qty_in }}</td>
+                                            <td>{{ entry.qty_out }}</td>
+                                            <td>{{ entry.balance_qty }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,16 +1,14 @@
-{% extends "components/base/list_base.html" %}
+{% extends "inventory/_list_base.html" %}
 {% load static %}
 
 {% block title %}Products{% endblock %}
-{% block list_page_title %}Products{% endblock %}
 {% block list_title %}Product List{% endblock %}
+{% block list_subtitle %}Manage inventory products and pricing{% endblock %}
 
 {% block list_actions %}
-  {% if can_add and create_url %}
-    <a href="{{ create_url }}" class="btn btn-success btn-sm">
-      <i class="mdi mdi-plus"></i> Add Product
-    </a>
-  {% endif %}
+  <a href="{{ create_url }}" class="btn btn-success btn-sm">
+    <i class="mdi mdi-plus"></i> Add Product
+  </a>
 {% endblock %}
 
 {% block table_head %}

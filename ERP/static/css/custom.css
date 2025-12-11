@@ -9,7 +9,169 @@
   --ui-font-size-m: 16px;
   --ui-font-size-l: 18px;
   --ui-font-size-xl: 20px;
+  /* Brand color - can be overridden per-organization */
+  --ui-brand-color: #1c84ee;
 }
+
+/* ===== BRAND COLOR OVERRIDES ===== */
+/* Replace all #1c84ee instances with the brand color variable */
+/* This ensures buttons, links, badges, forms, and components use the brand color */
+
+/* Primary brand color replacements for links, badges, and text elements */
+a, .link, .text-primary,
+.badge-primary, .badge-soft-primary,
+.btn-primary, .btn-outline-primary,
+.btn-primary:not(:disabled):not(.disabled).active,
+.btn-primary:not(:disabled):not(.disabled):active,
+.show > .btn-primary.dropdown-toggle,
+.page-item.active .page-link,
+.pagination .active a,
+.progress-bar,
+.nav-tabs .nav-link.active,
+.nav-pills .nav-link.active,
+.list-group-item.active,
+.form-check-input:checked,
+.form-switch .form-check-input:checked,
+.modal-header .btn-close:not(:disabled):not(.disabled):active,
+.close:not(:disabled):not(.disabled):active {
+  --bs-primary: var(--ui-brand-color);
+  --bs-link-color: var(--ui-brand-color);
+}
+
+/* Button and link primary color overrides */
+.btn-primary {
+  background-color: var(--ui-brand-color) !important;
+  border-color: var(--ui-brand-color) !important;
+  color: #fff !important;
+}
+.btn-primary:hover {
+  background-color: var(--ui-brand-color) !important;
+  border-color: var(--ui-brand-color) !important;
+  filter: brightness(0.9);
+}
+.btn-primary:focus, .btn-primary.focus {
+  background-color: var(--ui-brand-color) !important;
+  border-color: var(--ui-brand-color) !important;
+  box-shadow: 0 0 0 0.2rem rgba(28, 132, 238, 0.25) !important;
+}
+.btn-primary:active, .btn-primary.active,
+.btn-primary:not(:disabled):not(.disabled):active,
+.btn-primary:not(:disabled):not(.disabled).active,
+.show > .btn-primary.dropdown-toggle {
+  background-color: var(--ui-brand-color) !important;
+  border-color: var(--ui-brand-color) !important;
+}
+.btn-primary:disabled, .btn-primary.disabled {
+  background-color: var(--ui-brand-color) !important;
+  border-color: var(--ui-brand-color) !important;
+}
+
+/* Outline primary buttons */
+.btn-outline-primary {
+  color: var(--ui-brand-color) !important;
+  border-color: var(--ui-brand-color) !important;
+}
+.btn-outline-primary:hover {
+  color: #fff !important;
+  background-color: var(--ui-brand-color) !important;
+  border-color: var(--ui-brand-color) !important;
+}
+.btn-outline-primary:focus, .btn-outline-primary.focus {
+  color: #fff !important;
+  background-color: var(--ui-brand-color) !important;
+  border-color: var(--ui-brand-color) !important;
+  box-shadow: 0 0 0 0.2rem rgba(28, 132, 238, 0.5) !important;
+}
+.btn-outline-primary:active, .btn-outline-primary.active,
+.btn-outline-primary:not(:disabled):not(.disabled):active,
+.btn-outline-primary:not(:disabled):not(.disabled).active,
+.show > .btn-outline-primary.dropdown-toggle {
+  color: #fff !important;
+  background-color: var(--ui-brand-color) !important;
+  border-color: var(--ui-brand-color) !important;
+}
+
+/* Badge colors */
+.badge-primary {
+  background-color: var(--ui-brand-color) !important;
+  color: #fff !important;
+}
+.badge-soft-primary {
+  background-color: rgba(28, 132, 238, 0.1) !important;
+  color: var(--ui-brand-color) !important;
+}
+
+/* Links and text */
+a {
+  color: var(--ui-brand-color);
+}
+a:hover {
+  color: var(--ui-brand-color);
+  filter: brightness(0.9);
+}
+.text-primary {
+  color: var(--ui-brand-color) !important;
+}
+.text-primary-hover:hover {
+  color: var(--ui-brand-color) !important;
+}
+
+/* Form elements */
+.form-control:focus {
+  border-color: var(--ui-brand-color);
+  box-shadow: 0 0 0 0.2rem rgba(28, 132, 238, 0.25);
+}
+.form-check-input:checked {
+  background-color: var(--ui-brand-color);
+  border-color: var(--ui-brand-color);
+}
+.form-check-input:focus {
+  border-color: var(--ui-brand-color);
+  box-shadow: 0 0 0 0.2rem rgba(28, 132, 238, 0.25);
+}
+.form-switch .form-check-input:checked {
+  background-color: var(--ui-brand-color);
+}
+
+/* Nav and pagination */
+.nav-tabs .nav-link.active {
+  border-bottom-color: var(--ui-brand-color);
+  color: var(--ui-brand-color);
+}
+.page-item.active .page-link {
+  background-color: var(--ui-brand-color);
+  border-color: var(--ui-brand-color);
+}
+.pagination .active a {
+  background-color: var(--ui-brand-color);
+  border-color: var(--ui-brand-color);
+}
+
+/* Progress bars */
+.progress-bar {
+  background-color: var(--ui-brand-color) !important;
+}
+
+/* List groups */
+.list-group-item.active {
+  background-color: var(--ui-brand-color);
+  border-color: var(--ui-brand-color);
+}
+
+/* Alerts and other components */
+.alert-primary {
+  background-color: rgba(28, 132, 238, 0.1) !important;
+  border-color: var(--ui-brand-color) !important;
+  color: var(--ui-brand-color) !important;
+}
+
+/* Logo brand color styling */
+.logo-txt {
+  color: var(--ui-brand-color) !important;
+  font-weight: 600;
+}
+
+/* ===== END BRAND COLOR OVERRIDES ===== */
 
 body {
   font-family: var(--ui-font-family);
@@ -68,6 +230,20 @@ body[data-topbar="dark"] #page-topbar,
 body[data-topbar="dark"] #page-topbar .navbar-header {
   background-color: #1f2733 !important;
   color: #e7edf5 !important;
+}
+
+body[data-topbar="brand"] #page-topbar,
+body[data-topbar="brand"] #page-topbar .navbar-header {
+  background-color: var(--ui-brand-color) !important;
+  border-bottom: 1px solid var(--ui-brand-color) !important;
+  color: #ffffff !important;
+}
+body[data-topbar="brand"] #page-topbar .navbar-header .btn.header-item,
+body[data-topbar="brand"] #page-topbar .navbar-header .header-item,
+body[data-topbar="brand"] #page-topbar .navbar-header .nav-link,
+body[data-topbar="brand"] #page-topbar .navbar-header i,
+body[data-topbar="brand"] #page-topbar .logo-txt {
+  color: #ffffff !important;
 }
 
 /* Sidebar overrides obey data-sidebar regardless of layout mode */
@@ -171,6 +347,10 @@ body, html {
   left: 0;
   bottom: 0;
   background: #23272b;
+}
+/* Brand sidebar background - override default dark */
+body[data-sidebar="brand"] .vertical-menu {
+  background: var(--ui-brand-color) !important;
 }
 @media (max-width: 991px) {
   .vertical-menu { width: 60px; }

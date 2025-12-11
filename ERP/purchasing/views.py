@@ -5,8 +5,9 @@ from typing import Optional
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.core.exceptions import PermissionDenied
-from django.db.models import Q
-from django.shortcuts import get_object_or_404, render
+from django.db.models import Q, Sum, Count
+from django.contrib import messages
+from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
@@ -18,11 +19,17 @@ from purchasing.forms import (
     PurchaseInvoiceForm,
     PurchaseInvoiceLineFormSet,
 )
-from purchasing.models import LandedCostDocument, PurchaseInvoice
+from purchasing.models import (
+    LandedCostDocument,
+    PurchaseInvoice,
+    PurchaseOrder,
+    GoodsReceipt,
+)
 from purchasing.services import (
     ProcurementPostingError,
     apply_landed_cost_document,
     post_purchase_invoice,
+    reverse_purchase_invoice,
 )
 
 
@@ -89,6 +96,32 @@ def invoice_list(request):
 
 @login_required
 @permission_required(("purchasing", "purchaseinvoice", "view"))
+def invoice_list_page(request):
+    organization = _organization(request)
+    search = request.GET.get("q", "").strip()
+    invoices = (
+        PurchaseInvoice.objects.filter(organization=organization)
+        .select_related("supplier", "currency")
+        .order_by("-invoice_date", "-id")
+    )
+    if search:
+        invoices = invoices.filter(
+            Q(number__icontains=search)
+            | Q(supplier__display_name__icontains=search)
+        )
+    context = {
+        "page_title": "Purchase Invoices",
+        "page_subtitle": "All supplier invoices with totals and status.",
+        "invoices": invoices[:500],
+        "query": search,
+        "create_url": reverse("purchasing:invoice-create"),
+        "create_button_text": "New Invoice",
+    }
+    return render(request, "purchasing/invoice_list_page.html", context)
+
+
+@login_required
+@permission_required(("purchasing", "purchaseinvoice", "view"))
 def invoice_detail(request, pk: int):
     organization = _organization(request)
     invoice = get_object_or_404(
@@ -96,7 +129,15 @@ def invoice_detail(request, pk: int):
         pk=pk,
         organization=organization,
     )
-    return _render_invoice_detail(request, invoice)
+    if getattr(request, "htmx", False):
+        return _render_invoice_detail(request, invoice)
+
+    context = {
+        "page_title": f"Purchase Invoice {invoice.number}",
+        "invoice": invoice,
+        "landed_doc": getattr(invoice, "landed_cost_document", None),
+    }
+    return render(request, "purchasing/invoice_detail_page.html", context)
 
 
 @login_required
@@ -134,13 +175,7 @@ def invoice_form(request, pk: Optional[int] = None):
                 formset.save()
                 invoice.recalc_totals()
                 invoice.save(skip_recalc=True)
-            response = _render_invoice_detail(
-                request,
-                invoice,
-                alert="Purchase invoice saved.",
-            )
-            response["HX-Trigger"] = "purchaseInvoiceChanged"
-            return response
+            return redirect("purchasing:invoice-table")
     form_action = (
         reverse("purchasing:invoice-edit", kwargs={"pk": pk})
         if pk
@@ -151,8 +186,11 @@ def invoice_form(request, pk: Optional[int] = None):
         "line_formset": formset,
         "form_action": form_action,
         "is_edit": bool(pk),
+        "page_title": "Purchase Invoice" if pk else "New Purchase Invoice",
+        "form_title": "Purchase Invoice",
+        "breadcrumbs": [("Purchasing", reverse("purchasing:invoice-table")), ("Invoice", None)],
     }
-    return render(request, "purchasing/partials/invoice_form.html", context)
+    return render(request, "purchasing/invoice_form_page.html", context)
 
 
 @login_required
@@ -174,6 +212,84 @@ def invoice_post(request, pk: int):
         request,
         invoice,
         alert="Invoice posted successfully.",
+    )
+    response["HX-Trigger"] = "purchaseInvoiceChanged"
+    return response
+
+
+@login_required
+@permission_required(("purchasing", "purchaseinvoice", "delete"))
+@require_POST
+def invoice_delete(request, pk: int):
+    organization = _organization(request)
+    invoice = get_object_or_404(PurchaseInvoice, pk=pk, organization=organization)
+    if invoice.status != PurchaseInvoice.Status.DRAFT:
+        return _render_invoice_detail(
+            request,
+            invoice,
+            alert="Posted invoices cannot be deleted.",
+            alert_level="warning",
+        )
+
+    invoice.delete()
+
+    if getattr(request, "htmx", False):
+        response = render(
+            request,
+            "purchasing/partials/invoice_deleted.html",
+            {"alert_message": "Purchase invoice deleted."},
+        )
+        response["HX-Trigger"] = "purchaseInvoiceChanged"
+        return response
+
+    messages.success(request, "Purchase invoice deleted.")
+    return redirect("purchasing:invoice-table")
+
+
+@login_required
+@permission_required(("purchasing", "purchaseinvoice", "change"))
+@require_POST
+def invoice_reverse(request, pk: int):
+    organization = _organization(request)
+    invoice = get_object_or_404(PurchaseInvoice, pk=pk, organization=organization)
+    try:
+        reverse_purchase_invoice(invoice, user=request.user)
+    except ProcurementPostingError as exc:
+        return _render_invoice_detail(
+            request,
+            invoice,
+            alert=str(exc),
+            alert_level="danger",
+        )
+    response = _render_invoice_detail(
+        request,
+        invoice,
+        alert="Invoice reversed and moved to draft.",
+    )
+    response["HX-Trigger"] = "purchaseInvoiceChanged"
+    return response
+
+
+@login_required
+@permission_required(("purchasing", "purchaseinvoice", "change"))
+@require_POST
+def invoice_return(request, pk: int):
+    """Alias for reverse with user-facing wording."""
+    organization = _organization(request)
+    invoice = get_object_or_404(PurchaseInvoice, pk=pk, organization=organization)
+    try:
+        reverse_purchase_invoice(invoice, user=request.user)
+    except ProcurementPostingError as exc:
+        return _render_invoice_detail(
+            request,
+            invoice,
+            alert=str(exc),
+            alert_level="danger",
+        )
+    response = _render_invoice_detail(
+        request,
+        invoice,
+        alert="Invoice returned and reversal posted.",
     )
     response["HX-Trigger"] = "purchaseInvoiceChanged"
     return response
@@ -208,13 +324,7 @@ def landed_cost_form(request, invoice_id: int, doc_id: Optional[int] = None):
                 document.save()
                 formset.instance = document
                 formset.save()
-            response = _render_invoice_detail(
-                request,
-                invoice,
-                alert="Landed cost saved.",
-            )
-            response["HX-Trigger"] = "landedCostChanged"
-            return response
+            return redirect("purchasing:landed-cost-table")
     if doc_id:
         form_action = reverse(
             "purchasing:landed-cost-edit",
@@ -229,8 +339,11 @@ def landed_cost_form(request, invoice_id: int, doc_id: Optional[int] = None):
         "form": form,
         "line_formset": formset,
         "form_action": form_action,
+        "page_title": "Landed Cost",
+        "form_title": "Landed Cost",
+        "breadcrumbs": [("Purchasing", reverse("purchasing:landed-cost-table")), ("Landed Cost", None)],
     }
-    return render(request, "purchasing/partials/landed_cost_form.html", context)
+    return render(request, "purchasing/landed_cost_form_page.html", context)
 
 
 @login_required
@@ -260,3 +373,66 @@ def landed_cost_apply(request, doc_id: int):
     )
     response["HX-Trigger"] = "landedCostChanged"
     return response
+
+
+@login_required
+@permission_required(("purchasing", "purchaseinvoice", "view"))
+def reports(request):
+    organization = _organization(request)
+
+    po_qs = PurchaseOrder.objects.filter(organization=organization)
+    gr_qs = GoodsReceipt.objects.filter(organization=organization)
+    inv_qs = PurchaseInvoice.objects.filter(organization=organization)
+    lc_qs = LandedCostDocument.objects.filter(organization=organization)
+
+    context = {
+        "page_title": "Purchasing Reports",
+        "po_counts": {
+            "draft": po_qs.filter(status=PurchaseOrder.Status.DRAFT).count(),
+            "approved": po_qs.filter(status=PurchaseOrder.Status.APPROVED).count(),
+            "sent": po_qs.filter(status=PurchaseOrder.Status.SENT).count(),
+            "received": po_qs.filter(status=PurchaseOrder.Status.RECEIVED).count(),
+        },
+        "gr_counts": {
+            "draft": gr_qs.filter(status=GoodsReceipt.Status.DRAFT).count(),
+            "posted": gr_qs.filter(status=GoodsReceipt.Status.POSTED).count(),
+        },
+        "invoice_totals": {
+            "draft": inv_qs.filter(status=PurchaseInvoice.Status.DRAFT).count(),
+            "posted": inv_qs.filter(status=PurchaseInvoice.Status.POSTED).count(),
+            "sum_total": inv_qs.aggregate(total=Sum("total_amount"))["total"] or 0,
+            "sum_posted": inv_qs.filter(status=PurchaseInvoice.Status.POSTED).aggregate(total=Sum("total_amount"))["total"] or 0,
+        },
+        "po_sum_total": po_qs.aggregate(total=Sum("total_amount"))["total"] or 0,
+        "gr_posted_count": gr_qs.filter(status=GoodsReceipt.Status.POSTED).count(),
+        "landed_backlog": lc_qs.filter(is_applied=False).select_related("purchase_invoice")[:25],
+        "landed_pending_total": lc_qs.filter(is_applied=False).aggregate(total=Sum("cost_lines__amount"))["total"] or 0,
+        "landed_applied_total": lc_qs.filter(is_applied=True).aggregate(total=Sum("cost_lines__amount"))["total"] or 0,
+        "recent_pos": po_qs.select_related("vendor").order_by("-created_at")[:10],
+        "recent_grs": gr_qs.select_related("purchase_order").order_by("-receipt_date")[:10],
+        "recent_invoices": inv_qs.select_related("supplier").order_by("-invoice_date")[:10],
+    }
+
+    return render(request, "purchasing/reports.html", context)
+
+
+@login_required
+@permission_required(("purchasing", "purchaseinvoice", "view"))
+def landed_cost_list_page(request):
+    organization = _organization(request)
+    docs = (
+        LandedCostDocument.objects.filter(organization=organization)
+        .select_related("purchase_invoice__supplier")
+        .prefetch_related("cost_lines")
+        .annotate(
+            cost_total=Sum("cost_lines__amount"),
+            cost_count=Count("cost_lines"),
+        )
+        .order_by("-document_date", "-id")
+    )
+    context = {
+        "page_title": "Landed Cost Documents",
+        "page_subtitle": "Allocate freight, duty, and other costs across receipts.",
+        "documents": docs[:300],
+    }
+    return render(request, "purchasing/landed_cost_list_page.html", context)

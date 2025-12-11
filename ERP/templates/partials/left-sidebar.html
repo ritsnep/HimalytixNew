@@ -29,6 +29,32 @@
                         <span data-key="t-lpg-module">LPG Vertical</span>
                     </a>
                 </li>
+                
+                <li class="menu-title" data-key="t-beta">Beta</li>
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow">
+                        <i data-feather="zap"></i>
+                        <span data-key="t-beta-module">Beta</span>
+                        <span class="badge rounded-pill bg-soft-info text-info float-end">Beta</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li>
+                            <a href="{% url 'pages:beta.purchase_flow' %}">
+                                Purchase Flow (HTMX)
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'pages:beta.model_form' %}">
+                                Beta Model Form
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'pages:beta.model_list' %}">
+                                Beta Model List
+                            </a>
+                        </li>
+                    </ul>
+                </li>
                 <!-- Accounting Section -->
                 <li>
                     <a href="javascript: void(0);" class="has-arrow">
@@ -418,28 +444,28 @@
                     </a>
                     <ul class="sub-menu" aria-expanded="false">
                         <li>
-                            <a href="{% url 'purchasing:workspace' %}">
-                                <span>Purchasing Workspace</span>
+                            <a href="{% url 'purchasing:invoice-table' %}">
+                                <span>Purchase Invoices</span>
                             </a>
                         </li>
                         <li>
-                            <a href="{% url 'purchasing:po_workspace' %}">
-                                <span>PO Workspace</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{% url 'purchasing:gr_workspace' %}">
-                                <span>GR Workspace</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{% url 'purchasing:po_list' %}">
+                            <a href="{% url 'purchasing:po_table' %}">
                                 <span>Purchase Orders</span>
                             </a>
                         </li>
                         <li>
-                            <a href="{% url 'purchasing:gr_list' %}">
+                            <a href="{% url 'purchasing:gr_table' %}">
                                 <span>Goods Receipts</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'purchasing:landed-cost-table' %}">
+                                <span>Landed Cost</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'purchasing:reports' %}">
+                                <span>Purchasing Reports</span>
                             </a>
                         </li>
                     </ul>

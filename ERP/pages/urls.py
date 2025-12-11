@@ -18,6 +18,10 @@ from .views import (
     pages_error_404_view,
     pages_error_500_view,
     pages_horizontal_layout_view,
+    BetaModelFormView,
+    BetaModelListView,
+    BetaPurchaseCartView,
+    BetaPurchaseOrderView,
 )
 from .import views
 
@@ -114,5 +118,26 @@ urlpatterns = [
         "layout/horizontal/",
         view=pages_horizontal_layout_view,
         name="pages.layout.horizontal",
+    ),
+    # Beta module prototypes
+    path(
+        "beta/purchase-flow/",
+        view=BetaPurchaseOrderView.as_view(),
+        name="beta.purchase_flow",
+    ),
+    path(
+        "beta/purchase-flow/cart/",
+        view=BetaPurchaseCartView.as_view(),
+        name="beta.purchase_cart",
+    ),
+    path(
+        "beta/model/form/",
+        view=BetaModelFormView.as_view(),
+        name="beta.model_form",
+    ),
+    path(
+        "beta/model/list/",
+        view=BetaModelListView.as_view(),
+        name="beta.model_list",
     ),
 ]

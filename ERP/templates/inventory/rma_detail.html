@@ -1,0 +1,32 @@
+{% extends 'partials/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "RMA Details" %}{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title">{% trans "RMA Details" %}</h4>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row">
+                                <dt class="col-sm-3">{% trans "RMA Number" %}</dt>
+                                <dd class="col-sm-9">{{ rma.rma_number }}</dd>
+                                <dt class="col-sm-3">{% trans "Status" %}</dt>
+                                <dd class="col-sm-9">{{ rma.status }}</dd>
+                            </dl>
+                            <a href="{% url 'inventory:rma_list' %}" class="btn btn-secondary">{% trans "Back to List" %}</a>
+                            <a href="{% url 'inventory:rma_update' rma.pk %}" class="btn btn-primary">{% trans "Edit" %}</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

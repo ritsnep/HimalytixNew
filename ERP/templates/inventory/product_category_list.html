@@ -10,14 +10,14 @@
 {% block table_headers %}
     <th>{% trans "Code" %}</th>
     <th>{% trans "Name" %}</th>
-    <th>{% trans "Parent Category" %}</th>
+    <th>{% trans "Description" %}</th>
     <th>{% trans "Active" %}</th>
 {% endblock %}
 
 {% block table_columns %}
     { data: 'code' },
     { data: 'name' },
-    { data: 'parent__name', defaultContent: '-' },
+    { data: 'description' },
     { 
         data: 'is_active',
         render: function(data) {

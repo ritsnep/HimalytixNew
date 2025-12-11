@@ -313,6 +313,10 @@ class DesignerProperties {
     applyProperties() {
         if (!this.currentField) return;
         
+        // Track styling changes (width, padding, background)
+        const stylingProperties = ['custom_width', 'padding', 'background', 'background_color', 'css_class'];
+        let hasStylingChanges = false;
+        
         // Collect all property values
         document.querySelectorAll('[data-property]').forEach(input => {
             const property = input.dataset.property;
@@ -324,6 +328,11 @@ class DesignerProperties {
                 value = parseInt(input.value, 10);
             } else {
                 value = input.value;
+            }
+            
+            // Check if this is a styling property with a new value
+            if (stylingProperties.includes(property) && value && value !== this.currentField[property]) {
+                hasStylingChanges = true;
             }
             
             this.currentField[property] = value;
@@ -382,6 +391,39 @@ class DesignerProperties {
         
         // Show feedback
         this.engine.showToast('Properties updated', 'success');
+        
+        // If styling properties changed, ask to refresh
+        if (hasStylingChanges) {
+            this.showRefreshConfirmation();
+        }
+    }
+    
+    /**
+     * Show SweetAlert confirmation to refresh page for styling changes
+     */
+    showRefreshConfirmation() {
+        Swal.fire({
+            title: 'Custom width, padding, background.',
+            html: '<p style="margin: 1rem 0; color: #666; font-size: 0.95rem;">Styling changes have been detected. Refresh the page to see the updates applied to your components.</p>',
+            icon: 'info',
+            width: 600,
+            padding: '100px',
+            background: 'rgb(224, 225, 243)',
+            confirmButtonText: 'Refresh Page',
+            confirmButtonColor: '#1c84ee',
+            showCancelButton: true,
+            cancelButtonText: 'Later',
+            cancelButtonColor: '#6b7280',
+            didOpen: (modal) => {
+                // Apply additional styling to the modal if needed
+                modal.style.display = 'grid';
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Refresh the page
+                window.location.reload();
+            }
+        });
     }
 }
 

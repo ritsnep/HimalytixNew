@@ -1,38 +1,71 @@
-{% extends 'partials/base.html' %}
-{% block content %}
-<div class="main-content">
-  <div class="page-content">
-    <div class="container-fluid">
-      <div class="row justify-content-center">
-        <div class="col-lg-8">
-          <div class="card">
-            <div class="card-body">
-              <h5 class="card-title mb-3">{{ title|default:"Purchase Order" }}</h5>
-              <form method="post">
-                {% csrf_token %}
-                {% if form.non_field_errors %}
-                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
-                {% endif %}
-                <div class="row g-3">
-                  {% for field in form %}
-                  <div class="col-md-6">
-                    <label class="form-label">{{ field.label }}</label>
-                    {{ field }}
-                    {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-                    {% if field.errors %}<div class="text-danger small">{{ field.errors|striptags }}</div>{% endif %}
-                  </div>
-                  {% endfor %}
-                </div>
-                <div class="d-flex justify-content-end gap-2 mt-4">
-                  <a class="btn btn-secondary" href="{% url 'purchasing:po_workspace' %}">Cancel</a>
-                  <button type="submit" class="btn btn-success">Save</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      </div>
+{% extends 'accounting/_form_base.html' %}
+
+{% block title %}{{ page_title|default:"Purchase Order" }}{% endblock %}
+
+{% block form_content %}
+<form method="post" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger">
+        {% for error in form.non_field_errors %}{{ error }}<br>{% endfor %}
     </div>
-  </div>
-</div>
+    {% endif %}
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label class="form-label">Vendor</label>
+            {{ form.vendor }}
+            {% if form.vendor.errors %}<div class="text-danger small">{{ form.vendor.errors|striptags }}</div>{% endif %}
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">PO Number</label>
+            {{ form.number }}
+            {% if form.number.errors %}<div class="text-danger small">{{ form.number.errors|striptags }}</div>{% endif %}
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Currency</label>
+            {{ form.currency }}
+            {% if form.currency.errors %}<div class="text-danger small">{{ form.currency.errors|striptags }}</div>{% endif %}
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Exchange Rate</label>
+            {{ form.exchange_rate }}
+            {% if form.exchange_rate.errors %}<div class="text-danger small">{{ form.exchange_rate.errors|striptags }}</div>{% endif %}
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">Order Date</label>
+            {{ form.order_date }}
+            {% if form.order_date.errors %}<div class="text-danger small">{{ form.order_date.errors|striptags }}</div>{% endif %}
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Due Date</label>
+            {{ form.due_date }}
+            {% if form.due_date.errors %}<div class="text-danger small">{{ form.due_date.errors|striptags }}</div>{% endif %}
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Expected Receipt</label>
+            {{ form.expected_receipt_date }}
+            {% if form.expected_receipt_date.errors %}<div class="text-danger small">{{ form.expected_receipt_date.errors|striptags }}</div>{% endif %}
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Status</label>
+            {{ form.status }}
+            {% if form.status.errors %}<div class="text-danger small">{{ form.status.errors|striptags }}</div>{% endif %}
+        </div>
+
+        <div class="col-12">
+            <label class="form-label">Notes</label>
+            {{ form.notes }}
+            {% if form.notes.errors %}<div class="text-danger small">{{ form.notes.errors|striptags }}</div>{% endif %}
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between mt-4">
+        <a class="btn btn-light" href="{% url 'purchasing:po_table' %}">Cancel</a>
+        <button type="submit" class="btn btn-primary">
+            <i class="mdi mdi-content-save"></i> Save Purchase Order
+        </button>
+    </div>
+</form>
 {% endblock %}
