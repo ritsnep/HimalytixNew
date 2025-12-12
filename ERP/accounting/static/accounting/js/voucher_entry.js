@@ -3325,4 +3325,8 @@ function keyboardHelpModalHtml() {
 
 /** Boot */
 window.App = App;
-window.addEventListener('DOMContentLoaded', () => App.init());
+if (!window.disableLegacyVoucherEntry) {
+  window.addEventListener('DOMContentLoaded', () => App.init());
+} else {
+  console.info('Legacy voucher entry initialization skipped (disableLegacyVoucherEntry=true).');
+}

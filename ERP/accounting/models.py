@@ -5325,7 +5325,21 @@ def default_ui_schema():
                     }
                 }
             },
-        }
+        },
+        "settings": {
+            "auto_balance": {
+                "enabled": True,
+                "default_account": "",
+            },
+            "prefill": {
+                "header": {},
+                "lines": {},
+            },
+            "required_fields": {
+                "header": [],
+                "lines": [],
+            },
+        },
     }
     
 

@@ -1,0 +1,245 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Journal Print Templates – Preview</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --card-bg: #ffffff;
+      --border-soft: #e0e0e5;
+      --border-strong: #222;
+      --text-main: #222;
+      --text-muted: #666;
+      --accent: #2563eb;
+      --accent-soft: #e0ecff;
+      --danger: #b91c1c;
+      --font-main: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      font-family: var(--font-main);
+      background: radial-gradient(circle at top left, #eef2ff, #f9fafb 40%, #f5f5f7);
+      color: var(--text-main);
+    }
+    .page-wrapper { max-width: 1100px; margin: 0 auto; }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 999px;
+      box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+      backdrop-filter: blur(12px);
+    }
+    .toolbar-left, .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .chip-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 0.2rem;
+    }
+    .select {
+      border-radius: 999px;
+      border: 1px solid var(--border-soft);
+      padding: 0.4rem 0.9rem;
+      font-size: 0.85rem;
+      background: #fff;
+      min-width: 240px;
+      outline: none;
+    }
+    .btn {
+      border-radius: 999px;
+      border: 0;
+      font-size: 0.85rem;
+      padding: 0.45rem 0.9rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      cursor: pointer;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-ghost { background: transparent; color: var(--text-muted); }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-ghost:hover { background: rgba(15, 23, 42, 0.04); }
+    .pill {
+      padding: 0.22rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      border: 1px solid var(--border-soft);
+      background: #fff;
+      color: var(--text-muted);
+    }
+    .pill-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: #22c55e;
+      margin-right: 0.35rem;
+    }
+    .pill-content { display: inline-flex; align-items: center; gap: 0.25rem; }
+
+    .options-panel {
+      margin-bottom: 1.1rem;
+      padding: 0.6rem 0.9rem;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1.2rem;
+      align-items: center;
+      font-size: 0.8rem;
+    }
+    .options-group-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-right: 0.35rem;
+    }
+    .option-inline {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.15rem 0.4rem;
+      border-radius: 999px;
+      border: 1px solid rgba(209, 213, 219, 0.9);
+      background: #f9fafb;
+    }
+    .option-inline input[type="checkbox"] { cursor: pointer; }
+
+    .template-compact .print-surface {
+      padding: 1.2rem 1.3rem;
+      border-radius: 12px;
+    }
+    .template-compact .journal-lines th,
+    .template-compact .journal-lines td {
+      padding: 0.3rem 0.4rem;
+    }
+
+    @media print {
+      body { background: #ffffff; padding: 0; }
+      .toolbar, .options-panel { display: none !important; }
+      .page-wrapper { max-width: 100%; margin: 0; }
+      .print-surface { box-shadow: none; border-radius: 0; border: 0; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page-wrapper">
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div>
+          <div class="chip-label">Journal Print Template</div>
+
+          {% if can_edit %}
+          <form id="print-config-form" method="post" action="{% url 'print_preview' journal.pk %}" style="display: inline;">
+            {% csrf_token %}
+            <select id="templateSelector" class="select" name="template_name">
+              {% for key, label in template_choices %}
+                <option value="{{ key }}" {% if config.template_name == key %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          {% else %}
+            <select id="templateSelector" class="select" disabled>
+              <option selected>Journal Voucher – {{ config.template_name|default:"classic"|title }}</option>
+            </select>
+          {% endif %}
+        </div>
+
+        <div class="pill">
+          <span class="pill-content">
+            <span class="pill-dot"></span>
+            Server Rendered
+          </span>
+        </div>
+      </div>
+
+      <div class="toolbar-right">
+        <a class="btn btn-ghost" href="{% url 'print_preview' journal.pk %}">⟳ Reset</a>
+        <a class="btn btn-primary" target="_blank" rel="noopener" href="{% url 'print_page' journal.pk %}?template={{ config.template_name|default:'classic' }}">🖨 Print</a>
+      </div>
+    </div>
+
+    {% if can_edit %}
+    <div class="options-panel">
+      <span class="options-group-label">Show / hide details:</span>
+
+      <label class="option-inline">
+        <input type="checkbox" name="show_description" {% if config.show_description %}checked{% endif %} />
+        Description bar
+      </label>
+
+      <label class="option-inline">
+        <input type="checkbox" name="show_department" {% if config.show_department %}checked{% endif %} />
+        Department
+      </label>
+
+      <label class="option-inline">
+        <input type="checkbox" name="show_project" {% if config.show_project %}checked{% endif %} />
+        Project
+      </label>
+
+      <label class="option-inline">
+        <input type="checkbox" name="show_cost_center" {% if config.show_cost_center %}checked{% endif %} />
+        Cost centre
+      </label>
+
+      <label class="option-inline">
+        <input type="checkbox" name="show_tax_column" {% if config.show_tax_column %}checked{% endif %} />
+        Tax column
+      </label>
+
+      <label class="option-inline">
+        <input type="checkbox" name="show_audit" {% if config.show_audit %}checked{% endif %} />
+        Audit trail
+      </label>
+
+      <label class="option-inline">
+        <input type="checkbox" name="show_signatures" {% if config.show_signatures %}checked{% endif %} />
+        Signatures
+      </label>
+
+      <label class="option-inline">
+        <input type="checkbox" name="show_imbalance" {% if config.show_imbalance %}checked{% endif %} />
+        Imbalance warning
+      </label>
+    </div>
+    </form>
+    {% endif %}
+
+    <div id="templateRoot" class="{{ template_root_class }}">
+      {% include template_path %}
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var form = document.getElementById('print-config-form');
+      if (!form) return;
+      form.addEventListener('change', function () {
+        form.submit();
+      });
+    })();
+  </script>
+</body>
+</html>

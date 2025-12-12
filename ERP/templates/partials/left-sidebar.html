@@ -116,6 +116,11 @@
                                 <span>Journals</span>
                             </a>
                         </li>
+                        <li>
+                            <a href="{% url 'print_settings' %}">
+                                <span>Print Configuration</span>
+                            </a>
+                        </li>
                         {% if user|has_permission:'accounting_expenseentry_add' %}
                         <li>
                             <a href="{% url 'accounting:expense_entry_new' %}">

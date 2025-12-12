@@ -58,6 +58,7 @@ urlpatterns = [
     
     # Include accounting app with explicit namespace for reverse('accounting:*') lookups
     path('accounting/', include(('accounting.urls', 'accounting'), namespace='accounting')),
+    path('print/', include('printing.urls')),
     path('pos/', include(('pos.urls', 'pos'), namespace='pos')),
     path('backups/', include(('backups.urls', 'backups'), namespace='backups')),
     # path('accounting/', include('accounting.new_journal_entry_urls')),

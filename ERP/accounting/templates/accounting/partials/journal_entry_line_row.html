@@ -1,0 +1,110 @@
+<tr
+  id="line-{{ index }}"
+  class="journal-row align-middle"
+  data-row-index="{{ index }}"
+  data-row-json="{{ row_json|escapejs }}"
+>
+  {% for column in line_columns %}
+    {% with key=column.key %}
+      {% if key == 'account' %}
+        <td class="cell account pe-2 {{ column.css_class|default:'' }}">
+          <input
+            type="text"
+            name="rows[{{ index }}][account]"
+            value="{{ row.account|default:'' }}"
+            class="form-control form-control-sm"
+            placeholder="{{ line_labels.account|default:'Account' }}"
+            autocomplete="off"
+            data-lookup="account"
+            data-row-index="{{ index }}"
+          />
+          <datalist id="account-options-{{ index }}" class="account-options"></datalist>
+        </td>
+      {% elif key == 'description' %}
+        <td class="cell description px-2 {{ column.css_class|default:'' }}">
+          <input
+            type="text"
+            name="rows[{{ index }}][narr]"
+            value="{{ row.narr|default:'' }}"
+            class="form-control form-control-sm"
+            placeholder="{{ line_labels.description|default:'Description' }}"
+          />
+        </td>
+      {% elif key == 'dr' %}
+        <td class="cell debit px-1 {{ column.css_class|default:'' }}">
+          <input
+            type="number"
+            step="0.01"
+            name="rows[{{ index }}][dr]"
+            value="{{ row.dr|default:'' }}"
+            class="form-control form-control-sm text-end"
+            placeholder="{{ line_labels.dr|default:'Debit' }}"
+            data-role="debit"
+          />
+        </td>
+      {% elif key == 'cr' %}
+        <td class="cell credit px-1 {{ column.css_class|default:'' }}">
+          <input
+            type="number"
+            step="0.01"
+            name="rows[{{ index }}][cr]"
+            value="{{ row.cr|default:'' }}"
+            class="form-control form-control-sm text-end"
+            placeholder="{{ line_labels.cr|default:'Credit' }}"
+            data-role="credit"
+          />
+        </td>
+      {% elif key == 'costCenter' %}
+        <td class="cell cost-center px-1 {{ column.css_class|default:'' }}">
+          <input
+            type="text"
+            name="rows[{{ index }}][costCenter]"
+            value="{{ row.costCenter|default:'' }}"
+            class="form-control form-control-sm"
+            placeholder="{{ line_labels.costCenter|default:'Cost Center' }}"
+            data-lookup="costCenter"
+            data-row-index="{{ index }}"
+          />
+        </td>
+      {% elif key == 'project' %}
+        <td class="cell project px-1 {{ column.css_class|default:'' }}">
+          <input
+            type="text"
+            name="rows[{{ index }}][project]"
+            value="{{ row.project|default:'' }}"
+            class="form-control form-control-sm"
+            placeholder="{{ line_labels.project|default:'Project' }}"
+            data-row-index="{{ index }}"
+          />
+        </td>
+      {% elif key == 'department' %}
+        <td class="cell department px-1 {{ column.css_class|default:'' }}">
+          <input
+            type="text"
+            name="rows[{{ index }}][department]"
+            value="{{ row.department|default:'' }}"
+            class="form-control form-control-sm"
+            placeholder="{{ line_labels.department|default:'Department' }}"
+          />
+        </td>
+      {% elif key == 'taxCode' %}
+        <td class="cell tax px-1 {{ column.css_class|default:'' }}">
+          <input
+            type="text"
+            name="rows[{{ index }}][taxCode]"
+            value="{{ row.taxCode|default:'' }}"
+            class="form-control form-control-sm"
+            placeholder="{{ line_labels.taxCode|default:'Tax Code' }}"
+          />
+        </td>
+      {% elif key == 'actions' %}
+        <td class="cell actions text-end pe-1 {{ column.css_class|default:'' }}">
+          <button type="button" class="btn btn-sm btn-link text-danger remove-row" data-action="delete">Remove</button>
+          <button type="button" class="btn btn-sm btn-link text-secondary duplicate-row" data-action="duplicate">Duplicate</button>
+        </td>
+      {% else %}
+        <td class="cell {{ column.css_class|default:'' }}"></td>
+      {% endif %}
+    {% endwith %}
+  {% endfor %}
+</tr>

@@ -1,0 +1,106 @@
+{% extends 'partials/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Print Configuration" %}{% endblock %}
+
+{% block content %}
+<div class="main-content">
+  <div class="page-content">
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-12">
+          <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+            <h4 class="mb-sm-0 font-size-18">{% trans "Print Configuration" %}</h4>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-lg-8">
+          <div class="card">
+            <div class="card-header">
+              <h5 class="mb-0">{% trans "Your print preferences" %}</h5>
+            </div>
+            <div class="card-body">
+              <form method="post" novalidate>
+                {% csrf_token %}
+
+                <div class="mb-3">
+                  <label class="form-label" for="template_name">{% trans "Template" %}</label>
+                  <select class="form-select" id="template_name" name="template_name">
+                    {% for key, label in template_choices %}
+                      <option value="{{ key }}" {% if config.template_name == key %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">{% trans "Show / hide" %}</label>
+                  <div class="row">
+                    <div class="col-md-6">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="show_description" name="show_description" {% if config.show_description %}checked{% endif %}>
+                        <label class="form-check-label" for="show_description">{% trans "Description bar" %}</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="show_department" name="show_department" {% if config.show_department %}checked{% endif %}>
+                        <label class="form-check-label" for="show_department">{% trans "Department" %}</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="show_project" name="show_project" {% if config.show_project %}checked{% endif %}>
+                        <label class="form-check-label" for="show_project">{% trans "Project" %}</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="show_cost_center" name="show_cost_center" {% if config.show_cost_center %}checked{% endif %}>
+                        <label class="form-check-label" for="show_cost_center">{% trans "Cost centre" %}</label>
+                      </div>
+                    </div>
+
+                    <div class="col-md-6">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="show_tax_column" name="show_tax_column" {% if config.show_tax_column %}checked{% endif %}>
+                        <label class="form-check-label" for="show_tax_column">{% trans "Tax column" %}</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="show_audit" name="show_audit" {% if config.show_audit %}checked{% endif %}>
+                        <label class="form-check-label" for="show_audit">{% trans "Audit trail" %}</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="show_signatures" name="show_signatures" {% if config.show_signatures %}checked{% endif %}>
+                        <label class="form-check-label" for="show_signatures">{% trans "Signatures" %}</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="show_imbalance" name="show_imbalance" {% if config.show_imbalance %}checked{% endif %}>
+                        <label class="form-check-label" for="show_imbalance">{% trans "Imbalance warning" %}</label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                  <button type="submit" class="btn btn-primary">{% trans "Save" %}</button>
+                  <a class="btn btn-outline-secondary" href="{% url 'accounting:journal_list' %}">{% trans "Go to Journals" %}</a>
+                </div>
+
+                <p class="text-muted mt-3 mb-0">
+                  {% trans "Tip: open any Journal and use Print Preview / Print to see your saved preferences." %}
+                </p>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-4">
+          <div class="card">
+            <div class="card-header"><h6 class="mb-0">{% trans "Help" %}</h6></div>
+            <div class="card-body">
+              <p class="mb-0">{% trans "Developer guide is in" %} <code>ERP/printing/README.md</code>.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

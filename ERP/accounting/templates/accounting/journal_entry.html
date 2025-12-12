@@ -30,8 +30,7 @@
 
 {% block extra_js %}
 {{ block.super }}
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-<script src="{% static 'accounting/js/voucher_entry.js' %}" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 {% endblock extra_js %}
 
 {% block content %}
@@ -85,34 +84,74 @@
           <div class="card">
             <div class="card-body">
               <div
-                id="app"
-                data-endpoint-save="{% url 'accounting:journal_save_draft' %}"
-                data-endpoint-submit="{% url 'accounting:journal_submit' %}"
-                data-endpoint-approve="{% url 'accounting:journal_approve' %}"
-                data-endpoint-reject="{% url 'accounting:journal_reject' %}"
-                data-endpoint-post="{% url 'accounting:journal_post' %}"
-                data-endpoint-period-validate="{% url 'accounting:journal_period_validate' %}"
-                data-config-url="{{ config_endpoint }}"
-                data-lookup-account="{% url 'accounting:journal_account_lookup' %}"
-                data-lookup-cost-center="{% url 'accounting:journal_cost_center_lookup' %}"
-                data-prefs-url="{{ prefs_endpoint }}"
-                data-prefs-save-url="{{ prefs_save_endpoint }}"
-                data-attach-upload="{{ attachment_upload_endpoint }}"
-                data-attach-delete="{{ attachment_delete_endpoint }}"
-                data-payment-terms="{{ payment_terms_endpoint }}"
-                data-default-journal-type="{{ journal_default_type }}"
-                data-default-currency="{{ default_currency }}"
-                data-default-date="{{ default_date }}"
+                class="container-fluid px-2 px-md-3"
+                id="journal-app"
+                data-row-endpoint="{{ row_endpoint }}"
+                data-header-endpoint="{{ header_partial_endpoint }}"
+                data-lines-endpoint="{{ lines_partial_endpoint }}"
+                data-side-panel-endpoint="{{ side_panel_endpoint }}"
+                data-add-row-endpoint="{{ add_row_endpoint }}"
+                data-duplicate-row-endpoint="{{ duplicate_row_endpoint }}"
+                data-bulk-add-endpoint="{{ bulk_add_rows_endpoint }}"
+                data-lookup-account="{{ lookup_urls.account }}"
+                data-lookup-cost-center="{{ lookup_urls.costCenter }}"
+                data-auto-balance-endpoint="{{ auto_balance_endpoint }}"
                 data-initial-journal-id="{{ initial_journal_id }}"
-                data-detail-url-template="{{ detail_url_template }}"
-                data-supported-currencies="{{ supported_currencies|join:',' }}"
-                data-can-submit="{{ permission_flags.can_submit|yesno:'true,false' }}"
-                data-can-approve="{{ permission_flags.can_approve|yesno:'true,false' }}"
-                data-can-reject="{{ permission_flags.can_reject|yesno:'true,false' }}"
-                data-can-post="{{ permission_flags.can_post|yesno:'true,false' }}"
-                data-show-config-selector="{{ show_config_selector|yesno:'true,false' }}"
-                data-debug-enabled="{{ journal_debug_enabled|yesno:'true,false' }}"
-              ></div>
+                data-ui-preferences="{{ ui_preferences_json|escapejs }}"
+                data-line-density="{{ line_density }}"
+              >
+                <div id="app-alerts" class="mb-3" aria-live="polite" aria-atomic="true"></div>
+
+                <div class="row">
+                  <div class="col-md-8 pe-md-4" id="journal-main">
+                    <div class="d-flex justify-content-end mb-3 gap-2">
+                      <button
+                        type="button"
+                        id="auto-balance"
+                        class="btn btn-sm btn-secondary"
+                        data-auto-balance-endpoint="{{ auto_balance_endpoint }}"
+                        data-auto-balance-enabled="{{ auto_balance_enabled|yesno:'true,false' }}"
+                        {% if not auto_balance_enabled %}disabled{% endif %}
+                      >
+                        Auto Balance
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-secondary"
+                        data-bs-toggle="modal"
+                        data-bs-target="#column-manager-modal"
+                      >
+                        Column Manager
+                      </button>
+                    </div>
+                    <div
+                      id="journal-header"
+                      hx-get="{{ header_partial_endpoint }}"
+                      hx-trigger="load"
+                      hx-target="#journal-header"
+                      hx-swap="innerHTML"
+                      hx-vals='{"journalId": "{{ initial_journal_id }}"}'
+                    ></div>
+                    <div
+                      id="lines-section"
+                      hx-get="{{ lines_partial_endpoint }}"
+                      hx-trigger="load"
+                      hx-target="#lines-section"
+                      hx-swap="innerHTML"
+                      hx-vals='{"journalId": "{{ initial_journal_id }}"}'
+                    ></div>
+                  </div>
+                  <div
+                    class="col-md-4"
+                    id="journal-sidebar"
+                    hx-get="{{ side_panel_endpoint }}"
+                    hx-trigger="load"
+                    hx-target="#journal-sidebar"
+                    hx-swap="innerHTML"
+                    hx-vals='{"journalId": "{{ initial_journal_id }}"}'
+                  ></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -122,6 +161,50 @@
   </div>
 </div>
 <!-- END main-content -->
+<div
+  class="modal fade"
+  id="column-manager-modal"
+  tabindex="-1"
+  aria-labelledby="columnManagerLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-dialog-scrollable">
+    <form
+      id="column-manager-form"
+      class="modal-content"
+      hx-post="{{ prefs_save_endpoint }}"
+      hx-target="#app-alerts"
+      hx-swap="innerHTML"
+    >
+      {% csrf_token %}
+      <input type="hidden" name="preferences" id="column-manager-payload">
+      <div class="modal-header">
+        <h5 class="modal-title" id="columnManagerLabel">Column Manager</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted">Reorder columns or toggle their visibility for the lines grid.</p>
+        <div class="mb-3">
+          <label class="form-label small mb-1" for="column-density-select">Row density</label>
+          <select class="form-select form-select-sm" id="column-density-select">
+            <option value="comfortable">Comfortable</option>
+            <option value="compact">Compact</option>
+          </select>
+        </div>
+        <ul class="list-group list-group-flush" id="column-manager-list" role="list"></ul>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="submit" class="btn btn-sm btn-primary">Save preferences</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script src="{% static 'libs/htmx.org/dist/htmx.min.js' %}" defer></script>
+<script>window.disableLegacyVoucherEntry = true;</script>
+<!-- Keep voucher_entry.js for features not yet migrated; ensure it loads after HTMX -->
+<script src="{% static 'accounting/js/voucher_entry.js' %}" defer></script>
+<script src="{% static 'accounting/js/journal_grid.js' %}" defer></script>
 
 {# Removed in-page config modal; users are redirected to a dedicated selection page instead. #}
 {% endblock content %}

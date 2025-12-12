@@ -1,0 +1,37 @@
+﻿<div id="journal-header" class="row g-3 density-{{ header_density|default:'comfortable'|lower }}">
+  {% for field in header_fields %}
+    <div class="col-md-4">
+      <label class="form-label" for="header-{{ field.name }}">{{ field.label }}</label>
+      {% if field.type == 'select' and field.choices %}
+        <select
+          id="header-{{ field.name }}"
+          name="header[{{ field.name }}]"
+          class="form-select"
+          {% if field.required %}required{% endif %}
+          hx-get="{{ side_panel_endpoint }}"
+          hx-trigger="change"
+          hx-target="#side-panel"
+        >
+          <option value="">-</option>
+          {% for choice in field.choices %}
+            {% with selected_value=field.value|default:'' %}
+              <option value="{{ choice.value }}" {% if choice.value|stringformat:"s" == selected_value|stringformat:"s" %}selected{% endif %}>{{ choice.label }}</option>
+            {% endwith %}
+          {% endfor %}
+        </select>
+      {% else %}
+        <input
+          id="header-{{ field.name }}"
+          name="header[{{ field.name }}]"
+          type="{{ field.type|default:'text' }}"
+          value="{{ field.value|default:'' }}"
+          class="form-control"
+          {% if field.required %}required{% endif %}
+          hx-get="{{ side_panel_endpoint }}"
+          hx-trigger="change"
+          hx-target="#side-panel"
+        />
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>

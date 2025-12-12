@@ -1,0 +1,371 @@
+<style>
+  .print-surface {
+    background: var(--card-bg);
+    border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.16);
+    padding: 1.75rem;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+  }
+  .print-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-soft);
+    padding-bottom: 1.25rem;
+  }
+  .org-header-left { display: flex; align-items: flex-start; gap: 0.85rem; }
+  .logo-box {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    border: 1px dashed var(--border-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    background: #f9fafb;
+  }
+  .org-block { display: flex; flex-direction: column; gap: 0.25rem; }
+  .org-name { font-weight: 600; font-size: 1.1rem; letter-spacing: 0.02em; }
+  .org-sub { font-size: 0.8rem; color: var(--text-muted); }
+  .voucher-badge {
+    font-size: 0.8rem;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 0.18rem 0.6rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .voucher-badge span.icon { font-size: 0.9rem; }
+  .header-meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem 1.5rem;
+    font-size: 0.8rem;
+  }
+  .meta-label {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.08rem;
+  }
+  .meta-value { font-weight: 500; }
+  .status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    border-radius: 999px;
+    padding: 0.22rem 0.6rem;
+    border: 1px solid rgba(34, 197, 94, 0.4);
+    color: #166534;
+    background: #ecfdf3;
+  }
+  .status-dot { width: 6px; height: 6px; border-radius: 999px; background: #22c55e; }
+  .desc-strip {
+    background: #f9fafb;
+    border-radius: 999px;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.8rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    border: 1px dashed rgba(148, 163, 184, 0.6);
+    gap: 0.75rem;
+  }
+  .desc-main { color: var(--text-muted); }
+  .desc-ref {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.75rem;
+    background: #fff;
+    border-radius: 999px;
+    padding: 0.12rem 0.6rem;
+    border: 1px solid var(--border-soft);
+    white-space: nowrap;
+  }
+  .lines-table-wrapper {
+    border-radius: 14px;
+    border: 1px solid var(--border-soft);
+    overflow: hidden;
+    margin-bottom: 1rem;
+  }
+  table.journal-lines {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+  }
+  .journal-lines thead { background: #f3f4f6; }
+  .journal-lines th, .journal-lines td {
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .journal-lines th {
+    font-weight: 600;
+    text-align: left;
+    white-space: nowrap;
+    color: #374151;
+    border-bottom: 1px solid #d1d5db;
+  }
+  .text-right { text-align: right; }
+  .text-center { text-align: center; }
+  .text-muted { color: var(--text-muted); }
+  .account-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.78rem;
+    color: #4b5563;
+  }
+  .dim-row { margin-top: 0.15rem; display: flex; flex-wrap: wrap; gap: 0.25rem; }
+  .dim-pill {
+    font-size: 0.7rem;
+    padding: 0.12rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid #e5e7eb;
+    color: #4b5563;
+    background: #f9fafb;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+  }
+  .dim-pill span.key { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.65rem; }
+  .row-total { font-weight: 600; background: #f9fafb; }
+  .row-imbalance { background: #fef2f2; color: var(--danger); font-weight: 500; }
+  .footer-grid {
+    display: grid;
+    grid-template-columns: 2fr 1.2fr;
+    gap: 1.25rem;
+    margin-top: 0.75rem;
+    align-items: flex-start;
+  }
+  .audit-block {
+    border-radius: 14px;
+    border: 1px dashed #d4d4d8;
+    padding: 0.7rem 0.8rem;
+    font-size: 0.78rem;
+    background: #fafafa;
+  }
+  .audit-block h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: #6b7280;
+  }
+  .audit-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.4rem 1.5rem;
+  }
+  .audit-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .audit-value { font-size: 0.78rem; font-weight: 500; }
+  .signature-strip { display: flex; justify-content: space-between; gap: 1.5rem; margin-top: 1.1rem; font-size: 0.7rem; }
+  .signature-slot { flex: 1; text-align: center; }
+  .signature-line { border-top: 1px solid #d4d4d8; margin-bottom: 0.25rem; padding-top: 1.4rem; }
+  .signature-label { text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; }
+  .totals-card {
+    border-radius: 14px;
+    border: 1px solid #d4d4d8;
+    padding: 0.75rem 0.8rem;
+    background: #f9fafb;
+    font-size: 0.8rem;
+  }
+  .totals-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem; }
+  .totals-label { color: #4b5563; }
+  .totals-amount {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
+  .totals-row strong { font-size: 0.9rem; }
+</style>
+
+<div class="print-surface" id="journalPrintSurface">
+  <div class="print-header">
+    <div class="org-header-left">
+      <div class="logo-box"><span>LOGO</span></div>
+      <div class="org-block">
+        <div class="org-name">{{ journal.organization.name }}</div>
+        <div class="org-sub">{{ journal.organization.address|default:"" }}</div>
+        <div class="org-sub">{{ journal.organization.tax_id|default:"" }}</div>
+        <div class="org-sub">{{ journal.organization.phone|default:"" }}{% if journal.organization.email %} • {{ journal.organization.email }}{% endif %}</div>
+      </div>
+    </div>
+    <div style="text-align: right; display: flex; flex-direction: column; gap: 0.4rem; align-items: flex-end;">
+      <div class="voucher-badge"><span class="icon">📄</span> Journal Voucher</div>
+      <div class="header-meta">
+        <div>
+          <div class="meta-label">Voucher No.</div>
+          <div class="meta-value">{{ journal.journal_number|default:journal.pk }}</div>
+        </div>
+        <div>
+          <div class="meta-label">Date</div>
+          <div class="meta-value">{{ journal.journal_date }}</div>
+        </div>
+        <div>
+          <div class="meta-label">Period</div>
+          <div class="meta-value">{{ journal.period }}</div>
+        </div>
+        <div>
+          <div class="meta-label">Currency</div>
+          <div class="meta-value">{{ journal.currency_code }} @ {{ journal.exchange_rate|floatformat:4 }}</div>
+        </div>
+      </div>
+      <div class="status-chip">
+        <span class="status-dot"></span>
+        {{ journal.status|default:""|title }}
+      </div>
+    </div>
+  </div>
+
+  {% if config.show_description %}
+  <div class="desc-strip">
+    <div class="desc-main">{{ journal.description|default:"No description provided" }}</div>
+    <div class="desc-ref">Ref: {{ journal.reference|default:"N/A" }}</div>
+  </div>
+  {% endif %}
+
+  <div class="lines-table-wrapper">
+    <table class="journal-lines">
+      <thead>
+        <tr>
+          <th class="text-center" style="width: 40px;">#</th>
+          <th style="width: 180px;">Account</th>
+          <th>Description / Dimensions</th>
+          <th class="text-right" style="width: 110px;">Debit</th>
+          <th class="text-right" style="width: 110px;">Credit</th>
+          {% if config.show_tax_column %}
+            <th class="text-center col-tax" style="width: 120px;">Tax</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for line in lines %}
+          <tr>
+            <td class="text-center">{{ line.line_number }}</td>
+            <td>
+              <div class="account-code">{{ line.account.code|default:"" }}</div>
+              <div>{{ line.account.name|default:line.account }}</div>
+            </td>
+            <td>
+              <div>{{ line.description|default:"" }}</div>
+              <div class="dim-row">
+                {% if config.show_department and line.department %}
+                  <span class="dim-pill dim-dept"><span class="key">Dept</span> {{ line.department }}</span>
+                {% endif %}
+                {% if config.show_project and line.project %}
+                  <span class="dim-pill dim-project"><span class="key">Proj</span> {{ line.project }}</span>
+                {% endif %}
+                {% if config.show_cost_center and line.cost_center %}
+                  <span class="dim-pill dim-costcenter"><span class="key">CC</span> {{ line.cost_center }}</span>
+                {% endif %}
+              </div>
+            </td>
+            <td class="text-right">{{ line.debit_amount|floatformat:2 }}</td>
+            <td class="text-right">{{ line.credit_amount|floatformat:2 }}</td>
+            {% if config.show_tax_column %}
+              <td class="text-center col-tax">
+                {% if line.tax_code %}
+                  <div>{{ line.tax_code.code|default:line.tax_code }} <span class="text-muted">{% if line.tax_rate %}{{ line.tax_rate|floatformat:2 }}{% endif %}</span></div>
+                {% endif %}
+              </td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+
+        <tr class="row-total">
+          <td colspan="3" class="text-right">Total</td>
+          <td class="text-right">{{ total_debit|floatformat:2 }}</td>
+          <td class="text-right">{{ total_credit|floatformat:2 }}</td>
+          {% if config.show_tax_column %}<td class="col-tax"></td>{% endif %}
+        </tr>
+
+        {% if config.show_imbalance and imbalance != 0 %}
+          <tr class="row-imbalance">
+            <td colspan="3"><strong>WARNING:</strong> Journal is not balanced.</td>
+            <td colspan="{% if config.show_tax_column %}3{% else %}2{% endif %}" class="text-right">Imbalance: {{ imbalance|floatformat:2 }}</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer-grid">
+    <div>
+      {% if config.show_audit %}
+      <div class="audit-block">
+        <h4>Audit Trail</h4>
+        <div class="audit-grid">
+          <div>
+            <div class="audit-label">Created By</div>
+            <div class="audit-value">{{ journal.created_by|default:"" }}</div>
+          </div>
+          <div>
+            <div class="audit-label">Created At</div>
+            <div class="audit-value">{{ journal.created_at|default:"" }}</div>
+          </div>
+          <div>
+            <div class="audit-label">Approved By</div>
+            <div class="audit-value">{{ journal.approved_by|default:"" }}</div>
+          </div>
+          <div>
+            <div class="audit-label">Approved At</div>
+            <div class="audit-value">{{ journal.approved_at|default:"" }}</div>
+          </div>
+          <div>
+            <div class="audit-label">Posted By</div>
+            <div class="audit-value">{{ journal.posted_by|default:"" }}</div>
+          </div>
+          <div>
+            <div class="audit-label">Posted At</div>
+            <div class="audit-value">{{ journal.posted_at|default:"" }}</div>
+          </div>
+        </div>
+
+        {% if config.show_signatures %}
+        <div class="signature-strip">
+          <div class="signature-slot">
+            <div class="signature-line"></div>
+            <div class="signature-label">Prepared By</div>
+          </div>
+          <div class="signature-slot">
+            <div class="signature-line"></div>
+            <div class="signature-label">Checked / Approved By</div>
+          </div>
+          <div class="signature-slot">
+            <div class="signature-line"></div>
+            <div class="signature-label">Authorized Signatory</div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    <div>
+      <div class="totals-card">
+        <div class="totals-row">
+          <div class="totals-label">Total Debit</div>
+          <div class="totals-amount">{{ total_debit|floatformat:2 }}</div>
+        </div>
+        <div class="totals-row">
+          <div class="totals-label">Total Credit</div>
+          <div class="totals-amount">{{ total_credit|floatformat:2 }}</div>
+        </div>
+        <div class="totals-row">
+          <div class="totals-label">Imbalance</div>
+          <div class="totals-amount">{{ imbalance|floatformat:2 }}</div>
+        </div>
+        <hr style="border: 0; border-top: 1px dashed #d4d4d8; margin: 0.4rem 0;" />
+        <div class="totals-row">
+          <strong>In Words</strong>
+          <strong class="totals-amount text-right">—</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

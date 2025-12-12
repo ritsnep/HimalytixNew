@@ -1,0 +1,108 @@
+<div id="side-panel" class="journal-side-panel card">
+  <div class="card-body d-flex flex-column gap-3">
+    <section>
+      <div class="d-flex justify-content-between align-items-center">
+        <h5 class="h6 mb-0">Totals</h5>
+        {% if balanced %}
+          <span class="badge bg-success">Balanced</span>
+        {% else %}
+          <span class="badge bg-warning text-dark">Out of balance</span>
+        {% endif %}
+      </div>
+      <p class="mb-1"><strong>Debit:</strong> {{ totals.dr|default:0|floatformat:2 }}</p>
+      <p class="mb-1"><strong>Credit:</strong> {{ totals.cr|default:0|floatformat:2 }}</p>
+      <p class="mb-0 small text-muted">
+        Difference: {{ totals.diff|default:0|floatformat:2 }}
+      </p>
+    </section>
+
+    {% if selected_line %}
+      <section class="border-top pt-3">
+        <h6 class="mb-2">Selected Line {{ selected_index|add:1 }}</h6>
+        <p class="mb-1">
+          <strong>Account:</strong>
+          {% if selected_account_info.code %}
+            {{ selected_account_info.code }} — {{ selected_account_info.name }}
+          {% else %}
+            {{ selected_line.account|default:selected_line.accountName|default:selected_line.accountCode|default:"(unspecified)" }}
+          {% endif %}
+        </p>
+        {% if selected_account_info.type %}
+          <p class="mb-1 small text-muted">Type: {{ selected_account_info.type }}</p>
+        {% endif %}
+        {% if selected_account_info.balance is not None %}
+          <p class="mb-1 small text-muted">
+            Balance: {{ selected_account_info.balance|floatformat:2 }}
+          </p>
+        {% endif %}
+        <p class="mb-1"><strong>Description:</strong> {{ selected_line.narr|default:selected_line.description|default:"No description" }}</p>
+        <p class="mb-1 small text-muted">
+          Debit: {{ selected_line.dr|default:0|floatformat:2 }} | Credit: {{ selected_line.cr|default:0|floatformat:2 }}
+        </p>
+      </section>
+    {% endif %}
+
+    {% if ai_insights %}
+      <section class="alert alert-info mb-0" role="status">
+        <strong>AI insights</strong>
+        <ul class="mb-0 ps-3 pt-1">
+          {% for insight in ai_insights %}
+            <li>{{ insight }}</li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
+    {% if validation_errors %}
+      <section class="border-top pt-3">
+        <h6 class="mb-2">Validation</h6>
+        <div class="alert alert-danger mb-0 py-2">
+          <ul class="mb-0 ps-3 small">
+            {% for err in validation_errors %}
+              <li>{{ err }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </section>
+    {% endif %}
+
+    <section class="border-top pt-3">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="mb-0">Attachments</h6>
+        <span class="small text-muted">{{ attachments|length }} attached</span>
+      </div>
+      {% if attachments %}
+        <ul class="list-unstyled mb-2 small">
+          {% for att in attachments %}
+            <li>
+              <span class="d-block">{{ att.name }}</span>
+              {% if att.uploadedAt %}
+                <small class="text-muted">Uploaded {{ att.uploadedAt }}</small>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-muted small mb-2">Drag files here or use the upload control.</p>
+      {% endif %}
+      <form
+        hx-post="{{ attachment_upload_endpoint }}"
+        hx-trigger="submit"
+        hx-target="none"
+        hx-swap="none"
+        enctype="multipart/form-data"
+      >
+        <input type="hidden" name="journal_id" value="{{ journal_id }}">
+        <label class="form-label small mb-1" for="attachments-upload">Drop files or pick from disk</label>
+        <input
+          id="attachments-upload"
+          name="files"
+          type="file"
+          multiple
+          class="form-control form-control-sm"
+        />
+        <button type="submit" class="btn btn-sm btn-outline-primary mt-2">Upload</button>
+      </form>
+    </section>
+  </div>
+</div>

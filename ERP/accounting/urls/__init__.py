@@ -1,4 +1,4 @@
-from django.urls import path, include
+from django.urls import path, include, re_path
 
 from accounting.api import dashboard_views as api_dashboard_views
 from accounting.views import dashboard_views
@@ -126,6 +126,19 @@ urlpatterns = [
     path('journal-entry/lookup/accounts/', journal_entry.journal_account_lookup, name='journal_account_lookup'),
     path('journal-entry/lookup/cost-centers/', journal_entry.journal_cost_center_lookup, name='journal_cost_center_lookup'),
     path('journal-entry/payment-terms/', journal_entry.journal_payment_terms, name='journal_payment_terms'),
+    # HTMX partial endpoints (trailing slash optional)
+    path('journal-entry/header-partial/', journal_entry.journal_entry_header_partial, name='journal_entry_header_partial'),
+    re_path(r'^journal-entry/header-partial/?$', journal_entry.journal_entry_header_partial),
+    path('journal-entry/lines-partial/', journal_entry.journal_entry_lines_partial, name='journal_entry_lines_partial'),
+    re_path(r'^journal-entry/lines-partial/?$', journal_entry.journal_entry_lines_partial),
+    path('journal-entry/side-panel/', journal_entry.journal_entry_side_panel, name='journal_entry_side_panel'),
+    re_path(r'^journal-entry/side-panel/?$', journal_entry.journal_entry_side_panel),
+    path('journal-entry/row/', journal_entry.journal_entry_row, name='journal_entry_row'),
+    path('journal-entry/add-row/', journal_entry.journal_entry_add_row, name='journal_entry_add_row'),
+    path('journal-entry/duplicate-row/', journal_entry.journal_entry_row_duplicate, name='journal_entry_row_duplicate'),
+    path('journal-entry/bulk-add/', journal_entry.journal_entry_bulk_add, name='journal_entry_bulk_add'),
+    path('journal-entry/imbalance-bar/', journal_entry.journal_entry_imbalance_bar, name='journal_entry_imbalance_bar'),
+    path('journal-entry/auto-balance/', journal_entry.journal_auto_balance, name='journal_entry_auto_balance'),
     path('journal-entry/prefs/', journal_entry.journal_ui_preferences, name='journal_ui_preferences'),
     path('journal-entry/prefs/save/', journal_entry.journal_ui_preferences_save, name='journal_ui_preferences_save'),
     path('journal-entry/attachments/upload/', journal_entry.journal_attachment_upload, name='journal_attachment_upload'),

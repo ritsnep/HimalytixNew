@@ -165,6 +165,7 @@ INSTALLED_APPS = [
     'backups',
     'django_celery_results',
     'django_celery_beat',
+    'printing',
 ]
 
 if ENABLE_SILK:

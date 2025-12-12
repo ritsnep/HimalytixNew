@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Print Journal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    :root {
+      --card-bg: #ffffff;
+      --border-soft: #e0e0e5;
+      --text-main: #222;
+      --text-muted: #666;
+      --accent: #2563eb;
+      --accent-soft: #e0ecff;
+      --danger: #b91c1c;
+      --font-main: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: var(--font-main);
+      color: var(--text-main);
+      background: #ffffff;
+    }
+    .page-wrapper { max-width: 1100px; margin: 0 auto; }
+    .template-compact .print-surface {
+      padding: 1.2rem 1.3rem;
+      border-radius: 12px;
+    }
+    .template-compact .journal-lines th,
+    .template-compact .journal-lines td {
+      padding: 0.3rem 0.4rem;
+    }
+    @media print {
+      .page-wrapper { max-width: 100%; margin: 0; }
+      .print-surface { box-shadow: none; border-radius: 0; border: 0; }
+    }
+  </style>
+</head>
+
+<body onload="window.print()">
+  <div class="page-wrapper">
+    <div id="templateRoot" class="{{ template_root_class }}">
+      {% include template_path %}
+    </div>
+  </div>
+</body>
+</html>

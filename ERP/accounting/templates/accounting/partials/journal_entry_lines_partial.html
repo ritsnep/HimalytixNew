@@ -1,0 +1,27 @@
+<div id="lines-column-metadata" data-column-catalog="{{ column_catalog_json|escapejs }}"></div>
+<table
+  id="lines-table"
+  class="table table-bordered table-sm align-middle density-{{ line_density|default:'comfortable'|lower }}"
+>
+  <thead class="table-light">
+    <tr>
+      {% for column in line_columns %}
+        <th class="{{ column.css_class|default:'' }}">
+          {{ column.label }}
+        </th>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody id="lines-table-body">
+    {% for row in rows %}
+      {% include 'accounting/partials/journal_entry_line_row.html' with row=row index=forloop.counter0 line_columns=line_columns lookup_urls=lookup_urls line_labels=line_labels %}
+    {% empty %}
+      <tr>
+        <td colspan="{{ line_columns|length }}" class="text-center text-muted py-3">No lines yet.</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<div class="mb-3">
+  <button type="button" class="btn btn-sm btn-primary" hx-get="{{ add_row_endpoint }}" hx-target="#lines-table-body" hx-swap="beforeend">Add Row</button>
+</div>

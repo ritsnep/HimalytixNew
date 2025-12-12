@@ -1,0 +1,18 @@
+﻿<div class="journal-entry-imbalance-bar d-flex align-items-center gap-3">
+  <div class="flex-grow-1">
+    <div class="progress" style="height: 8px;">
+      <div
+        class="progress-bar {% if balanced %}bg-success{% else %}bg-danger{% endif %}"
+        role="progressbar"
+        style="width: {{ percent|default:0 }}%;"
+        aria-valuenow="{{ percent|default:0 }}"
+        aria-valuemin="0"
+        aria-valuemax="100"
+      ></div>
+    </div>
+  </div>
+  <div class="text-end small">
+    <strong>{% if balanced %}Balanced{% else %}Imbalance{% endif %}</strong>
+    <div class="text-muted">{{ diff|floatformat:2 }}</div>
+  </div>
+</div>

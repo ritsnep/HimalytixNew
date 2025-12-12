@@ -113,6 +113,12 @@
                 <a href="{% url 'accounting:journal_list' %}" class="btn btn-secondary">
                   <i class="mdi mdi-arrow-left me-1"></i>{% trans "Back to List" %}
                 </a>
+                <a href="{% url 'print_preview' journal.pk %}" class="btn btn-outline-primary" target="_blank" rel="noopener noreferrer">
+                  <i class="mdi mdi-eye-outline me-1"></i>{% trans "Print Preview" %}
+                </a>
+                <a href="{% url 'print_page' journal.pk %}" class="btn btn-primary" target="_blank" rel="noopener noreferrer">
+                  <i class="mdi mdi-printer-outline me-1"></i>{% trans "Print" %}
+                </a>
                 <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#auditTrailModal">
                   <i class="mdi mdi-history me-1"></i>{% trans "View Audit Trail" %}
                 </button>

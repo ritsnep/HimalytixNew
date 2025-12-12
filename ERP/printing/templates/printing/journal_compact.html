@@ -1,0 +1,108 @@
+<style>
+  .print-surface.compact {
+    background: var(--card-bg);
+    border-radius: 16px;
+    box-shadow: 0 16px 44px rgba(15, 23, 42, 0.14);
+    padding: 1.25rem;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+  }
+  .compact-head { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem; }
+  .compact-title { font-weight: 600; letter-spacing: 0.02em; }
+  .compact-meta { font-size: 0.78rem; color: var(--text-muted); text-align: right; }
+  .lines-table-wrapper {
+    border-radius: 12px;
+    border: 1px solid var(--border-soft);
+    overflow: hidden;
+  }
+  table.journal-lines {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+  }
+  .journal-lines thead { background: #f3f4f6; }
+  .journal-lines th, .journal-lines td {
+    padding: 0.32rem 0.5rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .journal-lines th { font-weight: 600; color: #374151; white-space: nowrap; border-bottom: 1px solid #d1d5db; }
+  .text-right { text-align: right; }
+  .text-center { text-align: center; }
+  .text-muted { color: var(--text-muted); }
+  .dim-row { margin-top: 0.1rem; display: flex; flex-wrap: wrap; gap: 0.25rem; }
+  .dim-pill {
+    font-size: 0.68rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    border: 1px solid #e5e7eb;
+    color: #4b5563;
+    background: #f9fafb;
+  }
+  .row-total { font-weight: 600; background: #f9fafb; }
+  .row-imbalance { background: #fef2f2; color: var(--danger); font-weight: 500; }
+</style>
+
+<div class="print-surface compact" id="journalPrintSurface">
+  <div class="compact-head">
+    <div>
+      <div class="compact-title">Journal Voucher • {{ journal.journal_number|default:journal.pk }}</div>
+      {% if config.show_description and journal.description %}
+        <div class="text-muted" style="font-size: 0.78rem; margin-top: 0.15rem;">{{ journal.description }}</div>
+      {% endif %}
+    </div>
+    <div class="compact-meta">
+      <div>{{ journal.journal_date }}</div>
+      <div>{{ journal.currency_code }} @ {{ journal.exchange_rate|floatformat:4 }}</div>
+    </div>
+  </div>
+
+  <div class="lines-table-wrapper">
+    <table class="journal-lines">
+      <thead>
+        <tr>
+          <th class="text-center" style="width: 40px;">#</th>
+          <th>Account</th>
+          <th>Description</th>
+          <th class="text-right" style="width: 110px;">Dr</th>
+          <th class="text-right" style="width: 110px;">Cr</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for line in lines %}
+          <tr>
+            <td class="text-center">{{ line.line_number }}</td>
+            <td>{{ line.account }}</td>
+            <td>
+              <div>{{ line.description|default:"" }}</div>
+              <div class="dim-row">
+                {% if config.show_department and line.department %}
+                  <span class="dim-pill">Dept: {{ line.department }}</span>
+                {% endif %}
+                {% if config.show_project and line.project %}
+                  <span class="dim-pill">Proj: {{ line.project }}</span>
+                {% endif %}
+                {% if config.show_cost_center and line.cost_center %}
+                  <span class="dim-pill">CC: {{ line.cost_center }}</span>
+                {% endif %}
+              </div>
+            </td>
+            <td class="text-right">{{ line.debit_amount|floatformat:2 }}</td>
+            <td class="text-right">{{ line.credit_amount|floatformat:2 }}</td>
+          </tr>
+        {% endfor %}
+
+        <tr class="row-total">
+          <td colspan="3" class="text-right">Total</td>
+          <td class="text-right">{{ total_debit|floatformat:2 }}</td>
+          <td class="text-right">{{ total_credit|floatformat:2 }}</td>
+        </tr>
+
+        {% if config.show_imbalance and imbalance != 0 %}
+          <tr class="row-imbalance">
+            <td colspan="3"><strong>WARNING:</strong> Not balanced.</td>
+            <td colspan="2" class="text-right">{{ imbalance|floatformat:2 }}</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>

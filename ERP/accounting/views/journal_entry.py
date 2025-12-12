@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import uuid
 from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, List, Optional, Tuple
@@ -8,6 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -82,6 +84,117 @@ WORKFLOW_PERMISSION_RULES = {
     "post": ("can_post_journal", "post_journal"),
 }
 
+
+LINE_COLUMN_DEFAULTS = [
+    {"key": "account", "default_label": "Account", "default_visible": True, "order": 0, "css_class": "text-start", "configurable": True},
+    {"key": "description", "default_label": "Description", "default_visible": True, "order": 1, "css_class": "text-start", "configurable": True},
+    {"key": "dr", "default_label": "Debit", "default_visible": True, "order": 2, "css_class": "text-end", "configurable": True},
+    {"key": "cr", "default_label": "Credit", "default_visible": True, "order": 3, "css_class": "text-end", "configurable": True},
+    {"key": "costCenter", "default_label": "Cost Center", "default_visible": True, "order": 4, "css_class": "text-start", "configurable": True},
+    {"key": "project", "default_label": "Project", "default_visible": True, "order": 5, "css_class": "text-start", "configurable": True},
+    {"key": "department", "default_label": "Department", "default_visible": True, "order": 6, "css_class": "text-start", "configurable": True},
+    {"key": "taxCode", "default_label": "Tax Code", "default_visible": True, "order": 7, "css_class": "text-start", "configurable": True},
+    {"key": "actions", "default_label": "", "default_visible": True, "order": 999, "css_class": "text-end", "configurable": False},
+]
+
+
+def _voucher_ui_preferences_for_user(user, organization, scope="voucher_entry"):
+    if not user or not organization:
+        return {}
+    preference = (
+        VoucherUIPreference.objects.filter(user=user, organization=organization, scope=scope)
+        .first()
+    )
+    if preference and isinstance(preference.data, dict):
+        return preference.data
+    return {}
+
+
+def _ui_settings_from_config(config):
+    if not config:
+        return default_ui_schema().get("settings", {})
+    ui = config.resolve_ui() if hasattr(config, "resolve_ui") else {}
+    settings = ui.get("settings") if isinstance(ui, dict) else None
+    if settings:
+        return settings
+    return default_ui_schema().get("settings", {})
+
+
+def _resolve_prefill_value(definition, config):
+    if definition is None:
+        return None
+    if isinstance(definition, dict):
+        if "value" in definition:
+            return definition["value"]
+        source = definition.get("source")
+        if source == "default_cost_center" and getattr(config, "default_cost_center", None):
+            return config.default_cost_center.code
+        if source == "default_tax_ledger" and getattr(config, "default_tax_ledger", None):
+            return config.default_tax_ledger.account_code
+        if source == "default_ledger" and getattr(config, "default_ledger", None):
+            return config.default_ledger.account_code
+        if source == "default_currency" and getattr(config, "default_currency", None):
+            return config.default_currency
+        return definition.get("value")
+    return definition
+
+
+def _apply_prefill_defaults(target, prefill_defs, config):
+    if not isinstance(prefill_defs, dict):
+        return
+    for key, definition in prefill_defs.items():
+        value = _resolve_prefill_value(definition, config)
+        if value is not None:
+            target[key] = value
+
+
+def _apply_required_overrides(required_map, required_keys):
+    if not isinstance(required_keys, (list, tuple)):
+        return
+    for key in required_keys:
+        if not isinstance(key, str):
+            continue
+        required_map[key] = True
+
+
+def _line_columns_from_preferences(line_labels, preferences):
+    catalog: List[Dict[str, Any]] = []
+    pref_columns = preferences.get("lineColumns") if isinstance(preferences, dict) else []
+    pref_map = {}
+    if isinstance(pref_columns, list):
+        for entry in pref_columns:
+            if isinstance(entry, dict) and entry.get("key"):
+                pref_map[entry["key"]] = entry
+    for base in LINE_COLUMN_DEFAULTS:
+        label = line_labels.get(base["key"]) or base["default_label"]
+        column = {
+            "key": base["key"],
+            "label": label,
+            "visible": base["default_visible"],
+            "order": base["order"],
+            "css_class": base.get("css_class", ""),
+            "configurable": base.get("configurable", True),
+        }
+        if base["key"] in pref_map and column["configurable"]:
+            pref_entry = pref_map[base["key"]]
+            if "visible" in pref_entry:
+                column["visible"] = bool(pref_entry["visible"])
+            if "order" in pref_entry:
+                try:
+                    column["order"] = int(pref_entry["order"])
+                except (TypeError, ValueError):
+                    pass
+        catalog.append(column)
+    catalog.sort(key=lambda item: item["order"])
+    visible = [col for col in catalog if col["visible"]]
+    density = preferences.get("density") or preferences.get("lineDensity") or "comfortable"
+    return {"visible": visible, "catalog": catalog, "density": density}
+
+
+def _line_layout_for_request(request, line_labels):
+    organization = _active_organization(request.user)
+    preferences = _voucher_ui_preferences_for_user(request.user, organization)
+    return _line_columns_from_preferences(line_labels, preferences)
 
 def _state_key_for_header(field_key: str) -> str:
     return HEADER_STATE_KEY_MAP.get(field_key, field_key)
@@ -179,6 +292,206 @@ def _allowed_values_from_choices(choices: List[Any]) -> Optional[set]:
         else:
             allowed.add(str(choice))
     return allowed or None
+
+def _get_json_query_param(request, key: str) -> Any:
+    value = request.GET.get(key)
+    if not value:
+        return None
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError:
+        return None
+
+
+def _journal_type_param_from_request(request) -> Optional[str]:
+    return (
+        request.GET.get("journal_type")
+        or request.GET.get("journalType")
+        or request.GET.get("journal_type_code")
+        or request.GET.get("journalTypeCode")
+    )
+
+
+def _line_schema_context(organization, journal_type_param):
+    config = _resolve_voucher_config(organization, journal_type_param)
+    schema_source = config.resolve_ui() if config else default_ui_schema()
+    settings = _ui_settings_from_config(config)
+    raw_line_schema = schema_source.get("lines", {})
+    (
+        line_schema,
+        line_allowed,
+        line_required,
+        line_defaults,
+        line_labels,
+    ) = _serialize_line_schema(raw_line_schema, organization)
+    prefill_settings = (settings.get("prefill") or {}).get("lines") or {}
+    _apply_prefill_defaults(line_defaults, prefill_settings, config)
+    required_keys = (settings.get("required_fields") or {}).get("lines") or []
+    _apply_required_overrides(line_required, required_keys)
+    return config, line_schema, line_allowed, line_required, line_defaults, line_labels
+
+
+def _header_schema_context(organization, journal_type_param):
+    config = _resolve_voucher_config(organization, journal_type_param)
+    schema_source = config.resolve_ui() if config else default_ui_schema()
+    settings = _ui_settings_from_config(config)
+    raw_header_schema = schema_source.get("header", {})
+    (
+        header_schema,
+        header_allowed,
+        header_required,
+        header_defaults,
+        header_labels,
+    ) = _serialize_header_schema(raw_header_schema, organization)
+    prefill_settings = (settings.get("prefill") or {}).get("header") or {}
+    _apply_prefill_defaults(header_defaults, prefill_settings, config)
+    required_keys = (settings.get("required_fields") or {}).get("header") or []
+    _apply_required_overrides(header_required, required_keys)
+    return config, header_schema, header_allowed, header_required, header_defaults, header_labels
+
+
+def _float_or_zero(value: Any) -> float:
+    if value in (None, ""):
+        return 0.0
+    try:
+        return float(value)
+    except (TypeError, ValueError, InvalidOperation):
+        return 0.0
+
+
+def _sum_totals_from_rows(rows: List[Dict[str, Any]]) -> Dict[str, float]:
+    dr_total = 0.0
+    cr_total = 0.0
+    for row in rows:
+        dr_total += _float_or_zero(row.get("dr") or row.get("debit") or row.get("debit_amount"))
+        cr_total += _float_or_zero(row.get("cr") or row.get("credit") or row.get("credit_amount"))
+    diff = dr_total - cr_total
+    return {"dr": dr_total, "cr": cr_total, "diff": diff}
+
+
+def _format_decimal(value: Decimal) -> str:
+    return f"{value.quantize(Decimal('0.01'))}"
+
+
+def _merge_line_row_data(row: Optional[Dict[str, Any]], defaults: Dict[str, Any]) -> Dict[str, Any]:
+    merged: Dict[str, Any] = dict(defaults)
+    if isinstance(row, dict):
+        for key, value in row.items():
+            if value is not None:
+                merged[key] = value
+    return merged
+
+
+def _rows_for_validation(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    normalized: List[Dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        normalized.append(
+            {
+                "account": row.get("accountCode") or row.get("account") or "",
+                "description": row.get("narr") or row.get("description") or "",
+                "debit_amount": row.get("dr") or row.get("debit") or row.get("debit_amount") or 0,
+                "credit_amount": row.get("cr") or row.get("credit") or row.get("credit_amount") or 0,
+            }
+        )
+    return normalized
+
+
+def _header_for_validation(header_values: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    if not header_values:
+        return {"journal_date": None, "description": ""}
+    return {
+        "journal_date": header_values.get("date")
+        or header_values.get("journal_date")
+        or header_values.get("journalDate"),
+        "description": header_values.get("description") or "",
+    }
+
+
+def _journal_type_token_from_header(header_values: Optional[Dict[str, Any]]) -> Optional[str]:
+    if not header_values:
+        return None
+    for key in (
+        "journalTypeId",
+        "journalTypeCode",
+        "journalType",
+        "journal_type",
+        "journal_type_id",
+    ):
+        value = header_values.get(key)
+        if value:
+            return str(value)
+    return None
+
+
+def _render_line_row_html(
+    request,
+    row_index: int,
+    line_defaults: Dict[str, Any],
+    line_labels: Dict[str, str],
+    line_columns: List[Dict[str, Any]],
+    row_data: Optional[Dict[str, Any]] = None,
+) -> str:
+    merged_row = _merge_line_row_data(row_data, line_defaults)
+    context = {
+        "row": merged_row,
+        "index": row_index,
+        "line_labels": line_labels,
+        "line_columns": line_columns,
+        "lookup_urls": _journal_lookup_urls(),
+        "row_json": json.dumps(merged_row),
+    }
+    return render_to_string(
+        "accounting/partials/journal_entry_line_row.html",
+        context,
+        request=request,
+    )
+
+
+def _render_lines_fragment(
+    request,
+    rows: List[Dict[str, Any]],
+    line_labels: Dict[str, str],
+) -> str:
+    lookup_urls = _journal_lookup_urls()
+    try:
+        add_row_endpoint = reverse("accounting:journal_entry_add_row")
+    except Exception:
+        add_row_endpoint = "/accounting/journal-entry/add-row/"
+    line_layout = _line_layout_for_request(request, line_labels)
+    column_metadata = {
+        "catalog": line_layout["catalog"],
+        "density": line_layout["density"],
+    }
+    context = {
+        "rows": rows,
+        "line_labels": line_labels,
+        "lookup_urls": lookup_urls,
+        "add_row_endpoint": add_row_endpoint,
+        "line_columns": line_layout["visible"],
+        "line_density": line_layout["density"],
+        "column_catalog_json": json.dumps(column_metadata),
+    }
+    return render_to_string(
+        "accounting/partials/journal_entry_lines_partial.html",
+        context,
+        request=request,
+    )
+
+
+def _suspense_account_for_config(config: Optional[VoucherModeConfig]) -> str:
+    settings = _ui_settings_from_config(config)
+    auto_balance = settings.get("auto_balance", {})
+    default_account = auto_balance.get("default_account")
+    if default_account:
+        return default_account
+    if config and getattr(config, "default_ledger", None):
+        try:
+            return config.default_ledger.account_code
+        except Exception:
+            pass
+    return journal_entry_settings.default_accounts.get("suspense") or journal_entry_settings.default_accounts.get("accounts_payable") or "99999"
 
 
 def _serialize_header_schema(raw_schema: Dict[str, Any], organization):
@@ -325,6 +638,32 @@ def _resolve_voucher_config(organization, journal_type_param: Optional[str]) -> 
     if config:
         return config
     return qs.first()
+
+
+def _journal_lookup_urls():
+    urls = {}
+    try:
+        urls["account"] = reverse('accounting:journal_account_lookup')
+    except Exception:
+        urls["account"] = '/accounting/journal-entry/lookup/accounts/'
+    try:
+        urls["costCenter"] = reverse('accounting:journal_cost_center_lookup')
+    except Exception:
+        urls["costCenter"] = '/accounting/journal-entry/lookup/cost-centers/'
+    return urls
+
+
+def _parse_row_payload(request) -> Dict[str, Any]:
+    raw = request.POST.get("row") or request.GET.get("row")
+    if not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+        if isinstance(parsed, dict):
+            return parsed
+    except json.JSONDecodeError:
+        pass
+    return {}
 
 
 def _load_config_for_payload(organization, metadata: Dict[str, Any]) -> Optional[VoucherModeConfig]:
@@ -1165,6 +1504,11 @@ def journal_entry(request):
     if show_config_selector:
         return journal_select_config(request)
     
+    journal_type_token = _journal_type_param_from_request(request)
+    config = _resolve_voucher_config(organization, journal_type_token)
+    auto_balance_settings = _ui_settings_from_config(config).get("auto_balance", {})
+    auto_balance_enabled = auto_balance_settings.get("enabled", True)
+
     permission_flags = {
         "can_submit": bool(request.user.has_perm('accounting.can_submit_for_approval') or (organization and PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'submit_journal'))),
         "can_approve": bool(request.user.has_perm('accounting.can_approve_journal') or (organization and PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'approve_journal'))),
@@ -1179,6 +1523,9 @@ def journal_entry(request):
 
     # Compute config endpoint here (wrap reverse in try/except so template rendering
     # doesn't fail if the named URL is not available at template-evaluation time).
+    preferences = _voucher_ui_preferences_for_user(request.user, organization)
+    line_density = preferences.get("lineDensity") or preferences.get("density") or "comfortable"
+
     try:
         config_endpoint = reverse('accounting:journal_config')
     except Exception:
@@ -1203,6 +1550,43 @@ def journal_entry(request):
     except Exception:
         payment_terms_endpoint = '/accounting/journal-entry/payment-terms/'
 
+    try:
+        row_endpoint = reverse('accounting:journal_entry_row')
+    except Exception:
+        row_endpoint = '/accounting/journal-entry/row/'
+    try:
+        add_row_endpoint = reverse('accounting:journal_entry_add_row')
+    except Exception:
+        add_row_endpoint = '/accounting/journal-entry/add-row/'
+    try:
+        header_partial_endpoint = reverse('accounting:journal_entry_header_partial')
+    except Exception:
+        header_partial_endpoint = '/accounting/journal-entry/header-partial/'
+    try:
+        lines_partial_endpoint = reverse('accounting:journal_entry_lines_partial')
+    except Exception:
+        lines_partial_endpoint = '/accounting/journal-entry/lines-partial/'
+    try:
+        side_panel_endpoint = reverse('accounting:journal_entry_side_panel')
+    except Exception:
+        side_panel_endpoint = '/accounting/journal-entry/side-panel/'
+    try:
+        imbalance_bar_endpoint = reverse('accounting:journal_entry_imbalance_bar')
+    except Exception:
+        imbalance_bar_endpoint = '/accounting/journal-entry/imbalance-bar/'
+    try:
+        duplicate_row_endpoint = reverse('accounting:journal_entry_row_duplicate')
+    except Exception:
+        duplicate_row_endpoint = '/accounting/journal-entry/duplicate-row/'
+    try:
+        bulk_add_rows_endpoint = reverse('accounting:journal_entry_bulk_add')
+    except Exception:
+        bulk_add_rows_endpoint = '/accounting/journal-entry/bulk-add/'
+    try:
+        auto_balance_endpoint = reverse('accounting:journal_entry_auto_balance')
+    except Exception:
+        auto_balance_endpoint = '/accounting/journal-entry/auto-balance/'
+
     context = {
         "voucher_entry_page": True,
         "journal_default_type": journal_entry_settings.ui_settings.get("default_entry_type") or "JN",
@@ -1223,8 +1607,525 @@ def journal_entry(request):
         "payment_terms_endpoint": payment_terms_endpoint,
         "show_config_selector": False,
         "journal_debug_enabled": _is_journal_debug_enabled(organization),
+        "row_endpoint": row_endpoint,
+        "header_partial_endpoint": header_partial_endpoint,
+        "lines_partial_endpoint": lines_partial_endpoint,
+        "side_panel_endpoint": side_panel_endpoint,
+        "add_row_endpoint": add_row_endpoint,
+        "imbalance_bar_endpoint": imbalance_bar_endpoint,
+        "duplicate_row_endpoint": duplicate_row_endpoint,
+        "bulk_add_rows_endpoint": bulk_add_rows_endpoint,
+        "auto_balance_endpoint": auto_balance_endpoint,
+        "ui_preferences": preferences,
+        "ui_preferences_json": json.dumps(preferences),
+        "line_density": line_density,
+        "auto_balance_enabled": auto_balance_enabled,
     }
     return render(request, "accounting/journal_entry.html", context)
+
+
+@login_required
+@require_GET
+def journal_entry_row(request):
+    """Return a single journal line row as HTML for HTMX calls."""
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+
+    try:
+        row_index = max(0, int(request.GET.get("index", 0)))
+    except (ValueError, TypeError):
+        row_index = 0
+
+    journal_type_param = _journal_type_param_from_request(request)
+    _, _, _, _, line_defaults, line_labels = _line_schema_context(organization, journal_type_param)
+    line_layout = _line_layout_for_request(request, line_labels)
+
+    row_data = {}
+    row_payload = request.GET.get("row")
+    if row_payload:
+        try:
+            parsed = json.loads(row_payload)
+            if isinstance(parsed, dict):
+                row_data = parsed
+        except json.JSONDecodeError:
+            return _json_error("Invalid row payload.", status=400)
+
+    html = _render_line_row_html(request, row_index, line_defaults, line_labels, line_layout["visible"], row_data)
+    return JsonResponse({"ok": True, "html": html})
+
+
+@login_required
+@require_GET
+def journal_entry_add_row(request):
+    """Return a fresh empty journal line row via HTMX."""
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+
+    try:
+        row_index = max(0, int(request.GET.get("index", 0)))
+    except (ValueError, TypeError):
+        row_index = 0
+
+    journal_type_param = _journal_type_param_from_request(request)
+    _, _, _, _, line_defaults, line_labels = _line_schema_context(organization, journal_type_param)
+    line_layout = _line_layout_for_request(request, line_labels)
+
+    html = _render_line_row_html(request, row_index, line_defaults, line_labels, line_layout["visible"])
+    response = HttpResponse(html)
+    response['HX-Trigger'] = json.dumps({"refreshSidePanel": True})
+    return response
+
+
+@login_required
+@require_GET
+def journal_entry_lines_partial(request):
+    """Render the full journal lines grid as an HTMX fragment."""
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+
+    journal_type_param = _journal_type_param_from_request(request)
+    _, _, _, _, line_defaults, line_labels = _line_schema_context(organization, journal_type_param)
+
+    payload = _get_json_query_param(request, "payload")
+    lines_data: List[Dict[str, Any]] = []
+    if payload and isinstance(payload, dict):
+        candidate = payload.get("lines") or payload.get("rows")
+        if isinstance(candidate, list):
+            lines_data = candidate
+    if not lines_data:
+        explicit_lines = _get_json_query_param(request, "lines") or _get_json_query_param(request, "rows")
+        if isinstance(explicit_lines, list):
+            lines_data = explicit_lines
+
+    journal_id = request.GET.get("journalId") or request.GET.get("journal_id")
+    if not lines_data and journal_id and journal_id.isdigit():
+        try:
+            journal = _get_user_journal(request.user, int(journal_id))
+            journal_payload = _serialize_journal(journal)
+            lines_data = journal_payload.get("rows", [])
+        except ValueError:
+            pass
+
+    if not isinstance(lines_data, list):
+        lines_data = []
+
+    if not lines_data:
+        lines_data = [{}]
+
+    normalized_rows = [
+        _merge_line_row_data(row, line_defaults)
+        for row in lines_data
+    ]
+
+    html = _render_lines_fragment(request, normalized_rows, line_labels)
+    return HttpResponse(html)
+
+
+@login_required
+@require_POST
+def journal_auto_balance(request):
+    """Adjust rows so total debits equal credits."""
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+
+    payload = _parse_request_json(request) or {}
+    header_data = payload.get("header") or {}
+    journal_type_token = (
+        header_data.get("journalType")
+        or header_data.get("journal_type")
+        or payload.get("journalType")
+        or payload.get("journal_type")
+        or ""
+    )
+
+    (
+        _,
+        _,
+        _,
+        _,
+        line_defaults,
+        line_labels,
+    ) = _line_schema_context(organization, journal_type_token)
+
+    raw_lines = payload.get("lines") or payload.get("rows") or []
+    if not isinstance(raw_lines, list):
+        raw_lines = []
+    normalized_rows = [_merge_line_row_data(row, line_defaults) for row in raw_lines]
+    if not normalized_rows:
+        normalized_rows = [{}]
+
+    totals = _sum_totals_from_rows(normalized_rows)
+    diff = Decimal(str(totals.get("diff", 0.0)))
+    config = _resolve_voucher_config(organization, journal_type_token)
+    if abs(diff) >= Decimal("0.01"):
+        target_field = "cr" if diff > 0 else "dr"
+        amount = abs(diff)
+        last_row = normalized_rows[-1]
+        existing = Decimal(str(last_row.get(target_field) or 0))
+        if last_row.get("account") and existing == 0:
+            last_row[target_field] = _format_decimal(amount)
+        else:
+            balancing_row = _merge_line_row_data({}, line_defaults)
+            balancing_row["account"] = _suspense_account_for_config(config)
+            balancing_row[target_field] = _format_decimal(amount)
+            balancing_row["narr"] = "Auto Balance"
+            opposing_field = "cr" if target_field == "dr" else "dr"
+            balancing_row[opposing_field] = ""
+            normalized_rows.append(balancing_row)
+
+    header_payload = payload.get("header") if payload else {}
+    service = JournalEntryService(request.user, organization)
+    validation_rows = _rows_for_validation(normalized_rows)
+    service_header = _header_for_validation(header_payload)
+    try:
+        validation_errors = service._validate_journal_entry(service_header, validation_rows, config)
+    except Exception:
+        validation_errors = []
+
+    trigger_payload = {
+        "refreshSidePanel": True,
+        "validationErrors": validation_errors,
+    }
+    if abs(diff) >= Decimal("0.01"):
+        trigger_payload["alert"] = "Journal auto-balanced."
+        trigger_payload["alertType"] = "success"
+
+    html = _render_lines_fragment(request, normalized_rows, line_labels)
+    response = HttpResponse(html)
+    response["HX-Trigger"] = json.dumps(trigger_payload)
+    return response
+
+
+@login_required
+@require_POST
+def journal_entry_row_duplicate(request):
+    """Duplicate an existing row via HTMX and return the cloned markup."""
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+
+    journal_type_param = _journal_type_param_from_request(request)
+    _, _, _, _, line_defaults, line_labels = _line_schema_context(organization, journal_type_param)
+    line_layout = _line_layout_for_request(request, line_labels)
+    row_data = _parse_row_payload(request)
+    try:
+        row_index = max(0, int(request.POST.get("index") or 0))
+    except (ValueError, TypeError):
+        row_index = 0
+
+    html = _render_line_row_html(request, row_index, line_defaults, line_labels, line_layout["visible"], row_data)
+    response = HttpResponse(html)
+    response['HX-Trigger'] = json.dumps({"refreshSidePanel": True})
+    return response
+
+
+@login_required
+@require_POST
+def journal_entry_bulk_add(request):
+    """Add multiple lines parsed from clipboard data."""
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+
+    clipboard = request.POST.get("clipboard")
+    if not clipboard:
+        return HttpResponse("", status=204)
+
+    journal_type_param = _journal_type_param_from_request(request)
+    _, _, _, _, line_defaults, line_labels = _line_schema_context(organization, journal_type_param)
+    line_layout = _line_layout_for_request(request, line_labels)
+
+    rows: List[Dict[str, Any]] = []
+    for line in clipboard.splitlines():
+        values = [cell.strip() for cell in line.split("\t")]
+        if not any(values):
+            continue
+        row: Dict[str, Any] = {}
+        if values:
+            row["account"] = values[0]
+        if len(values) > 1:
+            row["narr"] = values[1]
+        if len(values) > 2:
+            row["dr"] = values[2]
+        if len(values) > 3:
+            row["cr"] = values[3]
+        if len(values) > 4:
+            row["costCenter"] = values[4]
+        if len(values) > 5:
+            row["project"] = values[5]
+        if len(values) > 6:
+            row["department"] = values[6]
+        if len(values) > 7:
+            row["taxCode"] = values[7]
+        rows.append(row)
+
+    if not rows:
+        return HttpResponse("", status=204)
+
+    html_fragments = []
+    for row_data in rows:
+        html_fragments.append(
+            _render_line_row_html(
+                request,
+                0,
+                line_defaults,
+                line_labels,
+                line_layout["visible"],
+                row_data,
+            )
+        )
+
+    response = HttpResponse("".join(html_fragments))
+    response['HX-Trigger'] = json.dumps({"refreshSidePanel": True})
+    return response
+
+@login_required
+@require_GET
+def journal_entry_header_partial(request):
+    """Render the journal header form fragment."""
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+
+    preferences = _voucher_ui_preferences_for_user(request.user, organization)
+    header_density = preferences.get("headerDensity") or preferences.get("density") or "comfortable"
+
+    journal_type_param = _journal_type_param_from_request(request)
+    (
+        _,
+        header_schema,
+        header_allowed,
+        header_required,
+        header_defaults,
+        header_labels,
+    ) = _header_schema_context(organization, journal_type_param)
+
+    payload = _get_json_query_param(request, "payload")
+    header_values = dict(header_defaults)
+    header_samples = _get_json_query_param(request, "header")
+    if isinstance(header_samples, dict):
+        header_values.update({k: v for k, v in header_samples.items() if v is not None})
+    elif payload and isinstance(payload, dict):
+        nested = payload.get("header")
+        if isinstance(nested, dict):
+            header_values.update({k: v for k, v in nested.items() if v is not None})
+
+    header_fields = []
+    for raw_key, definition in header_schema.items():
+        state_key = _state_key_for_header(raw_key)
+        label = header_labels.get(state_key) or definition.get("label") or raw_key.replace("_", " ").title()
+        header_fields.append(
+            {
+                "name": state_key,
+                "label": label,
+                "type": definition.get("type") or "text",
+                "choices": definition.get("choices") or [],
+                "required": bool(header_required.get(state_key)),
+                "value": header_values.get(state_key) or header_defaults.get(state_key, ""),
+            }
+        )
+    try:
+        side_panel_endpoint = reverse('accounting:journal_entry_side_panel')
+    except Exception:
+        side_panel_endpoint = '/accounting/journal-entry/side-panel/'
+
+    html = render_to_string(
+        "accounting/partials/journal_entry_header_partial.html",
+        {
+            "header_fields": header_fields,
+            "side_panel_endpoint": side_panel_endpoint,
+            "header_defaults": header_defaults,
+            "header_density": header_density,
+        },
+        request=request,
+    )
+    return HttpResponse(html)
+
+
+@login_required
+@require_GET
+def journal_entry_side_panel(request):
+    """Return summary/validation details for the current journal entry."""
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+
+    journal_id = request.GET.get("journalId") or request.GET.get("journal_id")
+    journal_data: Optional[Dict[str, Any]] = None
+    rows: List[Dict[str, Any]] = []
+    totals: Dict[str, float] = {}
+    header_values: Dict[str, Any] = {}
+    attachments: List[Dict[str, Any]] = []
+    if journal_id and journal_id.isdigit():
+        try:
+            journal = _get_user_journal(request.user, int(journal_id))
+            journal_data = _serialize_journal(journal)
+        except ValueError as exc:
+            return _json_error(str(exc), status=404)
+    else:
+        payload = _get_json_query_param(request, "payload")
+        if payload and isinstance(payload, dict):
+            journal_data = payload
+
+    if journal_data:
+        rows = journal_data.get("rows", []) or []
+        totals = journal_data.get("totals", {}) or {}
+        header_values = journal_data.get("header") or {}
+        attachments = journal_data.get("attachments", []) or []
+
+    if not rows:
+        fallback_lines = _get_json_query_param(request, "lines") or _get_json_query_param(request, "rows")
+        if isinstance(fallback_lines, list):
+            rows = fallback_lines
+
+    if not totals:
+        totals = _sum_totals_from_rows(rows)
+
+    payload_header = {}
+    payload = _get_json_query_param(request, "payload")
+    if payload and isinstance(payload, dict):
+        payload_header = payload.get("header") or {}
+        if not header_values:
+            header_values = payload_header
+        if not rows:
+            rows = payload.get("rows") or payload.get("lines") or rows
+        attachments = attachments or payload.get("attachments") or []
+
+    try:
+        selected_index = int(request.GET.get("rowIndex") or request.GET.get("index") or 0)
+    except (ValueError, TypeError):
+        selected_index = 0
+    selected_index = max(0, min(selected_index, len(rows) - 1)) if rows else 0
+    selected_line = rows[selected_index] if rows else {}
+
+    selected_account_info: Dict[str, Any] = {}
+    if selected_line:
+        account_obj = None
+        account_id = selected_line.get("accountId")
+        if account_id:
+            account_obj = ChartOfAccount.active_accounts.filter(pk=account_id, organization=organization).first()
+        if not account_obj:
+            account_token = selected_line.get("accountCode") or ""
+            if not account_token and selected_line.get("account"):
+                account_token = str(selected_line.get("account")).split(" - ", 1)[0].strip()
+            if account_token:
+                account_obj = ChartOfAccount.active_accounts.filter(organization=organization, account_code=account_token).first()
+        if account_obj:
+            selected_account_info = {
+                "code": account_obj.account_code,
+                "name": account_obj.account_name,
+                "type": getattr(account_obj.account_type, "name", ""),
+                "balance": float(account_obj.balance()),
+                "is_bank_account": account_obj.is_bank_account,
+            }
+
+    validation_errors: List[str] = []
+    raw_messages = request.GET.get("validationMessages") or request.GET.get("validation_messages")
+    if raw_messages:
+        try:
+            parsed = json.loads(raw_messages)
+            if isinstance(parsed, list):
+                validation_errors = parsed
+        except json.JSONDecodeError:
+            validation_errors = [raw_messages]
+
+    header_for_validation = _header_for_validation(header_values)
+    service_rows = _rows_for_validation(rows)
+    config = _resolve_voucher_config(organization, _journal_type_token_from_header(header_values))
+    service = JournalEntryService(request.user, organization)
+    try:
+        service_errors = service._validate_journal_entry(header_for_validation, service_rows, config)
+    except Exception:
+        service_errors = []
+
+    combined_errors: List[str] = []
+    for err in service_errors + validation_errors:
+        if err and err not in combined_errors:
+            combined_errors.append(err)
+
+    ai_insights = _ai_insights_for_line(selected_line)
+
+    if journal_id and journal_id.isdigit() and not attachments:
+        try:
+            journal = _get_user_journal(request.user, int(journal_id))
+            attachments = [
+                {
+                    "id": att.pk,
+                    "name": os.path.basename(att.file.name),
+                    "uploadedAt": att.uploaded_at.isoformat() if att.uploaded_at else None,
+                    "uploadedBy": att.uploaded_by_id,
+                }
+                for att in journal.attachments.all()
+            ]
+        except ValueError:
+            attachments = []
+
+    try:
+        attachment_upload_endpoint = reverse('accounting:journal_attachment_upload')
+    except Exception:
+        attachment_upload_endpoint = '/accounting/journal-entry/attachments/upload/'
+
+    _, _, _, _, _, line_labels = _line_schema_context(organization, _journal_type_token_from_header(header_values) or _journal_type_param_from_request(request))
+
+    context = {
+        "line_labels": line_labels,
+        "totals": totals,
+        "balanced": abs(totals.get("diff", 0)) < 0.01,
+        "selected_index": selected_index,
+        "selected_line": selected_line,
+        "selected_account_info": selected_account_info,
+        "validation_errors": combined_errors,
+        "attachments": attachments,
+        "attachment_upload_endpoint": attachment_upload_endpoint,
+        "journal_id": journal_id,
+        "ai_insights": ai_insights,
+    }
+    html = render_to_string(
+        "accounting/partials/journal_entry_side_panel.html",
+        context,
+        request=request,
+    )
+    response = HttpResponse(html)
+    response['HX-Trigger'] = json.dumps({"validationErrors": combined_errors})
+    return response
+
+
+@login_required
+@require_GET
+def journal_entry_imbalance_bar(request):
+    """Return an HTMX fragment showing the imbalance indicator."""
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+
+    totals_payload = _get_json_query_param(request, "totals")
+    rows_param = _get_json_query_param(request, "lines") or _get_json_query_param(request, "rows")
+    if not totals_payload and isinstance(rows_param, list):
+        totals_payload = _sum_totals_from_rows(rows_param)
+
+    totals_payload = totals_payload or {}
+    dr = _float_or_zero(totals_payload.get("dr"))
+    cr = _float_or_zero(totals_payload.get("cr"))
+    diff = dr - cr
+    max_bal = max(abs(dr), abs(cr), 1.0)
+    percent = min(100.0, (abs(diff) / max_bal) * 100)
+
+    html = render_to_string(
+        "accounting/partials/journal_entry_imbalance_bar.html",
+        {
+            "dr": dr,
+            "cr": cr,
+            "diff": diff,
+            "balanced": abs(diff) < 0.01,
+            "percent": percent,
+        },
+        request=request,
+    )
+    return HttpResponse(html)
 
 
 @login_required
@@ -1556,13 +2457,25 @@ def journal_ui_preferences_save(request):
     organization = _active_organization(request.user)
     if not organization:
         return _json_error("Active organization required.", status=400)
-    try:
-        payload = _parse_request_json(request)
-    except ValueError as exc:
-        return _json_error(str(exc), status=400)
-    preferences = payload.get("preferences") if isinstance(payload, dict) else None
-    if not isinstance(preferences, dict):
-        preferences = {}
+    raw_preferences = None
+    if request.content_type and 'application/json' in request.content_type:
+        try:
+            payload = _parse_request_json(request)
+            raw_preferences = payload.get("preferences")
+        except ValueError as exc:
+            return _json_error(str(exc), status=400)
+    else:
+        raw_preferences = request.POST.get("preferences")
+    preferences: Dict[str, Any] = {}
+    if isinstance(raw_preferences, str):
+        try:
+            parsed = json.loads(raw_preferences)
+            if isinstance(parsed, dict):
+                preferences = parsed
+        except json.JSONDecodeError:
+            preferences = {}
+    elif isinstance(raw_preferences, dict):
+        preferences = raw_preferences
     prefs, _ = VoucherUIPreference.objects.get_or_create(
         user=request.user,
         organization=organization,
@@ -1570,7 +2483,14 @@ def journal_ui_preferences_save(request):
     )
     prefs.data = preferences
     prefs.save(update_fields=["data", "updated_at"])
-    return JsonResponse({"ok": True})
+    response = JsonResponse({"ok": True, "message": "Preferences saved."})
+    response["HX-Trigger"] = json.dumps({
+        "alert": "Column preferences saved.",
+        "alertType": "success",
+        "refreshLines": True,
+        "refreshSidePanel": True,
+    })
+    return response
 
 
 @login_required
@@ -1622,7 +2542,9 @@ def journal_attachment_upload(request):
                 }
             )
 
-    return JsonResponse({"ok": True, "attachments": created})
+    response = JsonResponse({"ok": True, "attachments": created, "message": "Attachment(s) uploaded."})
+    response["HX-Trigger"] = json.dumps({"refreshSidePanel": True, "alert": "Attachment(s) uploaded.", "alertType": "success"})
+    return response
 
 
 @login_required
@@ -1677,3 +2599,15 @@ def journal_attachment_delete(request):
         return _json_error("Attachment not found.", status=404)
     attachment.delete()
     return JsonResponse({"ok": True})
+def _ai_insights_for_line(line: Dict[str, Any]) -> List[str]:
+    insights: List[str] = []
+    if not line:
+        return insights
+    debit = _float_or_zero(line.get("dr") or line.get("debit") or line.get("debit_amount"))
+    credit = _float_or_zero(line.get("cr") or line.get("credit") or line.get("credit_amount"))
+    if debit or credit:
+        has_tax = bool(line.get("taxCode") or line.get("tax_code") or line.get("taxCodeId"))
+        account_code = line.get("accountCode") or line.get("chartOfAccount") or line.get("account")
+        if not has_tax and account_code and account_code[:1] in ("4", "5"):
+            insights.append("Consider assigning a tax code for this revenue/expense line.")
+    return insights
