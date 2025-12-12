@@ -205,12 +205,14 @@ class MultiCurrencyTestCase(TestCase):
         # Create customer and vendor
         cls.customer = Customer.objects.create(
             organization=cls.organization,
-            customer_name='Test Customer',
+            code='CUST001',
+            display_name='Test Customer',
             accounts_receivable_account=cls.ar_account,
             created_by=cls.user
         )
         cls.vendor = Vendor.objects.create(
             organization=cls.organization,
+            code='VEND001',
             display_name='Test Vendor',
             accounts_payable_account=cls.ap_account,
             created_by=cls.user
@@ -219,8 +221,10 @@ class MultiCurrencyTestCase(TestCase):
         # Create payment term
         cls.payment_term = PaymentTerm.objects.create(
             organization=cls.organization,
+            code='NET30',
             name='Net 30',
-            days=30,
+            term_type='both',
+            net_due_days=30,
             is_active=True
         )
 
@@ -622,6 +626,20 @@ class CurrencyServiceTests(MultiCurrencyTestCase):
 
     def test_resolvecurrency_past_date(self):
         """Test finding rate for past date"""
-        past_date = date.today() - timedelta(days=10)
-        rate = resolvecurrency(self.organization, 'USD', 'NPR', past_date)
-        self.assertEqual(rate, Decimal('133.333333'))  # Should find the rate
+        # Create a rate for 15 days ago
+        past_rate_date = date.today() - timedelta(days=15)
+        CurrencyExchangeRate.objects.create(
+            organization=self.organization,
+            from_currency=self.usd,
+            to_currency=self.npr,
+            rate_date=past_rate_date,
+            exchange_rate=Decimal('120.000000'),  # Different rate for past
+            source='test',
+            is_active=True,
+            created_by=self.user
+        )
+        
+        # Look for rate 10 days ago - should find the past rate
+        lookup_date = date.today() - timedelta(days=10)
+        rate = resolvecurrency(self.organization, 'USD', 'NPR', lookup_date)
+        self.assertEqual(rate, Decimal('120.000000'))  # Should find the past rate
