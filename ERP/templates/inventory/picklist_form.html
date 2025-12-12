@@ -18,3 +18,60 @@
 {% endblock %}
 
 {% block cancel_url %}{% url 'inventory:picklist_list' %}{% endblock %}
+ 
+{% block form_content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h4 class="card-title mb-0">{% if form.instance.pk %}Edit Pick List{% else %}Create Pick List{% endif %}</h4>
+        <a href="{% url 'inventory:picklist_list' %}" class="btn btn-secondary btn-sm">Back</a>
+    </div>
+    <div class="card-body">
+        <form method="post" novalidate>
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Pick Number</label>
+                    {{ form.pick_number }}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Warehouse</label>
+                    {{ form.warehouse }}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Category</label>
+                    {{ form.category }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Order Reference</label>
+                    {{ form.order_reference }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Assigned To</label>
+                    {{ form.assigned_to }}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Pick Date</label>
+                    {{ form.pick_date }}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Status</label>
+                    {{ form.status }}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Priority</label>
+                    {{ form.priority }}
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Notes</label>
+                    {{ form.notes }}
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">{% if form.instance.pk %}Update{% else %}Create{% endif %}</button>
+                <a href="{% url 'inventory:picklist_list' %}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

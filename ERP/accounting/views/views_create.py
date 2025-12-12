@@ -169,6 +169,7 @@ class AccountTypeCreateView(AdvancedFormMixin, LoginRequiredMixin, CreateView):
             ('Account Types', reverse('accounting:account_type_list')),
             ('Create Account Type', None)
         ]
+        context['account_type_config'] = AccountType.get_ui_config()
         return context
 
 

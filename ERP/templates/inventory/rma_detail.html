@@ -1,32 +1,119 @@
-{% extends 'partials/base.html' %}
-{% load i18n %}
+{% extends "components/base/detail_base.html" %}
+{% load static %}
 
-{% block title %}{% trans "RMA Details" %}{% endblock %}
+{% block title %}{{ rma.rma_number }} - RMA{% endblock %}
+{% block page_title %}{{ rma.rma_number }}{% endblock %}
 
-{% block content %}
-<div class="main-content">
-    <div class="page-content">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h4 class="card-title">{% trans "RMA Details" %}</h4>
-                        </div>
-                        <div class="card-body">
-                            <dl class="row">
-                                <dt class="col-sm-3">{% trans "RMA Number" %}</dt>
-                                <dd class="col-sm-9">{{ rma.rma_number }}</dd>
-                                <dt class="col-sm-3">{% trans "Status" %}</dt>
-                                <dd class="col-sm-9">{{ rma.status }}</dd>
-                            </dl>
-                            <a href="{% url 'inventory:rma_list' %}" class="btn btn-secondary">{% trans "Back to List" %}</a>
-                            <a href="{% url 'inventory:rma_update' rma.pk %}" class="btn btn-primary">{% trans "Edit" %}</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
+{% block breadcrumbs %}
+  {{ block.super }}
+  <li class="breadcrumb-item"><a href="{% url 'inventory:rma_list' %}">RMAs</a></li>
+  <li class="breadcrumb-item active">{{ rma.rma_number }}</li>
+{% endblock %}
+
+{% block detail_content %}
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card mb-3">
+      <div class="card-header">
+        <h5 class="card-title mb-0">RMA Details</h5>
+      </div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Number</h6>
+          </div>
+          <div class="col-sm-9">
+            <code class="text-body">{{ rma.rma_number }}</code>
+          </div>
         </div>
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">RMA Date</h6>
+          </div>
+          <div class="col-sm-9">
+            {{ rma.rma_date|date:"Y-m-d" }}
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Reason</h6>
+          </div>
+          <div class="col-sm-9">
+            {{ rma.reason|default:"—" }}
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Status</h6>
+          </div>
+          <div class="col-sm-9">
+            <span class="badge bg-info">{{ rma.get_status_display }}</span>
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Handling</h6>
+          </div>
+          <div class="col-sm-9">
+            {{ rma.get_handling_display|default:"—" }}
+          </div>
+        </div>
+      </div>
     </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0">RMA Lines</h5>
+      </div>
+      <div class="card-body">
+        {% if rma.lines.all %}
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Product</th>
+                  <th class="text-end">Qty Returned</th>
+                  <th class="text-end">Qty Accepted</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for line in rma.lines.all %}
+                  <tr>
+                    <td>{{ line.product.name }}</td>
+                    <td class="text-end">{{ line.quantity_returned }}</td>
+                    <td class="text-end">{{ line.quantity_accepted|default:"0" }}</td>
+                    <td>{{ line.get_action_display|default:"—" }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="text-muted mb-0">No lines in this RMA.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Actions</h5>
+      </div>
+      <div class="card-body">
+        {% if can_change %}
+          <a href="{% url 'inventory:rma_update' pk=rma.pk %}" class="btn btn-primary w-100 mb-2">
+            <i class="mdi mdi-pencil"></i> Edit
+          </a>
+        {% endif %}
+        {% if can_delete %}
+          <a href="#" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#deleteModal">
+            <i class="mdi mdi-trash-can"></i> Delete
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}

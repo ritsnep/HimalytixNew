@@ -1,33 +1,81 @@
-{% extends 'Inventory/_list_base.html' %}
-{% load i18n %}
+{% extends "inventory/_list_base.html" %}
+{% load static %}
 
-{% block page_title %}{% trans "Products" %}{% endblock %}
+{% block title %}Products{% endblock %}
+{% block list_title %}Product List{% endblock %}
+{% block list_subtitle %}Manage inventory products and pricing{% endblock %}
 
-{% block list_title %}{% trans "Product List" %}{% endblock %}
-
-{% block create_url %}{% url 'inventory:product_create' %}{% endblock %}
-
-{% block table_headers %}
-    <th>{% trans "Code" %}</th>
-    <th>{% trans "Name" %}</th>
-    <th>{% trans "Category" %}</th>
-    <th>{% trans "Type" %}</th>
-    <th>{% trans "Unit" %}</th>
-    <th>{% trans "Price" %}</th>
-    <th>{% trans "Active" %}</th>
+{% block list_actions %}
+  <a href="{{ create_url }}" class="btn btn-success btn-sm">
+    <i class="mdi mdi-plus"></i> Add Product
+  </a>
 {% endblock %}
 
-{% block table_columns %}
-    { data: 'code' },
-    { data: 'name' },
-    { data: 'category__name' },
-    { data: 'product_type' },
-    { data: 'uom' },
-    { data: 'list_price', render: $.fn.dataTable.render.number(',', '.', 2) },
-    { 
-        data: 'is_active',
-        render: function(data) {
-            return data ? '<span class="badge bg-success">{% trans "Active" %}</span>' : '<span class="badge bg-secondary">{% trans "Inactive" %}</span>';
-        }
-    }
+{% block table_head %}
+  <tr>
+    <th>Code</th>
+    <th>Name</th>
+    <th>Category</th>
+    <th>Base Unit</th>
+    <th class="text-end">Sale Price</th>
+    <th class="text-end">Cost Price</th>
+    <th class="text-center">Inventory?</th>
+    <th style="width:140px;">Actions</th>
+  </tr>
+{% endblock %}
+
+{% block table_body %}
+  {% for product in object_list %}
+    <tr>
+      <td class="fw-semibold"><code>{{ product.code }}</code></td>
+      <td>{{ product.name }}</td>
+      <td>
+        {% if product.category %}
+          <a href="{% url 'inventory:product_category_detail' product.category.pk %}">{{ product.category.name }}</a>
+        {% else %}
+          <span class="text-muted">—</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if product.base_unit %}
+          {{ product.base_unit.name }} ({{ product.base_unit.code }})
+        {% else %}
+          <span class="text-muted">—</span>
+        {% endif %}
+      </td>
+      <td class="text-end">{{ product.currency_code }} {{ product.sale_price|floatformat:2 }}</td>
+      <td class="text-end">{{ product.currency_code }} {{ product.cost_price|floatformat:2 }}</td>
+      <td class="text-center">
+        {% if product.is_inventory_item %}
+          <span class="badge bg-success">Yes</span>
+        {% else %}
+          <span class="badge bg-secondary">No</span>
+        {% endif %}
+      </td>
+      <td>
+        <div class="btn-group btn-group-sm" role="group">
+          <a href="{% url 'inventory:product_detail' product.pk %}" class="btn btn-outline-info" title="View">
+            <i class="mdi mdi-eye"></i>
+          </a>
+          {% if can_change %}
+            <a href="{% url 'inventory:product_update' product.pk %}" class="btn btn-outline-primary" title="Edit">
+              <i class="mdi mdi-pencil"></i>
+            </a>
+          {% endif %}
+          {% if can_delete %}
+            <a href="{% url 'inventory:product_delete' product.pk %}" class="btn btn-outline-danger" title="Delete">
+              <i class="mdi mdi-trash-can"></i>
+            </a>
+          {% endif %}
+        </div>
+      </td>
+    </tr>
+  {% empty %}
+    <tr>
+      <td colspan="8" class="text-center text-muted py-4">
+        No products found.
+        {% if can_add %}<a href="{% url 'inventory:product_create' %}">Create one</a>{% endif %}
+      </td>
+    </tr>
+  {% endfor %}
 {% endblock %}

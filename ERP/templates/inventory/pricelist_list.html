@@ -1,33 +1,67 @@
-{% extends 'Inventory/_list_base.html' %}
-{% load i18n %}
+{% extends "inventory/_list_base.html" %}
+{% load static %}
 
-{% block page_title %}{% trans "Price Lists" %}{% endblock %}
+{% block title %}Price Lists{% endblock %}
+{% block list_page_title %}Price Lists{% endblock %}
+{% block list_title %}Price List Management{% endblock %}
 
-{% block list_title %}{% trans "Price List" %}{% endblock %}
+{% block list_actions %}
+  <div class="d-flex flex-wrap gap-2">
+    {% if can_add and create_url %}
+      <a href="{{ create_url }}" class="btn btn-success btn-sm">
+        <i class="mdi mdi-plus"></i> Create Price List
+      </a>
+    {% endif %}
+  </div>
+  {% endblock %}
 
-{% block create_url %}{% url 'inventory:pricelist_create' %}{% endblock %}
+  {% block custom_filters %}
+  <form method="get" class="d-flex gap-2 align-items-center mb-3">
+      <label class="mb-0">Category:</label>
+      <select name="category" class="form-select w-auto">
+          <option value="">All</option>
+          {% for cat in categories %}
+              <option value="{{ cat.id }}" {% if selected_category|stringformat:"s" == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+          {% endfor %}
+      </select>
+      <button class="btn btn-outline-secondary btn-sm">Filter</button>
+  </form>
+  {% endblock %}
 
-{% block table_headers %}
-    <th>{% trans "Code" %}</th>
-    <th>{% trans "Name" %}</th>
-    <th>{% trans "Category" %}</th>
-    <th>{% trans "Currency" %}</th>
-    <th>{% trans "Valid From" %}</th>
-    <th>{% trans "Valid To" %}</th>
-    <th>{% trans "Active" %}</th>
+{% block table_head %}
+  <tr>
+    <th>Code</th>
+    <th>Name</th>
+    <th>Currency</th>
+    <th>Effective Date</th>
+    <th>Status</th>
+    <th style="width:150px;">Actions</th>
+  </tr>
 {% endblock %}
 
-{% block table_columns %}
-    { data: 'code' },
-    { data: 'name' },
-    { data: 'category' },
-    { data: 'currency' },
-    { data: 'valid_from' },
-    { data: 'valid_to', defaultContent: '-' },
-    { 
-        data: 'is_active',
-        render: function(data) {
-            return data ? '<span class="badge bg-success">{% trans "Active" %}</span>' : '<span class="badge bg-secondary">{% trans "Inactive" %}</span>';
-        }
-    }
+{% block table_body %}
+  {% for pricelist in object_list %}
+    <tr>
+      <td class="fw-semibold">{{ pricelist.code }}</td>
+      <td>{{ pricelist.name }}</td>
+      <td>{{ pricelist.currency }}</td>
+      <td>{{ pricelist.effective_date|date:"SHORT_DATE_FORMAT" }}</td>
+      <td>
+        {% if pricelist.is_active %}
+          <span class="badge bg-success">Active</span>
+        {% else %}
+          <span class="badge bg-secondary">Inactive</span>
+        {% endif %}
+      </td>
+      <td>
+        <div class="btn-group btn-group-sm" role="group">
+          <a href="{% url 'inventory:pricelist_detail' pricelist.pk %}" class="btn btn-outline-info">View</a>
+          {% if can_change %}<a href="{% url 'inventory:pricelist_update' pricelist.pk %}" class="btn btn-outline-primary">Edit</a>{% endif %}
+          {% if can_delete %}<a href="{% url 'inventory:pricelist_delete' pricelist.pk %}" class="btn btn-outline-danger">Delete</a>{% endif %}
+        </div>
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="5" class="text-center text-muted py-3">No price lists found.</td></tr>
+  {% endfor %}
 {% endblock %}

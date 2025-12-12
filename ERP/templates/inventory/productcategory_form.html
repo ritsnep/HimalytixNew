@@ -1,0 +1,156 @@
+{% extends "inventory/_form_base.html" %}
+{% load static crispy_forms_tags %}
+
+{% block title %}{% if form.instance.pk %}Edit{% else %}Create{% endif %} Product Category{% endblock %}
+{% block page_title %}{% if form.instance.pk %}Edit{% else %}Create{% endif %} Product Category{% endblock %}
+{% block list_title %}Product Categories{% endblock %}
+
+{% block form_content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-bottom">
+                <h5 class="card-title mb-0">
+                    {% if form.instance.pk %}
+                        <i class="mdi mdi-pencil"></i> Edit Product Category
+                    {% else %}
+                        <i class="mdi mdi-plus"></i> Create Product Category
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" novalidate class="needs-validation">
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <strong>Error:</strong>
+                        {% for error in form.non_field_errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row g-3">
+                        <!-- Code Field -->
+                        <div class="col-md-6">
+                            <label for="{{ form.code.id_for_label }}" class="form-label">
+                                Code <span class="text-danger">*</span>
+                            </label>
+                            {{ form.code }}
+                            {% if form.code.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.code.errors.0 }}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Auto-generated unique identifier</small>
+                        </div>
+                        
+                        <!-- Name Field -->
+                        <div class="col-md-6">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">
+                                Name <span class="text-danger">*</span>
+                            </label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.name.errors.0 }}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Category display name</small>
+                        </div>
+                        
+                        <!-- Parent Category Field -->
+                        <div class="col-12">
+                            <label for="{{ form.parent.id_for_label }}" class="form-label">
+                                Parent Category
+                            </label>
+                            {{ form.parent }}
+                            {% if form.parent.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.parent.errors.0 }}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Leave blank for top-level categories</small>
+                        </div>
+                        
+                        <!-- Active Status -->
+                        <div class="col-12">
+                            <div class="form-check">
+                                {{ form.is_active }}
+                                <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                    Active
+                                </label>
+                                {% if form.is_active.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.is_active.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <small class="form-text text-muted">Inactive categories won't be available for selection</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Hidden submit button for sidebar form submission -->
+                    <button type="submit" class="d-none"></button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Form Actions Sidebar -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm sticky-top" style="top: 80px; z-index: 1020;">
+            <div class="card-header bg-light border-bottom">
+                <h6 class="card-title mb-0">
+                    <i class="mdi mdi-checkbox-marked-circle-outline"></i> Actions
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-success btn-lg" onclick="document.querySelector('form').submit();">
+                        <i class="mdi mdi-check me-2"></i>
+                        {% if form.instance.pk %}Update{% else %}Create{% endif %} Category
+                    </button>
+                    <a href="{% url 'inventory:product_category_list' %}" class="btn btn-outline-secondary">
+                        <i class="mdi mdi-close me-2"></i> Cancel
+                    </a>
+                </div>
+            </div>
+            
+            {% if form.instance.pk %}
+            <div class="card-footer bg-light border-top">
+                <small class="text-muted d-block">
+                    <i class="mdi mdi-information-outline"></i>
+                    Created: {{ form.instance.created_at|date:"M d, Y H:i" }}
+                </small>
+                {% if form.instance.updated_at %}
+                <small class="text-muted d-block">
+                    Updated: {{ form.instance.updated_at|date:"M d, Y H:i" }}
+                </small>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control:focus,
+    .form-select:focus {
+        border-color: #80bdff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+    
+    .invalid-feedback {
+        color: #dc3545;
+        font-size: 0.875em;
+        margin-top: 0.25rem;
+    }
+    
+    .sticky-top {
+        z-index: 1020;
+    }
+</style>
+{% endblock %}

@@ -415,10 +415,13 @@
                         <span data-key="t-inventory">Inventory</span>
                     </a>
                     <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="{% url 'inventory:dashboard' %}">Dashboard</a></li>
                         <li><a href="{% url 'inventory:product_list' %}">Products</a></li>
                         <li><a href="{% url 'inventory:product_category_list' %}">Categories</a></li>
                         <li><a href="{% url 'inventory:warehouse_list' %}">Warehouses</a></li>
                         <li><a href="{% url 'inventory:location_list' %}">Locations</a></li>
+                        <li><a href="{% url 'inventory:unit_list' %}">Units</a></li>
+                        <li><a href="{% url 'inventory:productunit_list' %}">Product Units</a></li>
                         <li><a href="{% url 'inventory:pricelist_list' %}">Price Lists</a></li>
                         <li><a href="{% url 'inventory:picklist_list' %}">Pick Lists</a></li>
                         <li><a href="{% url 'inventory:shipment_list' %}">Shipments</a></li>

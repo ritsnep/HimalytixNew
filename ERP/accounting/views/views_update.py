@@ -363,6 +363,7 @@ class AccountTypeUpdateView(AdvancedFormMixin, LoginRequiredMixin, UpdateView):
             ('Account Types', reverse_lazy('accounting:account_type_list')),
             ('Update Account Type', None)
         ]
+        context['account_type_config'] = AccountType.get_ui_config()
         return context
 
 class CurrencyUpdateView(AdvancedFormMixin, PermissionRequiredMixin, LoginRequiredMixin, UpdateView):

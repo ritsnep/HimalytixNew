@@ -126,6 +126,10 @@ class BaseVoucherView(UserOrganizationMixin, View):
             organization=context['organization']
         ).values('id', 'code', 'name')
         
+        # Add base currency for HTMX exchange rate resolution
+        from accounting.views.journal_entry import _base_currency_code
+        context['base_currency'] = _base_currency_code(context['organization'])
+        
         return context
 
     def get_form_kwargs(self) -> Dict[str, Any]:

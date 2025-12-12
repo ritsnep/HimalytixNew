@@ -16,7 +16,7 @@
     <th>Code</th>
     <th>Name</th>
     <th>Category</th>
-    <th>UOM</th>
+    <th>Base Unit</th>
     <th class="text-end">Sale Price</th>
     <th class="text-end">Cost Price</th>
     <th class="text-center">Inventory?</th>
@@ -36,7 +36,13 @@
           <span class="text-muted">—</span>
         {% endif %}
       </td>
-      <td>{{ product.uom }}</td>
+      <td>
+        {% if product.base_unit %}
+          {{ product.base_unit.name }} ({{ product.base_unit.code }})
+        {% else %}
+          <span class="text-muted">—</span>
+        {% endif %}
+      </td>
       <td class="text-end">{{ product.currency_code }} {{ product.sale_price|floatformat:2 }}</td>
       <td class="text-end">{{ product.currency_code }} {{ product.cost_price|floatformat:2 }}</td>
       <td class="text-center">

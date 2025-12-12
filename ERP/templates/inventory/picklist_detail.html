@@ -1,32 +1,111 @@
-{% extends 'partials/base.html' %}
-{% load i18n %}
+{% extends "components/base/detail_base.html" %}
+{% load static %}
 
-{% block title %}{% trans "Pick List Details" %}{% endblock %}
+{% block title %}{{ picklist.pick_list_number }} - Pick List{% endblock %}
+{% block page_title %}{{ picklist.pick_list_number }}{% endblock %}
 
-{% block content %}
-<div class="main-content">
-    <div class="page-content">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h4 class="card-title">{% trans "Pick List Details" %}</h4>
-                        </div>
-                        <div class="card-body">
-                            <dl class="row">
-                                <dt class="col-sm-3">{% trans "Pick List Number" %}</dt>
-                                <dd class="col-sm-9">{{ picklist.pick_list_number }}</dd>
-                                <dt class="col-sm-3">{% trans "Status" %}</dt>
-                                <dd class="col-sm-9">{{ picklist.status }}</dd>
-                            </dl>
-                            <a href="{% url 'inventory:picklist_list' %}" class="btn btn-secondary">{% trans "Back to List" %}</a>
-                            <a href="{% url 'inventory:picklist_update' picklist.pk %}" class="btn btn-primary">{% trans "Edit" %}</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
+{% block breadcrumbs %}
+  {{ block.super }}
+  <li class="breadcrumb-item"><a href="{% url 'inventory:picklist_list' %}">Pick Lists</a></li>
+  <li class="breadcrumb-item active">{{ picklist.pick_list_number }}</li>
+{% endblock %}
+
+{% block detail_content %}
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card mb-3">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Pick List Details</h5>
+      </div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Number</h6>
+          </div>
+          <div class="col-sm-9">
+            <code class="text-body">{{ picklist.pick_list_number }}</code>
+          </div>
         </div>
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Warehouse</h6>
+          </div>
+          <div class="col-sm-9">
+            {{ picklist.warehouse.name }}
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Created</h6>
+          </div>
+          <div class="col-sm-9">
+            {{ picklist.created_at|date:"Y-m-d H:i" }}
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Status</h6>
+          </div>
+          <div class="col-sm-9">
+            <span class="badge bg-info">{{ picklist.get_status_display }}</span>
+          </div>
+        </div>
+      </div>
     </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Pick Lines</h5>
+      </div>
+      <div class="card-body">
+        {% if picklist.lines.all %}
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Product</th>
+                  <th class="text-end">Qty Required</th>
+                  <th class="text-end">Qty Picked</th>
+                  <th>Location</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for line in picklist.lines.all %}
+                  <tr>
+                    <td>{{ line.product.name }}</td>
+                    <td class="text-end">{{ line.quantity_required }}</td>
+                    <td class="text-end">{{ line.quantity_picked|default:"0" }}</td>
+                    <td>{{ line.location.code|default:"—" }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="text-muted mb-0">No lines in this pick list.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Actions</h5>
+      </div>
+      <div class="card-body">
+        {% if can_change %}
+          <a href="{% url 'inventory:picklist_update' pk=picklist.pk %}" class="btn btn-primary w-100 mb-2">
+            <i class="mdi mdi-pencil"></i> Edit
+          </a>
+        {% endif %}
+        {% if can_delete %}
+          <a href="#" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#deleteModal">
+            <i class="mdi mdi-trash-can"></i> Delete
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}

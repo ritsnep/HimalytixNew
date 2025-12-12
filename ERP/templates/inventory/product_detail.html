@@ -1,36 +1,169 @@
-{% extends 'partials/base.html' %}
-{% load i18n %}
+{% extends "components/base/detail_base.html" %}
+{% load static %}
 
-{% block title %}{% trans "Product Details" %}{% endblock %}
+{% block title %}{{ product.name }} - Product{% endblock %}
+{% block page_title %}{{ product.name }}{% endblock %}
 
-{% block content %}
-<div class="main-content">
-    <div class="page-content">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h4 class="card-title">{% trans "Product Details" %}</h4>
-                        </div>
-                        <div class="card-body">
-                            <dl class="row">
-                                <dt class="col-sm-3">{% trans "Code" %}</dt>
-                                <dd class="col-sm-9">{{ product.code }}</dd>
-                                <dt class="col-sm-3">{% trans "Name" %}</dt>
-                                <dd class="col-sm-9">{{ product.name }}</dd>
-                                <dt class="col-sm-3">{% trans "Category" %}</dt>
-                                <dd class="col-sm-9">{{ product.category.name|default:"Uncategorized" }}</dd>
-                                <dt class="col-sm-3">{% trans "UOM" %}</dt>
-                                <dd class="col-sm-9">{{ product.uom }}</dd>
-                            </dl>
-                            <a href="{% url 'inventory:product_list' %}" class="btn btn-secondary">{% trans "Back to List" %}</a>
-                            <a href="{% url 'inventory:product_update' product.pk %}" class="btn btn-primary">{% trans "Edit" %}</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
+{% block breadcrumbs %}
+  {{ block.super }}
+  <li class="breadcrumb-item"><a href="{% url 'inventory:product_list' %}">Products</a></li>
+  <li class="breadcrumb-item active">{{ product.name }}</li>
+{% endblock %}
+
+{% block detail_content %}
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card mb-3">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Product Information</h5>
+      </div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Code</h6>
+          </div>
+          <div class="col-sm-9">
+            <code class="text-body">{{ product.code }}</code>
+          </div>
         </div>
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Name</h6>
+          </div>
+          <div class="col-sm-9">
+            {{ product.name }}
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Description</h6>
+          </div>
+          <div class="col-sm-9">
+            {{ product.description|default:"—" }}
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Category</h6>
+          </div>
+          <div class="col-sm-9">
+            {% if product.category %}
+              <a href="{% url 'inventory:product_category_detail' pk=product.category.pk %}">
+                {{ product.category.name }}
+              </a>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
     </div>
+
+    <div class="card mb-3">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Pricing & Costing</h5>
+      </div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">UOM</h6>
+          </div>
+          <div class="col-sm-9">
+            {{ product.uom }}
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Sale Price</h6>
+          </div>
+          <div class="col-sm-9">
+            {{ product.currency_code }} {{ product.sale_price|floatformat:2 }}
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Cost Price</h6>
+          </div>
+          <div class="col-sm-9">
+            {{ product.currency_code }} {{ product.cost_price|floatformat:2 }}
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Min Order Qty</h6>
+          </div>
+          <div class="col-sm-9">
+            {{ product.min_order_quantity }}
+          </div>
+        </div>
+        {% if product.reorder_level %}
+          <div class="row mb-3">
+            <div class="col-sm-3">
+              <h6 class="text-muted mb-0">Reorder Level</h6>
+            </div>
+            <div class="col-sm-9">
+              {{ product.reorder_level }}
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Tracking</h5>
+      </div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">SKU</h6>
+          </div>
+          <div class="col-sm-9">
+            <code>{{ product.sku|default:"—" }}</code>
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Barcode</h6>
+          </div>
+          <div class="col-sm-9">
+            <code>{{ product.barcode|default:"—" }}</code>
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Is Inventory Item?</h6>
+          </div>
+          <div class="col-sm-9">
+            {% if product.is_inventory_item %}
+              <span class="badge bg-success">Yes</span>
+            {% else %}
+              <span class="badge bg-secondary">No</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Actions</h5>
+      </div>
+      <div class="card-body">
+        {% if can_change %}
+          <a href="{% url 'inventory:product_update' pk=product.pk %}" class="btn btn-primary w-100 mb-2">
+            <i class="mdi mdi-pencil"></i> Edit
+          </a>
+        {% endif %}
+        {% if can_delete %}
+          <a href="#" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#deleteModal">
+            <i class="mdi mdi-trash-can"></i> Delete
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}

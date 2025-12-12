@@ -149,6 +149,7 @@ urlpatterns = [
     path('journal-entry/reject/', journal_entry.journal_reject, name='journal_reject'),
     path('journal-entry/post/', journal_entry.journal_post, name='journal_post'),
     path('journal-entry/config/', journal_entry.journal_config, name='journal_config'),
+    path('journal-entry/resolve-exchange-rate/', journal_entry.resolve_exchange_rate, name='resolve_exchange_rate'),
     path('journal-entry/api/<int:pk>/', journal_entry.journal_entry_data, name='journal_entry_data'),
     path('journal-entry/lookup/accounts/', journal_entry.journal_account_lookup, name='journal_account_lookup'),
     path('journal-entry/lookup/cost-centers/', journal_entry.journal_cost_center_lookup, name='journal_cost_center_lookup'),

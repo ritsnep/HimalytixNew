@@ -17,6 +17,7 @@ from django.utils import timezone
 from accounting.models import (
     Currency,
     CurrencyExchangeRate,
+    FiscalYear,
     Journal,
     JournalLine,
     JournalType,
@@ -32,9 +33,7 @@ from accounting.models import (
     Vendor,
     PaymentTerm,
 )
-from accounting.services.posting_service import PostingService
-from accounting.services.sales_invoice_service import SalesInvoiceService
-from accounting.services.purchase_invoice_service import PurchaseInvoiceService
+from accounting.services.currency_service import resolvecurrency
 from usermanagement.models import Organization
 
 User = get_user_model()
@@ -45,25 +44,8 @@ class MultiCurrencyTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        """Create common test data for all multi-currency tests"""
-        # Create user
-        cls.user = User.objects.create_user(
-            username='testuser',
-            email='test@example.com',
-            password='testpass123'
-        )
-
-        # Create organization with NPR as base currency
-        cls.organization = Organization.objects.create(
-            name='Test Org',
-            code='TEST',
-            type='test',
-            base_currency_code='NPR'
-        )
-        cls.user.organization = cls.organization
-        cls.user.save()
-
-        # Create or get currencies
+        """Create common test data for all multi-currency test"""
+        # Create or get currencies first
         cls.npr, _ = Currency.objects.get_or_create(
             currency_code='NPR',
             defaults={
@@ -80,6 +62,23 @@ class MultiCurrencyTestCase(TestCase):
                 'is_active': True
             }
         )
+
+        # Create user
+        cls.user = User.objects.create_user(
+            username='testuser',
+            email='test@example.com',
+            password='testpass123'
+        )
+
+        # Create organization with NPR as base currency
+        cls.organization = Organization.objects.create(
+            name='Test Org',
+            code='TEST',
+            type='test',
+            base_currency_code=cls.npr  # Use the Currency instance
+        )
+        cls.user.organization = cls.organization
+        cls.user.save()
         cls.eur, _ = Currency.objects.get_or_create(
             currency_code='EUR',
             defaults={
@@ -115,25 +114,21 @@ class MultiCurrencyTestCase(TestCase):
 
         # Create account types
         cls.asset_type = AccountType.objects.create(
-            organization=cls.organization,
             name='Assets',
             nature='debit',
             code='ASSET'
         )
         cls.revenue_type = AccountType.objects.create(
-            organization=cls.organization,
             name='Revenue',
             nature='credit',
             code='REVENUE'
         )
         cls.expense_type = AccountType.objects.create(
-            organization=cls.organization,
             name='Expense',
             nature='debit',
             code='EXPENSE'
         )
         cls.liability_type = AccountType.objects.create(
-            organization=cls.organization,
             name='Liability',
             nature='credit',
             code='LIABILITY'
@@ -176,10 +171,24 @@ class MultiCurrencyTestCase(TestCase):
             is_active=True
         )
 
+        # Create fiscal year
+        cls.fiscal_year = FiscalYear.objects.create(
+            organization=cls.organization,
+            code='2024',
+            name='Fiscal Year 2024',
+            start_date=date.today() - timedelta(days=365),
+            end_date=date.today() + timedelta(days=365),
+            status='open',
+            is_current=True,
+            created_by=cls.user
+        )
+
         # Create accounting period
         cls.period = AccountingPeriod.objects.create(
+            fiscal_year=cls.fiscal_year,
             organization=cls.organization,
-            period_name='Test Period',
+            period_number=1,
+            name='Test Period',
             start_date=date.today() - timedelta(days=30),
             end_date=date.today() + timedelta(days=30),
             status='open'
@@ -590,3 +599,29 @@ class DeprecatedFieldsTests(MultiCurrencyTestCase):
         self.assertEqual(line.amount_txn, Decimal('7.50'))
         self.assertEqual(line.amount_base, Decimal('1000.00'))
         self.assertEqual(line.fx_rate, Decimal('133.333333'))
+
+
+class CurrencyServiceTests(MultiCurrencyTestCase):
+    """Test the currency resolution service"""
+
+    def test_resolvecurrency_same_currency(self):
+        """Test that same currencies return 1.0"""
+        rate = resolvecurrency(self.organization, 'USD', 'USD', date.today())
+        self.assertEqual(rate, Decimal('1.000000'))
+
+    def test_resolvecurrency_with_rate(self):
+        """Test resolving exchange rate with existing rate"""
+        rate = resolvecurrency(self.organization, 'USD', 'NPR', date.today())
+        self.assertEqual(rate, Decimal('133.333333'))
+
+    def test_resolvecurrency_no_rate(self):
+        """Test fallback to 1.0 when no rate exists"""
+        # Try a currency pair that doesn't exist
+        rate = resolvecurrency(self.organization, 'EUR', 'NPR', date.today())
+        self.assertEqual(rate, Decimal('1.000000'))
+
+    def test_resolvecurrency_past_date(self):
+        """Test finding rate for past date"""
+        past_date = date.today() - timedelta(days=10)
+        rate = resolvecurrency(self.organization, 'USD', 'NPR', past_date)
+        self.assertEqual(rate, Decimal('133.333333'))  # Should find the rate

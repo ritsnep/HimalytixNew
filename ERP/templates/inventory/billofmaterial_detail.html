@@ -1,32 +1,123 @@
-{% extends 'partials/base.html' %}
-{% load i18n %}
+{% extends "components/base/detail_base.html" %}
+{% load static %}
 
-{% block title %}{% trans "Bill of Material Details" %}{% endblock %}
+{% block title %}{{ bom.bom_number }} - Bill of Material{% endblock %}
+{% block page_title %}{{ bom.bom_number }}{% endblock %}
 
-{% block content %}
-<div class="main-content">
-    <div class="page-content">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h4 class="card-title">{% trans "Bill of Material Details" %}</h4>
-                        </div>
-                        <div class="card-body">
-                            <dl class="row">
-                                <dt class="col-sm-3">{% trans "BOM Number" %}</dt>
-                                <dd class="col-sm-9">{{ bom.bom_number }}</dd>
-                                <dt class="col-sm-3">{% trans "Product" %}</dt>
-                                <dd class="col-sm-9">{{ bom.product.name }}</dd>
-                            </dl>
-                            <a href="{% url 'inventory:bom_list' %}" class="btn btn-secondary">{% trans "Back to List" %}</a>
-                            <a href="{% url 'inventory:bom_update' bom.pk %}" class="btn btn-primary">{% trans "Edit" %}</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
+{% block breadcrumbs %}
+  {{ block.super }}
+  <li class="breadcrumb-item"><a href="{% url 'inventory:bom_list' %}">BOMs</a></li>
+  <li class="breadcrumb-item active">{{ bom.bom_number }}</li>
+{% endblock %}
+
+{% block detail_content %}
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card mb-3">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Bill of Material Details</h5>
+      </div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Number</h6>
+          </div>
+          <div class="col-sm-9">
+            <code class="text-body">{{ bom.bom_number }}</code>
+          </div>
         </div>
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Product</h6>
+          </div>
+          <div class="col-sm-9">
+            {{ bom.product.name }}
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Version</h6>
+          </div>
+          <div class="col-sm-9">
+            {{ bom.version|default:"1" }}
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Effective From</h6>
+          </div>
+          <div class="col-sm-9">
+            {{ bom.effective_from|date:"Y-m-d"|default:"—" }}
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-sm-3">
+            <h6 class="text-muted mb-0">Status</h6>
+          </div>
+          <div class="col-sm-9">
+            {% if bom.is_active %}
+              <span class="badge bg-success">Active</span>
+            {% else %}
+              <span class="badge bg-secondary">Inactive</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
     </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0">BOM Components</h5>
+      </div>
+      <div class="card-body">
+        {% if bom.items.all %}
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Component</th>
+                  <th class="text-end">Qty Required</th>
+                  <th>UOM</th>
+                  <th>Scrap %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in bom.items.all %}
+                  <tr>
+                    <td>{{ item.component.name }}</td>
+                    <td class="text-end">{{ item.quantity_required }}</td>
+                    <td>{{ item.component.uom }}</td>
+                    <td>{{ item.scrap_percentage|floatformat:1 }}%</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="text-muted mb-0">No components in this BOM.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Actions</h5>
+      </div>
+      <div class="card-body">
+        {% if can_change %}
+          <a href="{% url 'inventory:bom_update' pk=bom.pk %}" class="btn btn-primary w-100 mb-2">
+            <i class="mdi mdi-pencil"></i> Edit
+          </a>
+        {% endif %}
+        {% if can_delete %}
+          <a href="#" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#deleteModal">
+            <i class="mdi mdi-trash-can"></i> Delete
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}

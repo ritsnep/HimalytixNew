@@ -1,0 +1,57 @@
+{% extends "inventory/_list_base.html" %}
+{% load static %}
+
+{% block title %}Current Stock{% endblock %}
+{% block list_page_title %}Inventory Items{% endblock %}
+{% block list_title %}Current Stock Levels{% endblock %}
+
+{% block list_actions %}
+  <div class="d-flex flex-wrap gap-2">
+    {% if can_add and create_url %}
+      <a href="{{ create_url }}" class="btn btn-success btn-sm">
+        <i class="mdi mdi-plus"></i> Add Stock
+      </a>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block table_head %}
+  <tr>
+    <th>Product</th>
+    <th>Warehouse</th>
+    <th>Location</th>
+    <th>Batch/Serial</th>
+    <th class="text-end">Quantity</th>
+    <th class="text-end">Unit Cost</th>
+    <th>Last Updated</th>
+    <th style="width:120px;">Actions</th>
+  </tr>
+{% endblock %}
+
+{% block table_body %}
+  {% for item in object_list %}
+    <tr>
+      <td>{{ item.product.code }} - {{ item.product.name }}</td>
+      <td>{{ item.warehouse.code }}</td>
+      <td>{{ item.location.code|default:"N/A" }}</td>
+      <td>
+        {% if item.batch %}
+          {{ item.batch.batch_number }} / {{ item.batch.serial_number|default:"" }}
+        {% else %}
+          N/A
+        {% endif %}
+      </td>
+      <td class="text-end fw-semibold">{{ item.quantity_on_hand }}</td>
+      <td class="text-end">{{ item.unit_cost|default:"0" }}</td>
+      <td>{{ item.updated_at|date:"SHORT_DATE_FORMAT" }}</td>
+      <td>
+        <div class="btn-group btn-group-sm" role="group">
+          <a href="{% url 'inventory:inventoryitem_detail' item.pk %}" class="btn btn-outline-info">View</a>
+          {% if can_change %}<a href="{% url 'inventory:inventoryitem_update' item.pk %}" class="btn btn-outline-primary">Edit</a>{% endif %}
+        </div>
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="8" class="text-center text-muted py-3">No inventory items found.</td></tr>
+  {% endfor %}
+{% endblock %}

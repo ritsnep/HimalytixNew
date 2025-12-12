@@ -29,7 +29,7 @@
   {% if f.journal_date %}
     <div class="col-md-3">
       <label for="{{ f.journal_date.id_for_label }}" class="form-label">{{ f.journal_date.label }}</label>
-      {% render_field f.journal_date class+="form-control" %}
+      {% render_field f.journal_date class+="form-control" hx-get="{% url 'accounting:resolve_exchange_rate' %}" hx-target="#{{ f.exchange_rate.id_for_label }}" hx-include="[name='{{ f.currency_code.name }}']" hx-vals='{"to_currency": "{{ base_currency }}"}' %}
     </div>
   {% endif %}
 
@@ -57,7 +57,7 @@
   {% if f.currency_code %}
     <div class="col-md-3">
       <label for="{{ f.currency_code.id_for_label }}" class="form-label">{{ f.currency_code.label }}</label>
-      {% render_field f.currency_code class+="form-select" %}
+      {% render_field f.currency_code class+="form-select" hx-get="{% url 'accounting:resolve_exchange_rate' %}" hx-target="#{{ f.exchange_rate.id_for_label }}" hx-include="[name='{{ f.journal_date.name }}']" hx-vals='{"to_currency": "{{ base_currency }}"}' %}
     </div>
   {% endif %}
 

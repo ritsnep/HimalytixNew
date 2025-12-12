@@ -9,6 +9,22 @@ from usermanagement.models import Organization               # your multi-tenant
 # from accounting.models import ChartOfAccount               # GL integration
 
 # ---------- Master data ----------
+class Unit(models.Model):
+    """Unit of Measure (UOM) master"""
+    organization = models.ForeignKey(Organization, on_delete=models.PROTECT)
+    code         = models.CharField(max_length=10)
+    name         = models.CharField(max_length=50)
+    description  = models.TextField(blank=True)
+    is_active    = models.BooleanField(default=True)
+    created_at   = models.DateTimeField(default=timezone.now)
+    
+    class Meta:
+        unique_together = ('organization', 'code')
+    
+    def __str__(self):
+        return f"{self.organization.name} - {self.name} ({self.code})"
+
+
 class ProductCategory(MPTTModel):
     organization = models.ForeignKey(Organization, on_delete=models.PROTECT)
     code         = models.CharField(max_length=50)
@@ -28,7 +44,7 @@ class Product(models.Model):
     code               = models.CharField(max_length=50)
     name               = models.CharField(max_length=200)
     description        = models.TextField(blank=True)
-    uom                = models.CharField(max_length=50, default="each")
+    base_unit          = models.ForeignKey(Unit, null=True, blank=True, on_delete=models.PROTECT)
     sale_price         = models.DecimalField(max_digits=19, decimal_places=4, default=0)
     cost_price         = models.DecimalField(max_digits=19, decimal_places=4, default=0)
     currency_code      = models.CharField(max_length=3, default="USD")
@@ -43,7 +59,12 @@ class Product(models.Model):
     is_inventory_item  = models.BooleanField(default=False)
     min_order_quantity = models.DecimalField(max_digits=15, decimal_places=4, default=1)
     reorder_level      = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
-    preferred_vendor_id= models.IntegerField(null=True, blank=True)
+    preferred_vendor   = models.ForeignKey('accounting.Vendor', null=True, blank=True, on_delete=models.PROTECT)
+    weight             = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
+    weight_unit        = models.ForeignKey(Unit, null=True, blank=True, related_name='weight_products', on_delete=models.PROTECT)
+    length             = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
+    width              = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
+    height             = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
     barcode            = models.CharField(max_length=100, blank=True)
     sku                = models.CharField(max_length=100, blank=True)
     created_at         = models.DateTimeField(default=timezone.now)
@@ -68,6 +89,22 @@ class Product(models.Model):
             if errors:
                 raise ValidationError(errors)
 
+
+class ProductUnit(models.Model):
+    """Alternative units for products with conversion factors"""
+    product           = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='units')
+    unit              = models.ForeignKey(Unit, on_delete=models.PROTECT)
+    conversion_factor = models.DecimalField(max_digits=15, decimal_places=6, help_text="Number of base units per this unit")
+    is_default        = models.BooleanField(default=False)
+    created_at        = models.DateTimeField(default=timezone.now)
+    
+    class Meta:
+        unique_together = ('product', 'unit')
+    
+    def __str__(self):
+        return f"{self.product.code} - {self.unit.code}: {self.conversion_factor}"
+
+
 # ---------- Warehouse structure ----------
 class Warehouse(models.Model):
     organization     = models.ForeignKey(Organization, on_delete=models.PROTECT)
@@ -87,7 +124,13 @@ class Location(models.Model):
     warehouse     = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name='locations')
     code          = models.CharField(max_length=50)          # e.g. A-01-R03-S02-B07
     name          = models.CharField(max_length=100, blank=True)
-    location_type = models.CharField(max_length=50, default='storage')  # staging, QC …
+    location_type = models.CharField(max_length=50, choices=[
+        ('storage', 'Storage'),
+        ('staging', 'Staging'),
+        ('qc', 'Quality Control'),
+        ('shipping', 'Shipping'),
+        ('receiving', 'Receiving'),
+    ], default='storage')  # staging, QC …
     is_active     = models.BooleanField(default=True)
     class Meta: unique_together = ('warehouse', 'code')
     def __str__(self):
@@ -112,9 +155,17 @@ class InventoryItem(models.Model):
     warehouse     = models.ForeignKey(Warehouse, on_delete=models.PROTECT)
     location      = models.ForeignKey(Location, null=True, blank=True, on_delete=models.PROTECT)
     batch         = models.ForeignKey(Batch, null=True, blank=True, on_delete=models.PROTECT)
-    quantity_on_hand = models.DecimalField(max_digits=15, decimal_places=4, default=Decimal("0"))
-    unit_cost        = models.DecimalField(max_digits=19, decimal_places=4, default=Decimal("0"))
-    updated_at       = models.DateTimeField(auto_now=True)
+    quantity_on_hand    = models.DecimalField(max_digits=15, decimal_places=4, default=Decimal("0"))
+    quantity_allocated  = models.DecimalField(max_digits=15, decimal_places=4, default=Decimal("0"))
+    quantity_available  = models.DecimalField(max_digits=15, decimal_places=4, default=Decimal("0"))
+    unit_cost           = models.DecimalField(max_digits=19, decimal_places=4, default=Decimal("0"))
+    total_cost          = models.DecimalField(max_digits=19, decimal_places=4, default=Decimal("0"))
+    reorder_level       = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
+    reorder_quantity    = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
+    last_count_date     = models.DateTimeField(null=True, blank=True)
+    last_received_date  = models.DateTimeField(null=True, blank=True)
+    last_issued_date    = models.DateTimeField(null=True, blank=True)
+    updated_at          = models.DateTimeField(auto_now=True)
     class Meta:
         unique_together = ('organization', 'product', 'warehouse', 'location', 'batch')
     def __str__(self):
@@ -135,6 +186,7 @@ class StockLedger(models.Model):
     qty_in       = models.DecimalField(max_digits=15, decimal_places=4, default=Decimal("0"))
     qty_out      = models.DecimalField(max_digits=15, decimal_places=4, default=Decimal("0"))
     unit_cost    = models.DecimalField(max_digits=19, decimal_places=4, default=Decimal("0"))  # moving-avg
+    total_cost   = models.DecimalField(max_digits=19, decimal_places=4, default=Decimal("0"))
     created_at   = models.DateTimeField(default=timezone.now)
     class Meta:
         indexes = [models.Index(fields=['organization', 'product', 'warehouse'])]

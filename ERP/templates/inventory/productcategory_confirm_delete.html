@@ -1,28 +1,54 @@
-{% extends 'partials/base.html' %}
-{% load i18n %}
+{% extends "inventory/base.html" %}
+{% load static %}
 
-{% block title %}{% trans "Confirm Delete Product Category" %}{% endblock %}
+{% block title %}Delete Product Category{% endblock %}
+{% block page_title %}Delete Product Category{% endblock %}
 
-{% block content %}
-<div class="main-content">
-    <div class="page-content">
-        <div class="container-fluid">
-            <div class="row justify-content-center">
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header">
-                            <h4 class="card-title">{% trans "Confirm Delete" %}</h4>
-                        </div>
-                        <div class="card-body">
-                            <p>{% trans "Are you sure you want to delete the product category" %} "{{ category.name }}"?</p>
-                            <form method="post">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-danger">{% trans "Delete" %}</button>
-                                <a href="{% url 'inventory:product_category_list' %}" class="btn btn-secondary">{% trans "Cancel" %}</a>
-                            </form>
-                        </div>
+{% block inventory_content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card border-danger shadow-sm">
+            <div class="card-header bg-danger bg-opacity-10 border-danger">
+                <h5 class="card-title mb-0 text-danger">
+                    <i class="mdi mdi-alert-circle"></i> Confirm Delete
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-light border border-secondary mb-4">
+                    <p class="mb-2">
+                        <strong>You are about to delete:</strong>
+                    </p>
+                    <div class="bg-white p-3 rounded border">
+                        <h6 class="mb-2">{{ object.name }}</h6>
+                        <small class="text-muted">
+                            <code>{{ object.code }}</code>
+                        </small>
                     </div>
                 </div>
+                
+                <div class="alert alert-warning" role="alert">
+                    <i class="mdi mdi-alert me-2"></i>
+                    <strong>Warning:</strong> This action cannot be undone. Please be certain.
+                </div>
+                
+                {% if object.children.all %}
+                <div class="alert alert-info" role="alert">
+                    <i class="mdi mdi-information-outline me-2"></i>
+                    This category has <strong>{{ object.children.count }}</strong> sub-categor{{ object.children.count|pluralize:"y,ies" }}.
+                </div>
+                {% endif %}
+                
+                <form method="post" class="mt-4">
+                    {% csrf_token %}
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-danger btn-lg">
+                            <i class="mdi mdi-trash-can me-2"></i> Yes, Delete Category
+                        </button>
+                        <a href="{% url 'inventory:product_category_detail' object.pk %}" class="btn btn-outline-secondary btn-lg">
+                            <i class="mdi mdi-close me-2"></i> Cancel
+                        </a>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

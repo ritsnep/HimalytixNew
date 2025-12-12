@@ -1,0 +1,35 @@
+{% if messages %}
+<div class="mb-4">
+    {% for message in messages %}
+    <div class="rounded-md p-4 {% if message.tags %}alert-{{ message.tags }}{% endif %}" role="alert">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                {% comment %} Add icons based on message.tags if desired {% endcomment %}
+                {% if 'success' in message.tags %}
+                <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.857a.75.75 0 00-1.072-1.054L8 11.16l-1.925-1.925a.75.75 0 00-1.06 1.06l2.5 2.5a.75.75 0 001.06 0l4-4z" clip-rule="evenodd" />
+                </svg>
+                {% elif 'warning' in message.tags %}
+                <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M8.485 2.49a.75.75 0 011.03 0l6.505 6.505a.75.75 0 01-1.03 1.03L10 3.939 3.515 10.02a.75.75 0 01-1.03-1.03L8.485 2.49zM10 11a1 1 0 100-2 1 1 0 000 2zm-1 3a1 1 0 112 0v1a1 1 0 11-2 0v-1z" clip-rule="evenodd" />
+                </svg>
+                {% elif 'error' in message.tags %}
+                 <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94l-1.72-1.72z" clip-rule="evenodd" />
+                </svg>
+                {% else %}
+                 <svg class="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.5 1.5 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.5 1.5 0 009.253 9H9z" clip-rule="evenodd" />
+                </svg>
+                {% endif %}
+            </div>
+            <div class="ml-3">
+                <p class="text-sm font-medium {% if 'success' in message.tags %}text-green-800{% elif 'warning' in message.tags %}text-yellow-800{% elif 'error' in message.tags %}text-red-800{% else %}text-blue-800{% endif %}">
+                    {{ message }}
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}

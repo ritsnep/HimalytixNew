@@ -1,0 +1,233 @@
+{% extends "inventory/base.html" %}
+{% load static %}
+
+{% block title %}{{ category.name }} - Product Category{% endblock %}
+{% block page_title %}{{ category.name }}{% endblock %}
+{% block page_subtitle %}Product Category Details{% endblock %}
+
+{% block inventory_content %}
+<div class="row mb-4">
+    <!-- Main Details Panel -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-light border-bottom">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="mdi mdi-folder-information"></i> Category Details
+                    </h5>
+                    <span class="badge {% if category.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                        {% if category.is_active %}Active{% else %}Inactive{% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-sm-4">
+                        <h6 class="text-muted text-uppercase mb-2" style="font-size: 0.75rem;">Code</h6>
+                    </div>
+                    <div class="col-sm-8">
+                        <code class="bg-light px-3 py-2 rounded d-inline-block">{{ category.code }}</code>
+                    </div>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-sm-4">
+                        <h6 class="text-muted text-uppercase mb-2" style="font-size: 0.75rem;">Name</h6>
+                    </div>
+                    <div class="col-sm-8">
+                        <p class="mb-0 fs-5">{{ category.name }}</p>
+                    </div>
+                </div>
+                
+                {% if category.parent %}
+                <div class="row mb-4">
+                    <div class="col-sm-4">
+                        <h6 class="text-muted text-uppercase mb-2" style="font-size: 0.75rem;">Parent Category</h6>
+                    </div>
+                    <div class="col-sm-8">
+                        <div class="alert alert-info mb-0" role="alert">
+                            <i class="mdi mdi-arrow-top-left"></i>
+                            <a href="{% url 'inventory:product_category_detail' category.parent.pk %}" class="alert-link">
+                                {{ category.parent.name }}
+                            </a>
+                            <small class="ms-2 text-muted">({{ category.parent.code }})</small>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="row">
+                    <div class="col-sm-4">
+                        <h6 class="text-muted text-uppercase mb-2" style="font-size: 0.75rem;">Status</h6>
+                    </div>
+                    <div class="col-sm-8">
+                        {% if category.is_active %}
+                            <span class="badge bg-success-subtle text-success">
+                                <i class="mdi mdi-check-circle"></i> Active - Available for selection
+                            </span>
+                        {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary">
+                                <i class="mdi mdi-minus-circle"></i> Inactive - Not available
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Child Categories Section -->
+        {% if child_categories %}
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-bottom">
+                <h5 class="card-title mb-0">
+                    <i class="mdi mdi-folder-multiple"></i> Sub-Categories ({{ child_categories|length }})
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Name</th>
+                            <th>Code</th>
+                            <th>Status</th>
+                            <th style="width: 120px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for child in child_categories %}
+                        <tr>
+                            <td><strong>{{ child.name }}</strong></td>
+                            <td><code>{{ child.code }}</code></td>
+                            <td>
+                                {% if child.is_active %}
+                                    <span class="badge bg-success-subtle text-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-secondary-subtle text-secondary">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{% url 'inventory:product_category_detail' child.pk %}" 
+                                       class="btn btn-outline-info btn-sm" 
+                                       title="View">
+                                        <i class="mdi mdi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'inventory:product_category_update' child.pk %}" 
+                                       class="btn btn-outline-primary btn-sm" 
+                                       title="Edit">
+                                        <i class="mdi mdi-pencil"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Actions Sidebar -->
+    <div class="col-lg-4">
+        <!-- Main Actions Card -->
+        <div class="card border-0 shadow-sm mb-3 sticky-top" style="top: 80px; z-index: 1020;">
+            <div class="card-header bg-light border-bottom">
+                <h6 class="card-title mb-0">
+                    <i class="mdi mdi-lightning-bolt"></i> Quick Actions
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    {% if can_change %}
+                    <a href="{{ edit_url }}" class="btn btn-primary">
+                        <i class="mdi mdi-pencil me-2"></i> Edit Category
+                    </a>
+                    {% endif %}
+                    {% if can_add %}
+                    <a href="{% url 'inventory:product_category_create' %}" class="btn btn-success btn-sm">
+                        <i class="mdi mdi-plus me-2"></i> Add Sub-Category
+                    </a>
+                    {% endif %}
+                    {% if can_delete %}
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        <i class="mdi mdi-trash-can me-2"></i> Delete
+                    </button>
+                    {% endif %}
+                    <a href="{{ list_url }}" class="btn btn-outline-secondary">
+                        <i class="mdi mdi-arrow-left me-2"></i> Back to List
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Info Card -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-bottom">
+                <h6 class="card-title mb-0">
+                    <i class="mdi mdi-information-outline"></i> Information
+                </h6>
+            </div>
+            <div class="card-body">
+                <small class="text-muted d-block mb-2">
+                    <strong>Organization:</strong><br>
+                    {{ category.organization.name }}
+                </small>
+                {% if category.created_at %}
+                <small class="text-muted d-block mb-2">
+                    <strong>Created:</strong><br>
+                    <i class="mdi mdi-calendar-clock"></i> {{ category.created_at|date:"M d, Y H:i" }}
+                </small>
+                {% endif %}
+                {% if category.updated_at %}
+                <small class="text-muted d-block">
+                    <strong>Last Updated:</strong><br>
+                    <i class="mdi mdi-calendar-sync"></i> {{ category.updated_at|date:"M d, Y H:i" }}
+                </small>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-danger bg-opacity-10 border-danger">
+                <h5 class="modal-title">
+                    <i class="mdi mdi-alert-circle text-danger"></i> Confirm Delete
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">
+                    Are you sure you want to delete the product category <strong>"{{ category.name }}"</strong>?
+                </p>
+                <div class="alert alert-warning mt-3 mb-0">
+                    <i class="mdi mdi-alert"></i> This action cannot be undone.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{{ delete_url }}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="mdi mdi-trash-can"></i> Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Enable tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function(tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+{% endblock %}

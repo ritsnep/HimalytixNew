@@ -100,7 +100,6 @@
                                 class="form-select{% if form.classification.errors %} is-invalid{% endif %}"
                                 required
                                 data-pristine-required-message="Classification is required">
-                            <option value="">Select Classification</option>
                             {% if form.classification.field.choices %}
                                 {% for value, label in form.classification.field.choices %}
                                     <option value="{{ value }}"{% if value == form.classification.value %} selected{% endif %}>{{ label }}</option>
@@ -126,7 +125,6 @@
                         <select name="balance_sheet_category" 
                                 id="{{ form.balance_sheet_category.id_for_label }}" 
                                 class="form-select{% if form.balance_sheet_category.errors %} is-invalid{% endif %}">
-                            <option value="">Select Category</option>
                             {% if form.balance_sheet_category.field.choices %}
                                 {% for value, label in form.balance_sheet_category.field.choices %}
                                     <option value="{{ value }}"{% if value == form.balance_sheet_category.value %} selected{% endif %}>{{ label }}</option>
@@ -145,7 +143,6 @@
                         <select name="income_statement_category" 
                                 id="{{ form.income_statement_category.id_for_label }}" 
                                 class="form-select{% if form.income_statement_category.errors %} is-invalid{% endif %}">
-                            <option value="">Select Category</option>
                             {% if form.income_statement_category.field.choices %}
                                 {% for value, label in form.income_statement_category.field.choices %}
                                     <option value="{{ value }}"{% if value == form.income_statement_category.value %} selected{% endif %}>{{ label }}</option>
@@ -164,7 +161,6 @@
                         <select name="cash_flow_category" 
                                 id="{{ form.cash_flow_category.id_for_label }}" 
                                 class="form-select{% if form.cash_flow_category.errors %} is-invalid{% endif %}">
-                            <option value="">Select Category</option>
                             {% if form.cash_flow_category.field.choices %}
                                 {% for value, label in form.cash_flow_category.field.choices %}
                                     <option value="{{ value }}"{% if value == form.cash_flow_category.value %} selected{% endif %}>{{ label }}</option>
@@ -305,22 +301,161 @@
 </div>
 {% endblock %}
 
+{{ account_type_config|json_script:"account-type-config" }}
+
 {% block extra_form_js %}
 // Account Type specific enhancements
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Account Type Form loaded with Advanced Form Base');
-    
-    // Add visual feedback for required fields
-    document.querySelectorAll('input[required], select[required], textarea[required]').forEach(field => {
-        const label = document.querySelector(`label[for=\"${field.id}\"]`);
-        if (label && !label.classList.contains('required-field')) {
-            label.classList.add('required-field');
+    const configElement = document.getElementById('account-type-config');
+    const config = configElement ? JSON.parse(configElement.textContent) : null;
+
+    const natureSelect = document.getElementById('{{ form.nature.id_for_label }}');
+    const classificationSelect = document.getElementById('{{ form.classification.id_for_label }}');
+    const balanceSheetSelect = document.getElementById('{{ form.balance_sheet_category.id_for_label }}');
+    const incomeStatementSelect = document.getElementById('{{ form.income_statement_category.id_for_label }}');
+    const cashFlowSelect = document.getElementById('{{ form.cash_flow_category.id_for_label }}');
+    const rootCodePrefixInput = document.getElementById('{{ form.root_code_prefix.id_for_label }}');
+    const rootCodeStepInput = document.getElementById('{{ form.root_code_step.id_for_label }}');
+    const displayOrderInput = document.getElementById('{{ form.display_order.id_for_label }}');
+
+    const defaultRootPrefixes = config?.root_code_prefix_by_nature || {};
+    const defaultRootCodeStep = config?.default_root_code_step || '';
+    const nextDisplayOrder = config?.next_display_order || '';
+
+    function addRequiredMarkers() {
+        document.querySelectorAll('input[required], select[required], textarea[required]').forEach(field => {
+            const label = document.querySelector(`label[for="${field.id}"]`);
+            if (label && !label.classList.contains('required-field')) {
+                label.classList.add('required-field');
+            }
+        });
+    }
+
+    function hasOption(select, value) {
+        if (!select || !value) return false;
+        return Array.from(select.options).some(opt => opt.value === value);
+    }
+
+    function setOptions(select, options, placeholder, preferredValue) {
+        if (!select) return;
+        const currentValue = select.value;
+        select.innerHTML = '';
+        if (placeholder) {
+            const placeholderOption = document.createElement('option');
+            placeholderOption.value = '';
+            placeholderOption.textContent = placeholder;
+            select.appendChild(placeholderOption);
         }
-    });
-    
-    // Show welcome toast
+        options.forEach(opt => {
+            const optionEl = document.createElement('option');
+            optionEl.value = opt.value;
+            optionEl.textContent = opt.label;
+            select.appendChild(optionEl);
+        });
+
+        const nextValue = preferredValue && hasOption(select, preferredValue)
+            ? preferredValue
+            : (hasOption(select, currentValue) ? currentValue : '');
+        select.value = nextValue;
+    }
+
+    function getDefaults(nature, classification) {
+        if (!config) return {};
+        const classificationDefaults = (config.defaults_by_classification?.[nature] || {})[classification] || {};
+        const natureDefaults = config.defaults_by_nature?.[nature] || {};
+        return Object.assign({}, natureDefaults, classificationDefaults);
+    }
+
+    function updateClassificationOptions(forceDefault) {
+        if (!config || !classificationSelect) return;
+        const nature = natureSelect ? natureSelect.value : '';
+        const defaults = config.defaults_by_nature?.[nature] || {};
+        const options = config.classifications?.[nature] || config.classifications?.__all__ || [];
+        const preferred = forceDefault ? (defaults.classification || '') : classificationSelect.value;
+
+        setOptions(classificationSelect, options, 'Select Classification', preferred || defaults.classification);
+        if (!classificationSelect.value && defaults.classification) {
+            classificationSelect.value = defaults.classification;
+        }
+    }
+
+    function updateCategoryOptions(forceDefaults) {
+        if (!config) return;
+        const nature = natureSelect ? natureSelect.value : '';
+        const classification = classificationSelect ? classificationSelect.value : '';
+        const defaults = getDefaults(nature, classification);
+
+        const bsOptions = config.balance_sheet_categories?.[nature] || config.balance_sheet_categories?.__all__ || [];
+        const incomeOptions = config.income_statement_categories?.[nature] || config.income_statement_categories?.__all__ || [];
+        const cashOptions = config.cash_flow_categories || [];
+
+        const bsPreferred = (forceDefaults || !(balanceSheetSelect && balanceSheetSelect.value))
+            ? defaults.balance_sheet
+            : balanceSheetSelect.value;
+        const incomePreferred = (forceDefaults || !(incomeStatementSelect && incomeStatementSelect.value))
+            ? defaults.income_statement
+            : incomeStatementSelect.value;
+        const cashPreferred = (forceDefaults || !(cashFlowSelect && cashFlowSelect.value))
+            ? defaults.cash_flow
+            : cashFlowSelect.value;
+
+        setOptions(balanceSheetSelect, bsOptions, 'Select Category', bsPreferred || defaults.balance_sheet);
+        setOptions(incomeStatementSelect, incomeOptions, 'Select Category', incomePreferred || defaults.income_statement);
+        setOptions(cashFlowSelect, cashOptions, 'Select Category', cashPreferred || defaults.cash_flow);
+    }
+
+    function applyCodeDefaults(force = false) {
+        const nature = natureSelect ? natureSelect.value : '';
+        const defaultPrefix = defaultRootPrefixes[nature] || '';
+
+        if (rootCodePrefixInput) {
+            const autoAllowed = rootCodePrefixInput.dataset.auto !== 'false';
+            if (!rootCodePrefixInput.value || (force && autoAllowed)) {
+                rootCodePrefixInput.value = defaultPrefix || rootCodePrefixInput.value;
+                rootCodePrefixInput.dataset.auto = 'true';
+            }
+        }
+
+        if (rootCodeStepInput) {
+            const autoAllowed = rootCodeStepInput.dataset.auto !== 'false';
+            if (!rootCodeStepInput.value || (force && autoAllowed)) {
+                rootCodeStepInput.value = rootCodeStepInput.value || defaultRootCodeStep || '';
+                rootCodeStepInput.dataset.auto = 'true';
+            }
+        }
+
+        if (displayOrderInput && !displayOrderInput.value && nextDisplayOrder) {
+            displayOrderInput.value = nextDisplayOrder;
+        }
+    }
+
+    function registerEvents() {
+        if (natureSelect) {
+            natureSelect.addEventListener('change', () => {
+                updateClassificationOptions(true);
+                updateCategoryOptions(true);
+                applyCodeDefaults(true);
+            });
+        }
+        if (classificationSelect) {
+            classificationSelect.addEventListener('change', () => updateCategoryOptions(true));
+        }
+        if (rootCodePrefixInput) {
+            rootCodePrefixInput.addEventListener('input', () => rootCodePrefixInput.dataset.auto = 'false');
+        }
+        if (rootCodeStepInput) {
+            rootCodeStepInput.addEventListener('input', () => rootCodeStepInput.dataset.auto = 'false');
+        }
+    }
+
+    addRequiredMarkers();
+    updateClassificationOptions(false);
+    updateCategoryOptions(false);
+    applyCodeDefaults(false);
+    registerEvents();
+
     if (typeof toastr !== 'undefined') {
-        toastr.info('💡 Press Shift+? to view keyboard shortcuts', 'Quick Tip', {timeOut: 3000});
+        toastr.info('Press Shift+? to view keyboard shortcuts', 'Quick Tip', {timeOut: 3000});
     }
 });
 {% endblock %} 

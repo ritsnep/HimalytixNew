@@ -5,7 +5,7 @@ from django.db.models import DecimalField, ExpressionWrapper, F, Sum
 from django.db.models.functions import Coalesce
 from mptt.admin import MPTTModelAdmin
 from .models import (
-    ProductCategory, Product, Warehouse, Location, Batch,
+    ProductCategory, Product, Warehouse, Location, Batch, Unit, ProductUnit,
     InventoryItem, StockLedger, StockLedgerReport, StockSummary
 )
 
@@ -36,13 +36,26 @@ class ProductCategoryAdmin(MPTTModelAdmin):
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     list_display = (
-        'organization', 'code', 'name', 'category', 'uom', 'sale_price',
+        'organization', 'code', 'name', 'category', 'base_unit', 'sale_price',
         'cost_price', 'is_inventory_item', 'created_at'
     )
     search_fields = ('code', 'name', 'description', 'barcode', 'sku')
-    list_filter = ('organization', 'category', 'is_inventory_item', 'uom')
-    raw_id_fields = ('income_account', 'expense_account', 'inventory_account')
-    list_select_related = ('organization', 'category')
+    list_filter = ('organization', 'category', 'is_inventory_item', 'base_unit')
+    raw_id_fields = ('income_account', 'expense_account', 'inventory_account', 'preferred_vendor')
+    list_select_related = ('organization', 'category', 'base_unit')
+
+@admin.register(Unit)
+class UnitAdmin(admin.ModelAdmin):
+    list_display = ('organization', 'code', 'name', 'is_active')
+    search_fields = ('code', 'name')
+    list_filter = ('organization', 'is_active')
+
+@admin.register(ProductUnit)
+class ProductUnitAdmin(admin.ModelAdmin):
+    list_display = ('product', 'unit', 'conversion_factor', 'is_default')
+    search_fields = ('product__code', 'product__name', 'unit__code', 'unit__name')
+    list_filter = ('is_default',)
+    raw_id_fields = ('product', 'unit')
 
 @admin.register(Warehouse)
 class WarehouseAdmin(admin.ModelAdmin):
@@ -118,7 +131,7 @@ class StockLedgerReportAdmin(StockLedgerBaseAdmin):
 
 @admin.register(StockSummary)
 class StockSummaryAdmin(ReadOnlyAdminMixin, admin.ModelAdmin):
-    change_list_template = "admin/Inventory/stocksummary/change_list.html"
+    change_list_template = "admin/inventory/stocksummary/change_list.html"
     list_filter = ('organization', 'warehouse', 'product')
     search_fields = (
         'product__code', 'product__name', 'warehouse__code', 'warehouse__name',

@@ -49,6 +49,19 @@
     if (e.target.matches('input[type="number"]')) recalcTotals();
   });
 
+  // Validate exchange rate field
+  document.addEventListener("htmx:afterRequest", (e) => {
+    const target = e.detail.target;
+    if (target && target.id && target.id.includes('exchange_rate')) {
+      const value = parseFloat(target.value);
+      if (isNaN(value) || value <= 0) {
+        target.value = '1.000000';
+        // Optional: show a warning message
+        console.warn('Invalid exchange rate, defaulting to 1.000000');
+      }
+    }
+  });
+
   // Side panel toggle
   document.getElementById('side-panel-toggle')?.addEventListener('click', ()=>{
     document.getElementById('side-panel').classList.toggle('panel-collapsed');

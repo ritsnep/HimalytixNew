@@ -1,41 +1,44 @@
-{% extends 'components/base/form_base.html' %}
-{% load i18n %}
+{% extends "inventory/_form_base.html" %}
+{% load static %}
 
-{% block title %}
-    {% if form.instance.pk %}
-        {% trans "Edit Shipment" %}
-    {% else %}
-        {% trans "Create Shipment" %}
-    {% endif %}
-{% endblock %}
+{% block title %}{% if form.instance.pk %}Edit Shipment{% else %}Create Shipment{% endif %}{% endblock %}
 
-{% block form_title_text %}
-    {% if form.instance.pk %}
-        {% trans "Edit Shipment" %}: {{ form.instance.shipment_number }}
-    {% else %}
-        {% trans "Create New Shipment" %}
-    {% endif %}
-{% endblock %}
-
-{% block form_fields %}
-    <div class="row">
-        <div class="col-md-6">
-            {{ form.shipment_number|as_crispy_field }}
-        </div>
-        <div class="col-md-6">
-            {{ form.status|as_crispy_field }}
-        </div>
+{% block form_content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h4 class="card-title mb-0">{% if form.instance.pk %}Edit Shipment{% else %}Create Shipment{% endif %}</h4>
+        <a href="{% url 'inventory:shipment_list' %}" class="btn btn-secondary btn-sm">Back</a>
     </div>
-    <!-- Add more fields as needed -->
+    <div class="card-body">
+        <form method="post" novalidate>
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label">Reference Number</label>
+                {{ form.reference_no }}
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Description</label>
+                {{ form.description }}
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Status</label>
+                {{ form.status }}
+            </div>
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="mdi mdi-check me-1"></i>
+                    {% if form.instance.pk %}Update{% else %}Create{% endif %}
+                </button>
+                <a href="{% url 'inventory:shipment_list' %}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}
 
 {% block form_actions %}
   <div class="d-flex gap-2 ms-auto">
-    <a href="{% url 'inventory:shipment_list' %}" class="btn btn-outline-secondary">
-        {% trans "Cancel" %}
-    </a>
-    <button type="submit" class="btn btn-primary" data-form-submit>
-        {% trans "Save" %}
-    </button>
+    <a href="{% url 'inventory:shipment_list' %}" class="btn btn-outline-secondary">Cancel</a>
+    <button type="submit" class="btn btn-primary" data-form-submit>Save</button>
   </div>
 {% endblock %}

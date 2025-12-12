@@ -5,6 +5,8 @@ from inventory.views import (
     ProductListView, ProductCreateView, ProductUpdateView, ProductDetailView, ProductDeleteView,
     WarehouseListView, WarehouseCreateView, WarehouseUpdateView, WarehouseDetailView, WarehouseDeleteView,
     LocationListView, LocationCreateView, LocationUpdateView, LocationDetailView, LocationDeleteView,
+    UnitListView, UnitCreateView, UnitUpdateView,
+    ProductUnitListView, ProductUnitCreateView, ProductUnitUpdateView,
     PriceListListView, PriceListCreateView, PriceListUpdateView, PriceListDetailView, PriceListDeleteView,
     PickListListView, PickListCreateView, PickListUpdateView, PickListDetailView, PickListDeleteView,
     ShipmentListView, ShipmentCreateView, ShipmentUpdateView, ShipmentDetailView, ShipmentDeleteView,
@@ -62,6 +64,16 @@ urlpatterns = [
     path('locations/<int:pk>/', LocationDetailView.as_view(), name='location_detail'),
     path('locations/<int:pk>/edit/', LocationUpdateView.as_view(), name='location_update'),
     path('locations/<int:pk>/delete/', LocationDeleteView.as_view(), name='location_delete'),
+    
+    # Unit URLs
+    path('units/', UnitListView.as_view(), name='unit_list'),
+    path('units/create/', UnitCreateView.as_view(), name='unit_create'),
+    path('units/<int:pk>/edit/', UnitUpdateView.as_view(), name='unit_update'),
+    
+    # Product Unit URLs
+    path('productunits/', ProductUnitListView.as_view(), name='productunit_list'),
+    path('productunits/create/', ProductUnitCreateView.as_view(), name='productunit_create'),
+    path('productunits/<int:pk>/edit/', ProductUnitUpdateView.as_view(), name='productunit_update'),
     
     # Price List URLs
     path('pricelists/', PriceListListView.as_view(), name='pricelist_list'),

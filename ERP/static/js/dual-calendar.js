@@ -24,7 +24,8 @@
         console.warn("[DualCalendar] BS2AD failed", err);
       }
     }
-    return "";
+    // Fallback: assume BS input is already AD if conversion not available.
+    return toIso(bsVal) || "";
   };
 
   const convertAdToBs = (adVal) => {
@@ -36,7 +37,8 @@
         console.warn("[DualCalendar] AD2BS failed", err);
       }
     }
-    return "";
+    // Fallback: show AD value as-is when conversion is unavailable.
+    return toIso(adVal) || "";
   };
 
   const isHidden = (el) => el.classList.contains("d-none") || el.hidden;
@@ -76,11 +78,7 @@
         if (toggle) {
           toggle.textContent = showBs ? "AD" : "BS";
         }
-        try {
-          (showBs ? bsInput : adInput).focus({ preventScroll: true });
-        } catch (err) {
-          /* ignore focus errors on hidden inputs */
-        }
+        // Do not auto-focus on toggle or mount to avoid stealing focus from other fields.
       };
 
       const syncFromBs = () => {

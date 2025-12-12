@@ -345,8 +345,52 @@ $(document).ready(function() {
     controls.append(filter);
     // Initialize Bootstrap tooltips for DataTables buttons
     if (window.bootstrap) {
+        // Ensure tooltip DOM is appended to <body> so Popper positions it correctly
+        // (fixes tooltips appearing far away when inside transformed/overflowed containers)
         buttons.find('[data-bs-toggle="tooltip"]').each(function() {
-            new bootstrap.Tooltip(this);
+            // Use a fixed strategy and constrain to body to avoid incorrect placement
+            // when there are transformed/overflowed containers in the ancestry.
+            var el = this;
+            try {
+                var tt = new bootstrap.Tooltip(el, {
+                    container: 'body',
+                    popperConfig: function (defaultBsPopper) {
+                        // Merge default config and force strategy:'fixed' and a preventOverflow modifier
+                        var cfg = Object.assign({}, defaultBsPopper || {});
+                        cfg.strategy = 'fixed';
+                        cfg.modifiers = (cfg.modifiers || []).slice();
+                        // Prevent overflow and disable adaptive compute styles which can
+                        // cause incorrect placement inside transformed containers.
+                        cfg.modifiers.push({ name: 'preventOverflow', options: { boundary: document.body } });
+                        cfg.modifiers.push({ name: 'computeStyles', options: { adaptive: false } });
+                        cfg.modifiers.push({ name: 'offset', options: { offset: [0, 6] } });
+                        return cfg;
+                    }
+                });
+                // Optional debug logging: enable by adding `?tooltip_debug=1` to the URL
+                try {
+                    var debugEnabled = /[?&]tooltip_debug(?:=1|=true)?(?:&|$)/.test(window.location.search || '');
+                    if (debugEnabled && el && el.addEventListener) {
+                        el.addEventListener('show.bs.tooltip', function () {
+                            try {
+                                console.log('[DT Tooltip DEBUG] target rect:', el.getBoundingClientRect());
+                            } catch (e) { /* noop */ }
+                        });
+                        // Also log when the tooltip has been inserted to the DOM
+                        document.addEventListener('DOMNodeInserted', function (evt) {
+                            try {
+                                var node = evt.target;
+                                if (node && node.classList && node.classList.contains('tooltip')) {
+                                    console.log('[DT Tooltip DEBUG] tooltip inserted, rect:', node.getBoundingClientRect());
+                                }
+                            } catch (e) { /* noop */ }
+                        });
+                    }
+                } catch (e) { /* non-blocking */ }
+            } catch (e) {
+                // Fallback to basic initialization if Popper config causes errors
+                try { new bootstrap.Tooltip(el, { container: 'body' }); } catch (e2) { /* non-blocking */ }
+            }
         });
     }
 });

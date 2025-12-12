@@ -36,6 +36,8 @@ from .forms import (
     ProductForm,
     WarehouseForm,
     LocationForm,
+    UnitForm,
+    ProductUnitForm,
     PriceListForm,
     PickListForm,
     ShipmentForm,
@@ -48,8 +50,10 @@ from .models import (
     Product,
     ProductCategory,
     Warehouse,
-    StockLedger,
     Location,
+    Unit,
+    ProductUnit,
+    StockLedger,
     PriceList,
     PickList,
     Shipment,
@@ -178,12 +182,58 @@ def inventory_dashboard(request):
     total_products = Product.objects.filter(organization=organization).count()
     total_warehouses = Warehouse.objects.filter(organization=organization).count()
     total_categories = ProductCategory.objects.filter(organization=organization).count()
+    total_units = Unit.objects.filter(organization=organization).count()
+    total_locations = Location.objects.filter(warehouse__organization=organization).count()
 
     context = {
         'organization': organization,
-        'total_products': total_products,
-        'total_warehouses': total_warehouses,
-        'total_categories': total_categories,
+        'cards': [
+            {
+                'icon': 'mdi-package',
+                'color': 'primary',
+                'title': 'Products',
+                'value': total_products,
+                'description': 'Active products tracked',
+            },
+            {
+                'icon': 'mdi-warehouse',
+                'color': 'warning',
+                'title': 'Warehouses',
+                'value': total_warehouses,
+                'description': 'Storage locations',
+            },
+            {
+                'icon': 'mdi-tag-multiple',
+                'color': 'info',
+                'title': 'Categories',
+                'value': total_categories,
+                'description': 'Product hierarchies',
+            },
+            {
+                'icon': 'mdi-scale-balance',
+                'color': 'success',
+                'title': 'Units',
+                'value': total_units,
+                'description': 'Measurement units',
+            },
+            {
+                'icon': 'mdi-map-marker',
+                'color': 'secondary',
+                'title': 'Locations',
+                'value': total_locations,
+                'description': 'Tracked sub-locations',
+            },
+        ],
+        'quick_actions': [
+            {'url': 'inventory:product_list', 'icon': 'mdi-package', 'label': 'Manage Products'},
+            {'url': 'inventory:warehouse_list', 'icon': 'mdi-warehouse', 'label': 'Manage Warehouses'},
+            {'url': 'inventory:location_list', 'icon': 'mdi-map-marker', 'label': 'Manage Locations'},
+            {'url': 'inventory:unit_list', 'icon': 'mdi-scale-balance', 'label': 'Manage Units'},
+            {'url': 'inventory:pricelist_list', 'icon': 'mdi-tag-multiple', 'label': 'Price Lists'},
+            {'url': 'inventory:productunit_list', 'icon': 'mdi-package-variant-closed', 'label': 'Product Units'},
+            {'url': 'inventory:stock_report', 'icon': 'mdi-chart-bar', 'label': 'Stock Report'},
+            {'url': 'inventory:ledger_report', 'icon': 'mdi-book-open', 'label': 'Stock Ledger'},
+        ],
     }
     return render(request, 'inventory/dashboard.html', context)
 
@@ -539,6 +589,22 @@ class BaseListView(UserOrganizationMixin, ListView):
             return queryset.order_by('-created_at')
         return queryset.order_by('-pk')
 
+    create_url_name = None
+    create_button_text = None
+
+    def get_create_url(self):
+        if not self.create_url_name:
+            return None
+        return reverse_lazy(self.create_url_name)
+
+    def get_create_button_text(self):
+        if self.create_button_text:
+            return self.create_button_text
+        if not self.model:
+            return None
+        verbose_name = self.model._meta.verbose_name.title()
+        return f"Add {verbose_name}"
+
     def get_context_data(self, **kwargs):
         """Add permission context to template."""
         context = super().get_context_data(**kwargs)
@@ -560,6 +626,14 @@ class BaseListView(UserOrganizationMixin, ListView):
         )
         context['organization'] = organization
 
+        create_url = self.get_create_url()
+        if context['can_add'] and create_url:
+            context['create_url'] = create_url
+            context['create_button_text'] = self.get_create_button_text()
+        else:
+            context['create_url'] = None
+            context['create_button_text'] = None
+
         return context
 
 
@@ -573,10 +647,7 @@ class ProductCategoryListView(BaseListView):
     context_object_name = 'categories'
     permission_required = ('Inventory', 'productcategory', 'view')
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['create_url'] = reverse_lazy('inventory:product_category_create')
-        return context
+    create_url_name = 'inventory:product_category_create'
 
 
 class ProductListView(BaseListView):
@@ -585,10 +656,7 @@ class ProductListView(BaseListView):
     context_object_name = 'products'
     permission_required = ('Inventory', 'product', 'view')
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['create_url'] = reverse_lazy('inventory:product_create')
-        return context
+    create_url_name = 'inventory:product_create'
 
 
 class WarehouseListView(BaseListView):
@@ -597,10 +665,7 @@ class WarehouseListView(BaseListView):
     context_object_name = 'warehouses'
     permission_required = ('Inventory', 'warehouse', 'view')
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['create_url'] = reverse_lazy('inventory:warehouse_create')
-        return context
+    create_url_name = 'inventory:warehouse_create'
 
 
 class LocationListView(BaseListView):
@@ -617,10 +682,37 @@ class LocationListView(BaseListView):
             qs = qs.filter(warehouse__organization=organization)
         return qs.order_by('-warehouse__code', 'code')
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['create_url'] = reverse_lazy('inventory:location_create')
-        return context
+    create_url_name = 'inventory:location_create'
+
+
+class UnitListView(BaseListView):
+    model = Unit
+    template_name = 'inventory/unit_list.html'
+    context_object_name = 'units'
+    permission_required = ('Inventory', 'unit', 'view')
+
+    create_url_name = 'inventory:unit_create'
+
+
+class ProductUnitListView(BaseListView):
+    model = ProductUnit
+    template_name = 'inventory/productunit_list.html'
+    context_object_name = 'productunits'
+    permission_required = ('Inventory', 'productunit', 'view')
+
+    create_url_name = 'inventory:productunit_create'
+
+    def get_queryset(self):
+        """Filter queryset by organization through product."""
+        queryset = ProductUnit.objects.all()
+        organization = self.get_organization()
+        if organization:
+            queryset = queryset.filter(product__organization=organization)
+        # Order safely: prefer created_at if it exists, else fallback to PK.
+        model_fields = [f.name for f in self.model._meta.get_fields()]
+        if 'created_at' in model_fields:
+            return queryset.order_by('-created_at')
+        return queryset.order_by('-pk')
 
 
 class PriceListListView(BaseListView):
@@ -629,10 +721,7 @@ class PriceListListView(BaseListView):
     context_object_name = 'pricelists'
     permission_required = ('Inventory', 'pricelist', 'view')
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['create_url'] = reverse_lazy('inventory:pricelist_create')
-        return context
+    create_url_name = 'inventory:pricelist_create'
 
 
 class PickListListView(BaseListView):
@@ -641,10 +730,7 @@ class PickListListView(BaseListView):
     context_object_name = 'picklists'
     permission_required = ('Inventory', 'picklist', 'view')
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['create_url'] = reverse_lazy('inventory:picklist_create')
-        return context
+    create_url_name = 'inventory:picklist_create'
 
 
 class ShipmentListView(BaseListView):
@@ -653,10 +739,7 @@ class ShipmentListView(BaseListView):
     context_object_name = 'shipments'
     permission_required = ('Inventory', 'shipment', 'view')
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['create_url'] = reverse_lazy('inventory:shipment_create')
-        return context
+    create_url_name = 'inventory:shipment_create'
 
 
 class RMAListView(BaseListView):
@@ -665,10 +748,7 @@ class RMAListView(BaseListView):
     context_object_name = 'rmas'
     permission_required = ('Inventory', 'rma', 'view')
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['create_url'] = reverse_lazy('inventory:rma_create')
-        return context
+    create_url_name = 'inventory:rma_create'
 
 
 class BillOfMaterialListView(BaseListView):
@@ -677,10 +757,7 @@ class BillOfMaterialListView(BaseListView):
     context_object_name = 'boms'
     permission_required = ('Inventory', 'billofmaterial', 'view')
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['create_url'] = reverse_lazy('inventory:bom_create')
-        return context
+    create_url_name = 'inventory:bom_create'
 
 
 # ---------------------------------------------------------------------------
@@ -794,6 +871,60 @@ class LocationCreateView(PermissionRequiredMixin, UserOrganizationMixin, CreateV
         messages.success(
             self.request,
             f'Location "{form.instance.name or form.instance.code}" created successfully.',
+        )
+        return super().form_valid(form)
+
+
+class UnitCreateView(PermissionRequiredMixin, UserOrganizationMixin, CreateView):
+    model = Unit
+    form_class = UnitForm
+    template_name = 'inventory/unit_form.html'
+    permission_required = 'Inventory.add_unit'
+    success_url = reverse_lazy('inventory:unit_list')
+
+    def get_initial(self):
+        initial = super().get_initial()
+        organization = self.get_organization()
+        if organization:
+            code_gen = AutoIncrementCodeGenerator(
+                Unit, 'code', organization=organization, prefix='U'
+            )
+            initial['code'] = code_gen.generate_code()
+        return initial
+
+    def form_valid(self, form):
+        organization = self.get_organization()
+        form.instance.organization = organization
+        messages.success(
+            self.request,
+            f'Unit "{form.instance.name}" created successfully.',
+        )
+        return super().form_valid(form)
+
+
+class ProductUnitCreateView(PermissionRequiredMixin, UserOrganizationMixin, CreateView):
+    model = ProductUnit
+    form_class = ProductUnitForm
+    template_name = 'inventory/productunit_form.html'
+    permission_required = 'Inventory.add_productunit'
+    success_url = reverse_lazy('inventory:productunit_list')
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        organization = self.get_organization()
+        if organization:
+            form.fields['product'].queryset = (
+                form.fields['product'].queryset.filter(organization=organization)
+            )
+            form.fields['unit'].queryset = (
+                form.fields['unit'].queryset.filter(organization=organization)
+            )
+        return form
+
+    def form_valid(self, form):
+        messages.success(
+            self.request,
+            f'Product Unit for "{form.instance.product.name}" created successfully.',
         )
         return super().form_valid(form)
 
@@ -1007,6 +1138,48 @@ class LocationUpdateView(PermissionRequiredMixin, UserOrganizationMixin, UpdateV
         messages.success(
             self.request,
             f'Location "{form.instance.name}" updated successfully.',
+        )
+        return super().form_valid(form)
+
+
+class UnitUpdateView(PermissionRequiredMixin, UserOrganizationMixin, UpdateView):
+    model = Unit
+    form_class = UnitForm
+    template_name = 'inventory/unit_form.html'
+    permission_required = 'Inventory.change_unit'
+    success_url = reverse_lazy('inventory:unit_list')
+
+    def form_valid(self, form):
+        messages.success(
+            self.request,
+            f'Unit "{form.instance.name}" updated successfully.',
+        )
+        return super().form_valid(form)
+
+
+class ProductUnitUpdateView(PermissionRequiredMixin, UserOrganizationMixin, UpdateView):
+    model = ProductUnit
+    form_class = ProductUnitForm
+    template_name = 'inventory/productunit_form.html'
+    permission_required = 'Inventory.change_productunit'
+    success_url = reverse_lazy('inventory:productunit_list')
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        organization = self.get_organization()
+        if organization:
+            form.fields['product'].queryset = (
+                form.fields['product'].queryset.filter(organization=organization)
+            )
+            form.fields['unit'].queryset = (
+                form.fields['unit'].queryset.filter(organization=organization)
+            )
+        return form
+
+    def form_valid(self, form):
+        messages.success(
+            self.request,
+            f'Product Unit for "{form.instance.product.name}" updated successfully.',
         )
         return super().form_valid(form)
 

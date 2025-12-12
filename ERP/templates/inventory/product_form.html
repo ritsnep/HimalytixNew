@@ -1,33 +1,153 @@
-{% extends 'components/base/form_base.html' %}
-{% load i18n %}
+{% extends "inventory/_form_base.html" %}
+{% load static %}
 
-{% block title %}
-    {% if form.instance.pk %}
-        {% trans "Edit Product" %}
-    {% else %}
-        {% trans "Create Product" %}
-    {% endif %}
-{% endblock %}
+{% block title %}{% if form.instance.pk %}Edit Product{% else %}Create Product{% endif %}{% endblock %}
 
-{% block form_title_text %}
-    {% if form.instance.pk %}
-        {% trans "Edit Product" %}: {{ form.instance.name }}
-    {% else %}
-        {% trans "Create New Product" %}
-    {% endif %}
-{% endblock %}
+{% block form_content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h4 class="card-title mb-0">{% if form.instance.pk %}Edit Product{% else %}Create Product{% endif %}</h4>
+        <a href="{% url 'inventory:product_list' %}" class="btn btn-secondary btn-sm">Back</a>
+    </div>
+    <div class="card-body">
+        <form method="post" novalidate>
+            {% csrf_token %}
 
-{% block form_fields %}
-    {% include 'components/inventory/forms/product_form_fields.html' %}
-{% endblock %}
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Code</label>
+                    {{ form.code }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Name</label>
+                    {{ form.name }}
+                </div>
+            </div>
 
-{% block form_actions %}
-  <div class="d-flex gap-2 ms-auto">
-    <a href="{% url 'inventory:product_list' %}" class="btn btn-outline-secondary">
-        {% trans "Cancel" %}
-    </a>
-    <button type="submit" class="btn btn-primary" data-form-submit>
-        {% trans "Save" %}
-    </button>
-  </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Category</label>
+                    {{ form.category }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Base Unit</label>
+                    {{ form.base_unit }}
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Description</label>
+                {{ form.description }}
+            </div>
+
+            <!-- Pricing Section -->
+            <h5 class="mt-4 mb-3">Pricing</h5>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Sale Price</label>
+                    {{ form.sale_price }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Cost Price</label>
+                    {{ form.cost_price }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Currency</label>
+                    {{ form.currency_code }}
+                </div>
+            </div>
+
+            <!-- GL Accounts Section -->
+            <h5 class="mt-4 mb-3">GL Accounts</h5>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Income Account</label>
+                    {{ form.income_account }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Expense Account</label>
+                    {{ form.expense_account }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Inventory Account</label>
+                    {{ form.inventory_account }}
+                </div>
+            </div>
+
+            <!-- Inventory Settings -->
+            <h5 class="mt-4 mb-3">Inventory Settings</h5>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Inventory Item</label>
+                    {{ form.is_inventory_item }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Min Order Qty</label>
+                    {{ form.min_order_quantity }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Reorder Level</label>
+                    {{ form.reorder_level }}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Preferred Vendor</label>
+                    {{ form.preferred_vendor }}
+                </div>
+            </div>
+
+            <!-- Physical Properties -->
+            <h5 class="mt-4 mb-3">Physical Properties</h5>
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Weight</label>
+                    {{ form.weight }}
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Weight Unit</label>
+                    {{ form.weight_unit }}
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Length</label>
+                    {{ form.length }}
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Width</label>
+                    {{ form.width }}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Height</label>
+                    {{ form.height }}
+                </div>
+            </div>
+
+            <!-- Identification -->
+            <h5 class="mt-4 mb-3">Identification</h5>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Barcode</label>
+                    {{ form.barcode }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">SKU</label>
+                    {{ form.sku }}
+                </div>
+            </div>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="mdi mdi-check me-1"></i>
+                    {% if form.instance.pk %}Update{% else %}Create{% endif %}
+                </button>
+                <a href="{% url 'inventory:product_list' %}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}

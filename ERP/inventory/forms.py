@@ -5,7 +5,7 @@ Following the same pattern as accounting forms with BootstrapFormMixin
 """
 from django import forms
 from .models import (
-    Product, ProductCategory, Warehouse, Location,
+    Product, ProductCategory, Warehouse, Location, Unit, ProductUnit,
     PriceList, PriceListItem, CustomerPriceList, PromotionRule,
     PickList, PickListLine, PackingSlip, Shipment, Backorder, RMA,
     TransitWarehouse,InventoryItem, StockLedger
@@ -31,17 +31,18 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Product
         fields = (
-            'category', 'code', 'name', 'description', 'uom', 'sale_price',
+            'category', 'code', 'name', 'description', 'base_unit', 'sale_price',
             'cost_price', 'currency_code', 'income_account', 'expense_account',
             'inventory_account', 'is_inventory_item', 'min_order_quantity',
-            'reorder_level', 'preferred_vendor_id', 'barcode', 'sku'
+            'reorder_level', 'preferred_vendor', 'weight', 'weight_unit',
+            'length', 'width', 'height', 'barcode', 'sku'
         )
         widgets = {
             'category': forms.Select(attrs={'class': 'form-select'}),
             'code': forms.TextInput(attrs={'class': 'form-control'}),
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'uom': forms.TextInput(attrs={'class': 'form-control'}),
+            'base_unit': forms.Select(attrs={'class': 'form-select'}),
             'sale_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'cost_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'currency_code': forms.TextInput(attrs={'class': 'form-control'}),
@@ -51,9 +52,38 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
             'is_inventory_item': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'min_order_quantity': forms.NumberInput(attrs={'class': 'form-control', 'step': '1'}),
             'reorder_level': forms.NumberInput(attrs={'class': 'form-control', 'step': '1'}),
-            'preferred_vendor_id': forms.TextInput(attrs={'class': 'form-control'}),
+            'preferred_vendor': forms.Select(attrs={'class': 'form-select'}),
+            'weight': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'weight_unit': forms.Select(attrs={'class': 'form-select'}),
+            'length': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'width': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'height': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'barcode': forms.TextInput(attrs={'class': 'form-control'}),
             'sku': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+
+class UnitForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = Unit
+        fields = ('code', 'name', 'description', 'is_active')
+        widgets = {
+            'code': forms.TextInput(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
+class ProductUnitForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = ProductUnit
+        fields = ('product', 'unit', 'conversion_factor', 'is_default')
+        widgets = {
+            'product': forms.Select(attrs={'class': 'form-select'}),
+            'unit': forms.Select(attrs={'class': 'form-select'}),
+            'conversion_factor': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.000001'}),
+            'is_default': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
 

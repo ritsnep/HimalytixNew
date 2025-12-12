@@ -1,77 +1,81 @@
-{% extends 'partials/base.html' %}
-{% load i18n %}
+{% extends "components/base/list_base.html" %}
+{% load static %}
 
-{% block title %}{% trans "Stock Report" %}{% endblock %}
+{% block title %}Stock Report{% endblock %}
+{% block list_page_title %}Stock Report{% endblock %}
+{% block list_title %}Current Inventory Levels{% endblock %}
 
-{% block content %}
-<div class="main-content">
-    <div class="page-content">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h4 class="card-title">{% trans "Stock Report" %}</h4>
-                        </div>
-                        <div class="card-body">
-                            <form method="get" class="mb-4">
-                                <div class="row">
-                                    <div class="col-md-4">
-                                        <label for="warehouse">{% trans "Warehouse" %}</label>
-                                        <select name="warehouse" id="warehouse" class="form-select">
-                                            <option value="">{% trans "All" %}</option>
-                                            {% for wh in warehouses %}
-                                            <option value="{{ wh.id }}" {% if selected_warehouse == wh.id|stringformat:"s" %}selected{% endif %}>{{ wh.name }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label for="product">{% trans "Product" %}</label>
-                                        <select name="product" id="product" class="form-select">
-                                            <option value="">{% trans "All" %}</option>
-                                            {% for prod in products %}
-                                            <option value="{{ prod.id }}" {% if selected_product == prod.id|stringformat:"s" %}selected{% endif %}>{{ prod.name }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <button type="submit" class="btn btn-primary mt-4">{% trans "Filter" %}</button>
-                                    </div>
-                                </div>
-                            </form>
-                            <div class="table-responsive">
-                                <table class="table table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>{% trans "Product" %}</th>
-                                            <th>{% trans "Warehouse" %}</th>
-                                            <th>{% trans "Location" %}</th>
-                                            <th>{% trans "Batch" %}</th>
-                                            <th>{% trans "Quantity" %}</th>
-                                            <th>{% trans "Unit Cost" %}</th>
-                                            <th>{% trans "Total Value" %}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for item in stock_items %}
-                                        <tr>
-                                            <td>{{ item.product.name }}</td>
-                                            <td>{{ item.warehouse.name }}</td>
-                                            <td>{{ item.location.name|default:"" }}</td>
-                                            <td>{{ item.batch.batch_number|default:"" }}</td>
-                                            <td>{{ item.quantity_on_hand }}</td>
-                                            <td>{{ item.unit_cost }}</td>
-                                            <td>{{ item.total_value }}</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+{% block list_subtitle %}View real-time stock levels across warehouses and locations{% endblock %}
+
+{% block list_filters %}
+<div class="row g-2">
+  <div class="col-md-4">
+    <label for="warehouse" class="form-label">Warehouse</label>
+    <select name="warehouse" id="warehouse" class="form-select form-select-sm">
+      <option value="">All Warehouses</option>
+      {% for warehouse in warehouses %}
+        <option value="{{ warehouse.id }}" {% if selected_warehouse == warehouse.id|stringformat:"s" %}selected{% endif %}>
+          {{ warehouse.name }} ({{ warehouse.code }})
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-4">
+    <label for="product" class="form-label">Product</label>
+    <select name="product" id="product" class="form-select form-select-sm">
+      <option value="">All Products</option>
+      {% for product in products %}
+        <option value="{{ product.id }}" {% if selected_product == product.id|stringformat:"s" %}selected{% endif %}>
+          {{ product.name }} ({{ product.code }})
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-4 d-flex align-items-end gap-2">
+    <button type="submit" class="btn btn-primary btn-sm">
+      <i class="mdi mdi-filter"></i> Filter
+    </button>
+    <a href="{% url 'inventory:stock_report' %}" class="btn btn-secondary btn-sm">
+      <i class="mdi mdi-close"></i> Clear
+    </a>
+  </div>
 </div>
+{% endblock %}
+
+{% block table_head %}
+  <tr>
+    <th>Product Code</th>
+    <th>Product Name</th>
+    <th>Warehouse</th>
+    <th>Location</th>
+    <th>Batch</th>
+    <th class="text-end">Quantity</th>
+    <th class="text-end">Unit Cost</th>
+    <th class="text-end">Total Value</th>
+    <th>Last Updated</th>
+  </tr>
+{% endblock %}
+
+{% block table_body %}
+  {% for item in stock_items %}
+  <tr>
+    <td><code>{{ item.product.code }}</code></td>
+    <td>
+      <a href="{% url 'inventory:product_detail' pk=item.product.pk %}">{{ item.product.name }}</a>
+    </td>
+    <td>{{ item.warehouse.name }}</td>
+    <td><code>{{ item.location.code|default:"—" }}</code></td>
+    <td>{{ item.batch.batch_number|default:"—" }}</td>
+    <td class="text-end fw-semibold">{{ item.quantity_on_hand }}</td>
+    <td class="text-end">{{ item.product.currency_code }} {{ item.unit_cost|floatformat:4 }}</td>
+    <td class="text-end">{{ item.product.currency_code }} {{ item.total_value|floatformat:2 }}</td>
+    <td>{{ item.updated_at|date:"Y-m-d H:i" }}</td>
+  </tr>
+  {% empty %}
+  <tr>
+    <td colspan="9" class="text-center text-muted py-4">
+      <i class="mdi mdi-inbox-multiple"></i> No inventory items found.
+    </td>
+  </tr>
+  {% endfor %}
 {% endblock %}

@@ -1,31 +1,78 @@
-{% extends 'Inventory/_list_base.html' %}
-{% load i18n %}
+{% extends "inventory/_list_base.html" %}
+{% load static %}
 
-{% block page_title %}{% trans "Warehouses" %}{% endblock %}
+{% block title %}Warehouses{% endblock %}
+{% block list_title %}Warehouse Management{% endblock %}
+{% block list_subtitle %}Configure storage locations and inventory warehouses{% endblock %}
 
-{% block list_title %}{% trans "Warehouse List" %}{% endblock %}
-
-{% block create_url %}{% url 'inventory:warehouse_create' %}{% endblock %}
-
-{% block table_headers %}
-    <th>{% trans "Code" %}</th>
-    <th>{% trans "Name" %}</th>
-    <th>{% trans "Category" %}</th>
-    <th>{% trans "Type" %}</th>
-    <th>{% trans "Address" %}</th>
-    <th>{% trans "Active" %}</th>
+{% block list_actions %}
+  <a href="{{ create_url }}" class="btn btn-success btn-sm">
+    <i class="mdi mdi-plus"></i> Add Warehouse
+  </a>
 {% endblock %}
 
-{% block table_columns %}
-    { data: 'code' },
-    { data: 'name' },
-    { data: 'category' },
-    { data: 'warehouse_type' },
-    { data: 'address', defaultContent: '-' },
-    { 
-        data: 'is_active',
-        render: function(data) {
-            return data ? '<span class="badge bg-success">{% trans "Active" %}</span>' : '<span class="badge bg-secondary">{% trans "Inactive" %}</span>';
-        }
-    }
+{% block custom_filters %}
+<form method="get" class="d-flex gap-2 align-items-center mb-3">
+    <label class="mb-0">Category:</label>
+    <select name="category" class="form-select w-auto">
+        <option value="">All</option>
+        {% for cat in categories %}
+            <option value="{{ cat.id }}" {% if selected_category|stringformat:"s" == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+        {% endfor %}
+    </select>
+    <button class="btn btn-outline-secondary btn-sm">Filter</button>
+</form>
+{% endblock %}
+
+{% block table_head %}
+  <tr>
+    <th>Code</th>
+    <th>Name</th>
+    <th>City</th>
+    <th>Country</th>
+    <th>Active</th>
+    <th style="width:160px;">Actions</th>
+  </tr>
+{% endblock %}
+
+{% block table_body %}
+  {% for warehouse in object_list %}
+    <tr>
+      <td class="fw-semibold"><code>{{ warehouse.code }}</code></td>
+      <td>{{ warehouse.name }}</td>
+      <td>{{ warehouse.city }}</td>
+      <td>{{ warehouse.country_code }}</td>
+      <td>
+        {% if warehouse.is_active %}
+          <span class="badge bg-success">Active</span>
+        {% else %}
+          <span class="badge bg-secondary">Inactive</span>
+        {% endif %}
+      </td>
+      <td>
+        <div class="btn-group btn-group-sm" role="group">
+          <a href="{% url 'inventory:warehouse_detail' warehouse.pk %}" class="btn btn-outline-info" title="View">
+            <i class="mdi mdi-eye"></i>
+          </a>
+          {% if can_change %}
+            <a href="{% url 'inventory:warehouse_update' warehouse.pk %}" class="btn btn-outline-primary" title="Edit">
+              <i class="mdi mdi-pencil"></i>
+            </a>
+          {% endif %}
+          {% if can_delete %}
+            <a href="{% url 'inventory:warehouse_delete' warehouse.pk %}" class="btn btn-outline-danger" title="Delete">
+              <i class="mdi mdi-trash-can"></i>
+            </a>
+          {% endif %}
+        </div>
+      </td>
+    </tr>
+  {% empty %}
+    <tr>
+      <td colspan="5" class="text-center text-muted py-4">
+        No warehouses found.
+        {% if can_add %}<a href="{% url 'inventory:warehouse_create' %}">Create one</a>{% endif %}
+      </td>
+    </tr>
+  {% endfor %}
 {% endblock %}

@@ -1,0 +1,56 @@
+{% extends "inventory/_list_base.html" %}
+{% load static %}
+
+{% block title %}Product Units{% endblock %}
+{% block list_title %}Product Units{% endblock %}
+{% block list_subtitle %}Manage alternative units for products with conversion factors{% endblock %}
+
+{% block list_actions %}
+  <div class="d-flex flex-wrap gap-2">
+    {% if create_url %}
+      <a href="{{ create_url }}" class="btn btn-success btn-sm">
+        <i class="mdi mdi-plus"></i> Add Product Unit
+      </a>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block table_head %}
+  <tr>
+    <th>Product</th>
+    <th>Unit</th>
+    <th>Conversion Factor</th>
+    <th>Default</th>
+    <th style="width:140px;">Actions</th>
+  </tr>
+{% endblock %}
+
+{% block table_body %}
+  {% for productunit in object_list %}
+    <tr>
+      <td class="fw-semibold">
+        <a href="{% url 'inventory:product_update' productunit.product.pk %}">{{ productunit.product.name }}</a>
+        <br><small class="text-muted">{{ productunit.product.code }}</small>
+      </td>
+      <td>
+        {{ productunit.unit.name }}
+        <br><small class="text-muted">{{ productunit.unit.code }}</small>
+      </td>
+      <td>{{ productunit.conversion_factor }}</td>
+      <td>
+        {% if productunit.is_default %}
+          <span class="badge bg-success">Default</span>
+        {% else %}
+          <span class="badge bg-secondary">Alternative</span>
+        {% endif %}
+      </td>
+      <td>
+        <div class="btn-group btn-group-sm" role="group">
+          <a href="{% url 'inventory:productunit_update' productunit.pk %}" class="btn btn-outline-primary" title="Edit">Edit</a>
+        </div>
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="5" class="text-center text-muted py-3">No product units found.</td></tr>
+  {% endfor %}
+{% endblock %}

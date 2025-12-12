@@ -6,9 +6,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.db.models import Q
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -36,6 +37,7 @@ from accounting.models import (
 )
 from accounting.services.journal_entry_service import JournalEntryService
 from usermanagement.utils import PermissionUtils
+from utils.calendars import DateSeedStrategy
 from utils.file_uploads import (
     ALLOWED_ATTACHMENT_EXTENSIONS,
     MAX_ATTACHMENT_UPLOAD_BYTES,
@@ -387,6 +389,46 @@ def _active_organization(user):
     return getattr(user, "organization", None)
 
 
+def _base_currency_code(organization) -> Optional[str]:
+    if not organization:
+        return None
+    code = getattr(organization, "base_currency_code_id", None)
+    if code:
+        return code
+    base_currency = getattr(organization, "base_currency_code", None)
+    return getattr(base_currency, "currency_code", None)
+
+
+def _supported_currencies(organization) -> List[str]:
+    supported = list(journal_entry_settings.supported_currencies or [])
+    base_code = _base_currency_code(organization)
+    if base_code and base_code not in supported:
+        supported.insert(0, base_code)
+    return supported
+
+
+def _seed_default_date(organization) -> str:
+    today = timezone.localdate() if hasattr(timezone, "localdate") else timezone.now().date()
+    strategy = DateSeedStrategy.DEFAULT
+    cfg = getattr(organization, "config", None) if organization else None
+    if cfg:
+        strategy = DateSeedStrategy.normalize(getattr(cfg, "calendar_date_seed", None))
+    if organization and strategy == DateSeedStrategy.LAST_OR_TODAY:
+        try:
+            last_date = (
+                Journal.objects.filter(organization=organization)
+                .exclude(journal_date__isnull=True)
+                .order_by("-journal_date")
+                .values_list("journal_date", flat=True)
+                .first()
+            )
+            if last_date:
+                return last_date.isoformat()
+        except Exception:
+            pass
+    return today.isoformat()
+
+
 def _is_journal_debug_enabled(organization) -> bool:
     return JournalDebugPreference.is_enabled_for(organization)
 
@@ -686,6 +728,7 @@ def _prepare_journal_components(user, payload: Dict[str, Any]) -> Tuple[Any, Dic
     organization = _active_organization(user)
     if not organization:
         raise ValueError("An active organization is required to work with journal entries.")
+    supported_currencies = _supported_currencies(organization)
 
     header = payload.get("header") or {}
     metadata = payload.get("meta") or {}
@@ -731,7 +774,11 @@ def _prepare_journal_components(user, payload: Dict[str, Any]) -> Tuple[Any, Dic
     journal_type = _resolve_journal_type(organization, metadata)
     period = _resolve_period(organization, journal_date)
 
-    currency = (header.get("currency") or journal_entry_settings.supported_currencies[0]).upper()
+    currency = (
+        header.get("currency")
+        or (supported_currencies[0] if supported_currencies else "")
+        or ""
+    ).upper()
     exchange_rate = _safe_decimal(header.get("exRate"), Decimal("1"))
 
     notes = (payload.get("notes") or header.get("description") or "").strip()
@@ -777,7 +824,7 @@ def _prepare_journal_components(user, payload: Dict[str, Any]) -> Tuple[Any, Dic
     allowable_types = journal_entry_settings.allowable_journal_entry_types or []
     if allowable_types:
         metadata_payload["availableVoucherTypes"] = [entry.get("name") or entry.get("value") for entry in allowable_types]
-    metadata_payload["supportedCurrencies"] = journal_entry_settings.supported_currencies
+    metadata_payload["supportedCurrencies"] = _supported_currencies(organization)
     header_extras = {}
     for key, value in header.items():
         if key not in {"party", "date", "currency", "exRate", "creditDays", "reference", "description", "branch"}:
@@ -985,6 +1032,7 @@ def journal_config(request):
     organization = _active_organization(request.user)
     if not organization:
         return _json_error("Active organization required.", status=400)
+    org_currency_code = _base_currency_code(organization)
 
     journal_type_param = (
         request.GET.get("journal_type")
@@ -1039,7 +1087,10 @@ def journal_config(request):
         "defaultCurrency": (
             config.default_currency
             if config and config.default_currency
-            else (journal_entry_settings.supported_currencies[0] if journal_entry_settings.supported_currencies else None)
+            else (
+                org_currency_code
+                or (journal_entry_settings.supported_currencies[0] if journal_entry_settings.supported_currencies else None)
+            )
         ),
         "headerRequired": sorted([key for key, value in header_required.items() if value]),
         "lineRequired": sorted([key for key, value in line_required.items() if value]),
@@ -1047,10 +1098,12 @@ def journal_config(request):
         "lineAllowedValues": {key: sorted(values) for key, values in line_allowed.items()},
         "headerDefaults": header_defaults,
         "lineDefaults": line_defaults,
-        "supportedCurrencies": journal_entry_settings.supported_currencies,
+        "supportedCurrencies": _supported_currencies(organization),
         "headerLabels": header_labels,
         "lineLabels": line_labels,
     }
+    # Ensure a seeded date default is always available for the UI
+    metadata["headerDefaults"].setdefault("date", _seed_default_date(organization))
 
     numbering_meta = _build_numbering_metadata(config)
     if numbering_meta:
@@ -1102,6 +1155,10 @@ def journal_entry(request):
     show_config_selector = not config_id_param and not journal_id_param
 
     organization = _active_organization(request.user)
+    supported_currencies = _supported_currencies(organization)
+    default_currency = supported_currencies[0] if supported_currencies else ""
+    default_date = _seed_default_date(organization)
+    base_currency = _base_currency_code(organization)
     
     # If no config was chosen and no journal is being edited, route to a dedicated
     # full-screen configuration selection page instead of an in-page modal.
@@ -1151,7 +1208,10 @@ def journal_entry(request):
         "journal_default_type": journal_entry_settings.ui_settings.get("default_entry_type") or "JN",
         "initial_journal_id": journal_id_param,
         "detail_url_template": reverse("accounting:journal_entry_data", kwargs={"pk": 0}),
-        "supported_currencies": journal_entry_settings.supported_currencies,
+        "supported_currencies": supported_currencies,
+        "default_currency": default_currency,
+        "default_date": default_date,
+        "base_currency": base_currency,
         "permission_flags": permission_flags,
         "lookup_urls": lookup_urls,
         "active_organization": organization,
@@ -1563,6 +1623,40 @@ def journal_attachment_upload(request):
             )
 
     return JsonResponse({"ok": True, "attachments": created})
+
+
+@login_required
+@require_GET
+def resolve_exchange_rate(request):
+    """HTMX endpoint to resolve exchange rate for given currency and date."""
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+
+    from_currency = request.GET.get('currency_code', '').strip().upper()
+    to_currency = request.GET.get('to_currency', '').strip().upper()
+    rate_date_str = request.GET.get('journal_date', '').strip()
+
+    if not from_currency or not to_currency or not rate_date_str:
+        return _json_error("currency_code, to_currency, and journal_date are required.", status=400)
+
+    try:
+        rate_date = parse_date(rate_date_str)
+        if not rate_date:
+            raise ValueError("Invalid date format")
+    except (ValueError, TypeError):
+        return _json_error("Invalid journal_date format. Use YYYY-MM-DD.", status=400)
+
+    from accounting.services.currency_service import resolvecurrency
+    try:
+        rate = resolvecurrency(organization, from_currency, to_currency, rate_date)
+        # Additional validation for client-side safety
+        if rate <= 0:
+            rate = Decimal('1.000000')
+        return HttpResponse(str(rate))
+    except Exception as exc:
+        logger.exception("Error resolving exchange rate: %s", exc)
+        return HttpResponse("1.000000")  # Default fallback
 
 
 @login_required

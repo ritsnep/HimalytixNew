@@ -42,7 +42,12 @@ const LOOKUPS = {
   account: __root?.dataset?.lookupAccount || null,
   costCenter: __root?.dataset?.lookupCostCenter || null,
 };
-const SUPPORTED_CURRENCIES = (__root?.dataset?.supportedCurrencies || '').split(',').filter(Boolean);
+let SUPPORTED_CURRENCIES = (__root?.dataset?.supportedCurrencies || '').split(',').filter(Boolean);
+const DEFAULT_CURRENCY = __root?.dataset?.defaultCurrency || SUPPORTED_CURRENCIES[0] || '';
+const DEFAULT_DATE = __root?.dataset?.defaultDate || new Date().toISOString().slice(0, 10);
+if (DEFAULT_CURRENCY && !SUPPORTED_CURRENCIES.includes(DEFAULT_CURRENCY)) {
+  SUPPORTED_CURRENCIES = [DEFAULT_CURRENCY, ...SUPPORTED_CURRENCIES];
+}
 const PREFS_ENDPOINT = __root?.dataset?.prefsUrl || null;
 const PREFS_SAVE_ENDPOINT = __root?.dataset?.prefsSaveUrl || __root?.dataset?.prefsUrl || null;
 const ATTACH_UPLOAD_ENDPOINT = __root?.dataset?.attachUpload || null;
@@ -82,6 +87,16 @@ const adToBsString = (adVal) => {
     console.warn('[DualCalendar] AD2BS failed in voucher_entry', err);
     return '';
   }
+};
+
+const isIsoDate = (val) => typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val);
+const normalizeDate = (val) => {
+  if (isIsoDate(val)) return val;
+  try {
+    const d = new Date(val);
+    if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  } catch (_) { /* ignore */ }
+  return '';
 };
 
 const cloneForDebug = (payload) => {
@@ -524,6 +539,9 @@ const AccountSuggest = (() => {
 
   return {
     open(target, suggestions = [], handlers = {}) {
+      const prevAnchor = anchor;
+      const wasOpen = !!container && container.classList.contains('open');
+      const prevIndex = activeIndex;
       close();
       ensure();
       anchor = target;
@@ -531,7 +549,12 @@ const AccountSuggest = (() => {
       onSelect = handlers.onSelect || null;
       onAddNew = handlers.onAddNew || null;
       termText = handlers.term || '';
-      activeIndex = items.length ? 0 : 0;
+      const preserveSelection = wasOpen && prevAnchor === target;
+      if (preserveSelection) {
+        activeIndex = Math.min(prevIndex, items.length); // keep prior highlight (including Add New)
+      } else {
+        activeIndex = items.length ? 0 : 0;
+      }
       container.classList.add('open');
       render();
       outsideHandler = (ev) => {
@@ -630,9 +653,9 @@ const App = {
     configUrl: __root?.dataset?.configUrl || null,
     supportedCurrencies: SUPPORTED_CURRENCIES,
     header: {
-      date: new Date().toISOString().slice(0, 10),
+      date: DEFAULT_DATE,
       branch: 'Main',
-      currency: SUPPORTED_CURRENCIES[0] || 'NPR',
+      currency: DEFAULT_CURRENCY || SUPPORTED_CURRENCIES[0] || 'NPR',
       exRate: 1,
       reference: '',
       description: '',
@@ -682,6 +705,8 @@ const App = {
   async init() {
     const presets = loadPresets();
     this.applyPreferencesFromStore(presets);
+    // Ensure header date is always a valid ISO string for the dual calendar
+    this.state.header.date = normalizeDate(this.state.header.date) || DEFAULT_DATE;
 
     if (!Array.isArray(this.state.rows) || !this.state.rows.length) {
       this.resetRows();
@@ -858,7 +883,11 @@ const App = {
   },
 
   resolveAccount(row, value) {
+    if (row && row.accountLocked) return Promise.resolve(row);
+    // If user already selected an account (via dropdown), do not override with first result
+    if (row && row.accountId) return Promise.resolve(row);
     return this.lookupAccount(value).then(match => {
+      if (row && (row.accountId || row.accountLocked)) return row;
       if (match) {
         row.accountId = match.id;
         row.accountCode = match.code;
@@ -1105,8 +1134,21 @@ const App = {
 
   queueAccountSuggestions(inputEl, ri, ci) {
     if (!inputEl || !inputEl.classList.contains('cell-input')) return;
-    this.state.rows[ri].account = inputEl.value;
-    this.state.rows[ri].accountId = null;
+    const row = this.state.rows[ri];
+    const typed = inputEl.value || '';
+    // If the user is editing a locked selection, unlock when the text changes; otherwise keep the locked value.
+    if (row.accountLocked && typed === (row.account || '')) {
+      AccountSuggest.close();
+      return;
+    }
+    if (row.accountLocked && typed !== (row.account || '')) {
+      row.accountLocked = false;
+      row.accountId = null;
+    }
+    row.account = typed;
+    if (!row.accountLocked) {
+      row.accountId = null;
+    }
     this.state.focus = { r: ri, c: ci };
 
     const term = (inputEl.value || '').trim();
@@ -1125,6 +1167,8 @@ const App = {
 
   async fetchAccountSuggestions(term, inputEl, ri, ci) {
     if (!LOOKUPS.account || !inputEl) return;
+    const row = this.state.rows?.[ri];
+    if (row && row.accountLocked) return;
     const queryToken = `${term}:${ri}:${Date.now()}`;
     this._latestAccountQuery = queryToken;
     try {
@@ -1154,7 +1198,14 @@ const App = {
     row.accountCode = choice.code || '';
     row.accountName = choice.name || '';
     row.account = [choice.code, choice.name].filter(Boolean).join(' - ');
+    row.accountLocked = true;
     this.state.focus = { r: ri, c: ci };
+    // Reflect selection immediately in the active input to avoid showing only the typed prefix
+    const input = document.querySelector(`.cell-input[data-ri="${ri}"][data-ci="${ci}"]`);
+    if (input) {
+      input.value = row.account;
+      input.setAttribute('title', row.account);
+    }
     AccountSuggest.close();
     this.render();
   },
@@ -1390,11 +1441,16 @@ const App = {
     if (metadata.configId) {
       this.state.metadata.configId = metadata.configId;
     }
+    this.state.headerDefaults = metadata.headerDefaults || {};
+    this.state.lineDefaults = metadata.lineDefaults || {};
+    const seededDate = normalizeDate(this.state.headerDefaults.date || metadata.headerDefaults?.date) || DEFAULT_DATE;
+    if (!isIsoDate(this.state.header.date || '')) {
+      this.state.header.date = seededDate;
+    }
+    this.state.headerDefaults.date = seededDate;
     if (metadata.defaultCurrency && !this.state.header.currency) {
       this.state.header.currency = metadata.defaultCurrency;
     }
-    this.state.headerDefaults = metadata.headerDefaults || {};
-    this.state.lineDefaults = metadata.lineDefaults || {};
     Object.entries(this.state.headerDefaults).forEach(([key, value]) => {
       const current = this.state.header[key];
       if (current === undefined || current === null || current === '') {
@@ -1547,7 +1603,7 @@ const App = {
 
   renderDefaultHeaderForm() {
     const { header, udfHeaderDefs } = this.state;
-    const bsVal = adToBsString(header.date);
+    const bsVal = adToBsString(header.date) || header.date || '';
     const startView = CALENDAR_INITIAL_VIEW === 'BS' ? 'BS' : 'AD';
     const adId = 'hdr-date-ad';
     const bsId = 'hdr-date-bs';
@@ -2510,8 +2566,20 @@ if (action === 'addRow') { this.state.rows.push(this.blankRow()); this.render();
       } else {
         row[colId] = t.value;
         if (colId === 'account') {
+          const prevValue = row.account || '';
+          const nextValue = t.value || '';
+          if (prevValue !== nextValue) {
+            row.accountLocked = false;
+          }
           row.accountCode = (t.value || '').split(/\s+/)[0] || '';
-          row.accountId = null;
+          if (!row.accountLocked) {
+            row.accountId = null;
+          }
+          // Avoid auto-resolving while the suggestion menu is open so we don't overwrite user navigation
+          if (AccountSuggest.isOpenFor(t)) {
+            this.render();
+            return;
+          }
           AccountSuggest.close();
           this.resolveAccount(row, t.value).finally(() => this.render());
           return;

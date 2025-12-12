@@ -1,113 +1,187 @@
-{% extends 'partials/base.html' %}
-{% load i18n %}
+{% extends "base.html" %}
+{% load static %}
 
-{% block title %}{% trans "Ledger Report" %}{% endblock %}
+{% block title %}Stock Ledger - {{ organization.name }}{% endblock %}
 
 {% block content %}
-<div class="main-content">
-    <div class="page-content">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h4 class="card-title">{% trans "Stock Ledger Report" %}</h4>
-                        </div>
-                        <div class="card-body">
-                            <form method="get" class="mb-4">
-                                <div class="row">
-                                    <div class="col-md-3">
-                                        <label for="warehouse">{% trans "Warehouse" %}</label>
-                                        <select name="warehouse" id="warehouse" class="form-select">
-                                            <option value="">{% trans "All" %}</option>
-                                            {% for wh in warehouses %}
-                                            <option value="{{ wh.id }}" {% if selected_warehouse == wh.id|stringformat:"s" %}selected{% endif %}>{{ wh.name }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label for="product">{% trans "Product" %}</label>
-                                        <select name="product" id="product" class="form-select">
-                                            <option value="">{% trans "All" %}</option>
-                                            {% for prod in products %}
-                                            <option value="{{ prod.id }}" {% if selected_product == prod.id|stringformat:"s" %}selected{% endif %}>{{ prod.name }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label for="txn_type">{% trans "Transaction Type" %}</label>
-                                        <select name="txn_type" id="txn_type" class="form-select">
-                                            <option value="">{% trans "All" %}</option>
-                                            {% for type in txn_types %}
-                                            <option value="{{ type }}" {% if selected_txn_type == type %}selected{% endif %}>{{ type }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label for="date_from">{% trans "From Date" %}</label>
-                                        <input type="date" name="date_from" id="date_from" class="form-control" value="{{ date_from }}">
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label for="date_to">{% trans "To Date" %}</label>
-                                        <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to }}">
-                                    </div>
-                                </div>
-                                {% if calendar_mode == 'BS' %}
-                                <div class="row mt-2">
-                                    <div class="col-md-3">
-                                        <label for="date_from_bs">{% trans "From Date (BS)" %}</label>
-                                        <input type="text" name="date_from_bs" id="date_from_bs" class="form-control" value="{{ date_from_bs }}">
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label for="date_to_bs">{% trans "To Date (BS)" %}</label>
-                                        <input type="text" name="date_to_bs" id="date_to_bs" class="form-control" value="{{ date_to_bs }}">
-                                    </div>
-                                </div>
-                                {% endif %}
-                                <div class="row mt-2">
-                                    <div class="col">
-                                        <button type="submit" class="btn btn-primary">{% trans "Filter" %}</button>
-                                    </div>
-                                </div>
-                            </form>
-                            <div class="table-responsive">
-                                <table class="table table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>{% trans "Date" %}</th>
-                                            <th>{% trans "Product" %}</th>
-                                            <th>{% trans "Warehouse" %}</th>
-                                            <th>{% trans "Location" %}</th>
-                                            <th>{% trans "Batch" %}</th>
-                                            <th>{% trans "Type" %}</th>
-                                            <th>{% trans "Reference" %}</th>
-                                            <th>{% trans "Qty In" %}</th>
-                                            <th>{% trans "Qty Out" %}</th>
-                                            <th>{% trans "Balance" %}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for entry in ledger_entries %}
-                                        <tr>
-                                            <td>{{ entry.txn_date }}</td>
-                                            <td>{{ entry.product.name }}</td>
-                                            <td>{{ entry.warehouse.name }}</td>
-                                            <td>{{ entry.location.name|default:"" }}</td>
-                                            <td>{{ entry.batch.batch_number|default:"" }}</td>
-                                            <td>{{ entry.txn_type }}</td>
-                                            <td>{{ entry.reference_id }}</td>
-                                            <td>{{ entry.qty_in }}</td>
-                                            <td>{{ entry.qty_out }}</td>
-                                            <td>{{ entry.balance_qty }}</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-0">Stock Ledger</h1>
+            <p class="text-muted">Complete history of all stock movements</p>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="warehouse" class="form-label">Warehouse</label>
+                    <select name="warehouse" id="warehouse" class="form-select">
+                        <option value="">All Warehouses</option>
+                        {% for warehouse in warehouses %}
+                            <option value="{{ warehouse.id }}" {% if selected_warehouse == warehouse.id|stringformat:"s" %}selected{% endif %}>
+                                {{ warehouse.name }} ({{ warehouse.code }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="product" class="form-label">Product</label>
+                    <select name="product" id="product" class="form-select">
+                        <option value="">All Products</option>
+                        {% for product in products %}
+                            <option value="{{ product.id }}" {% if selected_product == product.id|stringformat:"s" %}selected{% endif %}>
+                                {{ product.name }} ({{ product.code }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="txn_type" class="form-label">Transaction Type</label>
+                    <select name="txn_type" id="txn_type" class="form-select">
+                        <option value="">All Types</option>
+                        {% for type in txn_types %}
+                            <option value="{{ type }}" {% if selected_txn_type == type %}selected{% endif %}>
+                                {{ type }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="date_from" class="form-label">From Date</label>
+                    <div class="input-group dual-calendar-picker"
+                         data-dual-calendar
+                         data-calendar-mode="{{ calendar_mode|default:'AD' }}"
+                         data-initial-view="{% if calendar_mode == 'AD' %}AD{% else %}BS{% endif %}">
+                        <input type="text"
+                               name="date_from_bs"
+                               id="date_from_bs"
+                               class="form-control dual-calendar__bs{% if calendar_mode == 'AD' %} d-none{% endif %}"
+                               placeholder="BS YYYY-MM-DD"
+                               autocomplete="off"
+                               data-role="bs-input"
+                               value="{{ date_from_bs|default:'' }}">
+                        <input type="date"
+                               name="date_from"
+                               id="date_from"
+                               class="form-control dual-calendar__ad{% if calendar_mode == 'BS' %} d-none{% endif %}"
+                               data-role="ad-input"
+                               value="{{ date_from|default:'' }}">
+                        <button type="button"
+                                class="btn btn-outline-secondary dual-calendar__toggle {% if calendar_mode != 'DUAL' %}d-none{% endif %}"
+                                data-role="toggle">
+                            BS
+                        </button>
                     </div>
                 </div>
+                <div class="col-md-3">
+                    <label for="date_to" class="form-label">To Date</label>
+                    <div class="input-group dual-calendar-picker"
+                         data-dual-calendar
+                         data-calendar-mode="{{ calendar_mode|default:'AD' }}"
+                         data-initial-view="{% if calendar_mode == 'AD' %}AD{% else %}BS{% endif %}">
+                        <input type="text"
+                               name="date_to_bs"
+                               id="date_to_bs"
+                               class="form-control dual-calendar__bs{% if calendar_mode == 'AD' %} d-none{% endif %}"
+                               placeholder="BS YYYY-MM-DD"
+                               autocomplete="off"
+                               data-role="bs-input"
+                               value="{{ date_to_bs|default:'' }}">
+                        <input type="date"
+                               name="date_to"
+                               id="date_to"
+                               class="form-control dual-calendar__ad{% if calendar_mode == 'BS' %} d-none{% endif %}"
+                               data-role="ad-input"
+                               value="{{ date_to|default:'' }}">
+                        <button type="button"
+                                class="btn btn-outline-secondary dual-calendar__toggle {% if calendar_mode != 'DUAL' %}d-none{% endif %}"
+                                data-role="toggle">
+                            BS
+                        </button>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-funnel"></i> Filter
+                    </button>
+                    <a href="{% url 'inventory:ledger_report' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Clear
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Ledger Table -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Reference</th>
+                            <th>Product</th>
+                            <th>Warehouse</th>
+                            <th>Location</th>
+                            <th>Batch</th>
+                            <th class="text-end">Qty In</th>
+                            <th class="text-end">Qty Out</th>
+                            <th class="text-end">Unit Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in ledger_entries %}
+                        <tr>
+                            <td>{{ entry.txn_date|date:"Y-m-d H:i" }}</td>
+                            <td>
+                                <span class="badge {% if entry.txn_type == 'receipt' %}bg-success{% elif entry.txn_type == 'issue' %}bg-danger{% elif 'transfer' in entry.txn_type %}bg-info{% else %}bg-secondary{% endif %}">
+                                    {{ entry.txn_type }}
+                                </span>
+                            </td>
+                            <td><small>{{ entry.reference_id }}</small></td>
+                            <td>
+                                <strong>{{ entry.product.code }}</strong>
+                                <small class="text-muted d-block">{{ entry.product.name|truncatewords:5 }}</small>
+                            </td>
+                            <td>{{ entry.warehouse.code }}</td>
+                            <td>{{ entry.location.code|default:"—" }}</td>
+                            <td>{{ entry.batch.batch_number|default:"—" }}</td>
+                            <td class="text-end">
+                                {% if entry.qty_in > 0 %}
+                                    <span class="text-success">+{{ entry.qty_in|floatformat:2 }}</span>
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                {% if entry.qty_out > 0 %}
+                                    <span class="text-danger">-{{ entry.qty_out|floatformat:2 }}</span>
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td class="text-end">{{ entry.unit_cost|floatformat:4 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="10" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox"></i> No ledger entries found
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
+            {% if ledger_entries.count == 100 %}
+            <div class="alert alert-info mt-3">
+                <i class="bi bi-info-circle"></i> Showing most recent 100 entries. Use filters to narrow down results.
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>

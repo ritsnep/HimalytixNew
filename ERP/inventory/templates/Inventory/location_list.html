@@ -1,4 +1,4 @@
-{% extends "accouting/_list_base.html" %}
+{% extends "inventory/_list_base.html" %}
 {% load static %}
 
 {% block title %}Locations{% endblock %}
@@ -34,7 +34,6 @@
   <tr>
     <th>Code</th>
     <th>Name</th>
-    <th>Category</th>
     <th>Type</th>
     <th>Active</th>
     <th style="width:140px;">Actions</th>
@@ -46,7 +45,6 @@
     <tr>
       <td class="fw-semibold">{{ location.code }}</td>
       <td>{{ location.name }}</td>
-        <td>{{ location.category.name if location.category }}</td>
       <td>{{ location.location_type }}</td>
       <td>
         {% if location.is_active %}
@@ -64,6 +62,6 @@
       </td>
     </tr>
   {% empty %}
-    <tr><td colspan="5" class="text-center text-muted py-3">No locations found.</td></tr>
+    <tr><td colspan="4" class="text-center text-muted py-3">No locations found.</td></tr>
   {% endfor %}
 {% endblock %}

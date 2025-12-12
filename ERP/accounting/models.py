@@ -573,13 +573,65 @@ class CostCenter(models.Model):
         return f"{self.code} - {self.name}"
 
 class AccountType(models.Model):
-    NATURE_CHOICES = [
-        ('asset', 'Asset'),
-        ('liability', 'Liability'),
-        ('equity', 'Equity'),
-        ('income', 'Income'),
-        ('expense', 'Expense'),
-    ]
+    class Nature(models.TextChoices):
+        ASSET = ('asset', 'Asset')
+        LIABILITY = ('liability', 'Liability')
+        EQUITY = ('equity', 'Equity')
+        INCOME = ('income', 'Income')
+        EXPENSE = ('expense', 'Expense')
+
+    class Classification(models.TextChoices):
+        STATEMENT_OF_FINANCIAL_POSITION = (
+            'Statement of Financial Position',
+            'Statement of Financial Position',
+        )
+        STATEMENT_OF_PROFIT_OR_LOSS = (
+            'Statement of Profit or Loss',
+            'Statement of Profit or Loss',
+        )
+        CURRENT = ('Current', 'Current')
+        NON_CURRENT = ('Non-Current', 'Non-Current')
+        EQUITY = ('Equity', 'Equity')
+        OPERATING = ('Operating', 'Operating')
+        NON_OPERATING = ('Non-Operating', 'Non-Operating')
+        DIRECT = ('Direct', 'Direct')
+        ADMINISTRATIVE = ('Administrative', 'Administrative')
+        FINANCIAL = ('Financial', 'Financial')
+        CURRENT_ASSET = ('Current Asset', 'Current Asset')
+        DEFAULT = ('Default', 'Default')
+        LEGACY_ASSET = ('asset', 'Asset (legacy)')
+        LEGACY_LIABILITY = ('liability', 'Liability (legacy)')
+        LEGACY_EQUITY = ('equity', 'Equity (legacy)')
+        LEGACY_INCOME = ('income', 'Income (legacy)')
+        LEGACY_EXPENSE = ('expense', 'Expense (legacy)')
+
+    class BalanceSheetCategory(models.TextChoices):
+        ASSETS = ('Assets', 'Assets')
+        CURRENT_ASSETS = ('Current Assets', 'Current Assets')
+        FIXED_ASSETS = ('Fixed Assets', 'Fixed Assets')
+        INTANGIBLE_ASSETS = ('Intangible Assets', 'Intangible Assets')
+        INVESTMENTS = ('Investments', 'Investments')
+        LIABILITIES = ('Liabilities', 'Liabilities')
+        CURRENT_LIABILITIES = ('Current Liabilities', 'Current Liabilities')
+        LONG_TERM_LIABILITIES = ('Long-term Liabilities', 'Long-term Liabilities')
+        EQUITY = ('Equity', 'Equity')
+        SHAREHOLDERS_EQUITY = ('Shareholders Equity', 'Shareholders Equity')
+
+    class IncomeStatementCategory(models.TextChoices):
+        REVENUE = ('Revenue', 'Revenue')
+        OTHER_INCOME = ('Other Income', 'Other Income')
+        COST_OF_SALES = ('Cost of Sales', 'Cost of Sales')
+        OPERATING_EXPENSES = ('Operating Expenses', 'Operating Expenses')
+        ADMINISTRATIVE_EXPENSES = ('Administrative Expenses', 'Administrative Expenses')
+        FINANCIAL_EXPENSES = ('Financial Expenses', 'Financial Expenses')
+        EXPENSE = ('Expense', 'Expense')
+
+    class CashFlowCategory(models.TextChoices):
+        OPERATING = ('Operating Activities', 'Operating Activities')
+        INVESTING = ('Investing Activities', 'Investing Activities')
+        FINANCING = ('Financing Activities', 'Financing Activities')
+
+    NATURE_CHOICES = Nature.choices
     NATURE_CODE_PREFIX = {
         'asset': 'AST',
         'liability': 'LIA',
@@ -587,46 +639,199 @@ class AccountType(models.Model):
         'income': 'INC',
         'expense': 'EXP',
     }
-    IFRS_DEFAULTS = {
-        'asset': {
-            'classification': 'Statement of Financial Position',
-            'balance_sheet': 'Assets',
+    ROOT_CODE_PREFIX_BY_NATURE = {
+        Nature.ASSET: '1000',
+        Nature.LIABILITY: '2000',
+        Nature.EQUITY: '3000',
+        Nature.INCOME: '4000',
+        Nature.EXPENSE: '5000',
+    }
+    CLASSIFICATIONS_BY_NATURE = {
+        Nature.ASSET: [
+            Classification.STATEMENT_OF_FINANCIAL_POSITION,
+            Classification.CURRENT,
+            Classification.NON_CURRENT,
+            Classification.CURRENT_ASSET,
+        ],
+        Nature.LIABILITY: [
+            Classification.STATEMENT_OF_FINANCIAL_POSITION,
+            Classification.CURRENT,
+            Classification.NON_CURRENT,
+        ],
+        Nature.EQUITY: [
+            Classification.STATEMENT_OF_FINANCIAL_POSITION,
+            Classification.EQUITY,
+        ],
+        Nature.INCOME: [
+            Classification.STATEMENT_OF_PROFIT_OR_LOSS,
+            Classification.OPERATING,
+            Classification.NON_OPERATING,
+        ],
+        Nature.EXPENSE: [
+            Classification.STATEMENT_OF_PROFIT_OR_LOSS,
+            Classification.DIRECT,
+            Classification.OPERATING,
+            Classification.ADMINISTRATIVE,
+            Classification.FINANCIAL,
+        ],
+    }
+    BALANCE_SHEET_OPTIONS = {
+        Nature.ASSET: [
+            BalanceSheetCategory.ASSETS,
+            BalanceSheetCategory.CURRENT_ASSETS,
+            BalanceSheetCategory.FIXED_ASSETS,
+            BalanceSheetCategory.INTANGIBLE_ASSETS,
+            BalanceSheetCategory.INVESTMENTS,
+        ],
+        Nature.LIABILITY: [
+            BalanceSheetCategory.LIABILITIES,
+            BalanceSheetCategory.CURRENT_LIABILITIES,
+            BalanceSheetCategory.LONG_TERM_LIABILITIES,
+        ],
+        Nature.EQUITY: [
+            BalanceSheetCategory.EQUITY,
+            BalanceSheetCategory.SHAREHOLDERS_EQUITY,
+        ],
+        '__all__': [
+            BalanceSheetCategory.ASSETS,
+            BalanceSheetCategory.LIABILITIES,
+            BalanceSheetCategory.EQUITY,
+        ],
+    }
+    INCOME_STATEMENT_OPTIONS = {
+        Nature.INCOME: [
+            IncomeStatementCategory.REVENUE,
+            IncomeStatementCategory.OTHER_INCOME,
+        ],
+        Nature.EXPENSE: [
+            IncomeStatementCategory.COST_OF_SALES,
+            IncomeStatementCategory.OPERATING_EXPENSES,
+            IncomeStatementCategory.ADMINISTRATIVE_EXPENSES,
+            IncomeStatementCategory.FINANCIAL_EXPENSES,
+            IncomeStatementCategory.EXPENSE,
+        ],
+        '__all__': [
+            IncomeStatementCategory.REVENUE,
+            IncomeStatementCategory.EXPENSE,
+        ],
+    }
+    CASH_FLOW_OPTIONS = [
+        CashFlowCategory.OPERATING,
+        CashFlowCategory.INVESTING,
+        CashFlowCategory.FINANCING,
+    ]
+    DEFAULTS_BY_NATURE = {
+        Nature.ASSET: {
+            'classification': Classification.STATEMENT_OF_FINANCIAL_POSITION,
+            'balance_sheet': BalanceSheetCategory.ASSETS,
             'income_statement': None,
-            'cash_flow': 'Investing Activities',
+            'cash_flow': CashFlowCategory.INVESTING,
         },
-        'liability': {
-            'classification': 'Statement of Financial Position',
-            'balance_sheet': 'Liabilities',
+        Nature.LIABILITY: {
+            'classification': Classification.STATEMENT_OF_FINANCIAL_POSITION,
+            'balance_sheet': BalanceSheetCategory.LIABILITIES,
             'income_statement': None,
-            'cash_flow': 'Financing Activities',
+            'cash_flow': CashFlowCategory.FINANCING,
         },
-        'equity': {
-            'classification': 'Statement of Financial Position',
-            'balance_sheet': 'Equity',
+        Nature.EQUITY: {
+            'classification': Classification.STATEMENT_OF_FINANCIAL_POSITION,
+            'balance_sheet': BalanceSheetCategory.EQUITY,
             'income_statement': None,
-            'cash_flow': 'Financing Activities',
+            'cash_flow': CashFlowCategory.FINANCING,
         },
-        'income': {
-            'classification': 'Statement of Profit or Loss',
+        Nature.INCOME: {
+            'classification': Classification.STATEMENT_OF_PROFIT_OR_LOSS,
             'balance_sheet': None,
-            'income_statement': 'Revenue',
-            'cash_flow': 'Operating Activities',
+            'income_statement': IncomeStatementCategory.REVENUE,
+            'cash_flow': CashFlowCategory.OPERATING,
         },
-        'expense': {
-            'classification': 'Statement of Profit or Loss',
+        Nature.EXPENSE: {
+            'classification': Classification.STATEMENT_OF_PROFIT_OR_LOSS,
             'balance_sheet': None,
-            'income_statement': 'Expense',
-            'cash_flow': 'Operating Activities',
+            'income_statement': IncomeStatementCategory.EXPENSE,
+            'cash_flow': CashFlowCategory.OPERATING,
+        },
+    }
+    DEFAULTS_BY_CLASSIFICATION = {
+        Nature.ASSET: {
+            Classification.CURRENT: {
+                'balance_sheet': BalanceSheetCategory.CURRENT_ASSETS,
+                'income_statement': None,
+                'cash_flow': CashFlowCategory.OPERATING,
+            },
+            Classification.NON_CURRENT: {
+                'balance_sheet': BalanceSheetCategory.FIXED_ASSETS,
+                'income_statement': None,
+                'cash_flow': CashFlowCategory.INVESTING,
+            },
+            Classification.CURRENT_ASSET: {
+                'balance_sheet': BalanceSheetCategory.CURRENT_ASSETS,
+                'income_statement': None,
+                'cash_flow': CashFlowCategory.OPERATING,
+            },
+        },
+        Nature.LIABILITY: {
+            Classification.CURRENT: {
+                'balance_sheet': BalanceSheetCategory.CURRENT_LIABILITIES,
+                'income_statement': None,
+                'cash_flow': CashFlowCategory.OPERATING,
+            },
+            Classification.NON_CURRENT: {
+                'balance_sheet': BalanceSheetCategory.LONG_TERM_LIABILITIES,
+                'income_statement': None,
+                'cash_flow': CashFlowCategory.FINANCING,
+            },
+        },
+        Nature.EQUITY: {
+            Classification.EQUITY: {
+                'balance_sheet': BalanceSheetCategory.SHAREHOLDERS_EQUITY,
+                'income_statement': None,
+                'cash_flow': CashFlowCategory.FINANCING,
+            },
+        },
+        Nature.INCOME: {
+            Classification.NON_OPERATING: {
+                'balance_sheet': None,
+                'income_statement': IncomeStatementCategory.OTHER_INCOME,
+                'cash_flow': CashFlowCategory.INVESTING,
+            },
+            Classification.OPERATING: {
+                'balance_sheet': None,
+                'income_statement': IncomeStatementCategory.REVENUE,
+                'cash_flow': CashFlowCategory.OPERATING,
+            },
+        },
+        Nature.EXPENSE: {
+            Classification.DIRECT: {
+                'balance_sheet': None,
+                'income_statement': IncomeStatementCategory.COST_OF_SALES,
+                'cash_flow': CashFlowCategory.OPERATING,
+            },
+            Classification.OPERATING: {
+                'balance_sheet': None,
+                'income_statement': IncomeStatementCategory.OPERATING_EXPENSES,
+                'cash_flow': CashFlowCategory.OPERATING,
+            },
+            Classification.ADMINISTRATIVE: {
+                'balance_sheet': None,
+                'income_statement': IncomeStatementCategory.ADMINISTRATIVE_EXPENSES,
+                'cash_flow': CashFlowCategory.OPERATING,
+            },
+            Classification.FINANCIAL: {
+                'balance_sheet': None,
+                'income_statement': IncomeStatementCategory.FINANCIAL_EXPENSES,
+                'cash_flow': CashFlowCategory.FINANCING,
+            },
         },
     }
     account_type_id = models.BigAutoField(primary_key=True)
     code = models.CharField(max_length=20, unique=True)
     name = models.CharField(max_length=100)
     nature = models.CharField(max_length=10, choices=NATURE_CHOICES)
-    classification = models.CharField(max_length=50)
-    balance_sheet_category = models.CharField(max_length=50, null=True, blank=True)
-    income_statement_category = models.CharField(max_length=50, null=True, blank=True)
-    cash_flow_category = models.CharField(max_length=50, null=True, blank=True)
+    classification = models.CharField(max_length=50, choices=Classification.choices)
+    balance_sheet_category = models.CharField(max_length=50, choices=BalanceSheetCategory.choices, null=True, blank=True)
+    income_statement_category = models.CharField(max_length=50, choices=IncomeStatementCategory.choices, null=True, blank=True)
+    cash_flow_category = models.CharField(max_length=50, choices=CashFlowCategory.choices, null=True, blank=True)
     system_type = models.BooleanField(default=True)
     display_order = models.BigIntegerField()
     root_code_prefix = models.CharField(max_length=10, null=True, blank=True,
@@ -642,22 +847,80 @@ class AccountType(models.Model):
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='updated_account_types')
     rowversion = models.BinaryField(editable=False, null=True, blank=True, help_text="For MSSQL: ROWVERSION for optimistic concurrency.")
     
+    @classmethod
+    def _choice_label(cls, enum_cls, value):
+        try:
+            return enum_cls(value).label
+        except ValueError:
+            return value
+
+    @classmethod
+    def get_default_root_code_prefix(cls, nature):
+        return cls.ROOT_CODE_PREFIX_BY_NATURE.get(nature, '9000')
+
+    @classmethod
+    def next_display_order(cls):
+        current_max = cls.objects.aggregate(Max('display_order')).get('display_order__max') or 0
+        return current_max + 1
+
+    @classmethod
+    def get_default_categories(cls, nature, classification=None):
+        defaults = cls.DEFAULTS_BY_NATURE.get(nature, {}).copy()
+        classification_defaults = cls.DEFAULTS_BY_CLASSIFICATION.get(nature, {}).get(classification)
+        if classification_defaults:
+            defaults.update({k: v for k, v in classification_defaults.items() if v is not None})
+        return defaults
+
+    @classmethod
+    def get_ui_config(cls):
+        def serialize_options(enum_cls, values):
+            return [
+                {'value': val, 'label': cls._choice_label(enum_cls, val)}
+                for val in values
+            ]
+
+        classifications = {
+            key: serialize_options(cls.Classification, values)
+            for key, values in cls.CLASSIFICATIONS_BY_NATURE.items()
+        }
+        classifications['__all__'] = serialize_options(
+            cls.Classification,
+            [value for value, _ in cls.Classification.choices],
+        )
+        balance_sheet_categories = {
+            key: serialize_options(cls.BalanceSheetCategory, values)
+            for key, values in cls.BALANCE_SHEET_OPTIONS.items()
+        }
+        income_statement_categories = {
+            key: serialize_options(cls.IncomeStatementCategory, values)
+            for key, values in cls.INCOME_STATEMENT_OPTIONS.items()
+        }
+        return {
+            'natures': serialize_options(cls.Nature, [value for value, _ in cls.Nature.choices]),
+            'classifications': classifications,
+            'balance_sheet_categories': balance_sheet_categories,
+            'income_statement_categories': income_statement_categories,
+            'cash_flow_categories': serialize_options(cls.CashFlowCategory, cls.CASH_FLOW_OPTIONS),
+            'defaults_by_nature': cls.DEFAULTS_BY_NATURE,
+            'defaults_by_classification': cls.DEFAULTS_BY_CLASSIFICATION,
+            'root_code_prefix_by_nature': cls.ROOT_CODE_PREFIX_BY_NATURE,
+            'default_root_code_step': cls._meta.get_field('root_code_step').default or 100,
+            'next_display_order': cls.next_display_order(),
+        }
+
     def __str__(self):
         return f"{self.code} - {self.name}"
     def save(self, *args, **kwargs):
         if not self.root_code_prefix:
-            self.root_code_prefix = {
-                'asset': '1000',
-                'liability': '2000',
-                'equity': '3000',
-                'income': '4000',
-                'expense': '5000',
-            }.get(self.nature, '9000')
+            self.root_code_prefix = self.get_default_root_code_prefix(self.nature)
         if not self.root_code_step:
             self.root_code_step = 100
-        defaults = self.IFRS_DEFAULTS.get(self.nature, {})
+        if self.display_order is None:
+            self.display_order = self.next_display_order()
+        defaults = self.get_default_categories(self.nature, self.classification)
         if not self.classification and defaults.get('classification'):
             self.classification = defaults['classification']
+            defaults = self.get_default_categories(self.nature, self.classification)
         if not self.balance_sheet_category and defaults.get('balance_sheet'):
             self.balance_sheet_category = defaults['balance_sheet']
         if not self.income_statement_category and defaults.get('income_statement'):

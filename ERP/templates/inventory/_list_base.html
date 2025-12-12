@@ -154,8 +154,12 @@
                         <div class="table-rep-plugin">
                             <div class="table-responsive mb-0">
                                 <table id="datatable-buttons" class="table table-bordered table-sm dt-responsive nowrap w-100 mb-0" data-view-key="{{ view_key|default:page_title|default:'list'|slugify }}">
-                                    {% block table_head %}{% endblock table_head %}
-                                    {% block table_body %}{% endblock table_body %}
+                                    <thead>
+                                        {% block table_head %}{% endblock table_head %}
+                                    </thead>
+                                    <tbody>
+                                        {% block table_body %}{% endblock table_body %}
+                                    </tbody>
                                     <tfoot>
                                         {% block table_foot %}{% endblock table_foot %}
                                     </tfoot>
@@ -352,15 +356,13 @@ $(document).ready(function() {
 });
 
 // Loading indicator logic
-// Show loading overlay for any HTMX requests that target content areas like table bodies
 document.addEventListener('htmx:beforeRequest', function(evt) {
     try {
         const target = evt && evt.detail && evt.detail.target;
-        // Show overlay if a request targets a table or table container
         if (!target || (target.closest && target.closest('.table-responsive'))) {
             document.querySelector('.loading-overlay').style.display = 'flex';
         }
-    } catch(e) { /* Safe guard: don't let an error prevent the request */ }
+    } catch(e) { /* Safe guard */ }
 });
 document.addEventListener('htmx:afterRequest', function(evt) {
     try {
