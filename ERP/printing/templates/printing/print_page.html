@@ -5,6 +5,8 @@
   <title>Print Journal</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
+  {% include "printing/_paged_print_css.html" %}
+
   <style>
     :root {
       --card-bg: #ffffff;
@@ -25,6 +27,37 @@
       background: #ffffff;
     }
     .page-wrapper { max-width: 1100px; margin: 0 auto; }
+    .print-controls {
+      background: rgba(255, 255, 255, 0.95);
+      border-bottom: 1px solid var(--border-soft);
+      padding: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .print-controls label {
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-right: 0.5rem;
+    }
+    .print-controls select {
+      border-radius: 6px;
+      border: 1px solid var(--border-soft);
+      padding: 0.4rem 0.8rem;
+      font-size: 0.85rem;
+      background: #fff;
+    }
+    .print-controls button {
+      border-radius: 6px;
+      border: 0;
+      background: var(--accent);
+      color: #fff;
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .print-controls button:hover { background: #1d4ed8; }
     .template-compact .print-surface {
       padding: 1.2rem 1.3rem;
       border-radius: 12px;
@@ -36,12 +69,44 @@
     @media print {
       .page-wrapper { max-width: 100%; margin: 0; }
       .print-surface { box-shadow: none; border-radius: 0; border: 0; }
+      .print-controls { display: none !important; }
     }
   </style>
 </head>
 
-<body onload="window.print()">
+<body {% if auto_print %}onload="window.print()"{% endif %}>
   <div class="page-wrapper">
+    <div class="print-controls">
+      <form method="get" style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+        {% if templates|length > 1 %}
+          <label for="template_id">Print Template:</label>
+          <select name="template_id" id="template_id">
+            {% for tpl in templates %}
+              <option value="{{ tpl.id }}" {% if selected_template and selected_template.id == tpl.id %}selected{% endif %}>{{ tpl.name }}</option>
+            {% endfor %}
+          </select>
+        {% else %}
+          <label for="template">Template:</label>
+          <select name="template" id="template">
+            {% for key, label in template_choices %}
+              <option value="{{ key }}" {% if config.template_name == key %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+
+          <label for="paper">Paper Size:</label>
+          <select name="paper" id="paper">
+            {% for key, label in paper_sizes %}
+              <option value="{{ key }}" {% if config.paper_size == key %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        {% endif %}
+
+        <button type="submit">Update Preview</button>
+      </form>
+
+      <button onclick="window.print()">Print Now</button>
+    </div>
+
     <div id="templateRoot" class="{{ template_root_class }}">
       {% include template_path %}
     </div>

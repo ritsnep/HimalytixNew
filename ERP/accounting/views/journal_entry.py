@@ -1825,6 +1825,44 @@ def journal_entry_row_duplicate(request):
 
 @login_required
 @require_POST
+def journal_entry_row_delete(request):
+    """Remove a row client-side by returning an empty response with triggers."""
+    # Deletion is handled client-side; this endpoint exists for HTMX semantics/CSRF.
+    response = HttpResponse("")
+    response['HX-Trigger'] = json.dumps({"refreshSidePanel": True})
+    return response
+
+
+@login_required
+@require_POST
+def journal_entry_rows_reorder(request):
+    """Reorder rows from drag-and-drop and return an updated grid."""
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+
+    payload = _parse_request_json(request) or {}
+    rows = payload.get("rows") or []
+    try:
+        src = int(payload.get("src"))
+        dest = int(payload.get("dest"))
+    except (TypeError, ValueError):
+        src = dest = None
+    if isinstance(rows, list) and src is not None and dest is not None and 0 <= src < len(rows) and 0 <= dest < len(rows):
+        row = rows.pop(src)
+        rows.insert(dest, row)
+
+    journal_type_param = _journal_type_param_from_request(request)
+    _, _, _, _, line_defaults, line_labels = _line_schema_context(organization, journal_type_param)
+    normalized_rows = [_merge_line_row_data(row, line_defaults) for row in rows] if isinstance(rows, list) else []
+    html = _render_lines_fragment(request, normalized_rows or [{}], line_labels)
+    response = HttpResponse(html)
+    response['HX-Trigger'] = json.dumps({"refreshSidePanel": True})
+    return response
+
+
+@login_required
+@require_POST
 def journal_entry_bulk_add(request):
     """Add multiple lines parsed from clipboard data."""
     organization = _active_organization(request.user)
@@ -2019,7 +2057,7 @@ def journal_entry_side_panel(request):
                 "code": account_obj.account_code,
                 "name": account_obj.account_name,
                 "type": getattr(account_obj.account_type, "name", ""),
-                "balance": float(account_obj.balance()),
+                "balance": float(account_obj.balance if not callable(account_obj.balance) else account_obj.balance()),
                 "is_bank_account": account_obj.is_bank_account,
             }
 

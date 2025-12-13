@@ -31,6 +31,11 @@ Note: all users can save their own preferences from `/print/settings/`.
 - `printing/templates/printing/journal_classic.html`: “classic/modern” print layout
 - `printing/templates/printing/journal_compact.html`: compact print layout
 
+Shared includes:
+
+- `printing/templates/printing/_paged_print_css.html`: print CSS helpers (A4/A5, repeated table headers, paged-engine page counters)
+- `printing/templates/printing/_running_header.html`: reusable running header block
+
 ## Sidebar entry
 
 The left sidebar includes **Print Configuration** under Accounting:
@@ -51,6 +56,43 @@ Current toggle keys:
 - `show_audit`
 - `show_signatures`
 - `show_imbalance`
+
+Options:
+
+- `paper_size` (`A4` or `A5`)
+
+## Audit trail
+
+Print preference changes are written to the DB audit table:
+
+- Model: `PrintSettingsAuditLog` (`ERP/printing/models_audit.py`)
+- Admin: registered in `ERP/printing/admin.py`
+
+Actions:
+
+- `settings_update` (from `/print/settings/`)
+- `preview_update` (from POST on `/print/preview/<journal_id>/` for users with permission)
+
+## Organization scoping (multi-tenant safety)
+
+Printing enforces same-organization access when the `Journal` has an `organization_id`.
+If the journal does not have `organization_id` (e.g., dummy objects in unit tests), the guard is skipped.
+
+Superusers bypass the org check.
+
+## Migrations
+
+This app includes migrations:
+
+- `0001_initial.py`: `PrintTemplateConfig`
+- `0002_printsettingsauditlog.py`: `PrintSettingsAuditLog`
+- `0003_stable_audit_index_names.py`: stabilizes audit index names to avoid Django auto-generating rename migrations
+
+Apply migrations from `ERP/`:
+
+```powershell
+python manage.py migrate printing
+```
 
 ## How to test manually
 

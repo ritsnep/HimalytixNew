@@ -25,6 +25,7 @@
   let cachedValidationErrors = [];
   let suggestionTimer = null;
   let lookupTimers = {};
+  let dragSourceIndex = null;
 
   if (autoBalanceButton && autoBalanceButton.dataset.autoBalanceEnabled === 'false') {
     autoBalanceButton.disabled = true;
@@ -426,6 +427,20 @@
     });
   }
 
+  // Ensure attachment buttons still work via htmx triggers
+  document.body.addEventListener('change', function (event) {
+    const input = event.target;
+    if (input.matches('input[type="file"][data-hx-post]')) {
+      const formData = new FormData();
+      Array.from(input.files || []).forEach((file) => formData.append(input.name || 'file', file));
+      htmx.ajax('POST', input.dataset.hxPost || input.getAttribute('hx-post'), {
+        target: input.dataset.hxTarget || input.getAttribute('hx-target') || '#journal-sidebar',
+        swap: 'innerHTML',
+        values: formData,
+      });
+    }
+  });
+
   document.addEventListener('focusin', function (event) {
     const target = event.target;
     if (!target || !target.closest(linesTableSelector)) {
@@ -438,6 +453,49 @@
     const idx = row.dataset.rowIndex || Array.from(row.parentElement.children).indexOf(row);
     selectedLineIndex = parseInt(idx, 10) || 0;
     refreshSidePanel();
+  });
+
+  // Drag and drop reordering
+  document.addEventListener('dragstart', function (event) {
+    const row = event.target.closest(`${linesTableSelector} tbody tr`);
+    if (!row) {
+      return;
+    }
+    dragSourceIndex = parseInt(row.dataset.rowIndex || row.getAttribute('data-row-index') || 0, 10);
+    event.dataTransfer.effectAllowed = 'move';
+  });
+
+  document.addEventListener('dragover', function (event) {
+    if (event.target.closest(`${linesTableSelector} tbody tr`)) {
+      event.preventDefault();
+    }
+  });
+
+  document.addEventListener('drop', function (event) {
+    const destRow = event.target.closest(`${linesTableSelector} tbody tr`);
+    if (!destRow || dragSourceIndex === null) {
+      return;
+    }
+    event.preventDefault();
+    const destIndex = parseInt(destRow.dataset.rowIndex || destRow.getAttribute('data-row-index') || 0, 10);
+    if (destIndex === dragSourceIndex) {
+      dragSourceIndex = null;
+      return;
+    }
+    const rows = collectAllRows();
+    if (dragSourceIndex >= 0 && dragSourceIndex < rows.length && destIndex >= 0 && destIndex < rows.length) {
+      const moved = rows.splice(dragSourceIndex, 1)[0];
+      rows.splice(destIndex, 0, moved);
+      if (linesEndpoint) {
+        htmx.ajax('POST', appContainer.dataset.rowsReorderEndpoint || '/accounting/journal-entry/rows/reorder/', {
+          target: '#lines-section',
+          swap: 'innerHTML',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rows: rows, src: dragSourceIndex, dest: destIndex }),
+        });
+      }
+    }
+    dragSourceIndex = null;
   });
 
   document.addEventListener('input', function (event) {

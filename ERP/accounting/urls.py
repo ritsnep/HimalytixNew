@@ -91,6 +91,7 @@ from .views.views_delete import (
 
 from .api import views as api_views
 from .views import journal_entry_view
+from .views import journal_entry_htmx
 from .views import views_chart
 from .views import views_settings
 from .views import journal_check_view
@@ -170,7 +171,12 @@ urlpatterns = [
     path('journal-entry/prefs/save/', journal_entry.journal_ui_preferences_save, name='journal_ui_preferences_save'),
     path('journal-entry/attachments/upload/', journal_entry.journal_attachment_upload, name='journal_attachment_upload'),
     path('journal-entry/attachments/delete/', journal_entry.journal_attachment_delete, name='journal_attachment_delete'),
-    path('journal/new/', journal_entry_view.JournalEntryCreateView.as_view(), name='journal_entry_new'),
+    path('journal/new/', journal_entry_htmx.journal_entry_new, name='journal_entry_new'),
+    path('journal/header/', journal_entry_htmx.journal_header_partial, name='journal_header_partial'),
+    path('journal/lines/', journal_entry_htmx.journal_lines_partial, name='journal_lines_partial'),
+    path('journal/lines/add/', journal_entry_htmx.journal_add_line_hx, name='journal_add_line_hx'),
+    path('journal/lines/duplicate/', journal_entry_htmx.journal_duplicate_line_hx, name='journal_duplicate_line_hx'),
+    path('journal/validate-hx/', journal_entry_htmx.journal_validate_hx, name='journal_validate_hx'),
     path('journal/<int:pk>/', journal_entry_view.JournalEntryDetailView.as_view(), name='journal_entry_detail'),
     path('journal/<int:pk>/edit/', journal_entry_view.JournalEntryUpdateView.as_view(), name='journal_entry_edit'),
     path('journal/validate/', journal_entry_view.JournalEntryValidateView.as_view(), name='journal_entry_validate'),

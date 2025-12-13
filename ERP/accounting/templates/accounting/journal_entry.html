@@ -1,210 +1,958 @@
-{% extends "partials/base.html" %}
+{% extends "accounting/base_voucher.html" %}
 {% load static %}
+{% load widget_tweaks %}
 
-{% block title %}Journal Entry{% endblock title %}
+{% block title %}Journal Entry{% endblock %}
 
-{% block extra_css %}
+{% block head_extras %}
 {{ block.super }}
-<link rel="stylesheet" href="{% static 'accounting/css/voucher_entry.css' %}">
-<link rel="stylesheet" href="{% static 'accounting/css/voucher_entry_dason.css' %}">
 <style>
-  #journal-debug-panel {
-    font-size: 0.9rem;
+  .journal-side-panel {
+    max-height: 100%;
   }
-  #journal-debug-panel pre {
-    background-color: #f8f9fa;
-    border-radius: 0.35rem;
-    padding: 0.75rem;
-    max-height: 260px;
-    overflow: auto;
-    font-family: var(--bs-font-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace);
-    white-space: pre-wrap;
-    margin-bottom: 0;
+  .attachment-dropzone {
+    border: 1px dashed #ced4da;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
   }
-  #journal-debug-entries {
-    max-height: 320px;
-    overflow-y: auto;
+  .attachment-dropzone.drag-over {
+    border-color: #0d6efd;
+    background-color: rgba(13, 110, 253, 0.05);
+  }
+  .hide-cost-center #journal-grid th:nth-child(5),
+  .hide-cost-center #journal-grid td:nth-child(5) {
+    display: none;
+  }
+  .side-panel-section + .side-panel-section {
+    border-top: 1px solid #e9ecef;
+    padding-top: 1rem;
   }
 </style>
-{% endblock extra_css %}
+{% endblock head_extras %}
 
-{% block extra_js %}
-{{ block.super }}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
-{% endblock extra_js %}
+{% block page_content %}
+<div class="container-fluid py-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h4 class="mb-0">Journal Entry</h4>
+      <small class="text-muted">Create a new journal voucher</small>
+    </div>
+    <div>
+      <a href="{% url 'accounting:voucher_list' %}" class="btn btn-outline-secondary">
+        &larr; Back to Vouchers
+      </a>
+    </div>
+  </div>
 
-{% block content %}
-<div class="main-content">
-  <div class="page-content py-3 py-md-4">
-    <div class="container-fluid px-2 px-md-3 journal-entry-page">
-      {# Hidden CSRF token for JavaScript fetch requests #}
-      {% csrf_token %}
-      
-      <div class="row">
-        <div class="col-12">
-          <div class="page-title-box d-flex align-items-center justify-content-between">
-            <h4 class="mb-0">Journal Entry</h4>
-            <div class="page-title-right">
-              <ol class="breadcrumb m-0">
-                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Home</a></li>
-                <li class="breadcrumb-item"><a href="{% url 'accounting:voucher_list' %}">Vouchers</a></li>
-                <li class="breadcrumb-item active">Journal Entry</li>
-              </ol>
+  <div id="app-alerts" class="mb-3"></div>
+
+  <div class="card">
+    <div class="card-body" id="journal-app">
+      <form id="journal-form" method="POST" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        <input type="hidden" id="journal-id" name="journal_id" value="{{ form.instance.pk }}">
+        {% with load_partials=load_partials_via_htmx|default:True %}
+        <div class="row g-4">
+          <div class="col-lg-8" id="journal-main">
+            <div id="journal-header"
+                 {% if load_partials %}
+                 hx-get="{% url 'accounting:journal_header_partial' %}"
+                 hx-trigger="load"
+                 hx-target="#journal-header"
+                 hx-swap="innerHTML"
+                 {% endif %}>
+              {% if not load_partials %}
+                {% include "accounting/partials/journal_header_form.html" with form=form %}
+              {% endif %}
+            </div>
+
+            <div id="journal-lines"
+                 {% if load_partials %}
+                 hx-get="{% url 'accounting:journal_lines_partial' %}"
+                 hx-trigger="load"
+                 hx-target="#journal-lines"
+                 hx-swap="innerHTML"
+                 {% endif %}>
+              {% if not load_partials %}
+                {% include "accounting/partials/journal_lines_table.html" with formset=formset %}
+              {% endif %}
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- In-page alert region (messages appear just below the top bar) -->
-      <div id="app-alerts" class="mb-3" aria-live="polite" aria-atomic="true"></div>
-
-      {% if journal_debug_enabled %}
-      <div id="journal-debug-panel" class="card border border-warning mb-3" role="region" aria-label="Journal entry debug log">
-        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-          <div>
-            <strong>Save Debugging</strong>
-            <span class="text-muted d-block small">Every request & response is captured here while debug mode is enabled.</span>
-          </div>
-          <div class="btn-group btn-group-sm" role="group" aria-label="Debug log actions">
-            <button type="button" class="btn btn-outline-secondary" id="journal-debug-copy">Copy</button>
-            <button type="button" class="btn btn-outline-secondary" id="journal-debug-download">Download</button>
-            <button type="button" class="btn btn-outline-secondary" id="journal-debug-clear">Clear</button>
-          </div>
-        </div>
-        <div class="card-body p-3">
-          <div id="journal-debug-entries" class="debug-log-entries" aria-live="polite"></div>
-        </div>
-      </div>
-      {% endif %}
-
-    <!-- Main Content Card -->
-    <div class="journal-entry-shell">
-      <div class="row g-3">
-        <div class="col-12">
-          <div class="card">
-            <div class="card-body">
-              <div
-                class="container-fluid px-2 px-md-3"
-                id="journal-app"
-                data-row-endpoint="{{ row_endpoint }}"
-                data-header-endpoint="{{ header_partial_endpoint }}"
-                data-lines-endpoint="{{ lines_partial_endpoint }}"
-                data-side-panel-endpoint="{{ side_panel_endpoint }}"
-                data-add-row-endpoint="{{ add_row_endpoint }}"
-                data-duplicate-row-endpoint="{{ duplicate_row_endpoint }}"
-                data-bulk-add-endpoint="{{ bulk_add_rows_endpoint }}"
-                data-lookup-account="{{ lookup_urls.account }}"
-                data-lookup-cost-center="{{ lookup_urls.costCenter }}"
-                data-auto-balance-endpoint="{{ auto_balance_endpoint }}"
-                data-initial-journal-id="{{ initial_journal_id }}"
-                data-ui-preferences="{{ ui_preferences_json|escapejs }}"
-                data-line-density="{{ line_density }}"
-              >
-                <div id="app-alerts" class="mb-3" aria-live="polite" aria-atomic="true"></div>
-
-                <div class="row">
-                  <div class="col-md-8 pe-md-4" id="journal-main">
-                    <div class="d-flex justify-content-end mb-3 gap-2">
-                      <button
-                        type="button"
-                        id="auto-balance"
-                        class="btn btn-sm btn-secondary"
-                        data-auto-balance-endpoint="{{ auto_balance_endpoint }}"
-                        data-auto-balance-enabled="{{ auto_balance_enabled|yesno:'true,false' }}"
-                        {% if not auto_balance_enabled %}disabled{% endif %}
-                      >
-                        Auto Balance
-                      </button>
-                      <button
-                        type="button"
-                        class="btn btn-sm btn-outline-secondary"
-                        data-bs-toggle="modal"
-                        data-bs-target="#column-manager-modal"
-                      >
-                        Column Manager
-                      </button>
-                    </div>
-                    <div
-                      id="journal-header"
-                      hx-get="{{ header_partial_endpoint }}"
-                      hx-trigger="load"
-                      hx-target="#journal-header"
-                      hx-swap="innerHTML"
-                      hx-vals='{"journalId": "{{ initial_journal_id }}"}'
-                    ></div>
-                    <div
-                      id="lines-section"
-                      hx-get="{{ lines_partial_endpoint }}"
-                      hx-trigger="load"
-                      hx-target="#lines-section"
-                      hx-swap="innerHTML"
-                      hx-vals='{"journalId": "{{ initial_journal_id }}"}'
-                    ></div>
+          <div class="col-lg-4 d-flex flex-column gap-3" id="journal-sidebar">
+            <div class="card journal-side-panel">
+              <div class="card-body">
+                <div class="side-panel-section">
+                  <h6 class="mb-2">Line Details</h6>
+                  <div id="side-panel-details" class="text-muted small">
+                    Select a line to preview account, description, and amount details.
                   </div>
-                  <div
-                    class="col-md-4"
-                    id="journal-sidebar"
-                    hx-get="{{ side_panel_endpoint }}"
-                    hx-trigger="load"
-                    hx-target="#journal-sidebar"
-                    hx-swap="innerHTML"
-                    hx-vals='{"journalId": "{{ initial_journal_id }}"}'
-                  ></div>
+                </div>
+
+                <div class="side-panel-section">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">Attachments</h6>
+                    <small class="text-muted" id="attachment-count">0 files</small>
+                  </div>
+                  <ul class="list-unstyled small mb-2" id="attachment-preview-list">
+                    <li class="text-muted">No files attached.</li>
+                  </ul>
+                  <div id="attachment-dropzone" class="attachment-dropzone mb-2">
+                    Drag &amp; drop files here or click to browse.
+                  </div>
+                  <input type="file" id="attachments-input" name="attachments" multiple class="d-none">
+                  <textarea
+                    class="form-control form-control-sm mt-2"
+                    name="notes"
+                    rows="3"
+                    placeholder="Add any internal notes or context"
+                  >{{ form.instance.notes|default:'' }}</textarea>
+                </div>
+
+                <div class="side-panel-section">
+                  <h6 class="mb-2">Import / Export</h6>
+                  <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="import-lines-btn">
+                      <i class="fas fa-file-import"></i> Import Excel
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="export-lines-btn">
+                      <i class="fas fa-file-export"></i> Export Excel
+                    </button>
+                  </div>
+                  <input type="file" id="import-file-input" accept=".xlsx,.xls" class="d-none">
+                  <p class="text-muted small mt-2 mb-0">
+                    Tip: You can also paste rows directly from Excel into the grid.
+                  </p>
+                </div>
+
+                <div class="side-panel-section">
+                  <h6 class="mb-2">Preferences</h6>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input pref-toggle" type="checkbox" id="toggle-cost-center" data-toggle-class="hide-cost-center">
+                    <label class="form-check-label small" for="toggle-cost-center">Hide Cost Center column</label>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
-    </div>
-  </div>
-</div>
-<!-- END main-content -->
-<div
-  class="modal fade"
-  id="column-manager-modal"
-  tabindex="-1"
-  aria-labelledby="columnManagerLabel"
-  aria-hidden="true"
->
-  <div class="modal-dialog modal-dialog-scrollable">
-    <form
-      id="column-manager-form"
-      class="modal-content"
-      hx-post="{{ prefs_save_endpoint }}"
-      hx-target="#app-alerts"
-      hx-swap="innerHTML"
-    >
-      {% csrf_token %}
-      <input type="hidden" name="preferences" id="column-manager-payload">
-      <div class="modal-header">
-        <h5 class="modal-title" id="columnManagerLabel">Column Manager</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p class="small text-muted">Reorder columns or toggle their visibility for the lines grid.</p>
-        <div class="mb-3">
-          <label class="form-label small mb-1" for="column-density-select">Row density</label>
-          <select class="form-select form-select-sm" id="column-density-select">
-            <option value="comfortable">Comfortable</option>
-            <option value="compact">Compact</option>
-          </select>
-        </div>
-        <ul class="list-group list-group-flush" id="column-manager-list" role="list"></ul>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="submit" class="btn btn-sm btn-primary">Save preferences</button>
-      </div>
-    </form>
-  </div>
-</div>
-<script src="{% static 'libs/htmx.org/dist/htmx.min.js' %}" defer></script>
-<script>window.disableLegacyVoucherEntry = true;</script>
-<!-- Keep voucher_entry.js for features not yet migrated; ensure it loads after HTMX -->
-<script src="{% static 'accounting/js/voucher_entry.js' %}" defer></script>
-<script src="{% static 'accounting/js/journal_grid.js' %}" defer></script>
+        {% endwith %}
+      </form>
 
-{# Removed in-page config modal; users are redirected to a dedicated selection page instead. #}
-{% endblock content %}
+      <div class="d-flex justify-content-end mt-2 pe-2 text-end">
+        <div><strong>Total Debit:</strong> <span id="total-debit">0.00</span></div>
+        <div class="ms-4"><strong>Total Credit:</strong> <span id="total-credit">0.00</span></div>
+        <div class="ms-4" id="imbalance-container">
+          <span class="text-success fw-bold">Balanced</span>
+        </div>
+      </div>
+
+      <div class="mt-4 text-end d-flex flex-wrap justify-content-end gap-2">
+        <button type="button" class="btn btn-outline-secondary" onclick="window.location.reload();">
+          Cancel
+        </button>
+        <button type="submit" form="journal-form" name="action" value="draft" class="btn btn-warning">
+          Save Draft
+        </button>
+        <button type="submit" form="journal-form" name="action" value="submit" class="btn btn-info" disabled title="Submit becomes available after workflow is enabled">
+          Submit for Approval
+        </button>
+        <button type="submit" form="journal-form" name="action" value="post" class="btn btn-primary">
+          Save &amp; Post
+        </button>
+        <button type="button" class="btn btn-success" disabled title="Approve is available on saved journals">
+          Approve
+        </button>
+        <button type="button" class="btn btn-danger" disabled title="Reject is available on saved journals">
+          Reject
+        </button>
+        <button type="button" class="btn btn-dark" disabled title="Reverse available after posting">
+          Reverse
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock page_content %}
+
+{% block scripts %}
+{{ block.super }}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+<script>
+  window.journalLines = (function () {
+    const state = {
+      selectedRowIndex: null,
+      pendingRowResolvers: [],
+    };
+
+    function getGridBody() {
+      return document.getElementById('journal-grid-body');
+    }
+
+    function getRows() {
+      const body = getGridBody();
+      return body ? Array.from(body.querySelectorAll('tr.journal-line-row')) : [];
+    }
+
+    function getVisibleRows() {
+      return getRows().filter(isRowActive);
+    }
+
+    function getRowCells(row) {
+      return row ? Array.from(row.querySelectorAll('.grid-cell')) : [];
+    }
+
+    function getDuplicateBtn() {
+      return document.getElementById('dup-line-btn');
+    }
+
+    function getTotalFormsInput() {
+      return document.getElementById('id_lines-TOTAL_FORMS');
+    }
+
+    function parseAmount(value) {
+      if (value === undefined || value === null || value === '') {
+        return 0;
+      }
+      const numeric = parseFloat(value);
+      return Number.isFinite(numeric) ? numeric : 0;
+    }
+
+    function formatAmount(value) {
+      return Number(value).toFixed(2);
+    }
+
+    function isRowMarkedDeleted(row) {
+      const deleteInput = row && row.querySelector('input[name$="-DELETE"]');
+      return Boolean(deleteInput && deleteInput.checked);
+    }
+
+    function isRowActive(row) {
+      return Boolean(row && row.style.display !== 'none' && !isRowMarkedDeleted(row));
+    }
+
+    function updateDuplicateButton(index) {
+      const button = getDuplicateBtn();
+      if (!button) {
+        return;
+      }
+      if (index === undefined || index === null || index === '') {
+        button.disabled = true;
+        button.setAttribute('hx-target', '#journal-grid-body');
+        button.setAttribute('hx-vals', '{"lineIndex": ""}');
+        return;
+      }
+      button.disabled = false;
+      button.setAttribute('hx-target', '#line-' + index);
+      button.setAttribute('hx-vals', JSON.stringify({ lineIndex: index }));
+    }
+
+    function clearSelection() {
+      const body = getGridBody();
+      if (body) {
+        body.querySelectorAll('.journal-line-row.selected')
+          .forEach(function (row) {
+            row.classList.remove('selected', 'table-active');
+          });
+      }
+      state.selectedRowIndex = null;
+      updateDuplicateButton();
+    }
+
+    function highlightRow(row) {
+      if (!row) {
+        clearSelection();
+        return;
+      }
+      const body = getGridBody();
+      if (body) {
+        body.querySelectorAll('.journal-line-row')
+          .forEach(function (r) {
+            r.classList.remove('selected', 'table-active');
+          });
+      }
+      row.classList.add('selected', 'table-active');
+      state.selectedRowIndex = row.dataset.lineIndex;
+      updateDuplicateButton(row.dataset.lineIndex);
+      updateSidePanel(row);
+    }
+
+    function handleRowClick(event) {
+      const row = event.target.closest('#journal-grid-body tr.journal-line-row');
+      if (row) {
+        highlightRow(row);
+      }
+    }
+
+    function incrementFormCount() {
+      const totalInput = getTotalFormsInput();
+      if (!totalInput) {
+        return;
+      }
+      const currentValue = parseInt(totalInput.value || '0', 10);
+      totalInput.value = String(currentValue + 1);
+    }
+
+    function focusFirstCell(row) {
+      const cells = getRowCells(row);
+      if (cells.length) {
+        cells[0].focus();
+      }
+    }
+
+    function ensureErrorRow(row) {
+      if (!row || !row.parentNode) {
+        return null;
+      }
+      let sibling = row.nextElementSibling;
+      if (sibling && sibling.classList.contains('line-error-row')) {
+        return sibling;
+      }
+      const errorRow = document.createElement('tr');
+      errorRow.className = 'line-error-row';
+      const cell = document.createElement('td');
+      cell.colSpan = row.children.length || 1;
+      cell.className = 'text-danger small py-1';
+      errorRow.appendChild(cell);
+      row.parentNode.insertBefore(errorRow, row.nextElementSibling);
+      return errorRow;
+    }
+
+    function hideErrorRow(row) {
+      if (!row) {
+        return;
+      }
+      const sibling = row.nextElementSibling;
+      if (sibling && sibling.classList.contains('line-error-row')) {
+        sibling.style.display = 'none';
+        const cell = sibling.querySelector('td');
+        if (cell) {
+          cell.textContent = '';
+        }
+      }
+    }
+
+    function showRowErrors(row, messages) {
+      if (!messages.length) {
+        hideErrorRow(row);
+        return;
+      }
+      const errorRow = ensureErrorRow(row);
+      if (!errorRow) {
+        return;
+      }
+      const cell = errorRow.querySelector('td');
+      if (cell) {
+        cell.textContent = messages.join(' ');
+      }
+      errorRow.style.display = '';
+    }
+
+    function toggleFieldError(field, hasError) {
+      if (!field) {
+        return;
+      }
+      if (hasError) {
+        field.classList.add('is-invalid');
+      } else {
+        field.classList.remove('is-invalid');
+      }
+    }
+
+    function validateRow(row) {
+      if (!row || !isRowActive(row)) {
+        hideErrorRow(row);
+        return true;
+      }
+      const accountField = row.querySelector('[name$="-account"]');
+      const debitField = row.querySelector('[name$="-debit_amount"]');
+      const creditField = row.querySelector('[name$="-credit_amount"]');
+      const descriptionField = row.querySelector('[name$="-description"]');
+
+      const debitAmount = parseAmount(debitField ? debitField.value : 0);
+      const creditAmount = parseAmount(creditField ? creditField.value : 0);
+      const errors = [];
+
+      const hasDebit = debitAmount > 0;
+      const hasCredit = creditAmount > 0;
+
+      if (hasDebit && hasCredit) {
+        errors.push('Enter either Debit or Credit, not both.');
+        toggleFieldError(debitField, true);
+        toggleFieldError(creditField, true);
+      } else {
+        toggleFieldError(debitField, false);
+        toggleFieldError(creditField, false);
+      }
+
+      const hasData = Boolean(
+        (accountField && accountField.value) ||
+        (descriptionField && descriptionField.value) ||
+        hasDebit ||
+        hasCredit
+      );
+
+      if (hasData && !hasDebit && !hasCredit) {
+        errors.push('Enter a debit or credit amount.');
+        toggleFieldError(debitField, true);
+        toggleFieldError(creditField, true);
+      } else if (!hasDebit && !hasCredit) {
+        toggleFieldError(debitField, false);
+        toggleFieldError(creditField, false);
+      }
+
+      if ((hasDebit || hasCredit) && accountField && !accountField.value) {
+        errors.push('Account selection is required.');
+        toggleFieldError(accountField, true);
+      } else {
+        toggleFieldError(accountField, false);
+      }
+
+      showRowErrors(row, errors);
+      return !errors.length;
+    }
+
+    function updateTotals() {
+      const rows = getRows();
+      let totalDebit = 0;
+      let totalCredit = 0;
+
+      rows.forEach(function (row) {
+        if (!isRowActive(row)) {
+          return;
+        }
+        const debitField = row.querySelector('[name$="-debit_amount"]');
+        const creditField = row.querySelector('[name$="-credit_amount"]');
+        totalDebit += parseAmount(debitField ? debitField.value : 0);
+        totalCredit += parseAmount(creditField ? creditField.value : 0);
+      });
+
+      const totalDebitEl = document.getElementById('total-debit');
+      const totalCreditEl = document.getElementById('total-credit');
+      const imbalanceEl = document.getElementById('imbalance-container');
+
+      if (totalDebitEl) {
+        totalDebitEl.textContent = formatAmount(totalDebit);
+      }
+      if (totalCreditEl) {
+        totalCreditEl.textContent = formatAmount(totalCredit);
+      }
+      if (imbalanceEl) {
+        const diff = totalDebit - totalCredit;
+        if (Math.abs(diff) < 0.01) {
+          imbalanceEl.innerHTML = '<span class="text-success fw-bold">Balanced</span>';
+        } else {
+          const side = diff > 0 ? 'debit' : 'credit';
+          imbalanceEl.innerHTML = '<span class="text-danger fw-bold">Off by ' + formatAmount(Math.abs(diff)) + ' (' + side + ')</span>';
+        }
+      }
+    }
+
+    function afterSwap(event) {
+      incrementFormCount();
+      const target = event.detail && event.detail.target;
+      if (!target) {
+        return;
+      }
+      let newRow = null;
+      if (target.id === 'journal-grid-body') {
+        newRow = target.lastElementChild;
+      } else if (target.classList && target.classList.contains('journal-line-row')) {
+        newRow = target.nextElementSibling;
+        while (newRow && !newRow.classList.contains('journal-line-row')) {
+          newRow = newRow.nextElementSibling;
+        }
+      }
+      if (newRow && newRow.classList.contains('journal-line-row') && newRow.style.display !== 'none') {
+        highlightRow(newRow);
+        focusFirstCell(newRow);
+        validateRow(newRow);
+        updateTotals();
+        if (state.pendingRowResolvers.length) {
+          const resolver = state.pendingRowResolvers.shift();
+          resolver(newRow);
+        }
+      }
+      bindAutoBalanceButton();
+    }
+
+    function addNewLine() {
+      const button = document.getElementById('add-line-btn');
+      if (button) {
+        button.click();
+      }
+    }
+
+    function focusCell(rowIndex, cellIndex) {
+      const rows = getVisibleRows();
+      const row = rows[rowIndex];
+      if (!row) {
+        return;
+      }
+      const cells = getRowCells(row);
+      const cell = cells[cellIndex];
+      if (cell) {
+        cell.focus();
+      }
+    }
+
+    function handleCellNavigation(event) {
+      const target = event.target;
+      if (!target.classList || !target.classList.contains('grid-cell')) {
+        return;
+      }
+
+      const row = target.closest('tr.journal-line-row');
+      if (!row) {
+        return;
+      }
+
+      const visibleRows = getVisibleRows();
+      const rowIndex = visibleRows.indexOf(row);
+      const cells = getRowCells(row);
+      const cellIndex = cells.indexOf(target);
+      if (rowIndex === -1 || cellIndex === -1) {
+        return;
+      }
+
+      const key = event.key;
+      const noModifier = !(event.ctrlKey || event.metaKey || event.altKey);
+
+      if (noModifier && key === 'ArrowUp') {
+        if (rowIndex > 0) {
+          event.preventDefault();
+          focusCell(rowIndex - 1, cellIndex);
+        }
+        return;
+      }
+
+      if (noModifier && key === 'ArrowDown') {
+        if (rowIndex < visibleRows.length - 1) {
+          event.preventDefault();
+          focusCell(rowIndex + 1, cellIndex);
+        }
+        return;
+      }
+
+      if (noModifier && key === 'ArrowLeft') {
+        if (cellIndex > 0) {
+          event.preventDefault();
+          cells[cellIndex - 1].focus();
+        }
+        return;
+      }
+
+      if (noModifier && key === 'ArrowRight') {
+        if (cellIndex < cells.length - 1) {
+          event.preventDefault();
+          cells[cellIndex + 1].focus();
+        }
+        return;
+      }
+
+      if (noModifier && key === 'Enter') {
+        event.preventDefault();
+        if (rowIndex === visibleRows.length - 1) {
+          addNewLine();
+        } else {
+          focusCell(rowIndex + 1, 0);
+        }
+        return;
+      }
+
+      if (!event.shiftKey && key === 'Tab') {
+        if (rowIndex === visibleRows.length - 1 && cellIndex === cells.length - 1) {
+          event.preventDefault();
+          addNewLine();
+        }
+      }
+    }
+
+    function handleCellFocus(event) {
+      const cell = event.target;
+      if (!cell.classList || !cell.classList.contains('grid-cell')) {
+        return;
+      }
+      const row = cell.closest('tr.journal-line-row');
+      if (row) {
+        highlightRow(row);
+      }
+    }
+
+    function selectAdjacentRow(visibleRows, removedIndex) {
+      const replacement = visibleRows[removedIndex + 1] || visibleRows[removedIndex - 1];
+      if (replacement) {
+        const firstCell = getRowCells(replacement)[0];
+        if (firstCell) {
+          firstCell.focus();
+          return;
+        }
+        highlightRow(replacement);
+      } else {
+        clearSelection();
+      }
+    }
+
+    function removeLine(button) {
+      const row = button.closest('tr.journal-line-row');
+      if (!row) {
+        return;
+      }
+      const deleteInput = row.querySelector('input[name$="-DELETE"]');
+      if (deleteInput) {
+        deleteInput.checked = true;
+      }
+      const visibleRows = getVisibleRows();
+      const rowIndex = visibleRows.indexOf(row);
+      const wasSelected = row.classList.contains('selected');
+      row.style.display = 'none';
+      hideErrorRow(row);
+      if (wasSelected) {
+        selectAdjacentRow(visibleRows, rowIndex);
+      } else if (rowIndex !== -1 && visibleRows.length === 1) {
+        clearSelection();
+      }
+      updateTotals();
+    }
+
+    function handleGridInput(event) {
+      const target = event.target;
+      if (!target.classList || !target.classList.contains('grid-cell')) {
+        return;
+      }
+      const row = target.closest('tr.journal-line-row');
+      if (!row) {
+        return;
+      }
+      validateRow(row);
+      updateTotals();
+    }
+
+    function handleGlobalShortcuts(event) {
+      const key = event.key;
+      const isSave = event.ctrlKey || event.metaKey;
+      if (isSave && (key === 's' || key === 'S')) {
+        event.preventDefault();
+        const saveDraftBtn = document.querySelector('button[name="action"][value="draft"]');
+        if (saveDraftBtn) {
+          saveDraftBtn.click();
+        }
+        return;
+      }
+      if (isSave && key === 'Enter') {
+        event.preventDefault();
+        const postBtn = document.querySelector('button[name="action"][value="post"]');
+        if (postBtn) {
+          postBtn.click();
+        }
+        return;
+      }
+      if (isSave && (key === 'n' || key === 'N')) {
+        event.preventDefault();
+        addNewLine();
+        return;
+      }
+      if (event.altKey && (key === 'b' || key === 'B')) {
+        const autoBalanceBtn = document.getElementById('auto-balance');
+        if (autoBalanceBtn) {
+          event.preventDefault();
+          autoBalanceBtn.click();
+        }
+      }
+    }
+
+    function autoBalance() {
+      const rows = getRows();
+      if (!rows.length) {
+        return;
+      }
+      let totalDebit = 0;
+      let totalCredit = 0;
+      const activeRows = rows.filter(isRowActive);
+      activeRows.forEach(function (row) {
+        const debitField = row.querySelector('[name$="-debit_amount"]');
+        const creditField = row.querySelector('[name$="-credit_amount"]');
+        totalDebit += parseAmount(debitField ? debitField.value : 0);
+        totalCredit += parseAmount(creditField ? creditField.value : 0);
+      });
+      const diff = totalDebit - totalCredit;
+      if (Math.abs(diff) < 0.01 || !activeRows.length) {
+        return;
+      }
+      const targetRow = activeRows[activeRows.length - 1];
+      const debitField = targetRow.querySelector('[name$="-debit_amount"]');
+      const creditField = targetRow.querySelector('[name$="-credit_amount"]');
+      if (diff > 0 && creditField) {
+        creditField.value = Math.abs(diff).toFixed(2);
+        if (debitField && parseAmount(debitField.value) > 0) {
+          debitField.value = '';
+        }
+      } else if (diff < 0 && debitField) {
+        debitField.value = Math.abs(diff).toFixed(2);
+        if (creditField && parseAmount(creditField.value) > 0) {
+          creditField.value = '';
+        }
+      }
+      validateRow(targetRow);
+      updateTotals();
+    }
+
+    function bindAutoBalanceButton() {
+      const autoBalanceBtn = document.getElementById('auto-balance');
+      if (autoBalanceBtn && !autoBalanceBtn.dataset.bound) {
+        autoBalanceBtn.addEventListener('click', autoBalance);
+        autoBalanceBtn.dataset.bound = 'true';
+      }
+    }
+
+    function updateSidePanel(row) {
+      const target = document.getElementById('side-panel-details');
+      if (!target) {
+        return;
+      }
+      if (!row || !isRowActive(row)) {
+        target.innerHTML = '<span class="text-muted">Select a line to preview account, description, and amount details.</span>';
+        return;
+      }
+      const accountSelect = row.querySelector('[name$="-account"]');
+      const descriptionInput = row.querySelector('[name$="-description"]');
+      const debitInput = row.querySelector('[name$="-debit_amount"]');
+      const creditInput = row.querySelector('[name$="-credit_amount"]');
+      const costCenterSelect = row.querySelector('[name$="-cost_center"]');
+
+      const accountLabel = accountSelect ? accountSelect.options[accountSelect.selectedIndex]?.text || 'Not selected' : 'Not selected';
+      const description = descriptionInput?.value || '—';
+      const debitValue = debitInput?.value || '0.00';
+      const creditValue = creditInput?.value || '0.00';
+      const costCenterLabel = costCenterSelect ? costCenterSelect.options[costCenterSelect.selectedIndex]?.text || '—' : '—';
+
+      target.innerHTML = `
+        <p class="mb-1"><strong>Account:</strong> ${accountLabel}</p>
+        <p class="mb-1"><strong>Description:</strong> ${description}</p>
+        <p class="mb-1 small text-muted">Debit: ${debitValue} | Credit: ${creditValue}</p>
+        <p class="mb-0 small">Cost Center: ${costCenterLabel}</p>
+      `;
+    }
+
+    function refreshAttachmentPreview() {
+      const input = document.getElementById('attachments-input');
+      const list = document.getElementById('attachment-preview-list');
+      const count = document.getElementById('attachment-count');
+      if (!input || !list || !count) {
+        return;
+      }
+      const files = Array.from(input.files || []);
+      count.textContent = `${files.length} file${files.length === 1 ? '' : 's'}`;
+      if (!files.length) {
+        list.innerHTML = '<li class="text-muted">No files attached.</li>';
+        return;
+      }
+      list.innerHTML = files.map(file => `<li>${file.name} <small class="text-muted">(${(file.size / 1024).toFixed(1)} KB)</small></li>`).join('');
+    }
+
+    function bindAttachmentHandlers() {
+      const dropZone = document.getElementById('attachment-dropzone');
+      const input = document.getElementById('attachments-input');
+      if (!dropZone || !input) {
+        return;
+      }
+      dropZone.addEventListener('click', () => input.click());
+      dropZone.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        dropZone.classList.add('drag-over');
+      });
+      dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+      dropZone.addEventListener('drop', (event) => {
+        event.preventDefault();
+        dropZone.classList.remove('drag-over');
+        if (event.dataTransfer?.files?.length) {
+          input.files = event.dataTransfer.files;
+          refreshAttachmentPreview();
+        }
+      });
+      input.addEventListener('change', refreshAttachmentPreview);
+    }
+
+    function requestNewRow() {
+      return new Promise((resolve) => {
+        state.pendingRowResolvers.push(resolve);
+        addNewLine();
+      });
+    }
+
+    function setSelectValueByText(select, searchValue) {
+      if (!select || !searchValue) {
+        return;
+      }
+      const lower = String(searchValue).toLowerCase();
+      for (const option of select.options) {
+        if (option.value === searchValue || option.text.toLowerCase().includes(lower)) {
+          select.value = option.value;
+          break;
+        }
+      }
+    }
+
+    function fillRowFromData(row, data) {
+      if (!row) {
+        return;
+      }
+      const [accountValue, description, debit, credit, costCenterValue] = data;
+      const accountSelect = row.querySelector('[name$="-account"]');
+      const descriptionInput = row.querySelector('[name$="-description"]');
+      const debitInput = row.querySelector('[name$="-debit_amount"]');
+      const creditInput = row.querySelector('[name$="-credit_amount"]');
+      const costCenterSelect = row.querySelector('[name$="-cost_center"]');
+
+      setSelectValueByText(accountSelect, accountValue);
+      if (descriptionInput && description !== undefined) {
+        descriptionInput.value = description;
+      }
+      if (debitInput && debit !== undefined) {
+        debitInput.value = debit || '';
+      }
+      if (creditInput && credit !== undefined) {
+        creditInput.value = credit || '';
+      }
+      setSelectValueByText(costCenterSelect, costCenterValue);
+
+      validateRow(row);
+      updateTotals();
+      updateSidePanel(row);
+    }
+
+    async function importFromExcel(rows) {
+      const filteredRows = rows.filter((cols) => cols.some((value) => value !== undefined && value !== null && String(value).trim() !== ''));
+      if (!filteredRows.length) {
+        return;
+      }
+      const visibleRows = getVisibleRows();
+      let index = 0;
+      for (const dataRow of filteredRows) {
+        let targetRow = visibleRows[index];
+        if (!targetRow) {
+          targetRow = await requestNewRow();
+        }
+        fillRowFromData(targetRow, dataRow);
+        index += 1;
+      }
+    }
+
+    function bindImportExport() {
+      const importBtn = document.getElementById('import-lines-btn');
+      const importInput = document.getElementById('import-file-input');
+      const exportBtn = document.getElementById('export-lines-btn');
+      if (importBtn && importInput) {
+        importBtn.addEventListener('click', () => importInput.click());
+        importInput.addEventListener('change', (event) => {
+          const file = event.target.files?.[0];
+          if (!file) {
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = function (loadEvent) {
+            try {
+              const data = new Uint8Array(loadEvent.target.result);
+              const workbook = XLSX.read(data, { type: 'array' });
+              const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+              let rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+              if (rows.length && typeof rows[0][0] === 'string') {
+                rows = rows.slice(1);
+              }
+              importFromExcel(rows);
+            } catch (err) {
+              console.error(err);
+              alert('Unable to import Excel file.');
+            } finally {
+              importInput.value = '';
+            }
+          };
+          reader.readAsArrayBuffer(file);
+        });
+      }
+      if (exportBtn) {
+        exportBtn.addEventListener('click', () => {
+          if (typeof XLSX === 'undefined') {
+            alert('Excel export library has not loaded yet.');
+            return;
+          }
+          const wb = XLSX.utils.book_new();
+          const wsData = [
+            ['Account', 'Description', 'Debit', 'Credit', 'Cost Center']
+          ];
+          getVisibleRows().forEach((row) => {
+            const accountSelect = row.querySelector('[name$="-account"]');
+            const descriptionInput = row.querySelector('[name$="-description"]');
+            const debitInput = row.querySelector('[name$="-debit_amount"]');
+            const creditInput = row.querySelector('[name$="-credit_amount"]');
+            const costCenterSelect = row.querySelector('[name$="-cost_center"]');
+            wsData.push([
+              accountSelect ? accountSelect.options[accountSelect.selectedIndex]?.text || '' : '',
+              descriptionInput?.value || '',
+              debitInput?.value || '',
+              creditInput?.value || '',
+              costCenterSelect ? costCenterSelect.options[costCenterSelect.selectedIndex]?.text || '' : '',
+            ]);
+          });
+          const ws = XLSX.utils.aoa_to_sheet(wsData);
+          XLSX.utils.book_append_sheet(wb, ws, 'JournalEntry');
+          XLSX.writeFile(wb, 'JournalEntry.xlsx');
+        });
+      }
+    }
+
+    function bindPreferenceToggles() {
+      const toggles = document.querySelectorAll('.pref-toggle');
+      toggles.forEach((toggle) => {
+        toggle.addEventListener('change', () => {
+          const toggleClass = toggle.dataset.toggleClass;
+          if (!toggleClass) {
+            return;
+          }
+          if (toggle.checked) {
+            document.body.classList.add(toggleClass);
+          } else {
+            document.body.classList.remove(toggleClass);
+          }
+        });
+      });
+    }
+
+    document.addEventListener('click', handleRowClick);
+    document.addEventListener('focusin', handleCellFocus, true);
+    document.addEventListener('keydown', handleCellNavigation, true);
+    document.addEventListener('keydown', handleGlobalShortcuts);
+    document.addEventListener('input', handleGridInput, true);
+    document.addEventListener('change', handleGridInput, true);
+    document.addEventListener('htmx:afterSwap', function (event) {
+      const target = event.detail && event.detail.target;
+      if (!target) {
+        return;
+      }
+      if (target.id === 'journal-lines' || target.id === 'journal-grid-body') {
+        requestAnimationFrame(function () {
+          getRows().forEach(validateRow);
+          updateTotals();
+          bindAutoBalanceButton();
+        });
+      }
+    });
+
+    bindAutoBalanceButton();
+    bindAttachmentHandlers();
+    bindImportExport();
+    bindPreferenceToggles();
+    refreshAttachmentPreview();
+    requestAnimationFrame(updateTotals);
+
+    return {
+      afterSwap: afterSwap,
+      removeLine: removeLine,
+      refreshTotals: updateTotals,
+    };
+  })();
+</script>
+{% endblock scripts %}

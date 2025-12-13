@@ -1,0 +1,13 @@
+<div id="runningHeader">
+  <div class="running-header-bar">
+    <div>
+      <strong>{{ journal.organization.name }}</strong>
+      <span class="running-header-muted">• Journal Voucher</span>
+    </div>
+    <div class="running-header-muted">
+      <span>No: {{ journal.journal_number|default:journal.pk }}</span>
+      <span>•</span>
+      <span>{{ journal.journal_date }}</span>
+    </div>
+  </div>
+</div>

@@ -25,6 +25,39 @@ class JournalEntryService:
         self.user = user
         self.organization = organization
 
+    def save_journal(self, form, formset, draft: bool = True) -> Journal:
+        """
+        Persist a journal entry and its lines from validated forms.
+
+        Args:
+            form: Bound JournalForm instance.
+            formset: Bound JournalLineFormSet instance.
+            draft: Whether the journal should remain in draft status.
+
+        Returns:
+            Journal: The saved journal instance.
+        """
+        with transaction.atomic():
+            journal = form.save(commit=False)
+            journal.organization = self.organization
+            if not journal.pk:
+                journal.created_by = self.user
+            journal.updated_by = self.user
+            journal.status = 'draft' if draft else 'posted'
+            if not draft:
+                journal.posted_by = self.user
+                journal.posted_at = timezone.now()
+            journal.save()
+            form.save_m2m()
+
+            formset.instance = journal
+            formset.save()
+
+            journal.update_totals()
+            journal.save()
+
+        return journal
+
     def create_journal_entry(self, journal_data: Dict[str, Any], lines_data: List[Dict[str, Any]], attachments: List[Any] = None) -> Journal:
         """
         Creates a new journal entry and its lines.

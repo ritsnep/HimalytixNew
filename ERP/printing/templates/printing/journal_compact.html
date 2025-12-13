@@ -42,6 +42,7 @@
 </style>
 
 <div class="print-surface compact" id="journalPrintSurface">
+  {% include "printing/_running_header.html" %}
   <div class="compact-head">
     <div>
       <div class="compact-title">Journal Voucher • {{ journal.journal_number|default:journal.pk }}</div>

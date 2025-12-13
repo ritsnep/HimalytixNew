@@ -1,22 +1,5 @@
-{% load static %}
-
-{% comment %}
-Voucher Entry Base Template - Phase 1 Foundation
-
-This is the base template for all voucher/journal entry operations.
-It extends the main base.html and provides the structure for:
-- Journal header information
-- Line items table
-- Error displays
-- HTMX integration points
-
-Usage:
-- Extend this template in specific views
-- Override blocks as needed
-- Use partials for modular components
-{% endcomment %}
-
 {% extends 'base.html' %}
+{% load static %}
 {% load i18n %}
 
 {% block title %}

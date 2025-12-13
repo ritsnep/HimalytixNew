@@ -26,6 +26,22 @@ DEFAULT_TOGGLES: Dict[str, bool] = {
 }
 
 
+PAPER_SIZES = [
+    ("A4", "A4"),
+    ("A5", "A5"),
+]
+
+DEFAULT_OPTIONS: Dict[str, Any] = {
+    "paper_size": "A4",
+}
+
+
+def normalize_paper_size(value: str | None) -> str:
+    if value in {"A4", "A5"}:
+        return value  # type: ignore[return-value]
+    return "A4"
+
+
 def normalize_template_name(value: str | None) -> str:
     if value in ALLOWED_TEMPLATES:
         return value  # type: ignore[return-value]
@@ -36,21 +52,22 @@ def get_user_print_config(user) -> Tuple[PrintTemplateConfig | None, Dict[str, A
     """Return (config_obj_or_none, merged_config_dict)."""
 
     if not getattr(user, "is_authenticated", False):
-        default_data = {**DEFAULT_TOGGLES, "template_name": DEFAULT_TEMPLATE}
+        default_data = {**DEFAULT_TOGGLES, **DEFAULT_OPTIONS, "template_name": DEFAULT_TEMPLATE}
         return None, default_data
 
     try:
         config_obj = PrintTemplateConfig.objects.get(user=user)
     except PrintTemplateConfig.DoesNotExist:
-        default_data = {**DEFAULT_TOGGLES, "template_name": DEFAULT_TEMPLATE}
+        default_data = {**DEFAULT_TOGGLES, **DEFAULT_OPTIONS, "template_name": DEFAULT_TEMPLATE}
         return None, default_data
 
-    config_data: Dict[str, Any] = {**DEFAULT_TOGGLES, **(config_obj.config or {})}
+    config_data: Dict[str, Any] = {**DEFAULT_TOGGLES, **DEFAULT_OPTIONS, **(config_obj.config or {})}
     config_data["template_name"] = normalize_template_name(config_obj.template_name)
+    config_data["paper_size"] = normalize_paper_size(config_data.get("paper_size"))
     return config_obj, config_data
 
 
-def save_user_print_config(user, template_name: str, toggles_data: Dict[str, bool]) -> PrintTemplateConfig:
+def save_user_print_config(user, template_name: str, config_data: Dict[str, Any]) -> PrintTemplateConfig:
     """Create or update the PrintTemplateConfig for the given user."""
 
     config_obj, _ = get_user_print_config(user)
@@ -58,6 +75,12 @@ def save_user_print_config(user, template_name: str, toggles_data: Dict[str, boo
         config_obj = PrintTemplateConfig(user=user)
 
     config_obj.template_name = normalize_template_name(template_name)
-    config_obj.config = toggles_data or {}
+
+    payload: Dict[str, Any] = {}
+    for key in DEFAULT_TOGGLES.keys():
+        payload[key] = bool(config_data.get(key, DEFAULT_TOGGLES[key]))
+    payload["paper_size"] = normalize_paper_size(config_data.get("paper_size"))
+
+    config_obj.config = payload
     config_obj.save()
     return config_obj

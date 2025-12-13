@@ -1,0 +1,47 @@
+<style>
+  @media print {
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    tr, img, svg { break-inside: avoid; page-break-inside: avoid; }
+  }
+
+  /* Running header for paged engines */
+  #runningHeader { position: running(runningHeader); }
+
+  @page {
+    /* Django passes paper_size as "A4" or "A5" */
+    size: {{ paper_size|default:"A4" }};
+    margin: 14mm 12mm 16mm 12mm;
+
+    /* Page numbers (paged engines) */
+    @bottom-right {
+      content: "Page " counter(page) " of " counter(pages);
+      font-size: 9pt;
+      color: #6b7280;
+    }
+
+    @bottom-left {
+      content: "{{ journal.journal_number|default:journal.pk }}";
+      font-size: 9pt;
+      color: #6b7280;
+    }
+
+    /* Repeat header (paged engines) */
+    @top-center {
+      content: element(runningHeader);
+    }
+  }
+
+  /* Make the running header compact when repeated */
+  .running-header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8mm;
+    padding: 4mm 0 2mm 0;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.5);
+    font-size: 9.5pt;
+    color: #111827;
+  }
+  .running-header-muted { color: #6b7280; }
+</style>

@@ -1,0 +1,25 @@
+{% load widget_tweaks %}
+{% with prefix=form.prefix %}
+{% with line_index=prefix|cut:"lines-" %}
+<tr
+  id="line-{{ line_index }}"
+  class="journal-line-row align-middle"
+  data-line-index="{{ line_index }}"
+>
+  {% for hidden in form.hidden_fields %}
+    {{ hidden }}
+  {% endfor %}
+  <td>{{ form.account|add_class:"form-select form-select-sm grid-cell" }}</td>
+  <td>{{ form.description|add_class:"form-control form-control-sm grid-cell" }}</td>
+  <td>{{ form.debit_amount|add_class:"form-control form-control-sm grid-cell text-end" }}</td>
+  <td>{{ form.credit_amount|add_class:"form-control form-control-sm grid-cell text-end" }}</td>
+  <td>{{ form.cost_center|add_class:"form-select form-select-sm grid-cell" }}</td>
+  <td class="text-nowrap">
+    {{ form.DELETE|add_class:"d-none" }}
+    <button type="button" class="btn btn-link text-danger p-0" onclick="window.journalLines.removeLine(this)">
+      <i class="fas fa-times"></i>
+    </button>
+  </td>
+</tr>
+{% endwith %}
+{% endwith %}

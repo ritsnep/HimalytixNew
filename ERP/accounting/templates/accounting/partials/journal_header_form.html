@@ -1,78 +1,54 @@
 {% load widget_tweaks %}
-{% with f=journal_form|default:form %}
-<div class="row g-3">
-  {% if voucher_configs %}
-    <div class="col-md-3">
-      <label for="voucher-config-select" class="form-label">Voucher Config</label>
-      <select id="voucher-config-select" name="voucher_config" class="form-select">
-        {% for config in voucher_configs %}
-          <option value="{{ config.pk }}" {% if selected_config and config.pk == selected_config.pk %}selected{% endif %}>{{ config.name }}</option>
-        {% endfor %}
-      </select>
+{% with bound_form=form|default:journal_form %}
+<div class="row g-3 mb-3">
+  {% if bound_form.journal_date %}
+    <div class="col-sm-6 col-md-3">
+      {{ bound_form.journal_date.label_tag }}
+      {{ bound_form.journal_date|add_class:"form-control" }}
     </div>
   {% endif %}
-
-  {% if f.journal_type %}
-    <div class="col-md-4">
-      <label class="form-label d-block">{{ f.journal_type.label }}</label>
-      <div class="d-flex flex-wrap gap-2">
-        {% for choice in f.journal_type %}
-          <input type="radio" class="btn-check" name="{{ choice.name }}" id="{{ choice.id_for_label }}" value="{{ choice.choice_value }}" {% if choice.data.selected %}checked{% endif %}>
-          <label class="btn btn-outline-primary" for="{{ choice.id_for_label }}">
-            {{ choice.choice_label }}
-          </label>
-        {% endfor %}
-      </div>
+  {% if bound_form.journal_type %}
+    <div class="col-sm-6 col-md-3">
+      {{ bound_form.journal_type.label_tag }}
+      {{ bound_form.journal_type|add_class:"form-select" }}
     </div>
   {% endif %}
-
-  {% if f.journal_date %}
-    <div class="col-md-3">
-      <label for="{{ f.journal_date.id_for_label }}" class="form-label">{{ f.journal_date.label }}</label>
-      {% render_field f.journal_date class+="form-control" hx-get="{% url 'accounting:resolve_exchange_rate' %}" hx-target="#{{ f.exchange_rate.id_for_label }}" hx-include="[name='{{ f.currency_code.name }}']" hx-vals='{"to_currency": "{{ base_currency }}"}' %}
+  {% if bound_form.currency_code %}
+    <div class="col-sm-6 col-md-3">
+      {{ bound_form.currency_code.label_tag }}
+      {{ bound_form.currency_code|add_class:"form-select" }}
     </div>
   {% endif %}
-
-  {% if f.period %}
-    <div class="col-md-3">
-      <label for="{{ f.period.id_for_label }}" class="form-label">{{ f.period.label }}</label>
-      {% render_field f.period class+="form-select" %}
-    </div>
-  {% endif %}
-
-  {% if f.reference %}
-    <div class="col-md-3">
-      <label for="{{ f.reference.id_for_label }}" class="form-label">{{ f.reference.label }}</label>
-      {% render_field f.reference class+="form-control" %}
-    </div>
-  {% endif %}
-
-  {% if f.description %}
-    <div class="col-md-6">
-      <label for="{{ f.description.id_for_label }}" class="form-label">{{ f.description.label }}</label>
-      {% render_field f.description class+="form-control" rows="2" %}
-    </div>
-  {% endif %}
-
-  {% if f.currency_code %}
-    <div class="col-md-3">
-      <label for="{{ f.currency_code.id_for_label }}" class="form-label">{{ f.currency_code.label }}</label>
-      {% render_field f.currency_code class+="form-select" hx-get="{% url 'accounting:resolve_exchange_rate' %}" hx-target="#{{ f.exchange_rate.id_for_label }}" hx-include="[name='{{ f.journal_date.name }}']" hx-vals='{"to_currency": "{{ base_currency }}"}' %}
-    </div>
-  {% endif %}
-
-  {% if f.exchange_rate %}
-    <div class="col-md-3">
-      <label for="{{ f.exchange_rate.id_for_label }}" class="form-label">{{ f.exchange_rate.label }}</label>
-      {% render_field f.exchange_rate class+="form-control" %}
-    </div>
-  {% endif %}
-
-  {% if f.status %}
-    <div class="col-md-3">
-      <label for="{{ f.status.id_for_label }}" class="form-label">{{ f.status.label }}</label>
-      {% render_field f.status class+="form-select" %}
+  {% if bound_form.exchange_rate %}
+    <div class="col-sm-6 col-md-3">
+      {{ bound_form.exchange_rate.label_tag }}
+      {{ bound_form.exchange_rate|add_class:"form-control" }}
     </div>
   {% endif %}
 </div>
+
+<div class="row g-3 mb-3">
+  {% if bound_form.reference %}
+    <div class="col-md-4">
+      {{ bound_form.reference.label_tag }}
+      {{ bound_form.reference|add_class:"form-control" }}
+    </div>
+  {% endif %}
+  {% if bound_form.description %}
+    <div class="col-md-8">
+      {{ bound_form.description.label_tag }}
+      {{ bound_form.description|add_class:"form-control" }}
+    </div>
+  {% endif %}
+</div>
+
+{% with exclude_fields=header_exclude_fields|default:None %}
+{% for field in bound_form %}
+  {% if not exclude_fields or field.name not in exclude_fields %}
+    <div class="mb-3">
+      {{ field.label_tag }} {{ field|add_class:"form-control" }}
+    </div>
+  {% endif %}
+{% endfor %}
+{% endwith %}
 {% endwith %}

@@ -1,0 +1,46 @@
+<div class="d-flex flex-wrap gap-2 my-3" id="line-actions-panel">
+  <button
+    id="add-line-btn"
+    type="button"
+    class="btn btn-outline-success btn-sm"
+    hx-post="{% url 'accounting:journal_add_line_hx' %}"
+    hx-include="#journal-form"
+    hx-target="#journal-grid-body"
+    hx-swap="beforeend"
+    hx-on::afterSwap="window.journalLines.afterSwap(event)"
+  >
+    <i class="fas fa-plus"></i> Add Line
+  </button>
+  <button
+    id="dup-line-btn"
+    type="button"
+    class="btn btn-outline-primary btn-sm"
+    hx-post="{% url 'accounting:journal_duplicate_line_hx' %}"
+    hx-include="#journal-form"
+    hx-target="#journal-grid-body"
+    hx-swap="afterend"
+    hx-vals='{"lineIndex": ""}'
+    hx-on::afterSwap="window.journalLines.afterSwap(event)"
+    disabled
+  >
+    <i class="fas fa-copy"></i> Duplicate Line
+  </button>
+  <button
+    id="auto-balance"
+    type="button"
+    class="btn btn-outline-secondary btn-sm"
+  >
+    <i class="fas fa-balance-scale"></i> Auto Balance
+  </button>
+  <button
+    id="validate-btn"
+    type="button"
+    class="btn btn-outline-info btn-sm"
+    hx-post="{% url 'accounting:journal_validate_hx' %}"
+    hx-include="#journal-form"
+    hx-target="#validation-messages"
+    hx-swap="innerHTML"
+  >
+    <i class="fas fa-check-circle"></i> Validate
+  </button>
+</div>

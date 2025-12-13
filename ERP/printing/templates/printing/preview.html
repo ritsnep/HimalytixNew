@@ -159,6 +159,12 @@
                 <option value="{{ key }}" {% if config.template_name == key %}selected{% endif %}>{{ label }}</option>
               {% endfor %}
             </select>
+
+            <select id="paperSelector" class="select" name="paper_size" style="min-width: 120px;">
+              {% for key, label in paper_sizes %}
+                <option value="{{ key }}" {% if config.paper_size == key %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
           {% else %}
             <select id="templateSelector" class="select" disabled>
               <option selected>Journal Voucher – {{ config.template_name|default:"classic"|title }}</option>
@@ -176,7 +182,7 @@
 
       <div class="toolbar-right">
         <a class="btn btn-ghost" href="{% url 'print_preview' journal.pk %}">⟳ Reset</a>
-        <a class="btn btn-primary" target="_blank" rel="noopener" href="{% url 'print_page' journal.pk %}?template={{ config.template_name|default:'classic' }}">🖨 Print</a>
+        <a class="btn btn-primary" target="_blank" rel="noopener" href="{% url 'print_page' journal.pk %}?template={{ config.template_name|default:'classic' }}&paper={{ config.paper_size|default:'A4' }}">🖨 Print</a>
       </div>
     </div>
 

@@ -3,6 +3,7 @@
   class="journal-row align-middle"
   data-row-index="{{ index }}"
   data-row-json="{{ row_json|escapejs }}"
+  draggable="true"
 >
   {% for column in line_columns %}
     {% with key=column.key %}
@@ -99,8 +100,28 @@
         </td>
       {% elif key == 'actions' %}
         <td class="cell actions text-end pe-1 {{ column.css_class|default:'' }}">
-          <button type="button" class="btn btn-sm btn-link text-danger remove-row" data-action="delete">Remove</button>
-          <button type="button" class="btn btn-sm btn-link text-secondary duplicate-row" data-action="duplicate">Duplicate</button>
+          <button
+            type="button"
+            class="btn btn-sm btn-link text-danger remove-row"
+            data-action="delete"
+            hx-delete="{% url 'accounting:journal_entry_row_delete' %}?index={{ index }}"
+            hx-target="#line-{{ index }}"
+            hx-swap="outerHTML"
+            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+          >
+            🗑️
+          </button>
+          <button
+            type="button"
+            class="btn btn-sm btn-link text-secondary duplicate-row"
+            data-action="duplicate"
+            hx-post="{% url 'accounting:journal_entry_row_duplicate' %}?index={{ index }}"
+            hx-target="#line-{{ index }}"
+            hx-swap="afterend"
+            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+          >
+            ⧉
+          </button>
         </td>
       {% else %}
         <td class="cell {{ column.css_class|default:'' }}"></td>

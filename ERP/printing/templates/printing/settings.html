@@ -35,6 +35,16 @@
                 </div>
 
                 <div class="mb-3">
+                  <label class="form-label" for="paper_size">{% trans "Paper size" %}</label>
+                  <select class="form-select" id="paper_size" name="paper_size">
+                    {% for key, label in paper_sizes %}
+                      <option value="{{ key }}" {% if config.paper_size == key %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="form-text">{% trans "A4/A5 is enforced for PDF engines; browsers may override via printer settings." %}</div>
+                </div>
+
+                <div class="mb-3">
                   <label class="form-label">{% trans "Show / hide" %}</label>
                   <div class="row">
                     <div class="col-md-6">
