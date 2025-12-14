@@ -14,7 +14,7 @@ from accounting.models import (
     Vendor,
 )
 
-from accounting.models import JournalLine, Journal
+from accounting.models import JournalLine, Journal, VoucherLine, VoucherType, ConfigurableField, FieldConfig
 
 
 class JournalLineSerializer(serializers.ModelSerializer):
@@ -26,6 +26,49 @@ class JournalLineSerializer(serializers.ModelSerializer):
             'tax_code', 'memo', 'udf_data', 'created_at', 'created_by'
         ]
         read_only_fields = ['journal_line_id', 'created_at', 'created_by']
+
+
+class VoucherLineSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VoucherLine
+        fields = [
+            'voucher_line_id', 'journal', 'line_number', 'account', 'description',
+            'debit_amount', 'credit_amount', 'department', 'project', 'cost_center',
+            'tax_code', 'tax_rate', 'tax_amount', 'memo', 'udf_data', 'created_at', 'created_by'
+        ]
+        read_only_fields = ['voucher_line_id', 'created_at', 'created_by']
+
+
+class VoucherTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VoucherType
+        fields = ['id', 'name', 'code', 'description', 'is_active', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class ConfigurableFieldSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConfigurableField
+        fields = [
+            'id', 'voucher_type', 'name', 'default_label', 'default_tooltip',
+            'default_data_type', 'default_visible', 'default_mandatory',
+            'default_placeholder', 'field_order', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class FieldConfigSerializer(serializers.ModelSerializer):
+    field_name = serializers.CharField(source='field.name', read_only=True)
+    voucher_type_name = serializers.CharField(source='field.voucher_type.name', read_only=True)
+
+    class Meta:
+        model = FieldConfig
+        fields = [
+            'id', 'organization', 'field', 'field_name', 'voucher_type_name',
+            'label_override', 'tooltip_override', 'data_type_override',
+            'visible', 'mandatory', 'placeholder_override', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 
 class VendorSerializer(serializers.ModelSerializer):

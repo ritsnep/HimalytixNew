@@ -12,7 +12,7 @@ from django.contrib.postgres.indexes import GinIndex
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('accounting', '0058_auto_previous'),
+        ('accounting', '0169_add_auditlog_organization'),
     ]
 
     operations = [
@@ -32,7 +32,7 @@ class Migration(migrations.Migration):
         # Add index on journalline (account, journal)
         migrations.AddIndex(
             model_name='journalline',
-            index=models.Index(fields=['account', 'journal'], name='journalline_account_journal_idx'),
+            index=models.Index(fields=['account', 'journal'], name='jl_acc_journal_idx'),
         ),
 
         # Add GIN index on udf_data for JSON queries (Postgres only)

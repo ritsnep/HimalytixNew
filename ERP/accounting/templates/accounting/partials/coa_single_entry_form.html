@@ -1,471 +1,635 @@
-<!-- Single Entry Form Partial -->
-{% url 'accounting:chart_of_accounts_create' as coa_create_url %}
-<form id="coa-single-form" method="post" novalidate
-    hx-post="{{ form_post_url|default:coa_create_url }}"
-      hx-trigger="submit"
-      hx-target="#coa-single-form"
-      hx-swap="outerHTML"
-      hx-indicator=".htmx-indicator"
-      data-next-code-url="{% url 'accounting:get_next_account_code' %}"
-      data-org-id="{{ form.organization.value|default:'' }}"
-      data-is-edit="{% if form.instance.pk %}1{% else %}0{% endif %}">
+{% load static %}
+{% load widget_tweaks %}
+
+<form method="post"
+    action="{% if form.instance.pk %}{% url 'accounting:chart_of_accounts_update' form.instance.pk %}{% else %}{% url 'accounting:chart_of_accounts_create' %}{% endif %}"
+    id="coa-single-form" class="h-100 d-flex flex-column"
+    data-next-code-url="{% url 'accounting:get_next_account_code' %}"
+    data-org-id="{{ form.organization.value|default:'' }}"
+    data-is-edit="{% if form.instance.pk %}1{% else %}0{% endif %}">
+
     {% csrf_token %}
-    {{ form.organization }}
-    
+    {% for hidden in form.hidden_fields %}
+    {{ hidden }}
+    {% endfor %}
+
+    <!-- Global Error Alert -->
     {% if form.non_field_errors %}
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <strong>Errors:</strong>
-        <ul class="mb-2">
-            {% for error in form.non_field_errors %}
-            <li>{{ error }}</li>
-            {% endfor %}
-        </ul>
-        <button type="button" class="btn btn-sm btn-outline-light" onclick="reportFormError()">Report this issue</button>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <div class="alert alert-danger alert-dismissible fade show mb-3 mx-3 mt-3" role="alert">
+        <div class="d-flex align-items-center">
+            <i class="bx bx-error-circle fs-4 me-2"></i>
+            <div>
+                <strong>Please check the following errors:</strong>
+                <ul class="mb-0 ps-3 mt-1">
+                    {% for error in form.non_field_errors %}
+                    <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
     {% endif %}
-    
-    <!-- Basic Information -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <h5 class="text-primary mb-3"><i class="bx bx-info-circle"></i> Basic Information</h5>
+
+    <div class="card shadow-sm border-0 m-3 flex-grow-1">
+        <!-- Header with Advanced Toggle -->
+        <div class="card-header bg-white py-3 px-4 border-bottom d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 text-primary fw-bold d-flex align-items-center">
+                <i class="bx {% if form.instance.pk %}bx-edit{% else %}bx-plus-circle{% endif %} me-2"></i>
+                {% if form.instance.pk %}Edit Account{% else %}New Account{% endif %}
+            </h5>
+            <div class="form-check form-switch cursor-pointer" title="Toggle advanced settings for power users">
+                <input class="form-check-input" type="checkbox" id="toggleAdvancedMode">
+                <label class="form-check-label small text-muted fw-semibold user-select-none"
+                    for="toggleAdvancedMode">Advanced Mode</label>
+            </div>
         </div>
-        
-        <div class="col-md-4">
-            <div class="mb-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <label for="{{ form.account_code.id_for_label }}" class="form-label mb-0">Account Code</label>
-                    <div class="form-check form-switch mb-0">
-                        {{ form.use_custom_code }}
-                        <label class="form-check-label small ms-1 mb-0" for="{{ form.use_custom_code.id_for_label }}">Use Custom Code</label>
+
+        <div class="card-body p-4 overflow-auto custom-scrollbar">
+
+            <!-- Primary Fields -->
+            <div class="row g-3">
+                <!-- Account Code with Custom Toggle -->
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label for="{{ form.account_code.id_for_label }}"
+                                class="form-label fw-semibold small text-uppercase text-muted mb-0">
+                                Code
+                            </label>
+                            <div class="form-check form-switch mb-0" style="min-height: auto;">
+                                {{ form.use_custom_code }}
+                                <label class="form-check-label extra-small text-muted"
+                                    for="{{ form.use_custom_code.id_for_label }}">Manual</label>
+                            </div>
+                        </div>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-light border-end-0"><i class="bx bx-hash"></i></span>
+                            {% with field=form.account_code %}
+                            <input type="text" name="{{ field.html_name }}" id="{{ field.id_for_label }}"
+                                class="form-control form-control-sm border-start-0 ps-2 fw-bold font-monospace{% if field.errors %} is-invalid{% endif %}"
+                                value="{{ field.value|default_if_none:'' }}"
+                                placeholder="{{ field.field.widget.attrs.placeholder|default:'Auto-generated' }}" {% if field.field.widget.attrs.maxlength %}maxlength="{{ field.field.widget.attrs.maxlength }}"{% endif %} {% if field.field.widget.attrs.pattern %}pattern="{{ field.field.widget.attrs.pattern }}"{% endif %} {% if field.field.widget.attrs.title %}title="{{ field.field.widget.attrs.title }}"{% endif %} {% if field.field.widget.attrs.readonly %}readonly{% endif %}>
+                            {% endwith %}
+                            {{ form.custom_code.as_hidden }}
+                        </div>
+                        <div class="invalid-feedback d-block">
+                            {% if form.account_code.errors %}{{ form.account_code.errors|first }}{% endif %}
+                        </div>
                     </div>
                 </div>
-                {{ form.account_code }}
-                {{ form.custom_code.as_hidden }}
-                {% if form.account_code.errors %}
-                <div class="error-message">{{ form.account_code.errors|first }}</div>
-                {% endif %}
-                {% if form.use_custom_code.errors %}
-                <div class="error-message">{{ form.use_custom_code.errors|first }}</div>
-                {% endif %}
-                <small class="text-muted">Auto-generated from Parent/Type. Enable custom to edit manually.</small>
-            </div>
-        </div>
-        
-        <div class="col-md-4">
-            <div class="mb-3">
-                <label for="{{ form.account_name.id_for_label }}" class="form-label required-field">Account Name</label>
-                {{ form.account_name }}
-                {% if form.account_name.errors %}
-                <div class="error-message">{{ form.account_name.errors|first }}</div>
-                {% endif %}
-            </div>
-        </div>
-        
-        <div class="col-md-4">
-            <div class="mb-3">
-                <label for="id_account_type" class="form-label required-field">Account Type</label>
-                {% with form.account_type as field %}
-                <select name="{{ field.html_name }}" id="id_account_type" 
-                        class="form-select{% if field.errors %} is-invalid{% endif %}"
-                        required
-                        data-pristine-required-message="Account type is required">
-                    <option value="">Select Type</option>
-                    {% for option_value, option_label in field.field.choices %}
-                        {% if option_value %}
-                            <option value="{{ option_value }}"{% if option_value|stringformat:"s" == field.value|stringformat:"s" %} selected{% endif %}>{{ option_label }}</option>
-                        {% endif %}
-                    {% endfor %}
-                </select>
-                {% endwith %}
-                {% if form.account_type.errors %}
-                <div class="error-message">{{ form.account_type.errors|first }}</div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
 
-    <!-- Parent & Hierarchy -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <h5 class="text-primary mb-3"><i class="bx bx-sitemap"></i> Hierarchy</h5>
-        </div>
-        
-        <div class="col-md-6">
-            <div id="parent-account-container" class="mb-3">
-                <label for="id_parent_account" class="form-label">Parent Account</label>
-                <select name="parent_account" id="id_parent_account" class="form-select">
-                    <option value="">None (Root Level)</option>
-                    {% with selected_parent=form.parent_account.value|stringformat:"s" %}
-                        {% for account in form.parent_account.field.queryset %}
-                            <option value="{{ account.pk }}" data-account-type="{{ account.account_type_id }}"{% if account.pk|stringformat:"s" == selected_parent %} selected{% endif %}>
-                                {{ account.account_code }} - {{ account.account_name }}
-                            </option>
-                        {% endfor %}
-                    {% endwith %}
-                </select>
-                <small class="text-muted">Optional - Leave blank for root level account</small>
+                <!-- Account Name -->
+                <div class="col-md-5">
+                    <div class="form-group">
+                        <label for="{{ form.account_name.id_for_label }}"
+                            class="form-label fw-semibold small text-uppercase text-muted mb-1">
+                            Account Name
+                        </label>
+                        {% with field=form.account_name %}
+                        <input type="text" name="{{ field.html_name }}" id="{{ field.id_for_label }}"
+                            class="form-control form-control-sm fw-bold{% if field.errors %} is-invalid{% endif %}"
+                            value="{{ field.value|default_if_none:'' }}"
+                            placeholder="e.g., Office Supplies" {% if field.field.widget.attrs.maxlength %}maxlength="{{ field.field.widget.attrs.maxlength }}"{% endif %} {% if field.field.required %}required{% endif %}>
+                        {% endwith %}
+                        <div class="invalid-feedback d-block">
+                            {% if form.account_name.errors %}{{ form.account_name.errors|first }}{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Account Type -->
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_account_type"
+                            class="form-label fw-semibold small text-uppercase text-muted mb-1">
+                            Account Type
+                            <i class="bx bx-help-circle text-muted ms-1" data-bs-toggle="tooltip"
+                                data-bs-placement="top" data-bs-boundary="viewport" data-bs-container="body"
+                                title="Determines financial categorization (Asset, Liability, etc.)"></i>
+                        </label>
+                        {% with form.account_type as field %}
+                        <select name="{{ field.html_name }}" id="id_account_type"
+                            class="form-select form-select-sm{% if field.errors %} is-invalid{% endif %}" required
+                            aria-required="true">
+                            <option value="">Select Type</option>
+                            {% for option_value, option_label in field.field.choices %}
+                            {% if option_value %}
+                            <option value="{{ option_value }}" {% if option_value|stringformat:"s" == field.value|stringformat:"s" %}selected{% endif %}>{{ option_label }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                        {% endwith %}
+                        <div class="invalid-feedback d-block">
+                            {% if form.account_type.errors %}{{ form.account_type.errors|first }}{% endif %}
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
-        
-        <div class="col-md-6">
-            <div class="mb-3">
-                <label for="{{ form.currency.id_for_label }}" class="form-label">Currency</label>
-                {{ form.currency }}
-                {% if form.currency.errors %}
-                <div class="error-message">{{ form.currency.errors|first }}</div>
-                {% endif %}
+
+            <!-- Parent & Description -->
+            <div class="row g-3 mt-1">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_parent_account"
+                            class="form-label fw-semibold small text-uppercase text-muted mb-1">
+                            Parent Account
+                            <i class="bx bx-help-circle text-muted ms-1" data-bs-toggle="tooltip"
+                                data-bs-placement="top" data-bs-boundary="viewport" data-bs-container="body"
+                                title="Select a parent to create a sub-account"></i>
+                        </label>
+                        <select name="parent_account" id="id_parent_account" class="form-select form-select-sm">
+                            <option value="">None (Root Level)</option>
+                            {% with selected_parent=form.parent_account.value|stringformat:"s" %}
+                            {% for account in form.parent_account.field.queryset %}
+                            <option value="{{ account.pk }}" data-account-type="{{ account.account_type_id }}" {% if account.pk|stringformat:"s" == selected_parent %}selected{% endif %}>{{ account.account_code }} - {{ account.account_name }}</option>
+                            {% endfor %}
+                            {% endwith %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="{{ form.description.id_for_label }}"
+                            class="form-label fw-semibold small text-uppercase text-muted mb-1">Description</label>
+                        {% with field=form.description %}
+                        <textarea name="{{ field.html_name }}" id="{{ field.id_for_label }}" rows="1"
+                            class="form-control form-control-sm{% if field.errors %} is-invalid{% endif %}"
+                            placeholder="Optional details...">{{ field.value|default_if_none:'' }}</textarea>
+                        {% endwith %}
+                        <div class="invalid-feedback d-block">
+                            {% if form.description.errors %}{{ form.description.errors|first }}{% endif %}
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
-    
-    <!-- Balances & Tracking -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <h5 class="text-primary mb-3"><i class="bx bx-pie-chart-alt"></i> Balances & Tracking</h5>
-        </div>
-        <div class="col-md-4">
-            <div class="mb-3">
-                <label for="{{ form.opening_balance.id_for_label }}" class="form-label">Opening Balance</label>
-                {{ form.opening_balance }}
-                {% if form.opening_balance.errors %}
-                <div class="error-message">{{ form.opening_balance.errors|first }}</div>
-                {% endif %}
+
+            <hr class="border-light my-4">
+
+            <!-- Bank & Control Toggles with Client-Side Visibility -->
+            <div class="row g-3">
+                <!-- Bank Account Toggle -->
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center p-2 border rounded bg-light-subtle h-100">
+                        <div class="form-check form-switch mb-0 me-3">
+                            {{ form.is_bank_account }}
+                        </div>
+                        <div>
+                            <label class="form-check-label fw-semibold d-block"
+                                for="{{ form.is_bank_account.id_for_label }}">Bank Account</label>
+                            <small class="text-muted d-block" style="line-height: 1.2;">Enable for Check/Cash/Bank
+                                accounts.</small>
+                        </div>
+                    </div>
+                </div>
+                <!-- Control Account Toggle -->
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center p-2 border rounded bg-light-subtle h-100">
+                        <div class="form-check form-switch mb-0 me-3">
+                            {{ form.is_control_account }}
+                        </div>
+                        <div>
+                            <label class="form-check-label fw-semibold d-block"
+                                for="{{ form.is_control_account.id_for_label }}">
+                                Control Account
+                                <i class="bx bx-help-circle text-muted ms-1" data-bs-toggle="tooltip"
+                                    data-bs-placement="top" data-bs-boundary="viewport" data-bs-container="body"
+                                    title="Used for sub-ledgers like AR/AP. Prevents manual journals."></i>
+                            </label>
+                            <small class="text-muted d-block" style="line-height: 1.2;">Restrict manual journal
+                                entries.</small>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="col-md-4">
-            <div class="mb-3">
-                <label for="{{ form.current_balance.id_for_label }}" class="form-label">Current Balance</label>
-                {{ form.current_balance }}
-                {% if form.current_balance.errors %}
-                <div class="error-message">{{ form.current_balance.errors|first }}</div>
-                {% endif %}
+
+            <!-- Conditional Fields Container (Client-Side Toggled) -->
+            <div id="conditional-fields-container" class="mt-4">
+
+                <!-- Bank Account Fields -->
+                <div id="bank-fields-section" class="d-none bg-light p-3 rounded mb-3 border">
+                    <h6 class="text-primary mb-3"><i class="bx bxs-bank me-2"></i>Bank Details</h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="{{ form.bank_name.id_for_label }}" class="form-label small fw-semibold">Bank
+                                Name</label>
+                            {{ form.bank_name|add_class:"form-control form-control-sm" }}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.bank_branch.id_for_label }}" class="form-label small fw-semibold">Bank
+                                Branch</label>
+                            {{ form.bank_branch|add_class:"form-control form-control-sm" }}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.account_number.id_for_label }}"
+                                class="form-label small fw-semibold">Account Number <span
+                                    class="text-danger bank-required">*</span></label>
+                            {{ form.account_number|add_class:"form-control form-control-sm" }}
+                            <div class="invalid-feedback d-block">{% if form.account_number.errors %}{{
+                                form.account_number.errors|first }}{% endif %}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.swift_code.id_for_label }}" class="form-label small fw-semibold">SWIFT
+                                Code</label>
+                            {{ form.swift_code|add_class:"form-control form-control-sm" }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Control Account Fields -->
+                <div id="control-fields-section" class="d-none bg-light p-3 rounded mb-3 border">
+                    <h6 class="text-primary mb-3"><i class="bx bxs-lock-alt me-2"></i>Control Account Configuration</h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="{{ form.control_account_type.id_for_label }}"
+                                class="form-label small fw-semibold">
+                                Control Account Type <span class="text-danger control-required">*</span>
+                                <i class="bx bx-question-mark text-muted circle-icon-small ms-1"
+                                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-boundary="viewport"
+                                    data-bs-container="body"
+                                    title="Specify the ledger type (e.g. Accounts Receivable, Accounts Payable)"></i>
+                            </label>
+                            {{ form.control_account_type|add_class:"form-select form-select-sm" }}
+                            <div class="invalid-feedback d-block">{% if form.control_account_type.errors %}{{
+                                form.control_account_type.errors|first }}{% endif %}</div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
-        </div>
-        <div class="col-md-4">
-            <div class="mb-3">
-                <label for="{{ form.reconciled_balance.id_for_label }}" class="form-label">Reconciled Balance</label>
-                {{ form.reconciled_balance }}
-                {% if form.reconciled_balance.errors %}
-                <div class="error-message">{{ form.reconciled_balance.errors|first }}</div>
-                {% endif %}
+
+            <!-- Advanced Configuration (Collapsible) -->
+            <div id="advancedFields" class="d-none mt-4 pt-3 border-top bg-light-subtle rounded p-3">
+                <h6 class="text-uppercase text-muted fw-bold small mb-3"><i class="bx bx-slider-alt me-1"></i> Advanced
+                    Configuration</h6>
+
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="{{ form.currency.id_for_label }}"
+                                class="form-label small fw-semibold">Currency</label>
+                            {{ form.currency|add_class:"form-select form-select-sm" }}
+                            <div class="form-text extra-small">Leave blank for base currency.</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="{{ form.default_tax_code.id_for_label }}" class="form-label small fw-semibold">
+                                Default Tax Code
+                                <i class="bx bx-question-mark text-muted circle-icon-small ms-1"
+                                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-boundary="viewport"
+                                    data-bs-container="body" title="Auto-applied in transactions"></i>
+                            </label>
+                            {{ form.default_tax_code|add_class:"form-select form-select-sm" }}
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="{{ form.opening_balance.id_for_label }}"
+                                class="form-label small fw-semibold">Opening Balance</label>
+                            {{ form.opening_balance|add_class:"form-control form-control-sm text-end" }}
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check form-switch mt-4">
+                            {{ form.require_department|add_class:"form-check-input" }}
+                            <label class="form-check-label small fw-semibold"
+                                for="{{ form.require_department.id_for_label }}">Require Department?</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-2">
+                    <div class="col-md-3">
+                        <div class="form-check form-switch">
+                            {{ form.is_active|add_class:"form-check-input" }}
+                            <label class="form-check-label small" for="{{ form.is_active.id_for_label }}">Active</label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check form-switch">
+                            {{ form.reconcile|add_class:"form-check-input" }}
+                            <label class="form-check-label small" for="{{ form.reconcile.id_for_label }}">Allow
+                                Reconciliation</label>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="col-md-4">
-            <div class="mb-3">
-                <label for="{{ form.last_reconciled_date.id_for_label }}" class="form-label">Last Reconciled Date</label>
-                {{ form.last_reconciled_date }}
-                {% if form.last_reconciled_date.errors %}
-                <div class="error-message">{{ form.last_reconciled_date.errors|first }}</div>
-                {% endif %}
+
+        </div> <!-- End Card Body -->
+
+        <!-- Footer -->
+        <div class="card-footer bg-light p-3 d-flex justify-content-between align-items-center">
+            <div class="text-muted small">
+                <i class="bx bx-info-circle me-1"></i> <span class="d-none d-md-inline">Shortcuts:
+                    <strong>Alt+S</strong> (Save)</span>
             </div>
-        </div>
-        <div class="col-md-4">
-            <div class="mb-3">
-                <label for="{{ form.account_level.id_for_label }}" class="form-label">Account Level</label>
-                {{ form.account_level }}
-                {% if form.account_level.errors %}
-                <div class="error-message">{{ form.account_level.errors|first }}</div>
-                {% endif %}
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="mb-3">
-                <label for="{{ form.display_order.id_for_label }}" class="form-label">Display Order</label>
-                {{ form.display_order }}
-                {% if form.display_order.errors %}
-                <div class="error-message">{{ form.display_order.errors|first }}</div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    
-    <!-- Description & Settings -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <h5 class="text-primary mb-3"><i class="bx bx-detail"></i> Details & Settings</h5>
-        </div>
-        
-        <div class="col-md-12">
-            <div class="mb-3">
-                <label for="id_description" class="form-label">Description</label>
-                <textarea name="description" id="id_description" 
-                          class="form-control" 
-                          rows="3" 
-                          placeholder="Enter account description">{{ form.description.value|default:'' }}</textarea>
-            </div>
-        </div>
-        
-        <div class="col-md-3">
-            <div class="form-check form-switch mb-3">
-                <input class="form-check-input" type="checkbox" name="is_active" id="id_is_active" 
-                       {% if form.is_active.value or form.is_active.value is None %}checked{% endif %}>
-                <label class="form-check-label" for="id_is_active">
-                    Active
-                </label>
-            </div>
-        </div>
-        
-        <div class="col-md-3">
-            <div class="form-check form-switch mb-3">
-                <input class="form-check-input" type="checkbox" name="allow_manual_journal" id="id_allow_manual_journal" 
-                       {% if form.allow_manual_journal.value %}checked{% endif %}>
-                <label class="form-check-label" for="id_allow_manual_journal">
-                    Allow Manual Journal
-                </label>
-            </div>
-        </div>
-        
-        <div class="col-md-3">
-            <div class="form-check form-switch mb-3">
-                <input class="form-check-input" type="checkbox" name="is_bank_account" id="id_is_bank_account"
-                       hx-get="{% url 'accounting:chart_of_accounts_form_fields' %}"
-                       hx-trigger="change"
-                       hx-target="#dynamic-fields-container"
-                       hx-swap="innerHTML"
-                       {% if form.is_bank_account.value %}checked{% endif %}>
-                <label class="form-check-label" for="id_is_bank_account">
-                    Bank Account
-                </label>
-            </div>
-        </div>
-        
-        <div class="col-md-3">
-            <div class="form-check form-switch mb-3">
-                <input class="form-check-input" type="checkbox" name="is_control_account" id="id_is_control_account"
-                       hx-get="{% url 'accounting:chart_of_accounts_form_fields' %}"
-                       hx-trigger="change"
-                       hx-target="#dynamic-fields-container"
-                       hx-swap="innerHTML"
-                       {% if form.is_control_account.value %}checked{% endif %}>
-                <label class="form-check-label" for="id_is_control_account">
-                    Control Account
-                </label>
-            </div>
-        </div>
-    </div>
-    <div class="row mb-3">
-        <div class="col-md-3">
-            <div class="form-check form-switch mb-3">
-                <input class="form-check-input" type="checkbox" name="require_cost_center" id="id_require_cost_center"
-                       {% if form.require_cost_center.value %}checked{% endif %}>
-                <label class="form-check-label" for="id_require_cost_center">
-                    Require Cost Center
-                </label>
-            </div>
-            {% if form.require_cost_center.errors %}
-            <div class="error-message">{{ form.require_cost_center.errors|first }}</div>
-            {% endif %}
-        </div>
-        <div class="col-md-3">
-            <div class="form-check form-switch mb-3">
-                <input class="form-check-input" type="checkbox" name="require_project" id="id_require_project"
-                       {% if form.require_project.value %}checked{% endif %}>
-                <label class="form-check-label" for="id_require_project">
-                    Require Project
-                </label>
-            </div>
-            {% if form.require_project.errors %}
-            <div class="error-message">{{ form.require_project.errors|first }}</div>
-            {% endif %}
-        </div>
-        <div class="col-md-3">
-            <div class="form-check form-switch mb-3">
-                <input class="form-check-input" type="checkbox" name="require_department" id="id_require_department"
-                       {% if form.require_department.value %}checked{% endif %}>
-                <label class="form-check-label" for="id_require_department">
-                    Require Department
-                </label>
-            </div>
-            {% if form.require_department.errors %}
-            <div class="error-message">{{ form.require_department.errors|first }}</div>
-            {% endif %}
-        </div>
-        <div class="col-md-3">
-            <div class="mb-3">
-                <label for="{{ form.default_tax_code.id_for_label }}" class="form-label">Default Tax Code</label>
-                {{ form.default_tax_code }}
-                {% if form.default_tax_code.errors %}
-                <div class="error-message">{{ form.default_tax_code.errors|first }}</div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    
-    <!-- Dynamic Fields Section -->
-    <div class="row mb-4 mt-2">
-        <div class="col-12">
-            <div id="dynamic-fields-container">
-                {% include 'accounting/chart_of_accounts_form_fields.html' %}
-            </div>
-        </div>
-    </div>
-    
-    <!-- Form Actions -->
-    <div class="row">
-        <div class="col-12">
-            <hr class="my-4">
-            <div class="d-flex justify-content-between align-items-center">
-                <a href="{% url 'accounting:chart_of_accounts_list' %}" class="btn btn-light">
-                    <i class="bx bx-x"></i> Cancel
-                </a>
-        <div>
-            <button type="submit" name="save_and_new" class="btn btn-success">
-                <i class="bx bx-save"></i> Save & New
-                <span class="htmx-indicator spinner-border spinner-border-sm ms-1" role="status"></span>
-            </button>
-            <button type="submit" class="btn btn-primary">
-                <i class="bx bx-save"></i> Save
-                <span class="htmx-indicator spinner-border spinner-border-sm ms-1" role="status"></span>
-            </button>
-        </div>
-    </div>
-            
-            <div class="mt-3 text-muted small">
-                <i class="bx bx-info-circle"></i> 
-                <strong>Quick Tip:</strong> Press <kbd>Ctrl+S</kbd> to save or <kbd>Ctrl+Enter</kbd> for Save & New
+            <div class="d-flex gap-2">
+                <a href="{% url 'accounting:chart_of_accounts_list' %}"
+                    class="btn btn-outline-secondary btn-sm px-3">Cancel</a>
+                <button type="submit" name="save_and_new" class="btn btn-success btn-sm px-3" accesskey="n"
+                    title="Save & New (Alt+N)">
+                    <i class="bx bx-plus me-1"></i> Save & New
+                </button>
+                <button type="submit" class="btn btn-primary btn-sm px-3" accesskey="s" title="Save (Alt+S)">
+                    <i class="bx bx-save me-1"></i> Save Account
+                </button>
             </div>
         </div>
     </div>
 </form>
 
+<!-- Toast Container for Notifications -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1055;">
+    {% if messages %}
+    {% for message in messages %}
+    <div class="toast align-items-center text-white bg-{{ message.tags }} border-0" role="alert" aria-live="assertive"
+        aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">
+                {{ message }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+                aria-label="Close"></button>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+</div>
+
+<style>
+    .extra-small {
+        font-size: 0.75rem;
+    }
+
+    .circle-icon-small {
+        font-size: 0.85rem;
+        width: 1.5rem;
+        height: 1.5rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background-color: #eef2ff;
+        cursor: help;
+        vertical-align: middle;
+        line-height: 1;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background-color: #cbd5e1;
+        border-radius: 3px;
+    }
+
+    /* Hide scrollbar for standard look */
+    .form-select-sm,
+    .form-control-sm {
+        font-size: 0.875rem;
+    }
+</style>
+
 <script>
-(function() {
-    const form = document.getElementById('coa-single-form');
-    if (!form) { return; }
-    const accountCodeInput = document.getElementById('id_account_code');
-    const accountTypeSelect = document.getElementById('id_account_type');
-    const parentSelect = document.getElementById('id_parent_account');
-    const useCustomToggle = document.getElementById('id_use_custom_code');
-    const hiddenCustomCode = document.querySelector('input[name="custom_code"]');
-    const nextCodeUrl = form.dataset.nextCodeUrl || '';
-    const orgInput = document.getElementById('id_organization');
-    const orgId = form.dataset.orgId || (orgInput ? orgInput.value : '');
-    const isEdit = form.dataset.isEdit === '1';
+    document.addEventListener('DOMContentLoaded', function () {
+        // --- Elements ---
+        const form = document.getElementById('coa-single-form');
+        const accountCodeInput = document.getElementById('id_account_code');
+        const accountTypeSelect = document.getElementById('id_account_type');
+        const parentSelect = document.getElementById('id_parent_account');
+        const useCustomToggle = document.getElementById('id_use_custom_code');
 
-    // Cache all parent options for client-side filtering by account type
-    const parentOptions = parentSelect ? Array.from(parentSelect.options).map(opt => ({
-        value: opt.value,
-        text: opt.textContent,
-        type: opt.getAttribute('data-account-type') || ''
-    })) : [];
+        // Toggles
+        const advancedToggle = document.getElementById('toggleAdvancedMode');
+        const advancedSection = document.getElementById('advancedFields');
+        const bankToggle = document.getElementById('id_is_bank_account');
+        const controlToggle = document.getElementById('id_is_control_account');
 
-    function setAccountTypeFromParent() {
-        if (!parentSelect || !accountTypeSelect) { return; }
-        const opt = parentSelect.options[parentSelect.selectedIndex];
-        const ptype = opt && opt.getAttribute('data-account-type');
-        if (ptype) {
-            accountTypeSelect.value = ptype;
-            accountTypeSelect.dispatchEvent(new Event('change'));
-        }
-    }
+        // Fields for Required Logic
+        const acctNumberInput = document.getElementById('id_account_number');
+        const controlTypeInput = document.getElementById('id_control_account_type');
 
-    function setCode(value) {
-        const code = (value || '').trim();
-        if (accountCodeInput) {
-            accountCodeInput.value = code;
-        }
-        if (hiddenCustomCode) {
-            hiddenCustomCode.value = code;
-        }
-    }
+        // Sections
+        const bankSection = document.getElementById('bank-fields-section');
+        const controlSection = document.getElementById('control-fields-section');
 
-    function syncCustomToggle() {
-        if (!useCustomToggle || !accountCodeInput) { return; }
-        const enabled = !!useCustomToggle.checked;
-        accountCodeInput.readOnly = !enabled;
-        accountCodeInput.classList.toggle('bg-light', !enabled);
-        if (!enabled && !isEdit) {
-            setCode('');
-            fetchNextCode();
-        }
-        if (enabled) {
-            accountCodeInput.focus();
-        }
-    }
+        // Config
+        const nextCodeUrl = form ? form.dataset.nextCodeUrl : '';
+        const orgId = form ? form.dataset.orgId : '';
+        const isEdit = form ? form.dataset.isEdit === '1' : false;
 
-    function filterParents() {
-        if (!parentSelect) { return; }
-        const selectedType = accountTypeSelect?.value || '';
-        const currentValue = parentSelect.value;
-        parentSelect.innerHTML = '';
-        const rootOpt = document.createElement('option');
-        rootOpt.value = '';
-        rootOpt.textContent = 'None (Root Level)';
-        parentSelect.appendChild(rootOpt);
-        let currentStillValid = currentValue === '';
-        parentOptions.forEach((optData) => {
-            if (!optData.value) { return; }
-            if (selectedType && optData.type && optData.type !== selectedType) { return; }
-            const opt = document.createElement('option');
-            opt.value = optData.value;
-            opt.textContent = optData.text;
-            if (optData.type) {
-                opt.setAttribute('data-account-type', optData.type);
-            }
-            if (currentValue && optData.value === currentValue) {
-                opt.selected = true;
-                currentStillValid = true;
-            }
-            parentSelect.appendChild(opt);
+        // --- Init Toasts ---
+        var toastElList = [].slice.call(document.querySelectorAll('.toast'));
+        var toastList = toastElList.map(function (toastEl) {
+            var toast = new bootstrap.Toast(toastEl, { delay: 5000 });
+            toast.show();
+            return toast;
         });
-        if (!currentStillValid) {
-            parentSelect.value = '';
-        }
-    }
 
-    async function fetchNextCode() {
-        if (isEdit || !accountCodeInput || !nextCodeUrl || !orgId) { return; }
-        if (useCustomToggle && useCustomToggle.checked) { return; }
-        const parent = parentSelect?.value || '';
-        const acctType = accountTypeSelect?.value || '';
-        if (!parent && !acctType) {
-            setCode('');
-            return;
+        // --- Init Tooltips ---
+        function initTooltips() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl, {
+                    placement: tooltipTriggerEl.getAttribute('data-bs-placement') || 'top',
+                    boundary: tooltipTriggerEl.getAttribute('data-bs-boundary') || 'viewport',
+                    container: tooltipTriggerEl.getAttribute('data-bs-container') || 'body',
+                    offset: [0, 6]
+                });
+            });
         }
-        try {
-            const url = new URL(nextCodeUrl, window.location.origin);
-            url.searchParams.set('organization', orgId);
-            if (parent) { url.searchParams.set('parent_account', parent); }
-            if (acctType) { url.searchParams.set('account_type', acctType); }
-            const resp = await fetch(url, { headers: { 'HX-Request': 'true' } });
-            const data = await resp.json();
-            if (typeof data.next_code !== 'undefined') {
-                setCode(data.next_code || '');
+        initTooltips();
+
+        // Store all parent options initially for filtering
+        let allParentOptions = [];
+        if (parentSelect) {
+            allParentOptions = Array.from(parentSelect.options).map(opt => ({
+                value: opt.value,
+                text: opt.text,
+                type: opt.getAttribute('data-account-type')
+            }));
+        }
+
+        // --- Logic Functions ---
+
+        function toggleAdvanced() {
+            if (advancedToggle && advancedSection) {
+                if (advancedToggle.checked) {
+                    advancedSection.classList.remove('d-none');
+                    advancedSection.classList.add('d-block', 'fade-in');
+                } else {
+                    advancedSection.classList.add('d-none');
+                    advancedSection.classList.remove('d-block');
+                }
             }
-        } catch (err) {
-            console.warn('Unable to fetch next account code', err);
         }
-    }
 
-    if (accountCodeInput) {
-        accountCodeInput.addEventListener('blur', () => setCode(accountCodeInput.value));
-    }
-    if (useCustomToggle) {
-        useCustomToggle.addEventListener('change', syncCustomToggle);
-    }
-    if (accountTypeSelect) {
-        accountTypeSelect.addEventListener('change', () => {
-            filterParents();
-            fetchNextCode();
-        });
-    }
-    if (parentSelect) {
-        parentSelect.addEventListener('change', () => {
-            setAccountTypeFromParent();
-            fetchNextCode();
-        });
-    }
+        function toggleBank() {
+            if (bankToggle && bankSection) {
+                if (bankToggle.checked) {
+                    bankSection.classList.remove('d-none');
+                    if (acctNumberInput) acctNumberInput.setAttribute('required', 'required');
+                } else {
+                    bankSection.classList.add('d-none');
+                    if (acctNumberInput) acctNumberInput.removeAttribute('required');
+                }
+            }
+        }
 
-    // Initial sync on load
-    filterParents();
-    setAccountTypeFromParent();
-    syncCustomToggle();
-    fetchNextCode();
-})();
+        function toggleControl() {
+            if (controlToggle && controlSection) {
+                if (controlToggle.checked) {
+                    controlSection.classList.remove('d-none');
+                    if (controlTypeInput) controlTypeInput.setAttribute('required', 'required');
+                } else {
+                    controlSection.classList.add('d-none');
+                    if (controlTypeInput) controlTypeInput.removeAttribute('required');
+                }
+            }
+        }
 
-function reportFormError() {
-    const body = encodeURIComponent(`COA form error at ${window.location.href}\n\nPlease describe what you were doing and attach a screenshot if possible.`);
-    window.location.href = `mailto:support@yourcompany.com?subject=COA%20Form%20Error&body=${body}`;
-}
+        function filterParents() {
+            if (!parentSelect) return;
+            const selectedType = accountTypeSelect.value;
+            const currentParentValue = parentSelect.value;
+
+            // Clear options
+            parentSelect.innerHTML = '';
+
+            // Always add Root option
+            const rootOpt = document.createElement('option');
+            rootOpt.value = "";
+            rootOpt.text = "None (Root Level)";
+            parentSelect.add(rootOpt);
+
+            let foundCurrent = false;
+
+            allParentOptions.forEach(optData => {
+                if (!optData.value) return; // Skip empty root placeholder from array if present
+
+                // Show only if type matches OR no type selected yet
+                // Note: It's common to only allow parents of the same type or specific hierarchy. 
+                // We assume strict type matching per user request "filter for selection of account type".
+                if (!selectedType || (optData.type && optData.type === selectedType)) {
+                    const newOpt = document.createElement('option');
+                    newOpt.value = optData.value;
+                    newOpt.text = optData.text;
+                    newOpt.setAttribute('data-account-type', optData.type);
+                    if (optData.value === currentParentValue) {
+                        newOpt.selected = true;
+                        foundCurrent = true;
+                    }
+                    parentSelect.add(newOpt);
+                }
+            });
+
+            if (!foundCurrent) parentSelect.value = "";
+        }
+
+        function setAccountTypeFromParent() {
+            // When parent changes, auto-select its type
+            if (!parentSelect || !accountTypeSelect) return;
+
+            const selectedOpt = parentSelect.options[parentSelect.selectedIndex];
+            if (selectedOpt && selectedOpt.value) {
+                const pType = selectedOpt.getAttribute('data-account-type');
+                if (pType) {
+                    accountTypeSelect.value = pType;
+                }
+            }
+        }
+
+        async function fetchNextCode() {
+            if (isEdit) return; // Don't auto-gen on edit
+            if (!accountCodeInput || !nextCodeUrl || !orgId) return;
+
+            // If manual toggle is on, don't overwrite
+            if (useCustomToggle && useCustomToggle.checked) return;
+
+            const parentVal = parentSelect ? parentSelect.value : '';
+            const typeVal = accountTypeSelect ? accountTypeSelect.value : '';
+
+            // Only fetch if we have enough info (at least type or parent)
+            if (!parentVal && !typeVal) {
+                setCode('Auto-generated'); // Reset
+                return;
+            }
+
+            try {
+                // Show loading state?
+                accountCodeInput.placeholder = "Loading...";
+
+                const url = new URL(nextCodeUrl, window.location.origin);
+                url.searchParams.set('organization', orgId);
+                if (parentVal) url.searchParams.set('parent_account', parentVal);
+                if (typeVal) url.searchParams.set('account_type', typeVal);
+
+                const response = await fetch(url, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.next_code) {
+                        setCode(data.next_code);
+                    }
+                }
+            } catch (e) {
+                console.error("Error fetching code:", e);
+                accountCodeInput.placeholder = "Error";
+            }
+        }
+
+        function setCode(code) {
+            if (accountCodeInput) {
+                accountCodeInput.value = code;
+                // If it looks like a placeholder message, maybe style it?
+            }
+        }
+
+        function syncCustomToggle() {
+            if (!useCustomToggle || !accountCodeInput) return;
+            const isManual = useCustomToggle.checked;
+            accountCodeInput.readOnly = !isManual;
+            if (isManual) {
+                accountCodeInput.classList.remove('bg-light');
+                accountCodeInput.focus();
+            } else {
+                accountCodeInput.classList.add('bg-light');
+                fetchNextCode(); // Re-fetch auto code
+            }
+        }
+
+        // --- Event Listeners ---
+
+        if (advancedToggle) advancedToggle.addEventListener('change', toggleAdvanced);
+        if (bankToggle) bankToggle.addEventListener('change', toggleBank);
+        if (controlToggle) controlToggle.addEventListener('change', toggleControl);
+        if (useCustomToggle) useCustomToggle.addEventListener('change', syncCustomToggle);
+
+        if (accountTypeSelect) {
+            accountTypeSelect.addEventListener('change', function () {
+                filterParents();
+                fetchNextCode();
+            });
+        }
+
+        if (parentSelect) {
+            parentSelect.addEventListener('change', function () {
+                setAccountTypeFromParent();
+                // Note: setting account type triggers its change event? No, setting .value programmatically usually doesn't trigger 'change'.
+                // So we call fetchNextCode manually.
+                fetchNextCode();
+            });
+        }
+
+        // --- Init State ---
+        // Run initial logic
+        toggleAdvanced();
+        toggleBank();
+        toggleControl();
+        syncCustomToggle();
+
+    });
 </script>

@@ -29,7 +29,7 @@
                         <span data-key="t-lpg-module">LPG Vertical</span>
                     </a>
                 </li>
-                
+
                 <li class="menu-title" data-key="t-beta">Beta</li>
                 <li>
                     <a href="javascript: void(0);" class="has-arrow">
@@ -218,6 +218,13 @@
                                 {% url 'accounting:sales_order_list' as sales_orders_url %}
                                 {% if sales_orders_url %}
                                 <span>Voucher Configurations</span>
+                            </a>
+                        </li>
+                        <!-- Voucher Field Configuration -->
+                        <li>
+                            <a href="{% url 'accounting:voucher_field_config' %}">
+                                <i class="fas fa-cogs"></i>
+                                <span>Voucher Field Configuration</span>
                             </a>
                         </li>
                         <!-- Voucher Settings -->
@@ -885,7 +892,7 @@
                     </ul>
                 </li>
                 <li class="menu-title" data-key="t-settings">Settings</li>
-                
+
                 <!-- Audit Log & Activity Reporting -->
                 <li>
                     <a href="{% url 'accounting:audit_log_list' %}" class="nav-link">
@@ -893,7 +900,7 @@
                         <span data-key="t-audit-log">Audit Log</span>
                     </a>
                 </li>
-                
+
                 <!-- Permissions Management -->
                 <li>
                     <a href="{% url 'usermanagement:permission_list' %}">
@@ -901,7 +908,7 @@
                         <span data-key="t-permissions">Permissions</span>
                     </a>
                 </li>
-                
+
                 <!-- Data Export & Backup -->
                 <li>
                     <a href="{% url 'backups:dashboard' %}">

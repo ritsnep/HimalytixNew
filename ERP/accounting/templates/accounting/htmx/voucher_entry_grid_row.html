@@ -7,14 +7,17 @@
         <span class="badge bg-light text-dark">{{ line_number }}</span>
     </div>
 
-    <!-- Account Selection -->
+    <!-- Account Selection (typeahead + hidden value) -->
     <div class="col-12 col-md-3">
-        <select name="lines-{{ forloop.counter0 }}-account" class="form-select form-select-sm" required>
-            <option value="">Select Account...</option>
-            {% for account in accounts %}
-                <option value="{{ account.id }}" {% if line.account_id == account.id %}selected{% endif %}>{{ account.account_code }} - {{ account.account_name }}</option>
-            {% endfor %}
-        </select>
+        {# Visible typeahead input backed by a datalist for progressive enhancement #}
+        <input type="text" class="form-control form-control-sm account-typeahead" placeholder="Search account (code or name)" 
+               data-list-id="accounts-{{ line_number }}" 
+               data-hidden-name="lines-{{ forloop.counter0 }}-account"
+               value="{% if line.account %}{{ line.account.account_code }} - {{ line.account.account_name }}{% endif %}">
+        <datalist id="accounts-{{ line_number }}"></datalist>
+        {# Hidden input holds the real account id for form submission and HTMX updates #}
+        <input type="hidden" name="lines-{{ forloop.counter0 }}-account" value="{{ line.account_id|default:'' }}" 
+               hx-post="{% url 'accounting:journal_entry_row' %}" hx-trigger="change" hx-vals='{"field": "account", "value": this.value, "line_id": "{{ line.id|default:line_number }}"}'>
     </div>
 
     <!-- Description -->

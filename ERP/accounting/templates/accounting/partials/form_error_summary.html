@@ -1,0 +1,17 @@
+{% if form.errors %}
+  <div class="alert alert-danger" role="alert" aria-live="assertive">
+    <div class="fw-semibold mb-1">Please correct the errors below:</div>
+    <ul class="mb-0">
+      {% for field in form %}
+        {% if field.errors %}
+          <li>
+            <a class="alert-link" href="#{{ field.id_for_label }}">{{ field.label }}: {{ field.errors|first }}</a>
+          </li>
+        {% endif %}
+      {% endfor %}
+      {% for err in form.non_field_errors %}
+        <li>{{ err }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}

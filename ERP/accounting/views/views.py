@@ -25,7 +25,8 @@ from accounting.views.journal_entry import build_journal_entry_context, journal_
 from accounting.models import (
     FiscalYear, GeneralLedger, Journal, JournalLine, JournalType, ChartOfAccount, 
     AccountingPeriod, TaxCode, Department, Project, CostCenter,
-    VoucherModeConfig, VoucherModeDefault, VoucherUDFConfig
+    VoucherModeConfig, VoucherModeDefault, VoucherUDFConfig,
+    VoucherType, ConfigurableField, FieldConfig
 )
 from accounting.forms import (
     JournalForm, JournalLineForm, JournalLineFormSet,
@@ -44,7 +45,7 @@ from voucher_schema.loader import load_schema
 from .views_mixins import UserOrganizationMixin, PermissionRequiredMixin, VoucherConfigMixin
 from .views_list import GeneralLedgerListView
 from .views_create import *
-from accounting.services.close_period import close_period
+from accounting.services.voucher_config import VoucherConfigResolver
 from .views_update import *
 from .views_delete import *
 from .views_htmx import VoucherConfigListHXView
@@ -60,7 +61,13 @@ from django.forms import formset_factory
 from accounting.schema_loader import load_voucher_schema
 from django.views.decorators.http import require_GET, require_POST
 from django.db.models import Q
-from accounting.services.post_journal import JournalPostingError, post_journal, JournalError, JournalValidationError
+from accounting.services.post_journal import (
+    JournalPostingError,
+    post_journal,
+    JournalError,
+    JournalValidationError,
+    format_journal_exception,
+)
 from django.http import JsonResponse, HttpResponseForbidden
 from accounting.models import JournalLine
 from accounting.validation import JournalValidationService
@@ -824,9 +831,16 @@ class ChartOfAccountFormFieldsView(LoginRequiredMixin, View):
                 instance = None
         
         # Create form with instance context if available
+        initial_data = {}
+        if 'is_bank_account' in request.GET:
+             initial_data['is_bank_account'] = request.GET.get('is_bank_account') == 'true'
+        if 'is_control_account' in request.GET:
+             initial_data['is_control_account'] = request.GET.get('is_control_account') == 'true'
+
         form = ChartOfAccountForm(
             instance=instance,
-            organization=request.user.organization
+            organization=request.user.organization,
+            initial=initial_data
         )
         
         # Fetch UDF definitions for ChartOfAccount
@@ -1875,12 +1889,13 @@ def journal_post_ajax(request):
         )
         return JsonResponse({'error': 'Journal entry not found'}, status=404)
     except (JournalPostingError, JournalValidationError) as e:
+        user_msg = format_journal_exception(e)
         logger.error(
-            "Journal posting failed for journal_id=%s: %s", journal_id, e,
+            "Journal posting failed for journal_id=%s: %s", journal_id, user_msg,
             exc_info=True,
-            extra={'journal_id': journal_id, 'user_id': request.user.pk, 'organization_id': request.user.get_active_organization().pk, 'error_message': str(e)}
+            extra={'journal_id': journal_id, 'user_id': request.user.pk, 'organization_id': request.user.get_active_organization().pk, 'error_message': user_msg}
         )
-        return JsonResponse({'error': str(e)}, status=400)
+        return JsonResponse({'error': user_msg}, status=400)
     except Exception as e:
         logger.exception(
             "An unexpected error occurred while posting journal entry_id=%s: %s", journal_id, e,
@@ -2029,12 +2044,13 @@ class JournalPostView(LoginRequiredMixin, View):
            messages.success(request, "Journal posted successfully.")
            return redirect('accounting:journal_detail', pk=pk)
        except (JournalPostingError, JournalValidationError) as e:
+           user_msg = format_journal_exception(e)
            logger.error(
-               "Journal posting failed for journal_id=%s: %s", journal.pk, e,
+               "Journal posting failed for journal_id=%s: %s", journal.pk, user_msg,
                exc_info=True,
-               extra={'journal_id': journal.pk, 'user_id': request.user.pk, 'organization_id': request.user.get_active_organization().pk, 'error_message': str(e)}
+               extra={'journal_id': journal.pk, 'user_id': request.user.pk, 'organization_id': request.user.get_active_organization().pk, 'error_message': user_msg}
            )
-           messages.error(request, str(e))
+           messages.error(request, user_msg)
            return redirect('accounting:journal_detail', pk=pk)
        except Exception as e:
            logger.exception(
@@ -2043,3 +2059,42 @@ class JournalPostView(LoginRequiredMixin, View):
            )
            messages.error(request, "An unexpected error occurred while posting the journal.")
            return redirect('accounting:journal_detail', pk=pk)
+
+
+class VoucherConfigurationView(LoginRequiredMixin, TemplateView):
+    """View for managing voucher type configurations and field customizations"""
+    template_name = 'accounting/voucher_configuration.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        organization = self.request.user.get_active_organization()
+
+        # Get all voucher types
+        voucher_types = VoucherType.objects.all()
+
+        # Get configuration for each voucher type
+        voucher_configs = []
+        for voucher_type in voucher_types:
+            resolver = VoucherConfigResolver(organization, voucher_type)
+            fields_config = resolver.get_fields_config()
+
+            voucher_configs.append({
+                'voucher_type': voucher_type,
+                'fields': fields_config
+            })
+
+        context.update({
+            'voucher_configs': voucher_configs,
+            'organization': organization,
+        })
+
+        # Add breadcrumbs
+        context.update({
+            'breadcrumbs': [
+                ('Home', reverse('dashboard')),
+                ('Accounting', None),
+                ('Voucher Configuration', reverse('accounting:voucher_field_config'))
+            ]
+        })
+
+        return context

@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.http import HttpResponseRedirect
 from collections import OrderedDict
 
-from accounting.forms_factory import FormBuilder
+from accounting.forms.form_factory import VoucherFormFactory
 from accounting.services import create_voucher
 from accounting.models import VoucherModeConfig
 

@@ -166,6 +166,7 @@ INSTALLED_APPS = [
     'django_celery_results',
     'django_celery_beat',
     'printing',
+    'configuration',
 ]
 
 if ENABLE_SILK:
@@ -865,4 +866,3 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour=2, minute=30),
     },
 }
-

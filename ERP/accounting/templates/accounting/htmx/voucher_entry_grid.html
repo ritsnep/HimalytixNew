@@ -8,6 +8,9 @@
             <button type="button" class="btn btn-success btn-sm" hx-post="{% url 'accounting:journal_entry_add_row' %}" hx-target="#grid-rows" hx-swap="beforeend" hx-vals='{"line_count": "{{ lines|length|default:0 }}"}' name="add_line">
                 <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Add Line
             </button>
+            <button type="button" class="btn btn-outline-primary btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#bulkPasteModal">
+                <i class="bi bi-clipboard-plus me-1" aria-hidden="true"></i>Paste Rows
+            </button>
     </div>
     </div>
     <!-- Column Headers -->
@@ -67,6 +70,9 @@
             <span class="badge bg-light text-dark me-2">{{ lines|length|default:0 }} line{{ lines|length|pluralize }}</span>
             <button type="button" class="btn btn-success btn-sm" hx-post="{% url 'accounting:journal_entry_add_row' %}" hx-target="#grid-rows" hx-swap="beforeend" hx-vals='{"line_count": "{{ lines|length|default:0 }}"}' name="add_line">
                 <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Add Line
+            </button>
+            <button type="button" class="btn btn-outline-primary btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#bulkPasteModal">
+                <i class="bi bi-clipboard-plus me-1" aria-hidden="true"></i>Paste Rows
             </button>
         </div>
     </div>

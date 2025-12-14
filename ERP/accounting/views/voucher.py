@@ -110,7 +110,7 @@ class VoucherEntryView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequire
             header_form = HeaderFormClass(initial={'journal_date': timezone.now().strftime('%Y-%m-%d')})
             line_formset = LineFormset()
         
-        return header_form, line_formset
+        return header_form, line_formset, line_fields
 
     def get(self, request, *args, **kwargs):
         config_id = kwargs.get("config_id")
@@ -150,7 +150,7 @@ class VoucherEntryView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequire
         organization = request.user.get_active_organization()
         user_perms = self.get_user_perms(request)
         
-        header_form, line_formset = self._create_voucher_forms(schema, organization, user_perms)
+        header_form, line_formset, line_schema = self._create_voucher_forms(schema, organization, user_perms)
 
         defaults = list(getattr(config, 'defaults', []).all())
         
@@ -162,6 +162,7 @@ class VoucherEntryView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequire
             "page_title": "Voucher Entry",
             "voucher_configs": all_configs,
             "defaults": defaults,
+            "line_schema": line_schema,
         }
         if warning:
             context["warning"] = warning
@@ -189,7 +190,7 @@ class VoucherEntryView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequire
         organization = request.user.get_active_organization()
         user_perms = self.get_user_perms(request)
         
-        header_form, line_formset = self._create_voucher_forms(schema, organization, user_perms, request=request)
+        header_form, line_formset, line_schema = self._create_voucher_forms(schema, organization, user_perms, request=request)
 
         if header_form.is_valid() and line_formset.is_valid():
             header_data = header_form.cleaned_data
@@ -295,6 +296,7 @@ class VoucherEntryView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequire
             "lines_fs": line_formset,
             "user_perms": user_perms,
             "page_title": "Voucher Entry",
+            "line_schema": line_schema,
         }
         if warning:
             context["warning"] = warning

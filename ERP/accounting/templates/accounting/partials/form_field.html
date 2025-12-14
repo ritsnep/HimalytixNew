@@ -1,0 +1,35 @@
+{% with field_id=field.id_for_label %}
+  {% with error_id=field_id|add:"-error" help_id=field_id|add:"-help" %}
+    <div class="form-group mb-3">
+      <label for="{{ field_id }}" class="form-label fw-semibold{% if field.field.required %} required-field{% endif %}">
+        {{ field.label }}
+        {% if field.field.widget.attrs.data_bs_toggle %}
+          <i class="bi bi-info-circle text-primary" data-bs-toggle="tooltip" 
+             title="{{ field.field.widget.attrs.title|default:field.field.help_text|default:'Field description' }}"></i>
+        {% endif %}
+      </label>
+
+      {# Render widget with proper classes #}
+      {% if field.errors %}
+        <div class="invalid-feedback d-block" id="{{ error_id }}">
+          {{ field.errors|first }}
+        </div>
+        {{ field }}
+      {% else %}
+        {{ field }}
+      {% endif %}
+
+      {% if field.help_text %}
+        <div id="{{ help_id }}" class="form-text text-muted">{{ field.help_text }}</div>
+      {% endif %}
+
+      {# Add custom styling for required fields #}
+      <style>
+        .required-field::after {
+          content: " *";
+          color: red;
+        }
+      </style>
+    </div>
+  {% endwith %}
+{% endwith %}

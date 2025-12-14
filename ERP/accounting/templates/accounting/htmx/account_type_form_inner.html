@@ -1,0 +1,165 @@
+{% load static %}
+{% include 'accounting/partials/form_error_summary.html' with form=form %}
+
+<form id="account-type-form"
+      method="post"
+      {% if form_post_url %}action="{{ form_post_url }}"{% endif %}
+      hx-post="{{ form_post_url|default:request.path }}"
+      hx-target="#account-type-form-shell"
+      hx-swap="outerHTML"
+      hx-indicator="#account-type-save-indicator">
+  {% csrf_token %}
+
+  <div class="card shadow-sm border-0" id="account-type-form-shell">
+    <div class="card-header bg-primary text-white">
+      <h5 class="mb-0"><i class="bi bi-gear-fill me-2"></i>Account Type Configuration</h5>
+    </div>
+    <div class="card-body p-4">
+
+      <div class="row">
+        <div class="col-md-6">
+          {% include 'accounting/partials/form_field.html' with field=form.name %}
+        </div>
+        <div class="col-md-6">
+          {% include 'accounting/partials/form_field.html' with field=form.code %}
+        </div>
+      </div>
+
+      <hr class="my-4">
+
+      <div class="row">
+        <div class="col-12">
+          <h6 class="text-primary mb-3"><i class="bi bi-tags me-2"></i>Classification</h6>
+        </div>
+        <div class="col-md-6">
+          <div class="mb-3">
+            <label for="{{ form.nature.id_for_label }}" class="form-label fw-semibold required-field">
+              {{ form.nature.label }}
+              <i class="bi bi-info-circle text-primary" data-bs-toggle="tooltip" 
+                 title="Defines the fundamental accounting nature of the account type. Asset accounts increase with debits, Liability/Equity with credits. This determines default financial statement categorization and posting rules."></i>
+            </label>
+            {{ form.nature }}
+            <input type="hidden"
+                   id="account-type-nature-hx"
+                   hx-get="{% url 'accounting:account_type_dependent_fields' %}"
+                   hx-trigger="change from:#{{ form.nature.id_for_label }}"
+                   hx-include="#account-type-form"
+                   hx-target="#account-type-dependent-fields"
+                   hx-swap="outerHTML"
+                   hx-indicator="#account-type-dependent-spinner">
+            {% if form.nature.errors %}
+              <div class="invalid-feedback d-block">{{ form.nature.errors|first }}</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <div id="account-type-dependent-spinner" class="htmx-indicator spinner-border spinner-border-sm" role="status" aria-label="Loading" style="display: none;"></div>
+        <span class="text-muted small">Options update based on Nature / Classification.</span>
+      </div>
+
+      {# Dependent fields #}
+      {% include 'accounting/htmx/account_type_dependent_fields.html' with form=form %}
+
+      <hr class="my-4">
+
+      <div class="row">
+        <div class="col-12">
+          <h6 class="text-primary mb-3"><i class="bi bi-hash me-2"></i>Code Configuration</h6>
+        </div>
+        <div class="col-md-4">
+          {% include 'accounting/partials/form_field.html' with field=form.root_code_prefix %}
+        </div>
+        <div class="col-md-4">
+          {% include 'accounting/partials/form_field.html' with field=form.root_code_step %}
+        </div>
+        <div class="col-md-4">
+          {% include 'accounting/partials/form_field.html' with field=form.display_order %}
+        </div>
+      </div>
+
+      <hr class="my-4">
+
+      <div class="row">
+        <div class="col-12">
+          <h6 class="text-primary mb-3"><i class="bi bi-sliders me-2"></i>Options</h6>
+        </div>
+        <div class="col-md-6">
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" name="system_type" id="{{ form.system_type.id_for_label }}" {% if form.system_type.value %}checked{% endif %}>
+            <label class="form-check-label" for="{{ form.system_type.id_for_label }}">
+              {{ form.system_type.label }}
+            </label>
+            {% if form.system_type.errors %}
+              <div class="invalid-feedback d-block">{{ form.system_type.errors|first }}</div>
+            {% endif %}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" name="is_archived" id="{{ form.is_archived.id_for_label }}" {% if form.is_archived.value %}checked{% endif %}>
+            <label class="form-check-label" for="{{ form.is_archived.id_for_label }}">
+              {{ form.is_archived.label }}
+            </label>
+            {% if form.is_archived.errors %}
+              <div class="invalid-feedback d-block">{{ form.is_archived.errors|first }}</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="card-footer bg-light">
+      <div class="d-flex justify-content-between align-items-center">
+        <a href="{{ back_url|default:list_url }}" class="btn btn-outline-secondary">
+          <i class="bi bi-x-lg me-1"></i>Cancel
+        </a>
+        <div class="d-flex align-items-center gap-2">
+          <div id="account-type-save-indicator" class="htmx-indicator spinner-border spinner-border-sm" role="status" aria-label="Saving" style="display: none;"></div>
+          {% if can_save_and_new %}
+            <button type="submit" name="save_and_new" value="1" class="btn btn-success">
+              <i class="bi bi-plus-lg me-1"></i>Save & New
+            </button>
+          {% endif %}
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg me-1"></i>Save
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+
+<script>
+  // HTMX-safe focus management and enhanced UX
+  document.body.addEventListener('htmx:afterSwap', function(evt) {
+    const target = evt.detail && evt.detail.target;
+    if (!target || !target.querySelector) return;
+    
+    // Focus first invalid field
+    const firstInvalid = target.querySelector('.is-invalid, [aria-invalid="true"]');
+    if (firstInvalid && firstInvalid.focus) firstInvalid.focus();
+    
+    // Show/hide dependent fields spinner
+    const spinner = target.querySelector('#account-type-dependent-spinner');
+    if (spinner) {
+      spinner.style.display = 'none';
+    }
+  });
+  
+  document.body.addEventListener('htmx:beforeRequest', function(evt) {
+    // Show save indicator
+    const saveIndicator = document.getElementById('account-type-save-indicator');
+    if (saveIndicator && evt.detail.requestConfig.indicator) {
+      saveIndicator.style.display = 'inline-block';
+    }
+    
+    // Show dependent fields spinner for HTMX GET requests
+    const dependentSpinner = document.getElementById('account-type-dependent-spinner');
+    if (dependentSpinner && evt.detail.requestConfig.url.includes('account_type_dependent_fields')) {
+      dependentSpinner.style.display = 'inline-block';
+    }
+  });
+</script>

@@ -124,7 +124,7 @@ class BaseVoucherView(UserOrganizationMixin, View):
         from accounting.models import JournalType
         context['journal_types'] = JournalType.objects.filter(
             organization=context['organization']
-        ).values('id', 'code', 'name')
+        ).values('journal_type_id', 'code', 'name')
         
         # Add base currency for HTMX exchange rate resolution
         from accounting.views.journal_entry import _base_currency_code

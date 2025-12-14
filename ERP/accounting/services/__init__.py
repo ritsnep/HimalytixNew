@@ -28,6 +28,7 @@ from .tax_liability_service import TaxLiabilityService
 from .depreciation_service import DepreciationService
 from .workflow_service import WorkflowService
 from .landed_cost_service import LandedCostService
+from .batch_posting import BatchPostingService
 
 __all__ = [
     'post_journal',
@@ -62,4 +63,5 @@ __all__ = [
     'DepreciationService',
     'WorkflowService',
     'LandedCostService',
+    'BatchPostingService',
 ]

@@ -10,6 +10,7 @@ from accounting.views.audit_log_views import (
 )
 from ..views import journal_entry, journal_entry_view, voucher_views, voucher_crud_views
 from ..views import views_journal_grid as journal_grid_view
+from ..views import generic_voucher_views
 from ..views.report_views import (
     ReportListView,
     GeneralLedgerView,
@@ -40,7 +41,7 @@ from ..views.views import (
     ReportsListView, TrialBalanceView, IncomeStatementView, BalanceSheetView,
     GeneralLedgerDetailView, VoucherTypeConfigurationView, VoucherEntryView,
     ChartOfAccountFormFieldsView, AccountingPeriodDetailView,  FiscalYearDetailView, AccountingPeriodCloseView, FiscalYearCloseView,JournalTypeDetailView,
-    get_next_account_code, JournalEntryView, JournalDetailView,
+    get_next_account_code, JournalEntryView, JournalDetailView, VoucherConfigurationView,
     JournalTypeListView, VoucherModeConfigListView, VoucherModeConfigDetailView,
     VoucherUDFConfigListView,
     CurrencyListView, CurrencyExchangeRateListView, TaxAuthorityListView,
@@ -92,6 +93,7 @@ from ..views import views_actions
 from ..views import views_api
 from ..views import recurring_journal_views
 from ..views import views_htmx
+from ..views.views_htmx import AccountTypeDependentFieldsHXView
 from ..views import wizard
 from ..views import purchase_invoice_views, payment_scheduler_views, vendor_statement_views, customer_statement_views, sales_invoice_views, ar_receipt_views, commerce_views, sales_order_views, expense_views
 from ..views import sales_invoice_views, ar_receipt_views, commerce_views, sales_order_views
@@ -211,6 +213,9 @@ urlpatterns = [
     path('voucher-udfs/<int:pk>/edit/', VoucherUDFConfigUpdateView.as_view(), name='voucher_udf_update'),
     path('voucher-udfs/<int:pk>/delete/', VoucherUDFConfigDeleteView.as_view(), name='voucher_udf_delete'),
     
+    # New Voucher Configuration System
+    path('voucher-configuration/', VoucherConfigurationView.as_view(), name='voucher_field_config'),
+    
     path('voucher-entry/', VoucherEntryView.as_view(), name='voucher_entry'),
     path('voucher-entry/list/', voucher_crud_views.VoucherListView.as_view(), name='voucher_entry_list'),
     path('voucher-entry/create/', VoucherCreateView.as_view(), name='voucher_entry_create'),
@@ -235,6 +240,10 @@ urlpatterns = [
     path('vouchers/<int:pk>/delete/', voucher_crud_views.VoucherDeleteView.as_view(), name='voucher_delete'),
     path('vouchers/<int:pk>/duplicate/', voucher_crud_views.VoucherDuplicateView.as_view(), name='voucher_duplicate'),
     path('vouchers/<int:pk>/post/', voucher_crud_views.VoucherPostView.as_view(), name='voucher_post'),
+    
+    # Generic Voucher URLs
+    path('generic-voucher/select/', generic_voucher_views.VoucherTypeSelectionView.as_view(), name='generic_voucher_select'),
+    path('generic-voucher/<slug:voucher_code>/create/', generic_voucher_views.GenericVoucherCreateView.as_view(), name='generic_voucher_create'),
     
     # Legacy Voucher Views (kept for backward compatibility)
     path('vouchers/legacy/print/<int:pk>/', voucher_views.VoucherPrintView.as_view(), name='voucher_print'),
@@ -385,9 +394,10 @@ urlpatterns = [
     path('vendors/new/', commerce_views.VendorCreateView.as_view(), name='vendor_create'),
     path('vendors/<int:pk>/edit/', commerce_views.VendorUpdateView.as_view(), name='vendor_edit'),
 
-    # AJAX URLs
+    # AJAX/HTMX URLs
     path('ajax/get-next-account-code/', get_next_account_code, name='get_next_account_code'),
     path('htmx/lookup/<str:model_name>/', views_htmx.LookupHXView.as_view(), name='htmx_lookup'),
+    path('htmx/account-types/dependent-fields/', AccountTypeDependentFieldsHXView.as_view(), name='account_type_dependent_fields'),
 
     # Voucher Settings URL
     path('voucher-settings/', views_settings.VoucherSettingsView.as_view(), name='voucher_settings'),

@@ -1,0 +1,49 @@
+{% extends "partials/base.html" %}
+{% load static %}
+
+{% block title %}Select Voucher Type{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header Section -->
+    <div class="bg-white shadow-sm border-bottom mb-4">
+        <div class="container py-3">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h1 class="h4 mb-0">{{ page_title }}</h1>
+                    <p class="small text-muted mb-0">Choose the type of voucher you want to create</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container py-4">
+        <div class="row">
+            {% for config in configs %}
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title">{{ config.name }}</h5>
+                        <p class="card-text text-muted">{{ config.description|default:"No description available" }}</p>
+                        <div class="mt-auto">
+                            <span class="badge bg-secondary">{{ config.get_module_display }}</span>
+                            <a href="{% url 'accounting:generic_voucher_create' voucher_code=config.code %}" class="btn btn-primary btn-sm float-end">
+                                Create {{ config.name }}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <h5>No Voucher Configurations Available</h5>
+                    <p>Please contact your administrator to set up voucher configurations.</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

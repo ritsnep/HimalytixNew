@@ -17,7 +17,6 @@ from accounting.models import (
     AccountingPeriod, JournalType
 )
 from accounting.views.views_mixins import UserOrganizationMixin, PermissionRequiredMixin
-from accounting.forms_factory import FormBuilder
 from accounting.services.create_voucher import create_voucher
 from usermanagement.utils import PermissionUtils
 
@@ -215,11 +214,16 @@ class VoucherPostView(PermissionRequiredMixin, UserOrganizationMixin, DetailView
             return redirect('accounting:voucher_detail', pk=voucher.pk)
         
         try:
-            from accounting.services.post_journal import post_journal, JournalPostingError, JournalValidationError
+            from accounting.services.post_journal import (
+                post_journal,
+                JournalPostingError,
+                JournalValidationError,
+                format_journal_exception,
+            )
             post_journal(voucher, request.user)
             messages.success(request, f"Voucher {voucher.journal_number} has been posted successfully.")
         except (JournalPostingError, JournalValidationError) as e:
-            messages.error(request, f"Error posting voucher: {str(e)}")
+            messages.error(request, f"Error posting voucher: {format_journal_exception(e)}")
         except Exception:
             messages.error(request, "Unexpected error while posting voucher.")
         

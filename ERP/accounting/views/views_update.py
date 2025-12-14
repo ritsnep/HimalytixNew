@@ -339,19 +339,34 @@ class VoucherUDFConfigUpdateView(PermissionRequiredMixin, LoginRequiredMixin, Up
         })
         return context
 
-class AccountTypeUpdateView(AdvancedFormMixin, LoginRequiredMixin, UpdateView):
+class AccountTypeUpdateView(AdvancedFormMixin, PermissionRequiredMixin, LoginRequiredMixin, UpdateView):
     model = AccountType
     form_class = AccountTypeForm
     template_name = 'accounting/account_type_form.html'
     success_url = reverse_lazy('accounting:account_type_list')
-    
+    permission_required = ('accounting', 'accounttype', 'change')
+
     # Advanced form configuration
     app_name = 'accounting'
     model_name = 'account_type'
 
     def form_valid(self, form):
         form.instance.updated_by = self.request.user
-        return super().form_valid(form)
+        response = super().form_valid(form)
+
+        if self.request.POST.get('save_and_new') or self.request.POST.get('action') == 'save_new':
+            if self.request.headers.get('HX-Request'):
+                hx_response = HttpResponse('', status=204)
+                hx_response['HX-Redirect'] = reverse('accounting:account_type_create')
+                return hx_response
+            return redirect('accounting:account_type_create')
+
+        if self.request.headers.get('HX-Request'):
+            hx_response = HttpResponse('', status=204)
+            hx_response['HX-Redirect'] = str(self.success_url)
+            return hx_response
+
+        return response
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -359,6 +374,8 @@ class AccountTypeUpdateView(AdvancedFormMixin, LoginRequiredMixin, UpdateView):
         context['page_title'] = 'Account Type'
         context['list_url'] = reverse_lazy('accounting:account_type_list')
         context['back_url'] = reverse_lazy('accounting:account_type_list')
+        context['form_post_url'] = reverse('accounting:account_type_update', kwargs={'pk': self.object.pk})
+        context['can_save_and_new'] = True
         context['breadcrumbs'] = [
             ('Account Types', reverse_lazy('accounting:account_type_list')),
             ('Update Account Type', None)

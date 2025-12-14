@@ -6,8 +6,12 @@ across the application.
 """
 
 import logging
-from django.contrib.contenttypes.models import ContentType
 from typing import Optional, Any, Dict
+
+from django.contrib.contenttypes.models import ContentType
+
+from accounting.utils.audit import log_audit_event
+from accounting.models import AuditLog
 
 logger = logging.getLogger(__name__)
 
@@ -34,30 +38,38 @@ def log_action(
         changes: Optional dictionary of changes made
     """
     try:
-        from accounting.models import AuditLog
-        
-        # Get the content type for the object
+        content_type = None
+        instance = None
         try:
             content_type = ContentType.objects.get(model=object_type.lower())
+            model_class = content_type.model_class()
+            if model_class:
+                instance = model_class.objects.filter(pk=object_id).first()
         except ContentType.DoesNotExist:
             logger.warning(f"ContentType not found for {object_type}")
-            content_type = None
-        
-        # Create audit log entry
-        audit_entry = AuditLog.objects.create(
-            user=user,
-            action=action,
-            content_type=content_type,
-            object_id=object_id,
-            changes=changes or {},
-            details=details,
-            ip_address=None  # Can be added if request is available
-        )
-        
-        logger.info(
-            f"Audit log created: User {user.username} performed {action} "
-            f"on {object_type} {object_id}"
-        )
+
+        if instance is not None:
+            log_audit_event(
+                user,
+                instance,
+                action,
+                changes=changes,
+                details=details,
+                organization=organization,
+            )
+        else:
+            AuditLog.objects.create(
+                user=user,
+                organization=organization,
+                action=action,
+                content_type=content_type,
+                object_id=object_id,
+                changes=changes or {},
+                details=details,
+                ip_address=None,
+            )
+
+        logger.info(f"Audit log created: User {user.username} performed {action} on {object_type} {object_id}")
         
     except Exception as e:
         # Don't fail the main operation if audit logging fails

@@ -5,7 +5,7 @@ from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 from typing import Iterable, Optional
 
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from accounting.models import (
@@ -17,10 +17,15 @@ from accounting.models import (
 )
 from accounting.utils.audit import log_audit_event
 from accounting.services.exchange_rate_service import ExchangeRateService
+from accounting.extensions.hooks import HookRunner
 from usermanagement.models import CustomUser, Organization
 from usermanagement.utils import PermissionUtils
 
 logger = logging.getLogger(__name__)
+
+
+class OptimisticLockError(ValidationError):
+    """Raised when concurrent edits modify a journal before posting completes."""
 
 
 class PostingService:
@@ -44,6 +49,7 @@ class PostingService:
     ERR_VOUCHER_TYPE_VALIDATION = "Voucher type specific validation failed: {reason}"
     ERR_MISSING_DIMENSION = "Required dimension {dimension} is missing for account {account_code}."
     ERR_PERIOD_NOT_CLOSED = "Period is not closed and cannot be reopened."
+    ERR_GL_EXISTS = "General ledger entry already exists for this journal line."
 
     # Allowed Status Transitions
     ALLOWED_TRANSITIONS = {
@@ -303,14 +309,16 @@ class PostingService:
         delta = self._prepare_line_amounts(line, journal)
 
         account = ChartOfAccount.objects.select_for_update().get(pk=line.account_id)
-        account.current_balance = (account.current_balance or Decimal("0")) + delta
+        previous_balance = account.current_balance or Decimal("0")
+        account.current_balance = previous_balance + delta
         account.save(update_fields=["current_balance"])
         log_audit_event(
             self.user,
             account,
             "balance_updated",
-            changes={"current_balance": str(account.current_balance)},
             details=f"Balance updated via journal {journal.journal_number}",
+            before_state={"current_balance": previous_balance},
+            after_state={"current_balance": account.current_balance},
         )
 
         journal_metadata = journal.metadata or {}
@@ -319,29 +327,32 @@ class PostingService:
             or journal_metadata.get("closing_type") == "year_end"
         )
 
-        gl_entry = GeneralLedger.objects.create(
-            organization_id=journal.organization,
-            account=account,
-            journal=journal,
-            journal_line=line,
-            period=journal.period,
-            transaction_date=journal.journal_date,
-            debit_amount=line.debit_amount,
-            credit_amount=line.credit_amount,
-            balance_after=account.current_balance,
-            currency_code=journal.currency_code,
-            exchange_rate=journal.exchange_rate,
-            functional_debit_amount=line.functional_debit_amount,
-            functional_credit_amount=line.functional_credit_amount,
-            department=line.department,
-            project=line.project,
-            cost_center=line.cost_center,
-            description=line.description,
-            source_module="Accounting",
-            source_reference=journal.journal_number,
-             is_closing_entry=is_closing_entry,
-            created_by=self.user if hasattr(GeneralLedger, "created_by") else None,
-        )
+        try:
+            gl_entry = GeneralLedger.objects.create(
+                organization=journal.organization,
+                account=account,
+                journal=journal,
+                journal_line=line,
+                period=journal.period,
+                transaction_date=journal.journal_date,
+                debit_amount=line.debit_amount,
+                credit_amount=line.credit_amount,
+                balance_after=account.current_balance,
+                currency_code=journal.currency_code,
+                exchange_rate=journal.exchange_rate,
+                functional_debit_amount=line.functional_debit_amount,
+                functional_credit_amount=line.functional_credit_amount,
+                department=line.department,
+                project=line.project,
+                cost_center=line.cost_center,
+                description=line.description,
+                source_module="Accounting",
+                source_reference=journal.journal_number,
+                is_closing_entry=is_closing_entry,
+                created_by=self.user if hasattr(GeneralLedger, "created_by") else None,
+            )
+        except IntegrityError as exc:
+            raise ValidationError(self.ERR_GL_EXISTS) from exc
         log_audit_event(
             self.user,
             gl_entry,
@@ -359,11 +370,27 @@ class PostingService:
     # ---------------------------------------------------------------------
     @transaction.atomic
     def _post_internal(self, journal: Journal, enforce_permission: bool) -> Journal:
+        expected_rowversion = getattr(journal, "rowversion", None)
         journal = (
             Journal.objects.select_for_update()
             .select_related("journal_type", "period", "organization")
             .get(pk=journal.pk)
         )
+        if (
+            expected_rowversion is not None
+            and journal.rowversion is not None
+            and journal.rowversion != expected_rowversion
+        ):
+            raise OptimisticLockError(
+                "Journal was modified after you opened it. Refresh and try again."
+            )
+        previous_state = {
+            "status": journal.status,
+            "is_locked": journal.is_locked,
+            "posted_at": journal.posted_at,
+            "total_debit": journal.total_debit,
+            "total_credit": journal.total_credit,
+        }
         lines = list(
             journal.lines.select_related("account", "department", "project", "cost_center").order_by("line_number")
         )
@@ -375,7 +402,13 @@ class PostingService:
             self._validate_status_transition(journal, "posted", enforce_permission=False)
 
         if journal.status == "posted":
-            raise ValidationError("Journal is already posted.")
+            # Idempotency: if the journal is already posted, return it.
+            # This allows repeated post calls (or retries) to be safe without
+            # creating duplicate GL entries or raising an error for concurrent
+            # requests that may attempt to post the same journal.
+            logger.info("Journal %s already posted; returning idempotently", journal.pk)
+            journal.refresh_from_db()
+            return journal
         if journal.is_locked and journal.status != "posted":
             raise ValidationError(self.ERR_JOURNAL_LOCKED)
         self.validate(journal, lines)
@@ -389,8 +422,15 @@ class PostingService:
 
         for line in lines:
             self._apply_line_effects(line, journal, posting_time)
-
+        # After applying all line effects, re-run a sanity check to ensure
+        # the double-entry invariant still holds before committing the status.
         journal.update_totals()
+        try:
+            self._validate_double_entry_invariant(journal)
+        except ValidationError:
+            # If this occurs it indicates a serious inconsistency; raise up
+            # so callers get a clear validation error instead of a partial commit.
+            raise
         journal.status = "posted"
         journal.is_locked = True
         journal.posted_at = posting_time
@@ -411,6 +451,9 @@ class PostingService:
             update_fields.append("posted_by")
         if number_set:
             update_fields.append("journal_number")
+        current_rowversion = journal.rowversion or 1
+        journal.rowversion = current_rowversion + 1
+        update_fields.append("rowversion")
 
         journal.save(update_fields=update_fields)
 
@@ -419,6 +462,14 @@ class PostingService:
             journal,
             "posted",
             details=f"Journal {journal.journal_number} posted.",
+            before_state=previous_state,
+            after_state={
+                "status": journal.status,
+                "is_locked": journal.is_locked,
+                "posted_at": journal.posted_at,
+                "total_debit": journal.total_debit,
+                "total_credit": journal.total_credit,
+            },
         )
         logger.info(
             "Journal %s posted successfully by user %s",
@@ -426,6 +477,13 @@ class PostingService:
             getattr(self.user, "pk", None),
         )
         journal.refresh_from_db()
+        HookRunner(journal.organization).run(
+            "after_journal_post",
+            {
+                "journal_id": journal.pk,
+                "user_id": getattr(self.user, "pk", None),
+            },
+        )
         return journal
 
     def post(self, journal: Journal) -> Journal:
@@ -487,23 +545,31 @@ class PostingService:
         reversal.update_totals()
         reversal = self._post_internal(reversal, enforce_permission=False)
 
+        original_prev_state = {
+            "status": original.status,
+            "is_locked": original.is_locked,
+        }
         original.status = "reversed"
         original.is_locked = True
         original.updated_by = self.user
         original.updated_at = timezone.now()
-        original.save(update_fields=["status", "is_locked", "updated_by", "updated_at"])
+        original.rowversion = (original.rowversion or 1) + 1
+        original.save(update_fields=["status", "is_locked", "updated_by", "updated_at", "rowversion"])
 
         log_audit_event(
             self.user,
             original,
             "reversed",
             details=f"Journal {original.journal_number} reversed by {reversal.journal_number}.",
+            before_state=original_prev_state,
+            after_state={"status": original.status, "is_locked": original.is_locked},
         )
         log_audit_event(
             self.user,
             reversal,
             "posted_as_reversal",
             details=f"Reversal journal {reversal.journal_number} created for {original.journal_number}.",
+            after_state={"status": reversal.status, "journal_number": reversal.journal_number},
         )
 
         logger.info(
@@ -525,6 +591,11 @@ class PostingService:
         if period.status != "closed":
             raise ValidationError(self.ERR_PERIOD_NOT_CLOSED)
 
+        previous_state = {
+            "status": period.status,
+            "closed_at": period.closed_at,
+            "closed_by_id": getattr(period.closed_by, "pk", None),
+        }
         period.status = "open"
         period.closed_at = None
         period.closed_by = None
@@ -537,6 +608,12 @@ class PostingService:
             period,
             "reopened",
             details=f"Accounting period {period.name} reopened.",
+            before_state=previous_state,
+            after_state={
+                "status": period.status,
+                "closed_at": period.closed_at,
+                "closed_by_id": getattr(period.closed_by, "pk", None),
+            },
         )
         logger.info(
             "Accounting period %s reopened by user %s",

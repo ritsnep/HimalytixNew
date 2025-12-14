@@ -194,6 +194,45 @@ def analyze_expense_receipt(self, file_bytes: bytes, filename: str | None = None
 
 
 # ============================================================================
+# BATCH POSTING (Performance / PR10)
+# ============================================================================
+
+@shared_task(bind=True, max_retries=1)
+def post_journals_batch(self, user_id: int, journal_ids: list[int] | None = None, limit: int = 100) -> dict:
+    """
+    Post a batch of journals asynchronously for high-volume tenants.
+
+    Args:
+        user_id: The operator requesting the batch post (used for permissions/logging).
+        journal_ids: Optional explicit journal IDs; if omitted, all approved journals
+            for the user's active organization are processed up to `limit`.
+        limit: Safety cap for implicit selections so a single task cannot post
+            unbounded journals.
+    """
+    from django.contrib.auth import get_user_model
+    from accounting.services.batch_posting import BatchPostingService
+
+    User = get_user_model()
+    try:
+        user = User.objects.get(pk=user_id)
+    except User.DoesNotExist:
+        logger.warning("batch_posting.user_missing", extra={"user_id": user_id})
+        return {"posted": [], "failed": [{"error": "user_missing"}]}
+
+    service = BatchPostingService(user)
+    summary = service.post_journals(journal_ids=journal_ids, limit=limit)
+    logger.info(
+        "batch_posting.completed",
+        extra={
+            "user_id": user_id,
+            "posted_count": len(summary["posted"]),
+            "failed_count": len(summary["failed"]),
+        },
+    )
+    return summary
+
+
+# ============================================================================
 # AUDIT LOGGING TASKS (Async)
 # ============================================================================
 
@@ -382,4 +421,3 @@ def check_suspicious_login_activity(self, organization_id=None):
     except Exception as exc:
         logger.exception("check_suspicious_login_activity.failed")
         raise self.retry(exc=exc, countdown=300)
-

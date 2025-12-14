@@ -4,12 +4,16 @@ from rest_framework.test import APITestCase, APIClient
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import get_user_model
 from accounting.models import (
-    Organization, Journal, JournalType, AccountingPeriod, FiscalYear, 
-    Account, JournalLine
+    Organization, Journal, JournalType, AccountingPeriod, FiscalYear,
+    Account, JournalLine, ApprovalWorkflow, ApprovalStep
 )
 import datetime
 from decimal import Decimal
 import json
+
+from accounting.tests import factories as fac
+from configuration.models import ConfigurationEntry
+from configuration.services import ConfigurationService
 
 User = get_user_model()
 
@@ -480,6 +484,79 @@ class BulkJournalActionViewTest(APITestCase):
         response = self.client.post(self.url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data['error'], 'Missing action or journal_ids')
+
+
+class JournalWorkflowAPITests(APITestCase):
+    def setUp(self):
+        self.organization = fac.create_organization()
+        self.user = fac.create_user(organization=self.organization, role="manager")
+        self.client.force_authenticate(self.user)
+
+        self.journal = fac.create_journal(
+            organization=self.organization,
+            created_by=self.user,
+            total_debit=Decimal("200.00"),
+            total_credit=Decimal("200.00"),
+        )
+        account = fac.create_chart_of_account(organization=self.organization)
+        JournalLine.objects.create(
+            journal=self.journal,
+            line_number=1,
+            account=account,
+            debit_amount=Decimal("200.00"),
+            credit_amount=Decimal("0"),
+        )
+        JournalLine.objects.create(
+            journal=self.journal,
+            line_number=2,
+            account=account,
+            debit_amount=Decimal("0"),
+            credit_amount=Decimal("200.00"),
+        )
+        self.workflow = ApprovalWorkflow.objects.create(
+            organization=self.organization,
+            name="Default Journal",
+            area="journal",
+        )
+        ApprovalStep.objects.create(
+            workflow=self.workflow,
+            sequence=1,
+            role="manager",
+            min_amount=0,
+        )
+        ConfigurationService.set_value(
+            organization=self.organization,
+            scope=ConfigurationEntry.SCOPE_FINANCE,
+            key="approval_workflows",
+            value={"journal": self.workflow.name},
+            user=self.user,
+        )
+
+    def _submit(self):
+        response = self.client.post(f'/api/v1/journals/{self.journal.journal_id}/submit/', {})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.journal.refresh_from_db()
+        self.assertEqual(self.journal.status, 'awaiting_approval')
+
+    def test_submit_creates_pending_task(self):
+        self._submit()
+
+    def test_approve_finalizes_workflow(self):
+        self._submit()
+        response = self.client.post(f'/api/v1/journals/{self.journal.journal_id}/approve/', {})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.journal.refresh_from_db()
+        self.assertEqual(self.journal.status, 'approved')
+
+    def test_reject_moves_journal_to_rejected(self):
+        self._submit()
+        response = self.client.post(
+            f'/api/v1/journals/{self.journal.journal_id}/reject/',
+            {'notes': 'Insufficient documentation'},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.journal.refresh_from_db()
+        self.assertEqual(self.journal.status, 'rejected')
 
     def test_missing_journal_ids(self):
         data = {

@@ -69,7 +69,7 @@
             </div>
 
             <!-- Voucher Lines Grid -->
-            {% include "accounting/htmx/voucher_entry_grid.html" with lines=None accounts=accounts %}
+            {% include "accounting/htmx/voucher_entry_grid.html" with lines=None accounts=accounts line_schema=line_schema %}
 
             <!-- Form Actions (sticky footer) -->
             <div class="fixed-bottom bg-white border-top py-2">
@@ -79,6 +79,40 @@
                 </div>
             </div>
         </form>
+    </div>
+</div>
+
+{# Debug console (copied from Journal Entry UI for parity) #}
+<div class="modal fade" id="bulkPasteModal" tabindex="-1" aria-labelledby="bulkPasteLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bulkPasteLabel">Paste Multiple Rows</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">
+                    Paste rows copied from Excel/Sheets. Columns should map to
+                    <strong>Account Code</strong>, <strong>Description</strong>, <strong>Debit</strong>, and <strong>Credit</strong>.
+                </p>
+                {% if line_schema %}
+                    <ul class="text-muted small ps-3">
+                        {% for field in line_schema|slice:":4" %}
+                            <li><strong>{{ field.label|default:field.name|capfirst }}</strong> ({{ field.type|default:"text" }})</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+                <textarea class="form-control font-monospace" rows="10" id="bulkPasteInput" placeholder="Account Code[TAB]Description[TAB]Debit[TAB]Credit&#10;1000	Cash Sale	500	0"></textarea>
+                <div class="form-text">
+                    Use Tab or comma separators. Leave debit or credit blank per row as appropriate.
+                </div>
+                <div id="bulkPasteFeedback" class="alert alert-info d-none mt-3" role="alert"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" data-bulk-action="apply">Apply Rows</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -113,6 +147,8 @@
 {{ initial_state|json_script:"initial-state-data" }}
 {% endif %}
 <script src="{% static 'accounting/voucher_entry/app.js' %}" defer></script>
+    <script src="{% static 'accounting/js/voucher_typeahead.js' %}" defer></script>
+    <script src="{% static 'accounting/js/voucher_bulk_paste.js' %}" defer></script>
 <!-- Small HTMX debug/log helper for development -->
 <script>
     document.addEventListener('htmx:afterRequest', function(evt) {

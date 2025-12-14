@@ -4,6 +4,7 @@ from django.db import transaction
 from django.utils import timezone
 from ..models import VoucherModeConfig, Journal, ChartOfAccount, JournalLine, AccountingPeriod
 from accounting.config.settings import journal_entry_settings
+from accounting.extensions.hooks import HookRunner
 import logging
 
 logger = logging.getLogger(__name__)
@@ -13,16 +14,22 @@ def create_voucher(user, config_id: int, header_data: dict, lines_data: list, ud
     """
     Create a voucher (journal) and its lines.
     """
+    # Ensure the voucher config belongs to the requesting user's organization
+    user_org = getattr(user, 'organization', None)
     try:
-        config = VoucherModeConfig.objects.get(pk=config_id)
+        if user_org is not None:
+            config = VoucherModeConfig.objects.get(pk=config_id, organization=user_org)
+        else:
+            # fall back to any config if user has no explicit organization (should be rare)
+            config = VoucherModeConfig.objects.get(pk=config_id)
     except VoucherModeConfig.DoesNotExist:
         logger.error(
             "VoucherModeConfig with ID %s not found for user %s, organization %s",
-            config_id, getattr(user, 'pk', 'N/A'), getattr(user.organization, 'pk', 'N/A'),
+            config_id, getattr(user, 'pk', 'N/A'), getattr(user_org, 'pk', 'N/A'),
             extra={'config_id': config_id, 'user_id': getattr(user, 'pk', 'N/A'),
-                   'organization_id': getattr(user.organization, 'pk', 'N/A')}
+                   'organization_id': getattr(user_org, 'pk', 'N/A')}
         )
-        raise ValidationError(f"Voucher configuration with ID {config_id} not found.")
+        raise ValidationError(f"Voucher configuration with ID {config_id} not found or does not belong to your organization.")
 
     journal_date = header_data.get('journal_date')
     if isinstance(journal_date, str):
@@ -81,6 +88,17 @@ def create_voucher(user, config_id: int, header_data: dict, lines_data: list, ud
 
     currency_code = header_data.pop('currency_code', 'USD')
     exchange_rate = header_data.pop('exchange_rate', Decimal('1.0'))
+
+    hook_runner = HookRunner(organization)
+    hook_runner.run(
+        "before_voucher_save",
+        {
+            "config_id": config_id,
+            "user_id": getattr(user, "pk", None),
+            "header": header_data,
+            "lines": lines_data,
+        },
+    )
 
     journal = Journal(
         organization=organization,
@@ -160,5 +178,12 @@ def create_voucher(user, config_id: int, header_data: dict, lines_data: list, ud
                    'user_id': getattr(user, 'pk', 'N/A'),
                    'organization_id': getattr(user.organization, 'pk', 'N/A')}
         )
+    hook_runner.run(
+        "after_voucher_save",
+        {
+            "journal_id": journal.pk,
+            "user_id": getattr(user, "pk", None),
+        },
+    )
 
     return journal

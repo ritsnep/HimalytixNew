@@ -1,93 +1,72 @@
-from datetime import date
-from decimal import Decimal
-
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.test import TestCase
 
-from accounting.models import (
-    AccountType,
-    ApprovalStep,
-    ApprovalWorkflow,
-    ChartOfAccount,
-    Currency,
-    FiscalYear,
-    Journal,
-    JournalType,
-    Organization,
-)
+from accounting.models import ApprovalStep, ApprovalWorkflow
 from accounting.services.workflow_service import WorkflowService
-from accounting.tests import factories
-from usermanagement.models import CustomUser
+from accounting.tests import factories as f
+from configuration.models import ConfigurationEntry
+from configuration.services import ConfigurationService
 
 
 class WorkflowServiceTests(TestCase):
     def setUp(self):
-        self.org = factories.create_organization(name='WF Org', code='WF')
-        self.currency = factories.create_currency(code='USD', name='US Dollar', symbol='$')
-        self.fiscal_year = factories.create_fiscal_year(
-            organization=self.org,
-            code='WF22',
-            name='FY22',
-            start_date=date(2022, 1, 1),
-            end_date=date(2022, 12, 31),
-            is_current=True,
+        self.organization = f.create_organization()
+        self.manager = f.create_user(organization=self.organization, role="manager")
+        self.cfo = f.create_user(organization=self.organization, role="cfo")
+        self.analyst = f.create_user(organization=self.organization, role="analyst")
+        for user in (self.manager, self.cfo, self.analyst):
+            user.get_active_organization = lambda org=self.organization: org
+
+        self.journal = f.create_journal(
+            organization=self.organization,
+            created_by=self.manager,
+            total_debit=500,
+            total_credit=500,
         )
-        self.period = factories.create_accounting_period(
-            fiscal_year=self.fiscal_year,
-            period_number=1,
-            name='P1',
-            start_date=date(2022, 1, 1),
-            end_date=date(2022, 1, 31),
-            is_current=True,
-        )
-        self.journal_type = factories.create_journal_type(
-            organization=self.org,
-            code='GEN',
-            name='General',
-        )
-        acc_type = factories.create_account_type(code='EXP300', nature='expense', name='Expense')
-        self.account = factories.create_chart_of_account(
-            organization=self.org,
-            account_type=acc_type,
-            currency=self.currency,
-            account_code='5002',
-            account_name='Consulting Expense',
-        )
-        self.user = factories.create_user(username='wfuser', password='pass', organization=self.org)
         self.workflow = ApprovalWorkflow.objects.create(
-            organization=self.org,
-            name='Journal Approval',
-            area='journal',
+            organization=self.organization,
+            name="Journal Flow",
+            area="journal",
         )
-        ApprovalStep.objects.bulk_create([
-            ApprovalStep(workflow=self.workflow, sequence=1, role='approver', min_amount=0),
-            ApprovalStep(workflow=self.workflow, sequence=2, role='manager', min_amount=0),
-        ])
-        self.service = WorkflowService(self.user)
-
-    def create_journal(self):
-        return factories.create_journal(
-            organization=self.org,
-            journal_type=self.journal_type,
-            period=self.period,
-            journal_date=date(2022, 1, 5),
-            currency_code='USD',
-            journal_number='GEN-001',
-            created_by=self.user,
+        ApprovalStep.objects.create(
+            workflow=self.workflow,
+            sequence=1,
+            role="manager",
+            min_amount=0,
+        )
+        ApprovalStep.objects.create(
+            workflow=self.workflow,
+            sequence=2,
+            role="cfo",
+            min_amount=1000,
         )
 
-    def test_submit_and_approve_journal(self):
-        journal = self.create_journal()
-        task = self.service.submit(journal, self.workflow, initiator=self.user)
-        self.assertEqual(task.status, 'pending')
-        task = self.service.approve(task, user=self.user, approved=True, notes='ok')
-        self.assertEqual(task.status, 'pending')
-        self.assertEqual(task.current_step, 2)
-        task = self.service.approve(task, user=self.user, approved=True)
-        self.assertEqual(task.status, 'approved')
+    def test_submit_with_policy_uses_configured_workflow(self):
+        ConfigurationService.set_value(
+            organization=self.organization,
+            scope=ConfigurationEntry.SCOPE_FINANCE,
+            key="approval_workflows",
+            value={"journal": self.workflow.name},
+        )
+        task = WorkflowService(self.manager).submit_with_policy(
+            self.journal,
+            area="journal",
+            initiator=self.manager,
+        )
+        self.assertEqual(task.workflow, self.workflow)
+        self.assertEqual(task.status, "pending")
 
-    def test_reject_sets_status(self):
-        journal = self.create_journal()
-        task = self.service.submit(journal, self.workflow, initiator=self.user)
-        self.service.approve(task, user=self.user, approved=False, notes='no')
+    def test_approve_enforces_roles_and_skips_thresholds(self):
+        task = WorkflowService(self.manager).submit(self.journal, self.workflow, initiator=self.manager)
+
+        with self.assertRaises(PermissionDenied):
+            WorkflowService(self.analyst).approve(task, self.analyst, approved=True)
+
+        WorkflowService(self.manager).approve(task, self.manager, approved=True)
         task.refresh_from_db()
-        self.assertEqual(task.status, 'rejected')
+        # Amount is below CFO threshold so workflow finishes after manager approval.
+        self.assertEqual(task.status, "approved")
+
+    def test_submit_with_policy_without_workflow_raises(self):
+        with self.assertRaises(ValidationError):
+            WorkflowService(self.manager).submit_with_policy(self.journal, area="payment", initiator=self.manager)

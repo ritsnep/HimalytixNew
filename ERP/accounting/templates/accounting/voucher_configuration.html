@@ -1,0 +1,323 @@
+{% extends "accounting/base.html" %}
+{% load static %}
+{% load permission_tags %}
+
+{% block title %}Voucher Configuration{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">Voucher Configuration</h4>
+                <p class="card-title-desc">Customize voucher fields for each voucher type per organization</p>
+            </div>
+            <div class="card-body">
+                {% if voucher_configs %}
+                    <div class="accordion" id="voucherConfigAccordion">
+                        {% for config in voucher_configs %}
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="heading{{ config.voucher_type.id }}">
+                                <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}"
+                                        type="button" data-bs-toggle="collapse"
+                                        data-bs-target="#collapse{{ config.voucher_type.id }}"
+                                        aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}"
+                                        aria-controls="collapse{{ config.voucher_type.id }}">
+                                    <i class="fas fa-file-invoice me-2"></i>
+                                    {{ config.voucher_type.name }}
+                                    <small class="text-muted ms-2">{{ config.voucher_type.description }}</small>
+                                </button>
+                            </h2>
+                            <div id="collapse{{ config.voucher_type.id }}"
+                                 class="accordion-collapse collapse {% if forloop.first %}show{% endif %}"
+                                 aria-labelledby="heading{{ config.voucher_type.id }}"
+                                 data-bs-parent="#voucherConfigAccordion">
+                                <div class="accordion-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>Field Name</th>
+                                                    <th>Label</th>
+                                                    <th>Type</th>
+                                                    <th>Required</th>
+                                                    <th>Visible</th>
+                                                    <th>Default Value</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for field in config.fields %}
+                                                <tr>
+                                                    <td>{{ field.field_name }}</td>
+                                                    <td>{{ field.label }}</td>
+                                                    <td>
+                                                        <span class="badge bg-primary">{{ field.field_type }}</span>
+                                                    </td>
+                                                    <td>
+                                                        {% if field.required %}
+                                                            <i class="fas fa-check text-success"></i>
+                                                        {% else %}
+                                                            <i class="fas fa-times text-muted"></i>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if field.visible %}
+                                                            <i class="fas fa-eye text-success"></i>
+                                                        {% else %}
+                                                            <i class="fas fa-eye-slash text-muted"></i>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>{{ field.default_value|default:"-" }}</td>
+                                                    <td>
+                                                        <button class="btn btn-sm btn-outline-primary"
+                                                                onclick="editFieldConfig({{ config.voucher_type.id }}, '{{ field.field_name }}')">
+                                                            <i class="fas fa-edit"></i> Edit
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr>
+                                                    <td colspan="7" class="text-center text-muted">
+                                                        No fields configured for this voucher type
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div class="mt-3">
+                                        <button class="btn btn-primary" onclick="addNewField({{ config.voucher_type.id }})">
+                                            <i class="fas fa-plus"></i> Add New Field
+                                        </button>
+                                        <button class="btn btn-secondary" onclick="resetToDefaults({{ config.voucher_type.id }})">
+                                            <i class="fas fa-undo"></i> Reset to Defaults
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-cogs fa-3x text-muted mb-3"></i>
+                        <h5>No Voucher Configurations Found</h5>
+                        <p class="text-muted">Initialize voucher configurations first.</p>
+                        <button class="btn btn-primary" onclick="initializeConfigs()">
+                            <i class="fas fa-play"></i> Initialize Configurations
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Field Modal -->
+<div class="modal fade" id="fieldConfigModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Field Configuration</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="fieldConfigForm">
+                    <input type="hidden" id="modalVoucherTypeId" name="voucher_type_id">
+                    <input type="hidden" id="modalFieldName" name="field_name">
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="fieldLabel" class="form-label">Field Label</label>
+                                <input type="text" class="form-control" id="fieldLabel" name="label" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="fieldType" class="form-label">Field Type</label>
+                                <select class="form-control" id="fieldType" name="field_type" required>
+                                    <option value="text">Text</option>
+                                    <option value="number">Number</option>
+                                    <option value="date">Date</option>
+                                    <option value="boolean">Boolean</option>
+                                    <option value="select">Select</option>
+                                    <option value="textarea">Textarea</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="fieldRequired" class="form-label">Required</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="fieldRequired" name="required">
+                                    <label class="form-check-label" for="fieldRequired">
+                                        This field is required
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="fieldVisible" class="form-label">Visible</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="fieldVisible" name="visible" checked>
+                                    <label class="form-check-label" for="fieldVisible">
+                                        Show this field in forms
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="fieldDefaultValue" class="form-label">Default Value</label>
+                        <input type="text" class="form-control" id="fieldDefaultValue" name="default_value">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="fieldHelpText" class="form-label">Help Text</label>
+                        <textarea class="form-control" id="fieldHelpText" name="help_text" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveFieldConfig()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function editFieldConfig(voucherTypeId, fieldName) {
+    // Fetch current field configuration
+    fetch(`/api/v1/vouchers/types/${voucherTypeId}/fields/${fieldName}/`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('modalVoucherTypeId').value = voucherTypeId;
+            document.getElementById('modalFieldName').value = fieldName;
+            document.getElementById('fieldLabel').value = data.label || '';
+            document.getElementById('fieldType').value = data.field_type || 'text';
+            document.getElementById('fieldRequired').checked = data.required || false;
+            document.getElementById('fieldVisible').checked = data.visible !== false;
+            document.getElementById('fieldDefaultValue').value = data.default_value || '';
+            document.getElementById('fieldHelpText').value = data.help_text || '';
+
+            new bootstrap.Modal(document.getElementById('fieldConfigModal')).show();
+        })
+        .catch(error => {
+            console.error('Error fetching field config:', error);
+            alert('Error loading field configuration');
+        });
+}
+
+function saveFieldConfig() {
+    const formData = new FormData(document.getElementById('fieldConfigForm'));
+    const voucherTypeId = formData.get('voucher_type_id');
+    const fieldName = formData.get('field_name');
+
+    const configData = {
+        label: formData.get('label'),
+        field_type: formData.get('field_type'),
+        required: document.getElementById('fieldRequired').checked,
+        visible: document.getElementById('fieldVisible').checked,
+        default_value: formData.get('default_value'),
+        help_text: formData.get('help_text')
+    };
+
+    fetch(`/api/v1/vouchers/configs/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+            voucher_type: voucherTypeId,
+            field_name: fieldName,
+            ...configData
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.id) {
+            bootstrap.Modal.getInstance(document.getElementById('fieldConfigModal')).hide();
+            location.reload(); // Refresh to show changes
+        } else {
+            alert('Error saving configuration: ' + JSON.stringify(data));
+        }
+    })
+    .catch(error => {
+        console.error('Error saving field config:', error);
+        alert('Error saving field configuration');
+    });
+}
+
+function addNewField(voucherTypeId) {
+    // Reset modal for new field
+    document.getElementById('modalVoucherTypeId').value = voucherTypeId;
+    document.getElementById('modalFieldName').value = '';
+    document.getElementById('fieldLabel').value = '';
+    document.getElementById('fieldType').value = 'text';
+    document.getElementById('fieldRequired').checked = false;
+    document.getElementById('fieldVisible').checked = true;
+    document.getElementById('fieldDefaultValue').value = '';
+    document.getElementById('fieldHelpText').value = '';
+
+    document.querySelector('.modal-title').textContent = 'Add New Field';
+    new bootstrap.Modal(document.getElementById('fieldConfigModal')).show();
+}
+
+function resetToDefaults(voucherTypeId) {
+    if (confirm('Are you sure you want to reset all field configurations for this voucher type to defaults?')) {
+        fetch(`/api/v1/vouchers/types/${voucherTypeId}/reset-defaults/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Error resetting to defaults');
+            }
+        })
+        .catch(error => {
+            console.error('Error resetting defaults:', error);
+            alert('Error resetting to defaults');
+        });
+    }
+}
+
+function initializeConfigs() {
+    if (confirm('This will initialize default voucher configurations. Continue?')) {
+        fetch('/admin/init-voucher-config/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Error initializing configurations');
+            }
+        })
+        .catch(error => {
+            console.error('Error initializing configs:', error);
+            alert('Error initializing configurations');
+        });
+    }
+}
+</script>
+{% endblock %}

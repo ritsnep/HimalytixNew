@@ -318,32 +318,25 @@ class ManualJournalPostView(PermissionRequiredMixin, UserOrganizationMixin, Deta
         try:
             # Use the posting service
             posted_journal = post_journal(journal, user=request.user)
-            
+
             messages.success(
                 request,
                 f"Journal {posted_journal.journal_number} posted successfully."
             )
             return redirect('accounting:manual_journal_detail', pk=posted_journal.pk)
-            
-        except JournalValidationError as e:
-            messages.error(
-                request,
-                f"Validation error: {str(e)}"
-            )
-            logger.error(f"Journal validation error: {e}", exc_info=True)
-            
-        except JournalPostingError as e:
-            messages.error(
-                request,
-                f"Posting error: {str(e)}"
-            )
-            logger.error(f"Journal posting error: {e}", exc_info=True)
-            
+
+        except (JournalValidationError, JournalPostingError) as e:
+            # Format the message centrally and log
+            try:
+                from accounting.services.post_journal import format_journal_exception
+                user_msg = format_journal_exception(e)
+            except Exception:
+                user_msg = str(e)
+            messages.error(request, user_msg)
+            logger.error("Journal post failed: %s", user_msg, exc_info=True)
+
         except Exception as e:
-            messages.error(
-                request,
-                f"Unexpected error: {str(e)}"
-            )
+            messages.error(request, f"Unexpected error: {str(e)}")
             logger.exception(f"Unexpected error posting journal: {e}")
         
         return redirect('accounting:manual_journal_detail', pk=journal.pk)

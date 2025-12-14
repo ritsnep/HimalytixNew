@@ -51,11 +51,12 @@ class ChartOfAccountForm(BootstrapFormMixin, forms.ModelForm):
             'account_number': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '64', 'placeholder': 'Account Number', 'title': 'Bank account number (optional).'}),
             'swift_code': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '11', 'placeholder': 'SWIFT/BIC', 'title': 'SWIFT/BIC code (8 or 11 characters).'}),
             'is_control_account': forms.CheckboxInput(attrs={'class': 'form-check-input', 'title': 'Is this a control account?'}),
-            'control_account_type': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '50', 'placeholder': 'Control Account Type', 'title': 'Type of control account (optional, max 50 characters).'}),
+            'control_account_type': forms.Select(attrs={'class': 'form-select', 'title': 'Select control account type.'}),
             'require_cost_center': forms.CheckboxInput(attrs={'class': 'form-check-input', 'title': 'Require cost center for transactions?'}),
             'require_project': forms.CheckboxInput(attrs={'class': 'form-check-input', 'title': 'Require project for transactions?'}),
             'require_department': forms.CheckboxInput(attrs={'class': 'form-check-input', 'title': 'Require department for transactions?'}),
-            'default_tax_code': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '50', 'placeholder': 'Default Tax Code', 'title': 'Default tax code (optional, max 50 characters).'}),
+            'default_tax_code': forms.Select(attrs={'class': 'form-select', 'title': 'Select default tax code.'}),
+            'reconcile': forms.CheckboxInput(attrs={'class': 'form-check-input', 'title': 'Allow reconciliation?'}),
             'currency': forms.Select(attrs={'class': 'form-select', 'title': 'Select the currency.'}),
             'last_reconciled_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'title': 'Last reconciled date.'}),
             'allow_manual_journal': forms.CheckboxInput(attrs={'class': 'form-check-input', 'title': 'Allow manual journal entries?'}),
@@ -70,6 +71,25 @@ class ChartOfAccountForm(BootstrapFormMixin, forms.ModelForm):
         for name, field in self.fields.items():
             if name in initial:
                 field.initial = initial[name]
+
+        # System managed numeric fields should not trigger validation errors
+        system_hidden_fields = {
+            'current_balance': 0.00,
+            'reconciled_balance': 0.00,
+            'account_level': 1,
+        }
+        for field_name, default_value in system_hidden_fields.items():
+            if field_name in self.fields:
+                self.fields[field_name].required = False
+                self.fields[field_name].widget = forms.HiddenInput()
+                if not self.instance.pk and field_name not in self.initial:
+                    self.initial[field_name] = default_value
+
+        opening_balance_field = self.fields.get('opening_balance')
+        if opening_balance_field:
+            opening_balance_field.required = False
+            if not self.instance.pk and 'opening_balance' not in self.initial:
+                self.initial['opening_balance'] = 0.00
 
         # Determine selected account type early for filtering
         selected_account_type = None
@@ -96,6 +116,13 @@ class ChartOfAccountForm(BootstrapFormMixin, forms.ModelForm):
             self.fields['account_type'].queryset = AccountType.objects.filter(
                 archived_at__isnull=True
             )
+            
+            # Filter Tax Codes by Organization
+            from accounting.models import TaxCode
+            self.fields['default_tax_code'].queryset = TaxCode.objects.filter(
+                organization=self.organization
+            )
+
             if selected_account_type:
                 self.fields['account_type'].initial = selected_account_type
             currency_choices = [(currency.currency_code, f"{currency.currency_code} - {currency.currency_name}")

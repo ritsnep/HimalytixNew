@@ -4,24 +4,32 @@ from django.forms import modelform_factory, modelformset_factory
 from utils.calendars import CalendarMode, get_calendar_mode
 from utils.widgets import DualCalendarWidget
 from .forms_mixin import BootstrapFormMixin
-from .models import VoucherModeConfig
+from .models import VoucherConfiguration  # Updated import
 from .widgets import DatePicker, AccountChoiceWidget
 
 # Minimal dynamic form builder for schema-driven forms
 
-class FormBuilder:
-    def __init__(self, schema, model=None, organization=None, user_perms=None, prefix=None,
+class VoucherFormFactory:
+    """
+    Generic form factory for voucher configurations.
+    Supports UDF injection and default value injection.
+    """
+    def __init__(self, configuration, model=None, organization=None, user_perms=None, prefix=None,
                  phase=None, initial=None, disabled_fields=None, **kwargs):
-        self.schema = schema
+        self.configuration = configuration
+        self.schema = configuration.ui_schema if hasattr(configuration, 'ui_schema') else configuration  # Handle both config object and direct schema
         self.model = model
         self.organization = organization
         self.user_perms = user_perms
         self.prefix = prefix
         self.phase = phase
-        self.initial = initial
+        self.initial = initial or {}
+        # Inject default values from configuration
+        if hasattr(configuration, 'default_header') and configuration.default_header:
+            self.initial.update(configuration.default_header)
         # Default dynamic form 'currency' initial to organization's base currency
         try:
-            if self.initial is None and self.organization is not None:
+            if not self.initial and self.organization is not None:
                 base_cur = getattr(self.organization, 'base_currency_code_id', None) or getattr(self.organization, 'base_currency_code', None)
                 if base_cur:
                     self.initial = {'currency': base_cur}
@@ -79,7 +87,11 @@ class FormBuilder:
                 try:
                     model = apps.get_model('accounting', choices)
                     field_class = forms.ModelChoiceField
-                    field_kwargs['queryset'] = model.objects.filter(is_active=True)
+                    queryset = model.objects.all()
+                    # Only filter by is_active if the model has this field
+                    if hasattr(model, 'is_active'):
+                        queryset = queryset.filter(is_active=True)
+                    field_kwargs['queryset'] = queryset
                     # Keep a simple to_field_name if present
                     field_kwargs['to_field_name'] = getattr(model._meta.pk, 'name', 'id')
                 except LookupError:
@@ -145,42 +157,55 @@ class FormBuilder:
         return widget_map.get(field_type)
 
     def build_form(self):
-        """Dynamically build and return a Form class based on the schema."""
+        """Dynamically build and return a Form class based on the configuration's ui_schema."""
         form_fields = {}
+        schema = self.configuration.resolve_ui_schema() if hasattr(self.configuration, 'resolve_ui_schema') else self.schema
+        
         # Handle schema as a direct dictionary of fields or with a 'fields' key
-        if isinstance(self.schema, dict):
-            if 'fields' in self.schema and isinstance(self.schema['fields'], list):
-                for field_config in self.schema['fields']:
+        if isinstance(schema, dict):
+            if 'fields' in schema and isinstance(schema['fields'], list):
+                for field_config in schema['fields']:
                     field_name = field_config.get('name')
                     if field_name:
                         form_fields[field_name] = self._create_field_from_schema(field_config)
             else: # Assume schema is a direct dictionary of field_name: field_config
-                for field_name, field_config in self.schema.items():
+                for field_name, field_config in schema.items():
                     form_fields[field_name] = self._create_field_from_schema(field_config)
 
-        # Create a dynamic form class
-        BaseForm = type('DynamicBaseForm', (BootstrapFormMixin, forms.Form), form_fields)
+        # Create a dynamic form class - ModelForm if model is provided, otherwise regular Form
+        if self.model:
+            # Create ModelForm
+            Meta = type('Meta', (), {'model': self.model, 'fields': list(form_fields.keys())})
+            form_fields['Meta'] = Meta
+            BaseForm = type('DynamicModelForm', (BootstrapFormMixin, forms.ModelForm), form_fields)
+        else:
+            # Create regular Form
+            BaseForm = type('DynamicBaseForm', (BootstrapFormMixin, forms.Form), form_fields)
 
         class DynamicForm(BaseForm):
             def __init__(self, *args, **kwargs):
-                if self.form_builder.initial is not None:
-                    kwargs.setdefault('initial', self.form_builder.initial)
-                if self.form_builder.prefix is not None:
-                    kwargs.setdefault('prefix', self.form_builder.prefix)
+                if self.form_factory.initial is not None:
+                    kwargs.setdefault('initial', self.form_factory.initial)
+                if self.form_factory.prefix is not None:
+                    kwargs.setdefault('prefix', self.form_factory.prefix)
                 
                 super().__init__(*args, **kwargs)
 
                 # Disable fields if needed
-                for f_name in self.form_builder.disabled_fields:
+                for f_name in self.form_factory.disabled_fields:
                     if f_name in self.fields:
                         self.fields[f_name].disabled = True
             
             def save(self, commit=True):
-                # This form is not a ModelForm, so we return cleaned_data
-                # The view will handle saving the model instance
-                return self.cleaned_data
+                if self.form_factory.model:
+                    # This is a ModelForm, save normally
+                    return super().save(commit=commit)
+                else:
+                    # This form is not a ModelForm, so we return cleaned_data
+                    # The view will handle saving the model instance
+                    return self.cleaned_data
 
-        DynamicForm.form_builder = self
+        DynamicForm.form_factory = self
         return DynamicForm
 
     def build_formset(self, extra=1):
@@ -190,16 +215,16 @@ class FormBuilder:
         FormSet = forms.formset_factory(LineForm, extra=extra)
 
         class DynamicFormSet(FormSet):
-            form_builder = self
+            form_factory = self
             def __init__(self, *args, **kwargs):
-                if self.form_builder.prefix is not None:
-                    kwargs.setdefault('prefix', self.form_builder.prefix)
+                if self.form_factory.prefix is not None:
+                    kwargs.setdefault('prefix', self.form_factory.prefix)
                 
                 # We don't use initial data for formsets in the same way
                 # It's typically passed as `initial=[{...}, {...}]`
                 super().__init__(*args, **kwargs)
 
-                disabled_fields = getattr(self.form_builder, 'disabled_fields', None)
+                disabled_fields = getattr(self.form_factory, 'disabled_fields', None)
                 if disabled_fields:
                     for form in self.forms:
                         for f_name in disabled_fields:
@@ -208,13 +233,53 @@ class FormBuilder:
         
         return DynamicFormSet
 
+    @staticmethod
+    def get_generic_voucher_form(voucher_config, organization, instance=None, data=None, files=None, **kwargs):
+        """
+        Create a generic voucher header form.
+        """
+        form_kwargs = {
+            'configuration': voucher_config,
+            'organization': organization,
+            **kwargs
+        }
+        
+        if instance:
+            form_kwargs['instance'] = instance
+        if data is not None:
+            form_kwargs['data'] = data
+        if files is not None:
+            form_kwargs['files'] = files
+        
+        factory = VoucherFormFactory(**form_kwargs)
+        return factory.build_form()
+
+    @staticmethod
+    def get_generic_voucher_formset(voucher_config, organization, instance=None, data=None, files=None, **kwargs):
+        """
+        Create a generic voucher line formset.
+        """
+        form_kwargs = {
+            'configuration': voucher_config,
+            'organization': organization,
+            **kwargs
+        }
+        
+        if data is not None:
+            form_kwargs['data'] = data
+        if files is not None:
+            form_kwargs['files'] = files
+        
+        factory = VoucherFormFactory(**form_kwargs)
+        return factory.build_formset()
+
 def build_form(schema, **kwargs):
     """Build a single form."""
-    return FormBuilder(schema, **kwargs).build_form()
+    return VoucherFormFactory(schema, **kwargs).build_form()
 
 def build_formset(schema, **kwargs):
     """Build a formset."""
-    return FormBuilder(schema, **kwargs).build_formset()
+    return VoucherFormFactory(schema, **kwargs).build_formset()
 
 from django.utils.functional import LazyObject
 
@@ -227,3 +292,11 @@ class LazyVoucherForms(LazyObject):
         }
 
 VOUCHER_FORMS = LazyVoucherForms()
+
+def build_form(schema, **kwargs):
+    """Build a single form."""
+    return VoucherFormFactory(schema, **kwargs).build_form()
+
+def build_formset(schema, **kwargs):
+    """Build a formset."""
+    return VoucherFormFactory(schema, **kwargs).build_formset()

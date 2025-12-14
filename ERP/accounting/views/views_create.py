@@ -14,6 +14,8 @@ from django.views.generic import CreateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from accounting.views.views_mixins import UserOrganizationMixin, PermissionRequiredMixin
 from accounting.mixins import AdvancedFormMixin  # Import the new mixin
+from django.template.loader import render_to_string
+
 from django.urls import reverse, reverse_lazy
 from django.contrib import messages  # Add this import for messages
 from django.db import transaction    # Add this import for transaction
@@ -134,29 +136,53 @@ class TaxAuthorityCreateView(LoginRequiredMixin, CreateView):
         return context
 
 
-class AccountTypeCreateView(AdvancedFormMixin, LoginRequiredMixin, CreateView):
+class AccountTypeCreateView(AdvancedFormMixin, PermissionRequiredMixin, LoginRequiredMixin, CreateView):
     model = AccountType
     form_class = AccountTypeForm
     template_name = 'accounting/account_type_form.html'
     success_url = reverse_lazy('accounting:account_type_list')
-    
+    permission_required = ('accounting', 'accounttype', 'add')
+
     # Advanced form configuration
     app_name = 'accounting'
     model_name = 'account_type'
 
     def form_valid(self, form):
         form.instance.created_by = self.request.user
-        return super().form_valid(form)
+        response = super().form_valid(form)
+
+        # Support Save & New
+        if self.request.POST.get('save_and_new') or self.request.POST.get('action') == 'save_new':
+            if self.request.headers.get('HX-Request'):
+                hx_response = HttpResponse('', status=204)
+                hx_response['HX-Redirect'] = reverse('accounting:account_type_create')
+                return hx_response
+            return redirect('accounting:account_type_create')
+
+        if self.request.headers.get('HX-Request'):
+            hx_response = HttpResponse('', status=204)
+            hx_response['HX-Redirect'] = str(self.success_url)
+            return hx_response
+
+        return response
 
     def form_invalid(self, form):
         logger.error(f"AccountType form errors: {form.errors.as_json()}")
-        # Add Django messages for each error
         for field, errors in form.errors.items():
             for error in errors:
                 if field == '__all__':
                     messages.error(self.request, error)
                 else:
                     messages.error(self.request, f"{field}: {error}")
+
+        if self.request.headers.get('HX-Request'):
+            html = render_to_string(
+                'accounting/account_type_form.html',
+                self.get_context_data(form=form),
+                request=self.request
+            )
+            return HttpResponse(html, status=400)
+
         return super().form_invalid(form)
 
     def get_context_data(self, **kwargs):
@@ -165,6 +191,8 @@ class AccountTypeCreateView(AdvancedFormMixin, LoginRequiredMixin, CreateView):
         context['page_title'] = 'Account Type'
         context['list_url'] = reverse('accounting:account_type_list')
         context['back_url'] = reverse('accounting:account_type_list')
+        context['form_post_url'] = reverse('accounting:account_type_create')
+        context['can_save_and_new'] = True
         context['breadcrumbs'] = [
             ('Account Types', reverse('accounting:account_type_list')),
             ('Create Account Type', None)

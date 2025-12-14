@@ -2,15 +2,18 @@ import csv
 import logging
 from io import TextIOWrapper
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import Http404
+from django.contrib.contenttypes.models import ContentType
 from rest_framework import renderers, serializers as drf_serializers, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, inline_serializer, OpenApiParameter
 
 from accounting.models import (
+    ApprovalTask,
     ChartOfAccount,
     CurrencyExchangeRate,
     FiscalYear,
@@ -18,6 +21,9 @@ from accounting.models import (
     Journal,
 )
 from accounting.services import post_journal, close_period
+from accounting.services.posting_service import PostingService
+from accounting.services.workflow_service import WorkflowService
+from accounting.services.document_lifecycle import DocumentLifecycleService
 from utils.file_uploads import MAX_IMPORT_UPLOAD_BYTES, iter_validated_files
 
 from .permissions import IsOrganizationMember
@@ -54,6 +60,90 @@ class JournalViewSet(BaseOrgViewSet):
     def perform_create(self, serializer):
         journal = serializer.save(organization=self.request.user.organization)
         post_journal(journal)
+
+    def _pending_task(self, journal: Journal) -> ApprovalTask | None:
+        content_type = ContentType.objects.get_for_model(Journal)
+        return (
+            ApprovalTask.objects.filter(
+                content_type=content_type,
+                object_id=journal.pk,
+                status="pending",
+            )
+            .order_by("-updated_at")
+            .first()
+        )
+
+    def _serialized_response(self, journal: Journal):
+        serializer = self.get_serializer(journal)
+        return Response(serializer.data)
+
+    def _handle_transition_response(self, journal: Journal, func):
+        try:
+            result = func()
+        except (ValidationError, PermissionDenied) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return result
+
+    @action(detail=True, methods=["post"], url_path="submit")
+    def submit_for_approval(self, request, pk=None):
+        journal = self.get_object()
+
+        if self._pending_task(journal):
+            return Response({"detail": "Approval already pending."}, status=status.HTTP_400_BAD_REQUEST)
+
+        def _work():
+            lifecycle = DocumentLifecycleService(journal=journal, acting_user=request.user)
+            lifecycle.transition("awaiting_approval")
+            WorkflowService(request.user).submit_with_policy(journal, area="journal", initiator=request.user)
+            return self._serialized_response(journal)
+
+        return self._handle_transition_response(journal, _work)
+
+    @action(detail=True, methods=["post"], url_path="approve")
+    def approve(self, request, pk=None):
+        journal = self.get_object()
+        notes = request.data.get("notes", "")
+        task = self._pending_task(journal)
+        if not task:
+            return Response({"detail": "No pending approval task."}, status=status.HTTP_400_BAD_REQUEST)
+
+        def _work():
+            result = WorkflowService(request.user).approve(task, request.user, approved=True, notes=notes)
+            if result.status == "approved":
+                lifecycle = DocumentLifecycleService(journal=journal, acting_user=request.user)
+                lifecycle.transition("approved")
+            journal.refresh_from_db()
+            return self._serialized_response(journal)
+
+        return self._handle_transition_response(journal, _work)
+
+    @action(detail=True, methods=["post"], url_path="reject")
+    def reject(self, request, pk=None):
+        journal = self.get_object()
+        notes = request.data.get("notes", "")
+        task = self._pending_task(journal)
+        if not task:
+            return Response({"detail": "No pending approval task."}, status=status.HTTP_400_BAD_REQUEST)
+
+        def _work():
+            result = WorkflowService(request.user).approve(task, request.user, approved=False, notes=notes)
+            if result.status == "rejected":
+                lifecycle = DocumentLifecycleService(journal=journal, acting_user=request.user)
+                lifecycle.transition("rejected")
+            journal.refresh_from_db()
+            return self._serialized_response(journal)
+
+        return self._handle_transition_response(journal, _work)
+
+    @action(detail=True, methods=["post"], url_path="post")
+    def post(self, request, pk=None):
+        journal = self.get_object()
+
+        def _work():
+            PostingService(request.user).post(journal)
+            return self._serialized_response(journal)
+
+        return self._handle_transition_response(journal, _work)
 
 class CurrencyExchangeRateViewSet(BaseOrgViewSet):
     queryset = CurrencyExchangeRate.objects.all()

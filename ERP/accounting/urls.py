@@ -1,23 +1,23 @@
-from django.urls import path, include, re_path
+"""
+DEPRECATED: This module was superseded by the `accounting/urls/` package (i.e. the
+`accounting.urls` package defined in `accounting/urls/__init__.py`).
 
-from accounting.views import views_import
-from .views import journal_entry, journal_entry_view, voucher_views
-from .views import voucher_crud_views
-from .views import voucher_htmx_handlers
-from .views.voucher_create_view import (
-    VoucherCreateView,
-    VoucherCreateHtmxView,
-    VoucherAccountLookupHtmxView,
-    VoucherTaxCalculationHtmxView,
-)
-from .views.voucher_edit_view import VoucherEditView
-from .views.voucher_detail_view import VoucherDetailView
-from .views.voucher_list_view import VoucherListView
-from .views import views_journal_grid as journal_grid_view
-from .views.report_views import (
-    ReportListView,
-    GeneralLedgerView,
-    TrialBalanceView as TrialBalanceReportView,
+To avoid routing duplication and confusion, keep `accounting/urls/__init__.py` as the
+single source of truth for accounting URL patterns.
+
+This shim file is intentionally inert: it exposes an empty `urlpatterns` list so that
+imports referencing `accounting.urls` won't accidentally register duplicate routes.
+
+If you are confident the codebase and deployments are using the package-based URLs,
+you can remove this file entirely.
+"""
+
+from django.urls import path
+
+app_name = 'accounting'
+
+# Intentionally empty - use `accounting/urls/__init__.py` instead.
+urlpatterns = []
     ProfitLossView,
     BalanceSheetView as BalanceSheetReportView,
     CashFlowView,
@@ -47,7 +47,7 @@ from .views.views import (
     ReportsListView, TrialBalanceView, IncomeStatementView, BalanceSheetView,
     GeneralLedgerDetailView, VoucherTypeConfigurationView, VoucherEntryView,
     ChartOfAccountFormFieldsView, AccountingPeriodDetailView,  FiscalYearDetailView, AccountingPeriodCloseView, FiscalYearCloseView,JournalTypeDetailView,
-    get_next_account_code, JournalEntryView, JournalDetailView,
+    get_next_account_code, JournalEntryView, JournalDetailView, VoucherConfigurationView,
     JournalTypeListView, VoucherModeConfigListView, VoucherModeConfigDetailView,
     VoucherUDFConfigListView,
     CurrencyListView, CurrencyExchangeRateListView, TaxAuthorityListView,
@@ -247,6 +247,9 @@ urlpatterns = [
     
     path('voucher-entry/', VoucherEntryView.as_view(), name='voucher_entry'),
     path('voucher-entry/<int:config_id>/', VoucherEntryView.as_view(), name='voucher_entry_config'),
+    
+    # New Voucher Configuration System
+    path('voucher-configuration/', VoucherConfigurationView.as_view(), name='voucher_field_config'),
     
     # Voucher Wizard CRUD URLs (order matters - specific routes before generic!)
     path('vouchers/', voucher_crud_views.VoucherListView.as_view(), name='voucher_list'),

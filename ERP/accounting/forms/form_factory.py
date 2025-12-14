@@ -11,6 +11,8 @@ This module provides the VoucherFormFactory class which handles:
 import logging
 from typing import Optional, Type, Any, Dict
 
+from django import forms
+from django.db import models
 from django.forms import ModelForm, BaseFormSet
 
 from accounting.models import Journal, JournalLine
@@ -171,6 +173,154 @@ class VoucherFormFactory:
 
         return JournalLineForm(**form_kwargs)
 
+    @staticmethod
+    def get_generic_voucher_form(
+        voucher_config: 'VoucherConfiguration',
+        organization: 'Organization',
+        instance: Optional[Any] = None,
+        data: Optional[Dict] = None,
+        files: Optional[Dict] = None,
+        **kwargs
+    ) -> ModelForm:
+        """
+        Create a generic voucher form using VoucherConfiguration.
+
+        Args:
+            voucher_config: The VoucherConfiguration defining the form schema
+            organization: The organization context
+            instance: Optional model instance for editing
+            data: POST data for binding
+            files: FILES data for attachments
+            **kwargs: Additional form kwargs
+
+        Returns:
+            A ModelForm instance configured for the voucher type
+        """
+        from accounting.forms_factory import build_form
+
+        # Get the model class for this voucher config
+        model_class = VoucherFormFactory._get_model_for_voucher_config(voucher_config)
+
+        # Build the form using the schema
+        form_kwargs = {
+            'organization': organization,
+            'instance': instance,
+            'data': data,
+            'files': files,
+            **kwargs
+        }
+
+        # Use build_form to create the ModelForm
+        form = build_form(voucher_config.ui_schema.get('header', []), model=model_class, **form_kwargs)
+
+        return form
+
+    @staticmethod
+    def get_generic_voucher_formset(
+        voucher_config: 'VoucherConfiguration',
+        organization: 'Organization',
+        instance: Optional[Any] = None,
+        data: Optional[Dict] = None,
+        files: Optional[Dict] = None,
+        **kwargs
+    ) -> BaseFormSet:
+        """
+        Create a generic voucher formset using VoucherConfiguration.
+
+        Args:
+            voucher_config: The VoucherConfiguration defining the form schema
+            organization: The organization context
+            instance: Optional model instance for editing
+            data: POST data for binding
+            files: FILES data for attachments
+            **kwargs: Additional formset kwargs
+
+        Returns:
+            A BaseFormSet instance configured for the voucher type
+        """
+        from accounting.forms_factory import build_formset
+
+        # Get the line model class for this voucher config
+        line_model_class = VoucherFormFactory._get_line_model_for_voucher_config(voucher_config)
+
+        # Get the lines schema from voucher config
+        lines_schema = voucher_config.ui_schema.get('lines', [])
+
+        # Build formset kwargs
+        formset_kwargs = {
+            'organization': organization,
+            'data': data,
+            'files': files,
+            **kwargs
+        }
+
+        if not instance and voucher_config.default_lines:
+            formset_kwargs['initial'] = voucher_config.default_lines
+
+        # Build the formset
+        FormSetClass = build_formset(lines_schema, model=line_model_class, **formset_kwargs)
+
+        return FormSetClass
+
+    @staticmethod
+    def _get_model_for_voucher_config(voucher_config: 'VoucherConfiguration') -> models.Model:
+        """Get the header model class for a voucher configuration."""
+        from django.apps import apps
+        
+        # Map module and code to model classes
+        # Since multiple configs can have same (module, code), we use module-based logic
+        if voucher_config.module == 'accounting':
+            return apps.get_model('accounting', 'Journal')
+        elif voucher_config.module == 'purchasing':
+            if voucher_config.code == 'purchase_order':
+                return apps.get_model('accounting', 'PurchaseOrderVoucher')
+            elif voucher_config.code == 'purchase_return':
+                return apps.get_model('accounting', 'PurchaseReturnVoucher')
+            else:
+                # Default to PurchaseOrderVoucher for purchasing module
+                return apps.get_model('accounting', 'PurchaseOrderVoucher')
+        elif voucher_config.module == 'sales':
+            if voucher_config.code == 'sales_order':
+                return apps.get_model('accounting', 'SalesOrderVoucher')
+            else:
+                # Default to SalesOrderVoucher for sales module
+                return apps.get_model('accounting', 'SalesOrderVoucher')
+        elif voucher_config.module == 'inventory':
+            # For inventory, we might need specific models, but for now use Journal
+            return apps.get_model('accounting', 'Journal')
+        else:
+            # Default fallback
+            return apps.get_model('accounting', 'Journal')
+
+    @staticmethod
+    def _get_line_model_for_voucher_config(voucher_config: 'VoucherConfiguration') -> models.Model:
+        """Get the line model class for a voucher configuration."""
+        from django.apps import apps
+        
+        # Map module and code to line model classes
+        if voucher_config.module == 'accounting':
+            return apps.get_model('accounting', 'JournalLine')
+        elif voucher_config.module == 'purchasing':
+            if voucher_config.code == 'purchase_order':
+                return apps.get_model('accounting', 'PurchaseOrderVoucherLine')
+            elif voucher_config.code == 'purchase_return':
+                return apps.get_model('accounting', 'PurchaseReturnVoucherLine')
+            else:
+                # Default to PurchaseOrderVoucherLine for purchasing module
+                return apps.get_model('accounting', 'PurchaseOrderVoucherLine')
+        elif voucher_config.module == 'sales':
+            if voucher_config.code == 'sales_order':
+                return apps.get_model('accounting', 'SalesOrderVoucherLine')
+            else:
+                # Default to SalesOrderVoucherLine for sales module
+                return apps.get_model('accounting', 'SalesOrderVoucherLine')
+        elif voucher_config.module == 'inventory':
+            # For inventory, we might need specific models, but for now use JournalLine
+            return apps.get_model('accounting', 'JournalLine')
+        else:
+            # Default fallback
+            return apps.get_model('accounting', 'JournalLine')
+
 
 def get_voucher_ui_header(organization, journal_type=None):
     """Return the header portion of a VoucherModeConfig.ui_schema if it exists.
@@ -193,200 +343,3 @@ def get_voucher_ui_header(organization, journal_type=None):
     except Exception:
         pass
     return None
-
-    @staticmethod
-    def get_journal_line_formset(
-        organization: 'Organization',
-        instance: Optional[Journal] = None,
-        data: Optional[Dict] = None,
-        files: Optional[Dict] = None,
-        journal_type: Optional[str] = None,
-        **kwargs
-    ) -> BaseFormSet:
-        """
-        Create and return a properly initialized JournalLineFormSet.
-
-        Args:
-            organization: The organization context
-            instance: Parent Journal instance
-            data: POST data for binding
-            files: FILES data
-            **kwargs: Additional formset kwargs
-
-        Returns:
-            BaseFormSet: Initialized formset with organization context
-
-        Formset Configuration:
-            - extra: 1 (one blank line for new entries)
-            - can_delete: True (can remove lines)
-            - form_kwargs: {'organization': organization}
-
-        Example:
-            >>> journal = Journal.objects.first()
-            >>> formset = VoucherFormFactory.get_journal_line_formset(
-            ...     organization=org,
-            ...     instance=journal
-            ... )
-            >>> # Or with POST data:
-            >>> formset = VoucherFormFactory.get_journal_line_formset(
-            ...     organization=org,
-            ...     instance=journal,
-            ...     data=request.POST,
-            ...     files=request.FILES
-            ... )
-        """
-        formset_kwargs = {
-            'form_kwargs': {'organization': organization, 'journal_type': journal_type},
-            **kwargs
-        }
-
-        if instance:
-            formset_kwargs['instance'] = instance
-
-        if data is not None:
-            formset_kwargs['data'] = data
-
-        if files is not None:
-            formset_kwargs['files'] = files
-
-        logger.debug(
-            f"Creating JournalLineFormSet for organization {organization.id} "
-            f"(instance: {instance.id if instance else 'None'})"
-        )
-
-        return JournalLineFormSet(**formset_kwargs)
-
-    @staticmethod
-    def create_blank_line_form(
-        organization: 'Organization',
-        form_index: int,
-        prefix: str = 'lines'
-    ) -> JournalLineForm:
-        """
-        Create a blank line form for dynamic addition via HTMX.
-
-        Args:
-            organization: The organization context
-            form_index: The index for this form in the formset
-            prefix: The formset prefix (default: 'lines')
-
-        Returns:
-            JournalLineForm: A blank line form with proper prefix
-
-        Note:
-            Used by HTMX handlers to generate new line templates.
-            The returned form will have prefix formatted as '{prefix}-{form_index}'
-        """
-        form_prefix = f'{prefix}-{form_index}'
-        return VoucherFormFactory.get_journal_line_form(
-            organization=organization,
-            prefix=form_prefix
-        )
-
-    @staticmethod
-    def validate_forms(
-        journal_form: JournalForm,
-        line_formset: BaseFormSet
-    ) -> tuple[bool, Dict[str, Any]]:
-        """
-        Validate both the journal form and line formset.
-
-        Args:
-            journal_form: The bound JournalForm
-            line_formset: The bound JournalLineFormSet
-
-        Returns:
-            tuple: (is_valid: bool, errors: dict)
-                - is_valid: True if both forms are valid
-                - errors: Dictionary of all errors from both forms
-
-        Example:
-            >>> is_valid, errors = VoucherFormFactory.validate_forms(
-            ...     journal_form, 
-            ...     line_formset
-            ... )
-            >>> if not is_valid:
-            ...     # Handle errors
-            ...     print(errors)
-        """
-        journal_valid = journal_form.is_valid()
-        formset_valid = line_formset.is_valid()
-
-        errors = {}
-
-        if not journal_valid:
-            errors['journal'] = journal_form.errors
-
-        if not formset_valid:
-            errors['lines'] = [
-                form.errors if form.errors else {}
-                for form in line_formset.forms
-            ]
-            # Also include formset non-form errors
-            if line_formset.non_form_errors():
-                errors['formset'] = line_formset.non_form_errors()
-
-        is_valid = journal_valid and formset_valid
-
-        logger.debug(
-            f"Form validation result: valid={is_valid}, "
-            f"errors={bool(errors)}"
-        )
-
-        return is_valid, errors
-
-    @staticmethod
-    def get_initial_data(
-        organization: 'Organization',
-        journal_type: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """
-        Get initial data dictionary for a new journal form.
-
-        Args:
-            organization: The organization context
-            journal_type: Optional journal type to pre-select
-
-        Returns:
-            dict: Initial data for form fields
-
-        Example:
-            >>> initial = VoucherFormFactory.get_initial_data(org, journal_type='JNL')
-            >>> form = VoucherFormFactory.get_journal_form(
-            ...     org,
-            ...     initial=initial
-            ... )
-        """
-        from django.utils import timezone
-        from accounting.models import AccountingPeriod, JournalType
-
-        initial = {
-            'journal_date': timezone.now().date(),
-            'currency_code': getattr(organization, 'base_currency_code_id', 'USD') if organization else 'USD',
-            'exchange_rate': 1.0,
-            'status': 'draft',
-        }
-
-        # If journal type specified, pre-select it
-        if journal_type:
-            try:
-                jt = JournalType.objects.get(
-                    code=journal_type,
-                    organization=organization
-                )
-                initial['journal_type'] = jt.id
-            except JournalType.DoesNotExist:
-                logger.warning(f"Journal type {journal_type} not found")
-
-        # Set current open period if available
-        current_period = AccountingPeriod.objects.filter(
-            organization=organization,
-            is_current=True,
-            status='open'
-        ).first()
-        if current_period:
-            initial['period'] = current_period.id
-
-        logger.debug(f"Generated initial data: {initial}")
-
-        return initial

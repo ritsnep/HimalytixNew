@@ -830,7 +830,7 @@ class VoucherAccountLookupHtmxView(BaseVoucherView):
             results = []
             for account in accounts:
                 results.append({
-                    'id': account.id,
+                    'id': getattr(account, 'account_id', None) or getattr(account, 'id', None),
                     'text': f"{account.account_code} - {account.account_name}",
                     'code': account.account_code,
                     'name': account.account_name,

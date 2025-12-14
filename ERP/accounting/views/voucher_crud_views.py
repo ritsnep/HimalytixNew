@@ -392,7 +392,8 @@ class VoucherCreateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
             return redirect('accounting:voucher_list')
         
         try:
-            config = get_object_or_404(VoucherModeConfig, pk=config_id, is_active=True)
+            # Ensure config belongs to the user's organization to prevent cross-org access
+            config = get_object_or_404(VoucherModeConfig, pk=config_id, is_active=True, organization=organization)
         except Exception as e:
             messages.error(request, f"Voucher configuration not found: {e}")
             return redirect('accounting:voucher_list')
@@ -427,10 +428,20 @@ class VoucherCreateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
                         messages.success(request, f"Voucher {journal.journal_number} created successfully.")
                         return redirect('accounting:voucher_detail', pk=journal.pk)
                     except (JournalError, ValidationError) as e:
-                        logger.error(f"Error creating voucher: {e}", exc_info=True)
+                        logger.error("Error creating voucher", exc_info=True, extra={
+                            'error': str(e),
+                            'user_id': getattr(request.user, 'pk', None),
+                            'organization_id': getattr(organization, 'pk', None),
+                            'config_id': getattr(config, 'pk', None)
+                        })
                         messages.error(request, f"Error creating voucher: {e}")
                     except Exception as e:
-                        logger.exception(f"Unexpected error creating voucher: {e}")
+                        logger.exception("Unexpected error creating voucher", extra={
+                            'error': str(e),
+                            'user_id': getattr(request.user, 'pk', None),
+                            'organization_id': getattr(organization, 'pk', None),
+                            'config_id': getattr(config, 'pk', None)
+                        })
                         messages.error(request, "An unexpected error occurred while creating the voucher.")
             else:
                 # Add validation errors to forms
@@ -740,27 +751,69 @@ class VoucherPostView(PermissionRequiredMixin, UserOrganizationMixin, View):
         """Post the voucher."""
         pk = kwargs.get('pk')
         organization = request.user.get_active_organization()
-        
-        try:
-            voucher = get_object_or_404(Journal, pk=pk, organization=organization)
-        except Exception as e:
-            messages.error(request, f"Voucher not found: {e}")
-            return redirect('accounting:voucher_list')
-        
-        if voucher.status != 'draft':
-            messages.error(request, "Only draft vouchers can be posted.")
-            return redirect('accounting:voucher_detail', pk=voucher.pk)
 
+        # Use a DB transaction and row locking to avoid concurrent posting
         try:
-            post_journal(voucher, request.user)
-            messages.success(request, f"Voucher {voucher.journal_number} has been posted successfully.")
-        except (JournalError, JournalValidationError, JournalPostingError) as e:
-            logger.error(f"Error posting voucher: {e}", exc_info=True)
-            messages.error(request, f"Error posting voucher: {str(e)}")
+            with transaction.atomic():
+                # Lock the voucher row for update
+                voucher = Journal.objects.select_for_update().get(pk=pk, organization=organization)
+
+                if voucher.status != 'draft':
+                    messages.error(request, "Only draft vouchers can be posted.")
+                    return redirect('accounting:voucher_detail', pk=voucher.pk)
+
+                # Check accounting period still open for the voucher date
+                try:
+                    from accounting.models import AccountingPeriod
+                    if not AccountingPeriod.is_date_in_open_period(organization, voucher.journal_date):
+                        msg = "Voucher date is not in an open accounting period. Posting blocked."
+                        logger.warning(msg, extra={
+                            'voucher_id': voucher.pk,
+                            'journal_date': str(voucher.journal_date),
+                            'organization_id': getattr(organization, 'pk', None),
+                            'user_id': getattr(request.user, 'pk', None)
+                        })
+                        messages.error(request, msg)
+                        return redirect('accounting:voucher_detail', pk=voucher.pk)
+                except Exception:
+                    # If the helper isn't available, log and proceed cautiously
+                    logger.exception('Failed to validate accounting period for voucher before posting', extra={
+                        'voucher_id': pk,
+                        'user_id': getattr(request.user, 'pk', None)
+                    })
+
+                # Attempt posting
+                try:
+                    post_journal(voucher, request.user)
+                    messages.success(request, f"Voucher {voucher.journal_number} has been posted successfully.")
+                except (JournalError, JournalValidationError, JournalPostingError) as e:
+                    # Format a concise message for the user and log the details
+                    try:
+                        from accounting.services.post_journal import format_journal_exception
+                        user_msg = format_journal_exception(e)
+                    except Exception:
+                        user_msg = str(e)
+
+                    logger.error("Error posting voucher", exc_info=True, extra={
+                        'voucher_id': voucher.pk,
+                        'user_id': getattr(request.user, 'pk', None),
+                        'organization_id': getattr(organization, 'pk', None),
+                        'error': user_msg
+                    })
+                    messages.error(request, f"Error posting voucher: {user_msg}")
+                    return redirect('accounting:voucher_detail', pk=voucher.pk)
+
+        except Journal.DoesNotExist:
+            messages.error(request, "Voucher not found.")
+            return redirect('accounting:voucher_list')
         except Exception as e:
-            logger.exception(f"Unexpected error posting voucher: {e}")
+            logger.exception("Unexpected error during voucher post transaction", extra={
+                'voucher_id': pk,
+                'user_id': getattr(request.user, 'pk', None)
+            })
             messages.error(request, "An unexpected error occurred while posting the voucher.")
-        
+            return redirect('accounting:voucher_detail', pk=pk)
+
         return redirect('accounting:voucher_detail', pk=voucher.pk)
 
 

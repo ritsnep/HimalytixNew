@@ -10,6 +10,8 @@ from accounting.schema_loader import load_voucher_schema
 from accounting.forms_factory import build_form
 from accounting.models import JournalLine, VoucherModeConfig
 
+from accounting.forms import AccountTypeForm
+
 # Add comments for maintainability
 # Ensure all views use LoginRequiredMixin and organization-aware logic where needed
 # Remove any redundant or unused code
@@ -65,3 +67,24 @@ class VoucherConfigListHXView(LoginRequiredMixin, View):
             for c in configs
         ]
         return JsonResponse({"configs": data})
+
+
+class AccountTypeDependentFieldsHXView(LoginRequiredMixin, View):
+    """Return the dependent AccountType fields (classification + financial categories) as an HTMX fragment.
+
+    This keeps the source of truth server-side (AccountTypeForm dynamic choice configuration).
+    """
+
+    template_name = "accounting/htmx/account_type_dependent_fields.html"
+
+    def get(self, request, *args, **kwargs):
+        # Build a bound-ish form using current POST values if present (htmx hx-include)
+        data = request.GET if request.GET else request.POST
+        if request.headers.get("HX-Request") == "true":
+            # HTMX includes will arrive as form-encoded; Django puts them in request.GET for hx-get.
+            pass
+
+        form = AccountTypeForm(data or None)
+        # Ensure dynamic choices are configured based on current values
+        form.is_valid()  # harmless; needed so cleaned_data exists in some cases; choices set in __init__ anyway
+        return render(request, self.template_name, {"form": form})

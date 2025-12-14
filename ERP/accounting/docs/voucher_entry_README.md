@@ -153,6 +153,8 @@ Flow summary:
 1. Load `/vouchers/new/` (or typed by config): server provides `initial_state` JSON and `#app` area.
 2. On empty grid, client auto-triggers Add Line (user sees first row ready for input).
 3. Account field supports lookup/typeahead — sends queries to account lookup endpoint; selecting a suggestion fills the account and updates row.
+
+Note: A lightweight typeahead was added (JS + datalist) that queries `/accounting/vouchers/htmx/account-lookup/` and updates the hidden account input which triggers existing HTMX row updates.
 4. Debit/credit inputs post updates to the row HTMX endpoint (on blur) and server returns a refreshed row fragment.
 5. Add Row button posts to add-line HTMX endpoint and appends a row fragment.
 6. Duplicate/Delete actions post to respective HTMX endpoints and the UI updates the fragile portions (totals, rows) on swap.

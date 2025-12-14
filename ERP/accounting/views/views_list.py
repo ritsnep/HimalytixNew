@@ -358,12 +358,17 @@ class JournalPostView(LoginRequiredMixin, View):
             messages.error(request, 'Journal is not in draft status')
             return HttpResponseRedirect(reverse('accounting:journal_list'))
         try:
-            from accounting.services.post_journal import post_journal, JournalPostingError, JournalValidationError
+            from accounting.services.post_journal import (
+                post_journal,
+                JournalPostingError,
+                JournalValidationError,
+                format_journal_exception,
+            )
 
             post_journal(journal, user=request.user)
             messages.success(request, 'Journal posted and saved successfully.')
         except (JournalPostingError, JournalValidationError) as exc:
-            messages.error(request, str(exc))
+            messages.error(request, format_journal_exception(exc))
         return HttpResponseRedirect(reverse('accounting:journal_list'))
 
 

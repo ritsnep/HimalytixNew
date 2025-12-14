@@ -527,7 +527,12 @@ def post_journal(request, journal_id):
         return HttpResponse('<div class="alert alert-warning">Only draft journals can be posted.</div>', status=400)
 
     try:
-        from accounting.services.post_journal import post_journal as service_post_journal, JournalPostingError, JournalValidationError
+        from accounting.services.post_journal import (
+            post_journal as service_post_journal,
+            JournalPostingError,
+            JournalValidationError,
+            format_journal_exception,
+        )
 
         service_post_journal(journal, user=request.user)
         return HttpResponse(
@@ -535,7 +540,7 @@ def post_journal(request, journal_id):
             '<i class="fas fa-check-circle"></i><span>Posted</span></button>'
         )
     except (JournalPostingError, JournalValidationError) as exc:
-        return HttpResponse(f'<div class="alert alert-danger">{exc}</div>', status=400)
+        return HttpResponse(f'<div class="alert alert-danger">{format_journal_exception(exc)}</div>', status=400)
     except Exception:
         return HttpResponse('<div class="alert alert-danger">Unexpected error while posting.</div>', status=500)
 

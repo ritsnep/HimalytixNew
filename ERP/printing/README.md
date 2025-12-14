@@ -203,6 +203,21 @@ Notes:
 - Keep the template filename format `journal_<key>.html` to match the include logic.
 - If you add a very different layout, you can scope CSS under `.template-<key> ...`.
 
+## Seed command
+
+To populate the system with default print templates and per-user print configuration for onboarding, use the management command:
+
+```powershell
+python manage.py load_printing_seed
+```
+
+Options:
+- `--username <username>`: create seeds for a specific user instead of all superusers.
+- `--org-id <id>`: optional organization id to attach templates to.
+- `--force`: overwrite existing templates and configs for the target user(s).
+
+The command creates one `PrintTemplate` per document type and allowed template style (classic/compact) and ensures a `PrintTemplateConfig` exists for the seeded user(s).
+
 ## Tests
 
 Run app tests from `ERP/`:

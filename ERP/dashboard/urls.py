@@ -94,6 +94,7 @@ urlpatterns = [
     
     # API v1 (versioned endpoints)
     path("api/v1/", include("api.v1.urls")),
+    path("api/v1/configuration/", include("configuration.urls")),
     
     # Vertical-specific API endpoints
     path("api/inventory/", include("inventory.api.urls")),
