@@ -1,0 +1,40 @@
+{% load static %}
+<!-- Grid Row -->
+<div class="row align-items-center py-2 border-bottom" id="line-{{ line.id|default:line_number }}" hx-target="this" hx-swap="outerHTML">
+
+    <!-- Line Number -->
+    <div class="col-auto">
+        <span class="badge bg-light text-dark">{{ line_number }}</span>
+    </div>
+
+    <!-- Account Selection -->
+    <div class="col-12 col-md-3">
+        <select name="lines-{{ forloop.counter0 }}-account" class="form-select form-select-sm" required>
+            <option value="">Select Account...</option>
+            {% for account in accounts %}
+                <option value="{{ account.id }}" {% if line.account_id == account.id %}selected{% endif %}>{{ account.account_code }} - {{ account.account_name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Description -->
+    <div class="col-12 col-md-3">
+        <input type="text" name="lines-{{ forloop.counter0 }}-description" class="form-control form-control-sm" placeholder="Enter description" value="{{ line.description|default:'' }}" maxlength="255" hx-post="{% url 'accounting:journal_entry_row' %}" hx-trigger="blur" hx-vals='{"field": "description", "value": this.value, "line_id": "{{ line.id|default:line_number }}"}'>
+    </div>
+
+    <!-- Debit Amount -->
+    <div class="col-12 col-md-2">
+        <input type="number" name="lines-{{ forloop.counter0 }}-debit_amount" class="form-control form-control-sm text-end" placeholder="0.00" step="0.01" value="{{ line.debit_amount|default:'' }}" hx-post="{% url 'accounting:journal_entry_row' %}" hx-trigger="blur" hx-vals='{"field": "debit_amount", "value": this.value, "line_id": "{{ line.id|default:line_number }}"}'>
+    </div>
+
+    <!-- Credit Amount -->
+    <div class="col-12 col-md-2">
+        <input type="number" name="lines-{{ forloop.counter0 }}-credit_amount" class="form-control form-control-sm text-end" placeholder="0.00" step="0.01" value="{{ line.credit_amount|default:'' }}" hx-post="{% url 'accounting:journal_entry_row' %}" hx-trigger="blur" hx-vals='{"field": "credit_amount", "value": this.value, "line_id": "{{ line.id|default:line_number }}"}'>
+    </div>
+
+    <!-- Actions -->
+    <div class="col-auto text-end">
+        <button type="button" class="btn btn-sm btn-link text-muted me-1" title="Duplicate line" hx-post="{% url 'accounting:journal_entry_row_duplicate' %}" hx-vals='{"line_id": "{{ line.id|default:line_number }}", "line_count": "{{ line_count|default:line_number }}"}' hx-target="#grid-rows" hx-swap="beforeend"><i class="bi bi-files"></i></button>
+        <button type="button" class="btn btn-sm btn-link text-danger" title="Delete line" hx-delete="{% url 'accounting:journal_entry_row' %}" hx-vals='{"line_id": "{{ line.id|default:line_number }}"}' hx-confirm="Are you sure you want to delete this line?"><i class="bi bi-trash"></i></button>
+    </div>
+</div>

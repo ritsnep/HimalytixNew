@@ -38,6 +38,28 @@ from usermanagement.utils import PermissionUtils
 logger = logging.getLogger(__name__)
 
 
+def _build_voucher_htmx_endpoints():
+    return {
+        "header": reverse('accounting:journal_entry_header_partial'),
+        "lines": reverse('accounting:journal_entry_lines_partial'),
+        "row": reverse('accounting:journal_entry_row'),
+        "add_line": reverse('accounting:journal_entry_add_row'),
+        "duplicate_line": reverse('accounting:journal_entry_row_duplicate'),
+        "side_panel": reverse('accounting:journal_entry_side_panel'),
+        "tax": reverse('accounting:voucher_entry_tax_calculation_hx'),
+        "account_lookup": reverse('accounting:voucher_entry_account_lookup_hx'),
+        "currency": reverse('accounting:resolve_exchange_rate'),
+        "auto_balance": reverse('accounting:journal_entry_auto_balance'),
+        "auto_date": reverse('accounting:voucher_entry_auto_date_hx'),
+        "approval_actions": reverse('accounting:voucher_entry_approval_actions_hx'),
+        "submit": reverse('accounting:journal_submit'),
+        "save": reverse('accounting:journal_save_draft'),
+        "approve": reverse('accounting:journal_approve'),
+        "reject": reverse('accounting:journal_reject'),
+        "post": reverse('accounting:journal_post'),
+    }
+
+
 def _inject_udfs_into_schema(schema, udf_configs):
     """Injects UDF configurations into the header and lines schema."""
     header_schema = schema.get("header", {})
@@ -46,7 +68,8 @@ def _inject_udfs_into_schema(schema, udf_configs):
     for udf in udf_configs:
         udf_schema = {
             "name": f"udf_{udf.field_name}",
-            "label": udf.field_label,
+            # display_name is the User-friendly label stored on VoucherUDFConfig
+            "label": getattr(udf, "display_name", None) or getattr(udf, "field_label", udf.field_name),
             "type": udf.field_type,
             "required": udf.is_required,
             "choices": udf.choices or [],
@@ -282,14 +305,82 @@ class VoucherCreateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
             "defaults": defaults,
             "accounts": accounts,
             "is_create": True,
+            "is_edit": False,
             "form_action": reverse('accounting:voucher_create_with_config', kwargs={'config_id': config.pk}),
             "cancel_url": reverse('accounting:voucher_list'),
             "show_config_modal": show_config_modal,
             "voucher_entry_page": True,
+            "initial_voucher_type": config.journal_type.name,
+            "htmx_endpoints": _build_voucher_htmx_endpoints(),
+            "initial_state": self._build_initial_state(config, organization),
+            "lines": [],  # Empty lines for create view
         }
         if warning:
             context["warning"] = warning
         return render(request, self.template_name, context)
+
+    def _build_initial_state(self, config, organization):
+        """Build initial state for the new SPA voucher entry."""
+        from accounting.models import VoucherUDFConfig
+        
+        # UDF definitions
+        udf_header_defs = []
+        udf_line_defs = []
+        for udf in config.udf_configs.all():
+            udf_def = {
+                'id': udf.field_name,
+                'label': getattr(udf, 'display_name', None) or udf.field_label,
+                'type': udf.field_type,
+                'required': udf.is_required,
+                'options': udf.choices or [],
+            }
+            if udf.scope == 'header':
+                udf_header_defs.append(udf_def)
+            elif udf.scope == 'line':
+                udf_line_defs.append(udf_def)
+        
+        # Numbering
+        numbering = {
+            'prefix': {'Sales': 'SI', 'Purchase': 'PI', 'Journal': 'JV'},
+            'nextSeq': {'Sales': 1, 'Purchase': 1, 'Journal': 1},
+            'width': 4,
+        }
+        
+        # Default header
+        header = {
+            'party': '',
+            'date': timezone.now().strftime('%Y-%m-%d'),
+            'branch': 'Main',
+            'currency': 'NPR',
+            'exRate': 1,
+            'creditDays': 0,
+            'priceInclusiveTax': True,
+        }
+        
+        return {
+            'voucherType': config.journal_type.name,
+            'status': 'Draft',
+            'header': header,
+            'notes': '',
+            'collapsed': {'header': False, 'actions': False, 'notes': False, 'totals': False},
+            'udfHeaderDefs': udf_header_defs,
+            'udfLineDefs': udf_line_defs,
+            'colPrefsByType': {},  # Can be loaded from user preferences later
+            'rows': [],  # Start with empty rows
+            'charges': [
+                {'id': 'freight', 'label': 'Freight', 'mode': 'amount', 'value': 0, 'sign': 1},
+                {'id': 'discount', 'label': 'Discount @ Bill', 'mode': 'percent', 'value': 0, 'sign': -1},
+            ],
+            'numbering': numbering,
+            'focus': {'r': 0, 'c': 0},
+            'showUdfModal': False,
+            'udfScope': 'Header',
+            'udfDraft': {'label': '', 'type': 'text', 'required': False, 'options': ''},
+            'showColManager': False,
+            'colManagerDraft': [],
+            'showCharges': False,
+            'htmxEndpoints': _build_voucher_htmx_endpoints(),
+        }
 
     def post(self, request, *args, **kwargs):
         """Handle voucher creation form submission."""
@@ -376,11 +467,14 @@ class VoucherCreateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
             "user_perms": user_perms,
             "page_title": f"Create New Voucher - {config.name}",
             "is_create": True,
+            "is_edit": False,
             "accounts": accounts,
             "form_action": reverse('accounting:voucher_create_with_config', kwargs={'config_id': config.pk}),
             "cancel_url": reverse('accounting:voucher_list'),
             "show_config_modal": False,
             "voucher_entry_page": True,
+            "initial_voucher_type": config.journal_type.name,
+            "htmx_endpoints": _build_voucher_htmx_endpoints(),
         }
         if warning:
             context["warning"] = warning
@@ -485,6 +579,8 @@ class VoucherUpdateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
             "form_action": reverse('accounting:voucher_edit', kwargs={'pk': journal.pk}),
             "cancel_url": reverse('accounting:voucher_detail', kwargs={'pk': journal.pk}),
             "voucher_entry_page": True,
+            "initial_voucher_type": journal.journal_type.name,
+            "htmx_endpoints": _build_voucher_htmx_endpoints(),
         }
         if warning:
             context["warning"] = warning
@@ -575,6 +671,11 @@ class VoucherUpdateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
                             line_formset.forms[index].add_error(field, error)
         
         # Re-render form with errors
+        accounts = ChartOfAccount.objects.filter(
+            organization=organization,
+            is_active=True
+        ).order_by('account_code')
+
         context = {
             "config": config,
             "header_form": header_form,
@@ -582,10 +683,13 @@ class VoucherUpdateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
             "user_perms": user_perms,
             "page_title": f"Edit Voucher {journal.journal_number}",
             "voucher": journal,
+            "accounts": accounts,
             "is_edit": True,
             "form_action": reverse('accounting:voucher_edit', kwargs={'pk': journal.pk}),
             "cancel_url": reverse('accounting:voucher_detail', kwargs={'pk': journal.pk}),
             "voucher_entry_page": True,
+            "initial_voucher_type": journal.journal_type.name,
+            "htmx_endpoints": _build_voucher_htmx_endpoints(),
         }
         return render(request, self.template_name, context)
 

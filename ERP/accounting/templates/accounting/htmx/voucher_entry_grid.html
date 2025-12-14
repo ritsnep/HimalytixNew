@@ -1,0 +1,123 @@
+{% load static voucher_tags %}
+<!-- Voucher Entry Grid -->
+<div id="voucher-grid" class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">Journal Lines</h5>
+    <div class="d-flex align-items-center">
+            <span class="badge bg-light text-dark me-2">{{ lines|length|default:0 }} line{{ lines|length|pluralize }}</span>
+            <button type="button" class="btn btn-success btn-sm" hx-post="{% url 'accounting:journal_entry_add_row' %}" hx-target="#grid-rows" hx-swap="beforeend" hx-vals='{"line_count": "{{ lines|length|default:0 }}"}' name="add_line">
+                <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Add Line
+            </button>
+    </div>
+    </div>
+    <!-- Column Headers -->
+    <div class="card-body p-0 border-top">
+    <div class="row bg-light py-2 px-3 small text-muted fw-bold align-items-center">
+            <div class="col-1">#</div>
+            <div class="col-3">Account</div>
+            <div class="col-3">Description</div>
+            <div class="col-2 text-end">Debit</div>
+            <div class="col-2 text-end">Credit</div>
+            <div class="col-1 text-end">Actions</div>
+    </div>
+    </div>
+    <!-- Grid Rows Container -->
+    <div id="grid-rows" class="list-group list-group-flush">
+    {% for line in lines %}
+            {% include "accounting/htmx/voucher_entry_grid_row.html" with line=line line_number=forloop.counter accounts=accounts line_count=lines|length %}
+    {% empty %}
+            <!-- Empty State (improved sizing and CTA) -->
+            <div class="px-4 py-20 text-center">
+                <svg class="mx-auto h-20 w-20 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <h3 class="mt-4 text-lg font-semibold text-gray-900">No lines yet</h3>
+                <p class="mt-2 text-sm text-gray-500">Get started by adding your first journal line.</p>
+                <div class="mt-6">
+                    <button
+                        type="button"
+                        class="inline-flex items-center px-5 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                        hx-post="{% url 'accounting:journal_entry_add_row' %}"
+                        hx-target="#grid-rows"
+                        hx-swap="beforeend"
+                        title="Add first journal line">
+                        <svg class="-ml-0.5 mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"></path></svg>
+                        Add First Line
+                    </button>
+                </div>
+            </div>
+    {% endfor %}
+    </div>
+    <!-- Grid Footer with Totals -->
+    <div class="card-footer bg-white">
+    <div class="row align-items-center">
+            <div class="col-7 text-end fw-semibold">Total:</div>
+            <div class="col-2 text-end text-success fw-bold" id="total-debit">{{ lines|total_debit|floatformat:2 }}</div>
+            <div class="col-2 text-end text-danger fw-bold" id="total-credit">{{ lines|total_credit|floatformat:2 }}</div>
+            <div class="col-1"></div>
+    </div>
+    </div>
+ </div>
+{% load static voucher_tags %}
+<!-- Voucher Entry Grid -->
+<div id="voucher-grid" class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Journal Lines</h5>
+        <div class="d-flex align-items-center">
+            <span class="badge bg-light text-dark me-2">{{ lines|length|default:0 }} line{{ lines|length|pluralize }}</span>
+            <button type="button" class="btn btn-success btn-sm" hx-post="{% url 'accounting:journal_entry_add_row' %}" hx-target="#grid-rows" hx-swap="beforeend" hx-vals='{"line_count": "{{ lines|length|default:0 }}"}' name="add_line">
+                <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Add Line
+            </button>
+        </div>
+    </div>
+
+    <!-- Column Headers -->
+    <div class="card-body p-0 border-top">
+        <div class="row bg-light py-2 px-3 small text-muted fw-bold align-items-center">
+            <div class="col-1">#</div>
+            <div class="col-3">Account</div>
+            <div class="col-3">Description</div>
+            <div class="col-2 text-end">Debit</div>
+            <div class="col-2 text-end">Credit</div>
+            <div class="col-1 text-end">Actions</div>
+        </div>
+    </div>
+
+    <!-- Grid Rows Container -->
+    <div id="grid-rows" class="list-group list-group-flush">
+        {% for line in lines %}
+            {% include "accounting/htmx/voucher_entry_grid_row.html" with line=line line_number=forloop.counter accounts=accounts line_count=lines|length %}
+        {% empty %}
+            <!-- Empty State (improved sizing and CTA) -->
+            <div class="px-4 py-20 text-center">
+                <svg class="mx-auto h-20 w-20 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <h3 class="mt-4 text-lg font-semibold text-gray-900">No lines yet</h3>
+                <p class="mt-2 text-sm text-gray-500">Get started by adding your first journal line.</p>
+                <div class="mt-6">
+                    <button
+                        type="button"
+                        class="inline-flex items-center px-5 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                        hx-post="{% url 'accounting:journal_entry_add_row' %}"
+                        hx-target="#grid-rows"
+                        hx-swap="beforeend"
+                        title="Add first journal line">
+                        <svg class="-ml-0.5 mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"></path></svg>
+                        Add First Line
+                    </button>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Grid Footer with Totals -->
+    <div class="card-footer bg-white">
+        <div class="row align-items-center">
+            <div class="col-7 text-end fw-semibold">Total:</div>
+            <div class="col-2 text-end text-success fw-bold" id="total-debit">{{ lines|total_debit|floatformat:2 }}</div>
+            <div class="col-2 text-end text-danger fw-bold" id="total-credit">{{ lines|total_credit|floatformat:2 }}</div>
+            <div class="col-1"></div>
+        </div>
+    </div>
+</div>

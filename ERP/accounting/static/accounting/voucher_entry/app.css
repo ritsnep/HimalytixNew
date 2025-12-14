@@ -1,0 +1,9 @@
+/* Helpers & visual affordances */
+.sticky-col { position: sticky; left: 0; background: inherit; z-index: 1; }
+.cell-focus { outline: 2px solid rgba(16,185,129,.6); outline-offset: 0; }
+.scroll-shadow::before { content: ""; position: sticky; left: 0; width: 10px; height: 100%; box-shadow: inset 8px 0 8px -8px rgba(0,0,0,.15); pointer-events: none; }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 50; }
+.resize-handle { position: absolute; top: 0; right: -4px; width: 8px; height: 100%; cursor: col-resize; }
+.th-resizable { position: relative; }
+.truncate-cell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.badge { display:inline-flex; align-items:center; gap:.4rem; padding:.2rem .6rem; border-radius:.6rem; background:#eef2ff; color:#334155; font-size:.75rem; }

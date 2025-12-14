@@ -14,6 +14,19 @@ from accounting.models import (
     Vendor,
 )
 
+from accounting.models import JournalLine, Journal
+
+
+class JournalLineSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = JournalLine
+        fields = [
+            'journal_line_id', 'journal', 'line_number', 'account', 'description',
+            'debit_amount', 'credit_amount', 'department', 'project', 'cost_center',
+            'tax_code', 'memo', 'udf_data', 'created_at', 'created_by'
+        ]
+        read_only_fields = ['journal_line_id', 'created_at', 'created_by']
+
 
 class VendorSerializer(serializers.ModelSerializer):
     class Meta:

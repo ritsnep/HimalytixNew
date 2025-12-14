@@ -125,5 +125,9 @@ def account_lookup(request):
     qs = ChartOfAccount.active_accounts.filter(organization=request.organization)
     if q:
         qs = qs.filter(account_code__icontains=q)[:20]
-    html = render_to_string('accounting/partials/account_lookup_options.html', {'accounts': qs})
+    # Check if it's an HTMX request
+    if request.headers.get('HX-Request'):
+        html = render_to_string('accounting/partials/account_select_options.html', {'accounts': qs})
+    else:
+        html = render_to_string('accounting/partials/account_lookup_options.html', {'accounts': qs})
     return HttpResponse(html)

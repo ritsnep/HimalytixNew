@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Print Templates</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+    .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    h1 { color: #333; margin-bottom: 30px; }
+    .actions { margin-bottom: 20px; }
+    .btn { display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; margin-right: 10px; }
+    .btn:hover { background: #0056b3; }
+    .btn-danger { background: #dc3545; }
+    .btn-danger:hover { background: #c82333; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background: #f8f9fa; font-weight: 600; }
+    .no-templates { text-align: center; padding: 40px; color: #666; }
+    .template-config { font-size: 0.9em; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Print Templates</h1>
+
+    <div class="actions">
+      <a href="{% url 'template_create' %}" class="btn">Create New Template</a>
+      <a href="{% url 'print_settings' %}" class="btn">Print Settings</a>
+    </div>
+
+    {% if templates %}
+      <table>
+        <thead>
+          <tr>
+            <th>Document Type</th>
+            <th>Name</th>
+            <th>Paper Size</th>
+            <th>Template</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for template in templates %}
+            <tr>
+              <td>{{ template.get_document_type_display }}</td>
+              <td>{{ template.name }}</td>
+              <td>{{ template.paper_size }}</td>
+              <td>
+                {{ template.config.template_name|default:"classic" }}
+                <div class="template-config">
+                  {% if template.config.show_description %}Desc {% endif %}
+                  {% if template.config.show_department %}Dept {% endif %}
+                  {% if template.config.show_project %}Proj {% endif %}
+                  {% if template.config.show_cost_center %}CC {% endif %}
+                  {% if template.config.show_tax_column %}Tax {% endif %}
+                  {% if template.config.show_audit %}Audit {% endif %}
+                  {% if template.config.show_signatures %}Sig {% endif %}
+                  {% if template.config.show_imbalance %}Imb {% endif %}
+                </div>
+              </td>
+              <td>
+                <a href="{% url 'template_update' template.pk %}" class="btn">Edit</a>
+                <a href="{% url 'template_delete' template.pk %}" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this template?')">Delete</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="no-templates">
+        <p>You haven't created any print templates yet.</p>
+        <a href="{% url 'template_create' %}" class="btn">Create Your First Template</a>
+      </div>
+    {% endif %}
+  </div>
+</body>
+</html>

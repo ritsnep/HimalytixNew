@@ -8,16 +8,20 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse, HttpResponseForbidden, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+from django.urls import reverse_lazy
 
 from accounting.models import Journal
 
 from .models import PrintTemplate
+from .forms import PrintTemplateForm
 from .models_audit import PrintSettingsAuditLog
 
 from .utils import (
     DEFAULT_TOGGLES,
     PAPER_SIZES,
     TEMPLATE_CHOICES,
+    get_document_model,
     normalize_paper_size,
     normalize_template_name,
     get_user_print_config,
@@ -104,18 +108,29 @@ def _require_same_organization(request, journal: Journal) -> None:
 
 
 @login_required
-def print_preview(request, journal_id: int):
+def print_preview(request, document_type: str, doc_id: int):
     """Interactive print preview (config toolbar shown only with permission)."""
 
-    journal = get_object_or_404(Journal, pk=journal_id)
-    _require_same_organization(request, journal)
-    lines = journal.lines.select_related(
-        "account",
-        "department",
-        "project",
-        "cost_center",
-        "tax_code",
-    ).all()
+    model, template_prefix = get_document_model(document_type)
+    document = get_object_or_404(model, pk=doc_id)
+    _require_same_organization(request, document)
+    
+    # Get lines with appropriate select_related
+    if document_type == 'journal':
+        lines = document.lines.select_related(
+            "account",
+            "department",
+            "project",
+            "cost_center",
+            "tax_code",
+        ).all()
+    else:
+        # For purchase/sales documents
+        lines = document.lines.select_related(
+            "product",
+            "revenue_account",
+            "tax_code",
+        ).all() if hasattr(document, 'lines') else []
 
     config_obj, config_data = get_user_print_config(request.user)
     selected_template = normalize_template_name(config_data.get("template_name"))
@@ -139,7 +154,8 @@ def print_preview(request, journal_id: int):
             organization_id=getattr(getattr(request, "organization", None), "id", None),
             action="preview_update",
             payload={
-                "journal_id": getattr(journal, "pk", None),
+                "document_type": document_type,
+                "doc_id": doc_id,
                 "template_name": saved.template_name,
                 **(saved.config or {}),
             },
@@ -149,7 +165,8 @@ def print_preview(request, journal_id: int):
             extra={
                 "user_id": getattr(request.user, "id", None),
                 "username": getattr(request.user, "username", None),
-                "journal_id": getattr(journal, "pk", None),
+                "document_type": document_type,
+                "doc_id": doc_id,
                 "organization_id": getattr(getattr(request, "organization", None), "id", None),
             },
         )
@@ -174,13 +191,20 @@ def print_preview(request, journal_id: int):
     paper_size = normalize_paper_size(config_data.get("paper_size"))
     config_data["paper_size"] = paper_size
     template_root_class = f"template-{template_name}"
-    template_path = f"printing/journal_{template_name}.html"
+    template_path = f"printing/{template_prefix}_{template_name}.html"
 
-    total_debit, total_credit = _compute_totals(lines)
-    imbalance = total_debit - total_credit
+    # Compute totals
+    if document_type == 'journal':
+        total_debit, total_credit = _compute_totals(lines)
+        imbalance = total_debit - total_credit
+    else:
+        total_debit = getattr(document, 'total', 0)
+        total_credit = 0
+        imbalance = 0
 
     context = {
-        "journal": journal,
+        "document": document,
+        "document_type": document_type,
         "lines": lines,
         "config": config_data,
         "can_edit": can_edit,
@@ -197,20 +221,30 @@ def print_preview(request, journal_id: int):
 
 
 @login_required
-def print_page(request, journal_id: int):
+def print_page(request, document_type: str, doc_id: int):
     """Print-optimized page (no controls) that triggers browser print dialog."""
 
-    journal = get_object_or_404(Journal, pk=journal_id)
-    _require_same_organization(request, journal)
-    lines = journal.lines.select_related(
-        "account",
-        "department",
-        "project",
-        "cost_center",
-        "tax_code",
-    ).all()
+    model, template_prefix = get_document_model(document_type)
+    document = get_object_or_404(model, pk=doc_id)
+    _require_same_organization(request, document)
+    
+    # Get lines with appropriate select_related
+    if document_type == 'journal':
+        lines = document.lines.select_related(
+            "account",
+            "department",
+            "project",
+            "cost_center",
+            "tax_code",
+        ).all()
+    else:
+        # For purchase/sales documents
+        lines = document.lines.select_related(
+            "product",
+            "revenue_account",
+            "tax_code",
+        ).all() if hasattr(document, 'lines') else []
 
-    document_type = 'journal'
     templates = PrintTemplate.objects.filter(
         user=request.user,
         organization=getattr(request, 'organization', None),
@@ -260,13 +294,19 @@ def print_page(request, journal_id: int):
     paper_size = normalize_paper_size(paper_size)
     config_data["paper_size"] = paper_size
     template_root_class = f"template-{template_name}"
-    template_path = f"printing/journal_{template_name}.html"
+    template_path = f"printing/{template_prefix}_{template_name}.html"
 
-    total_debit, total_credit = _compute_totals(lines)
-    imbalance = total_debit - total_credit
+    # Compute totals
+    if document_type == 'journal':
+        total_debit, total_credit = _compute_totals(lines)
+        imbalance = total_debit - total_credit
+    else:
+        total_debit = getattr(document, 'total', 0)
+        total_credit = 0
+        imbalance = 0
 
     context = {
-        "journal": journal,
+        "document": document,
         "lines": lines,
         "config": config_data,
         "template_root_class": template_root_class,
@@ -282,3 +322,108 @@ def print_page(request, journal_id: int):
         "paper_sizes": PAPER_SIZES,
     }
     return render(request, "printing/print_page.html", context)
+
+
+class TemplateListView(ListView):
+    model = PrintTemplate
+    template_name = 'printing/template_list.html'
+    context_object_name = 'templates'
+
+    def get_queryset(self):
+        return PrintTemplate.objects.filter(
+            user=self.request.user,
+            organization=getattr(self.request, 'organization', None)
+        ).order_by('document_type', 'name')
+
+
+class TemplateCreateView(CreateView):
+    model = PrintTemplate
+    form_class = PrintTemplateForm
+    template_name = 'printing/template_form.html'
+    success_url = reverse_lazy('template_list')
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        kwargs['organization'] = getattr(self.request, 'organization', None)
+        return kwargs
+
+    def form_valid(self, form):
+        # Get config from POST data
+        config_data = {}
+        for key in DEFAULT_TOGGLES.keys():
+            config_data[key] = self.request.POST.get(f'config_{key}') == 'on'
+        config_data['template_name'] = self.request.POST.get('template_name', 'classic')
+        config_data['paper_size'] = form.cleaned_data['paper_size']
+        form.instance.config = config_data
+        messages.success(self.request, f"Template '{form.instance.name}' created successfully.")
+        return super().form_valid(form)
+
+
+class TemplateUpdateView(UpdateView):
+    model = PrintTemplate
+    form_class = PrintTemplateForm
+    template_name = 'printing/template_form.html'
+    success_url = reverse_lazy('template_list')
+
+    def get_queryset(self):
+        return PrintTemplate.objects.filter(
+            user=self.request.user,
+            organization=getattr(self.request, 'organization', None)
+        )
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        kwargs['organization'] = getattr(self.request, 'organization', None)
+        return kwargs
+
+    def form_valid(self, form):
+        # Get config from POST data
+        config_data = {}
+        for key in DEFAULT_TOGGLES.keys():
+            config_data[key] = self.request.POST.get(f'config_{key}') == 'on'
+        config_data['template_name'] = self.request.POST.get('template_name', 'classic')
+        config_data['paper_size'] = form.cleaned_data['paper_size']
+        form.instance.config = config_data
+        messages.success(self.request, f"Template '{form.instance.name}' updated successfully.")
+        return super().form_valid(form)
+
+
+class TemplateDeleteView(DeleteView):
+    model = PrintTemplate
+    template_name = 'printing/template_confirm_delete.html'
+    success_url = reverse_lazy('template_list')
+
+    def get_queryset(self):
+        return PrintTemplate.objects.filter(
+            user=self.request.user,
+            organization=getattr(self.request, 'organization', None)
+        )
+
+    def delete(self, request, *args, **kwargs):
+        template = self.get_object()
+        messages.success(request, f"Template '{template.name}' deleted successfully.")
+        return super().delete(request, *args, **kwargs)
+
+
+# Function-based view wrappers for login_required
+@login_required
+def template_list(request):
+    view = TemplateListView.as_view()
+    return view(request)
+
+@login_required
+def template_create(request):
+    view = TemplateCreateView.as_view()
+    return view(request)
+
+@login_required
+def template_update(request, pk):
+    view = TemplateUpdateView.as_view()
+    return view(request, pk=pk)
+
+@login_required
+def template_delete(request, pk):
+    view = TemplateDeleteView.as_view()
+    return view(request, pk=pk)

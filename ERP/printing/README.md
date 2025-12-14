@@ -5,12 +5,20 @@ Provides per-user print template configuration and print pages for journals.
 ## URLs
 
 - Print configuration (per-user): `/print/settings/`
-- Preview (configurable): `/print/preview/<journal_id>/`
-- Print (auto opens print dialog): `/print/<journal_id>/`
+- Print templates management: `/print/templates/`
+- Create template: `/print/templates/create/`
+- Edit template: `/print/templates/<id>/edit/`
+- Delete template: `/print/templates/<id>/delete/`
+- Preview (configurable): `/print/preview/<document_type>/<doc_id>/`
+- Print (auto opens print dialog): `/print/<document_type>/<doc_id>/`
 
 URL names:
 
 - `print_settings`
+- `template_list`
+- `template_create`
+- `template_update`
+- `template_delete`
 - `print_preview`
 - `print_page`
 
@@ -38,9 +46,53 @@ Shared includes:
 
 ## Sidebar entry
 
-The left sidebar includes **Print Configuration** under Accounting:
+The left sidebar includes **Print Configuration** and **Print Templates** under Accounting:
 
 - `ERP/templates/partials/left-sidebar.html`
+
+## Master Templates
+
+Users can create named templates for different document types, storing custom configurations.
+
+- Model: `PrintTemplate` (`ERP/printing/models.py`)
+- Admin: registered in `ERP/printing/admin.py`
+
+Fields:
+
+- `user`: Foreign key to User
+- `organization`: Foreign key to Organization (multi-tenant)
+- `document_type`: Choices for document types ('journal', 'purchase_order', 'sales_order', 'sales_invoice')
+- `name`: User-defined template name
+- `paper_size`: 'A4' or 'A5'
+- `config`: JSONField with toggles and template_name
+
+### Template Selection Logic
+
+When printing a document:
+
+- If 1 master template exists for the document type: auto-select and print dialog opens immediately
+- If multiple master templates exist: dropdown appears for user to select which template to use
+- If no master templates: fall back to legacy individual template/paper selection
+
+### Supported Document Types
+
+- `journal`: Journal entries
+- `purchase_order`: Purchase orders
+- `sales_order`: Sales orders  
+- `sales_invoice`: Sales invoices
+
+### Template Files
+
+Templates follow the pattern `printing/{document_type}_{template_name}.html`:
+
+- `printing/journal_classic.html`
+- `printing/journal_compact.html`
+- `printing/purchase_order_classic.html`
+- `printing/purchase_order_compact.html`
+- `printing/sales_order_classic.html`
+- `printing/sales_order_compact.html`
+- `printing/sales_invoice_classic.html`
+- `printing/sales_invoice_compact.html`
 
 ## Config toggles
 
@@ -87,6 +139,7 @@ This app includes migrations:
 - `0001_initial.py`: `PrintTemplateConfig`
 - `0002_printsettingsauditlog.py`: `PrintSettingsAuditLog`
 - `0003_stable_audit_index_names.py`: stabilizes audit index names to avoid Django auto-generating rename migrations
+- `0004_printtemplate.py`: `PrintTemplate` for master templates
 
 Apply migrations from `ERP/`:
 
@@ -94,17 +147,30 @@ Apply migrations from `ERP/`:
 python manage.py migrate printing
 ```
 
+## Print Templates UI
+
+Users can manage their print templates through a web interface:
+
+- **Template List** (`/print/templates/`): View all user templates, create new, edit, delete
+- **Create/Edit Template**: Form with document type, name, paper size, template style, and display toggles
+- **Delete Template**: Confirmation page for safe deletion
+
+Templates are scoped to user and organization for multi-tenancy.
+
 ## How to test manually
 
 1. Start the server (from repo root):
    - VS Code task: `Run Django server (venv python)`
 
-2. Open a real journal detail page:
-   - `/accounting/journals/<id>/`
+2. Access template management:
+   - Go to `/print/templates/` or use the "Print Templates" link in the left sidebar
+   - Create a new template with name, document type, paper size, and options
+   - Edit or delete templates as needed
 
-3. Use the buttons:
+3. Test print flow:
+   - Open a real journal detail page: `/accounting/journals/<id>/`
+   - Use the **Print** button - it should auto-print if you have 1 journal template, or show selection if multiple
    - **Print Preview** opens `/print/preview/<id>/` in a new tab.
-   - **Print** opens `/print/<id>/` in a new tab and triggers the browser print dialog.
 
 4. If you want to change and persist template/toggles:
    - Go to `/print/settings/` (also available in the left sidebar).

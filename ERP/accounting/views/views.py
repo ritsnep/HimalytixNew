@@ -20,6 +20,7 @@ from django.http import JsonResponse
 from accounting.models import ChartOfAccount  # adjust as needed
 
 from accounting.serializers import VoucherModeConfigSerializer
+from accounting.views.journal_entry import build_journal_entry_context, journal_select_config
 
 from accounting.models import (
     FiscalYear, GeneralLedger, Journal, JournalLine, JournalType, ChartOfAccount, 

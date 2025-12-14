@@ -126,6 +126,9 @@ urlpatterns = [
     path('journal-entry/api/<int:pk>/', journal_entry.journal_entry_data, name='journal_entry_data'),
     path('journal-entry/lookup/accounts/', journal_entry.journal_account_lookup, name='journal_account_lookup'),
     path('journal-entry/lookup/cost-centers/', journal_entry.journal_cost_center_lookup, name='journal_cost_center_lookup'),
+    path('journal-entry/resolve-exchange-rate/', journal_entry.resolve_exchange_rate, name='resolve_exchange_rate'),
+    path('journal-entry/auto-date/', journal_entry.voucher_entry_auto_date_hx, name='voucher_entry_auto_date_hx'),
+    path('journal-entry/approval-actions/', journal_entry.voucher_entry_approval_actions_hx, name='voucher_entry_approval_actions_hx'),
     path('journal-entry/payment-terms/', journal_entry.journal_payment_terms, name='journal_payment_terms'),
     # HTMX partial endpoints (trailing slash optional)
     path('journal-entry/header-partial/', journal_entry.journal_entry_header_partial, name='journal_entry_header_partial'),

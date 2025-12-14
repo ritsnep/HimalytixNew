@@ -1,106 +1,188 @@
 {% extends 'partials/base.html' %}
 {% load static %}
 
-{% block title %}{{ form_title|default:"Form" }}{% endblock %}
+{% block title %}{{ form_title|default:page_title|default:"Form" }}{% endblock %}
 
 {% block extra_css %}
-    {{ block.super }}
-    <link rel="stylesheet" href="{% static 'libs/flatpickr/dist/flatpickr.min.css' %}">
-    <link href="{% static 'libs/bootstrap-datepicker/dist/css/bootstrap-datepicker.min.css' %}" rel="stylesheet">
-    <link href="{% static 'libs/pristinejs/dist/pristine.min.css' %}" rel="stylesheet">
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'libs/flatpickr/dist/flatpickr.min.css' %}">
+  <link href="{% static 'libs/bootstrap-datepicker/dist/css/bootstrap-datepicker.min.css' %}" rel="stylesheet">
+  <link href="{% static 'libs/pristinejs/dist/pristine.min.css' %}" rel="stylesheet">
+
+  <style>
+    .form-shell { max-width: 1100px; margin: 0 auto; }
+    .form-card { border: 1px solid rgba(0,0,0,.06); box-shadow: 0 10px 30px rgba(15,23,42,.06); }
+    .form-card .card-body { padding: 1.25rem; }
+    .form-help { color:#6b7280; }
+
+    .form-actions {
+      position: sticky;
+      bottom: 0;
+      background: rgba(255,255,255,.96);
+      backdrop-filter: blur(2px);
+      border-top: 1px solid rgba(0,0,0,.06);
+      padding: .75rem 1.25rem;
+      margin: 1rem -1.25rem -1.25rem -1.25rem;
+      display:flex;
+      gap:.5rem;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      z-index: 5;
+    }
+
+    .required-asterisk::after { content:" *"; color:#dc3545; }
+
+    /* Accessibility focus */
+    a:focus, button:focus, input:focus, select:focus, textarea:focus {
+      outline: 2px solid #007bff !important;
+      outline-offset: 2px;
+      box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25) !important;
+    }
+  </style>
 {% endblock %}
 
 {% block content %}
 <div class="main-content">
-    <div class="page-content">
-        <div class="container-fluid">
-            <!-- Breadcrumb -->
-            <div class="row">
-                <div class="col-12">
-                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0 font-size-18">{{ page_title|default:form_title|default:"Form" }}</h4>
-                        <div class="page-title-right">
-                            <ol class="breadcrumb m-0">
-                                {% if breadcrumbs %}
-                                    {% for name, url in breadcrumbs %}
-                                        {% if not forloop.last %}
-                                            <li class="breadcrumb-item"><a href="{{ url }}">{{ name }}</a></li>
-                                        {% else %}
-                                            <li class="breadcrumb-item active">{{ name }}</li>
-                                        {% endif %}
-                                    {% endfor %}
-                                {% else %}
-                                    <li class="breadcrumb-item active">{{ page_title|default:form_title|default:"Form" }}</li>
-                                {% endif %}
-                            </ol>
-                        </div>
-                    </div>
-                </div>
-            </div>
+  <div class="page-content">
+    <div class="container-fluid form-shell">
 
-            <!-- Form Content -->
-            <div class="row">
-                <div class="col-lg-12">
-                    {% block form_errors %}
-                        {% if form and form.errors %}
-                            <div class="alert alert-danger" role="alert">
-                                <h5 class="alert-heading mb-2">Please fix the errors below</h5>
-                                <ul class="mb-0">
-                                    {% for error in form.non_field_errors %}
-                                        <li>{{ error }}</li>
-                                    {% endfor %}
-                                    {% for field in form %}
-                                        {% for error in field.errors %}
-                                            <li><strong>{{ field.label }}:</strong> {{ error }}</li>
-                                        {% endfor %}
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                        {% endif %}
-                    {% endblock %}
-                    {% block form_content %}{% endblock %}
-                </div>
+      <!-- Header + breadcrumb -->
+      <div class="row">
+        <div class="col-12">
+          <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+            <div>
+              <h4 class="mb-1 font-size-18">{{ page_title|default:form_title|default:"Form" }}</h4>
+              {% if page_subtitle %}
+                <div class="small form-help">{{ page_subtitle }}</div>
+              {% endif %}
             </div>
+            <div class="page-title-right">
+              <ol class="breadcrumb m-0">
+                {% if breadcrumbs %}
+                  {% for name, url in breadcrumbs %}
+                    {% if not forloop.last %}
+                      <li class="breadcrumb-item"><a href="{{ url }}">{{ name }}</a></li>
+                    {% else %}
+                      <li class="breadcrumb-item active" aria-current="page">{{ name }}</li>
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <li class="breadcrumb-item active">{{ page_title|default:form_title|default:"Form" }}</li>
+                {% endif %}
+              </ol>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <!-- Form -->
+      <div class="row">
+        <div class="col-12">
+
+          <div class="card form-card">
+            <div class="card-body">
+
+              {% block form_errors %}
+                {% if form and form.errors %}
+                  <div class="alert alert-danger" role="alert" aria-live="polite">
+                    <div class="d-flex align-items-start gap-2">
+                      <i class="mdi mdi-alert-circle-outline fs-4"></i>
+                      <div>
+                        <h5 class="alert-heading mb-1">Fix the errors below</h5>
+                        <ul class="mb-0">
+                          {% for error in form.non_field_errors %}
+                            <li>{{ error }}</li>
+                          {% endfor %}
+                          {% for field in form %}
+                            {% for error in field.errors %}
+                              <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                            {% endfor %}
+                          {% endfor %}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                {% endif %}
+              {% endblock %}
+
+              {% block form_content %}
+                <!-- Default content block. Your concrete form templates should override this. -->
+              {% endblock %}
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+
     </div>
+  </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-    {{ block.super }}
-    <script src="{% static 'libs/flatpickr/dist/flatpickr.min.js' %}"></script>
-    <script src="{% static 'libs/bootstrap-datepicker/dist/js/bootstrap-datepicker.min.js' %}"></script>
-    <script src="{% static 'libs/pristinejs/dist/pristine.min.js' %}"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize datepickers
-            $('.datepicker').datepicker({
-                format: 'yyyy-mm-dd',
-                autoclose: true,
-                todayHighlight: true
+  {{ block.super }}
+  <script src="{% static 'libs/flatpickr/dist/flatpickr.min.js' %}"></script>
+  <script src="{% static 'libs/bootstrap-datepicker/dist/js/bootstrap-datepicker.min.js' %}"></script>
+  <script src="{% static 'libs/pristinejs/dist/pristine.min.js' %}"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // 1) Date inputs: prefer flatpickr, fallback to bootstrap-datepicker
+      const dateInputs = document.querySelectorAll('.datepicker, [data-datepicker], .js-date');
+
+      if (window.flatpickr && dateInputs.length) {
+        dateInputs.forEach(function(el) {
+          // Avoid double init
+          if (el._flatpickr) return;
+          flatpickr(el, {
+            dateFormat: "Y-m-d",
+            allowInput: true
+          });
+        });
+      } else if (window.jQuery && window.jQuery.fn && window.jQuery.fn.datepicker) {
+        window.jQuery(dateInputs).datepicker({
+          format: 'yyyy-mm-dd',
+          autoclose: true,
+          todayHighlight: true
+        });
+      }
+
+      // 2) Pristine validation for forms that opt-in via novalidate
+      if (typeof Pristine !== 'undefined') {
+        document.querySelectorAll('form[novalidate]').forEach(function(form) {
+          const pristine = new Pristine(form, {
+            classTo: 'form-group',
+            errorClass: 'has-danger',
+            successClass: 'has-success',
+            errorTextParent: 'form-group',
+            errorTextTag: 'div',
+            errorTextClass: 'text-danger'
+          });
+
+          // 3) Double-submit protection
+          form.addEventListener('submit', function(e) {
+            const ok = pristine.validate();
+            if (!ok) { e.preventDefault(); return; }
+
+            const submitButtons = form.querySelectorAll('button[type="submit"], input[type="submit"]');
+            submitButtons.forEach(function(btn) {
+              btn.disabled = true;
+              btn.dataset.originalText = btn.innerHTML || btn.value || '';
+              if (btn.tagName.toLowerCase() === 'button') btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Saving...';
             });
 
-            if (typeof Pristine !== 'undefined') {
-                // Initialize Pristine.js for all forms
-                var forms = document.querySelectorAll('form[novalidate]');
-                forms.forEach(function(form) {
-                    var pristine = new Pristine(form, {
-                        classTo: 'form-group',
-                        errorClass: 'has-danger',
-                        successClass: 'has-success',
-                        errorTextParent: 'form-group',
-                        errorTextTag: 'div',
-                        errorTextClass: 'text-danger'
-                    });
-
-                    form.addEventListener('submit', function(e) {
-                        if (!pristine.validate()) {
-                            e.preventDefault();
-                        }
-                    });
-                });
-            }
+            // If the request fails (client-side), re-enable after a while (non-blocking safety)
+            setTimeout(function() {
+              submitButtons.forEach(function(btn) {
+                btn.disabled = false;
+                if (btn.tagName.toLowerCase() === 'button' && btn.dataset.originalText) btn.innerHTML = btn.dataset.originalText;
+              });
+            }, 12000);
+          }, { capture: true });
         });
-    </script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+      }
+    });
+  </script>
 {% endblock %}

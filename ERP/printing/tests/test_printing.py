@@ -96,7 +96,7 @@ class PrintingAppTests(TestCase):
 
     def test_preview_interface_by_permission(self):
         self.client.force_login(self.user_with_perm)
-        url = reverse("print_preview", args=[1])
+        url = reverse("print_preview", args=['journal', 1])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, 200)
@@ -114,7 +114,7 @@ class PrintingAppTests(TestCase):
 
     def test_toggle_fields(self):
         self.client.force_login(self.user_with_perm)
-        url = reverse("print_preview", args=[1])
+        url = reverse("print_preview", args=['journal', 1])
 
         response = self.client.get(url)
         self.assertContains(response, "dim-costcenter", msg_prefix="Default preview should show cost center pill")
@@ -141,7 +141,7 @@ class PrintingAppTests(TestCase):
 
     def test_switch_template(self):
         self.client.force_login(self.user_with_perm)
-        url = reverse("print_preview", args=[1])
+        url = reverse("print_preview", args=['journal', 1])
 
         response = self.client.get(url)
         self.assertContains(response, "template-classic", msg_prefix="Initial template should be classic by default")
@@ -169,7 +169,7 @@ class PrintingAppTests(TestCase):
 
     def test_no_permission_cannot_save(self):
         self.client.force_login(self.user_without_perm)
-        url = reverse("print_preview", args=[1])
+        url = reverse("print_preview", args=['journal', 1])
 
         post_data = {
             "template_name": "compact",

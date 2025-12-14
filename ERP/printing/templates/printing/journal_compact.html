@@ -45,14 +45,14 @@
   {% include "printing/_running_header.html" %}
   <div class="compact-head">
     <div>
-      <div class="compact-title">Journal Voucher • {{ journal.journal_number|default:journal.pk }}</div>
-      {% if config.show_description and journal.description %}
-        <div class="text-muted" style="font-size: 0.78rem; margin-top: 0.15rem;">{{ journal.description }}</div>
+      <div class="compact-title">Journal Voucher • {{ document.journal_number|default:document.pk }}</div>
+      {% if config.show_description and document.description %}
+        <div class="text-muted" style="font-size: 0.78rem; margin-top: 0.15rem;">{{ document.description }}</div>
       {% endif %}
     </div>
     <div class="compact-meta">
-      <div>{{ journal.journal_date }}</div>
-      <div>{{ journal.currency_code }} @ {{ journal.exchange_rate|floatformat:4 }}</div>
+      <div>{{ document.journal_date }}</div>
+      <div>{{ document.currency_code }} @ {{ document.exchange_rate|floatformat:4 }}</div>
     </div>
   </div>
 

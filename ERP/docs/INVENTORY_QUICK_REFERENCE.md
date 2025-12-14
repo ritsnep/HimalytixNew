@@ -1,173 +1,419 @@
-# Inventory Module - Finalization Quick Reference
-
-## ✅ What Was Fixed
-
-### 1. All List Templates Now Working
-**Issue:** Product list, categories list, and other inventory lists weren't displaying data.  
-**Root Cause:** Templates used model-specific context variables (e.g., `products`, `categories`) but views provided `object_list`.  
-**Solution:** Updated all 8 list templates to use `object_list` context variable consistently.
-
-**Fixed Templates:**
-- product_list.html
-- productcategory_list.html (+ added missing table_body)
-- warehouse_list.html
-- location_list.html
-- shipment_list.html
-- rma_list.html
-- inventoryitem_list.html (converted to Bootstrap 5)
-- stockledger_list.html (converted to Bootstrap 5)
+# Inventory Module - Quick Reference Guide
+**Last Updated:** December 4, 2025
 
 ---
 
-### 2. Missing Templates Created
-**Issue:** Price list and pick list pages returned 404 errors.  
-**Solution:** Created 2 complete list templates following Bootstrap 5 pattern.
+## 🚀 Quick Start
 
-**New Templates:**
-- pricelist_list.html - Shows all price lists with status and dates
-- picklist_list.html - Shows pick lists with associated shipments and status
+### Access Inventory Module
+```
+Base URL: /inventory/
+Requires: Active organization + Inventory app permission
+```
+
+### Main Workflows
+
+| Workflow | URL | Purpose |
+|----------|-----|---------|
+| **Master Data** | | |
+| Manage Products | `/inventory/products/` | CRUD operations on products |
+| Manage Categories | `/inventory/categories/` | Organize products by type |
+| Manage Warehouses | `/inventory/warehouses/` | Configure storage locations |
+| Manage Locations | `/inventory/locations/` | Define bins/slots within warehouses |
+| Manage Price Lists | `/inventory/pricelists/` | Set customer pricing |
+| **Operations** | | |
+| View Stock Levels | `/inventory/stock/` | Current inventory report |
+| View Ledger | `/inventory/ledger/` | Transaction history |
+| Record Stock Movement | `/inventory/stock/` | (In/Out transactions) |
+| **Picking & Shipping** | | |
+| Manage Pick Lists | `/inventory/picklists/` | Prepare orders for shipment |
+| Manage Shipments | `/inventory/shipments/` | Track inter-warehouse transfers |
+| Manage RMAs | `/inventory/rmas/` | Process customer returns |
+| **Manufacturing** | | |
+| Manage BOMs | `/inventory/boms/` | Define product components |
 
 ---
 
-### 3. Navigation Menu Updated
-**Issue:** No way to access reports from navigation menu.  
-**Solution:** Added Reports submenu under Inventory with Stock Report and Stock Ledger links.
+## 📝 Form Fields Reference
 
-**Navigation Path:**
+### **Product Form** (16 fields)
 ```
-Sidebar > Inventory > Reports > [Stock Report | Stock Ledger]
-```
-
----
-
-## 📊 All Working URLs
-
-### Core Inventory Lists
-- `/inventory/products/` - Product catalog
-- `/inventory/categories/` - Product categories
-- `/inventory/warehouses/` - Warehouse locations
-- `/inventory/locations/` - Storage locations
-- `/inventory/pricelists/` - Price list management
-- `/inventory/picklists/` - Pick list tracking
-- `/inventory/shipments/` - Shipment records
-- `/inventory/rmas/` - Return merchandise authorizations
-
-### Reports
-- `/inventory/stock/` - Stock report (summary)
-- `/inventory/stockledger/` - Stock ledger (transaction history)
-
----
-
-## 🎯 Template Features (All Standardized)
-
-Every list template now includes:
-✅ Bootstrap 5 styling  
-✅ Proper table structure with headers  
-✅ Action buttons (View, Edit, Delete)  
-✅ Permission-based visibility  
-✅ Empty state messages  
-✅ Status badges with colors  
-✅ Responsive design  
-✅ Pagination support (via base template)  
-
----
-
-## 🔧 Technical Details
-
-### Context Variable Pattern
-All views now use Django's standard `object_list`:
-```django
-{% for item in object_list %}
-  <!-- render item -->
-{% endfor %}
+Code (auto)          UOM              Sale Price
+Name (required)      Currency Code    Cost Price
+Description          Category         Income Account
+                     Inventory Item?  COGS Account
+                     Min Order Qty    Inventory Account
+                     Reorder Level    Barcode
+                     Preferred Vendor SKU
 ```
 
-### Permission Pattern
-All action buttons check permissions:
-```django
-{% if can_change %}<a href="...">Edit</a>{% endif %}
-{% if can_delete %}<a href="...">Delete</a>{% endif %}
+### **Warehouse Form** (7 fields)
+```
+Code (auto)          City             Inventory Account
+Name (required)      Country Code     Active?
+Address Line 1
 ```
 
-### Template Inheritance
+### **Location Form** (5 fields)
 ```
-components/base/list_base.html (base layout)
-  ↓
-MODEL_list.html (model-specific template)
-  ↓
-Overrides: table_head, table_body, list_actions blocks
+Warehouse (required)  Code (required)  Active?
+Name                  Type (storage/staging/QC)
+```
+
+### **Stock Transaction Form** (8 fields)
+```
+Transaction Type     Product          Reference
+Warehouse           Quantity         Notes
+Location            Batch/Serial
 ```
 
 ---
 
-## ✨ Bootstrap Classes Used
+## 🔐 Permissions Model
 
-**Status Badges:**
-- `badge bg-success` - Active/Success
-- `badge bg-danger` - Inactive/Error
-- `badge bg-info` - Info/Alert
-- `badge bg-light text-dark` - Default
+All permissions follow pattern: `Inventory.<action>_<model>`
 
-**Buttons:**
-- `btn btn-outline-primary` - Edit
-- `btn btn-outline-danger` - Delete
-- `btn btn-outline-info` - View
-- `btn btn-success` - Create
+### **Model-Level Permissions**
+```
+view_productcategory      → Read-only access to categories
+add_productcategory       → Create new categories
+change_productcategory    → Edit existing categories
+delete_productcategory    → Delete categories
 
-**Utilities:**
-- `btn-group btn-group-sm` - Grouped action buttons
-- `text-end` - Right-align text
-- `text-center` - Center-align text
-- `fw-semibold` - Bold text
-- `text-muted` - Gray text
+(Same pattern for: product, warehouse, location, pricelist, 
+ picklist, shipment, rma, billofmaterial)
+```
 
----
+### **Permission Checking**
+```python
+# In templates:
+{% if can_add %}
+  <a href="...">Add Item</a>
+{% endif %}
 
-## 🚀 What's Ready for Users
-
-Users can now:
-1. ✅ View all inventory items in data tables
-2. ✅ Create new products, warehouses, locations, etc.
-3. ✅ Edit existing inventory records
-4. ✅ Delete records (with permission checks)
-5. ✅ Access reporting menus from navigation
-6. ✅ View stock reports and ledger
-7. ✅ Create and manage price lists
-8. ✅ Manage pick lists for orders
+# In views: Automatic via PermissionRequiredMixin
+permission_required = 'Inventory.add_product'
+```
 
 ---
 
-## 📋 Testing Checklist
+## 📊 Data Relationships
 
-- [x] All list pages display data correctly
-- [x] Action buttons appear and work
-- [x] Permission checks prevent unauthorized actions
-- [x] Empty states display properly
-- [x] Navigation menu accessible
-- [x] Reports submenu visible
-- [x] Bootstrap 5 styling consistent
-- [x] No JavaScript errors
-- [x] No template errors
+```
+Organization (Tenant)
+├── ProductCategory (hierarchical via MPPT)
+│   └── Product
+│       ├── StockLedger (transaction history)
+│       ├── InventoryItem (current levels)
+│       └── PriceList
+│           └── PriceListItem
+├── Warehouse
+│   ├── Location
+│   ├── PickList
+│   │   └── PickListLine
+│   ├── Shipment
+│   │   └── ShipmentLine
+│   └── RMA
+│       └── RMALine
+└── BillOfMaterial
+    ├── BillOfMaterialItem
+    └── (references components as Products)
+```
 
 ---
 
-## 💡 For Future Development
+## 🎨 UI Patterns
 
-To add a new inventory model:
-1. Create detail.html, form.html, list.html templates
-2. Extend `components/base/list_base.html` for list
-3. Use `object_list` context variable
-4. Add menu item to left-sidebar.html
-5. Done! (Views, URLs, and permissions already follow pattern)
+### **List View Pattern**
+```html
+{% extends "components/base/list_base.html" %}
+- Breadcrumbs
+- Title + Subtitle
+- Add/Filter buttons
+- DataTable with pagination
+- Responsive on mobile
+```
+
+### **Form Pattern**
+```html
+{% extends "components/base/form_base.html" %}
+- Breadcrumbs
+- Form title + subtitle
+- Field-level errors
+- Form field component include
+- Save/Cancel buttons
+```
+
+### **Detail Pattern**
+```html
+{% extends "components/base/detail_base.html" %}
+- Breadcrumbs
+- Read-only field display
+- Related data tables
+- Edit/Delete action buttons
+- Permission-gated buttons
+```
+
+### **Delete Confirmation Pattern**
+```html
+{% extends "components/base/confirm_delete.html" %}
+- Confirmation message
+- Warning about data loss
+- Cancel/Confirm buttons
+```
 
 ---
 
-## 📞 Summary
+## 🔗 API Endpoints
 
-**Status:** ✅ FINALIZED AND TESTED  
-**Scope:** 8 templates fixed + 2 created + 1 menu updated  
-**Impact:** All inventory list pages now functional  
-**Deployment:** Production-ready (template-only changes)  
-**Breaking Changes:** None (views already compatible)
+### **List Endpoints** (GET)
+```
+/inventory/categories/
+/inventory/products/
+/inventory/warehouses/
+/inventory/locations/
+/inventory/pricelists/
+/inventory/picklists/
+/inventory/shipments/
+/inventory/rmas/
+/inventory/boms/
+```
 
-**Key Achievement:** Inventory module now has complete, working, and standardized list/detail pages with proper permission checks and professional Bootstrap 5 UI.
+### **Create Endpoints** (GET form, POST save)
+```
+/inventory/categories/create/
+/inventory/products/create/
+... (same pattern for all models)
+```
+
+### **Detail Endpoints** (GET)
+```
+/inventory/categories/<pk>/
+/inventory/products/<pk>/
+... (same pattern for all models)
+```
+
+### **Edit Endpoints** (GET form, POST save)
+```
+/inventory/categories/<pk>/edit/
+/inventory/products/<pk>/edit/
+... (same pattern for all models)
+```
+
+### **Delete Endpoints** (GET confirmation, POST delete)
+```
+/inventory/categories/<pk>/delete/
+/inventory/products/<pk>/delete/
+... (same pattern for all models)
+```
+
+### **Report Endpoints** (GET with filters)
+```
+/inventory/stock/              - Current levels report
+  ?warehouse=<id>             - Filter by warehouse
+  ?product=<id>               - Filter by product
+
+/inventory/ledger/            - Transaction history
+  ?warehouse=<id>
+  ?product=<id>
+  ?start_date=YYYY-MM-DD
+  ?end_date=YYYY-MM-DD
+```
+
+---
+
+## 🛠️ Common Tasks
+
+### **Add a New Product**
+1. Go to `/inventory/products/`
+2. Click "Add Product" button
+3. Fill form:
+   - Code (auto-generated as PROD001)
+   - Name (required)
+   - Category (optional)
+   - UOM, pricing, GL accounts
+4. Click "Save Product"
+
+### **Record Stock Receipt**
+1. Go to `/inventory/stock/` report
+2. Click "Record Transaction" button
+3. Select:
+   - Transaction Type: Receipt
+   - Warehouse: [select warehouse]
+   - Product: [select product]
+   - Quantity: [enter qty]
+4. Click "Save Transaction"
+
+### **View Stock Levels**
+1. Go to `/inventory/stock/`
+2. (Optional) Filter by warehouse or product
+3. Click "Filter" to apply
+4. View table with quantity, cost, value
+
+### **Create Pick List for Order**
+1. Go to `/inventory/picklists/`
+2. Click "Add Pick List" button
+3. Select warehouse
+4. Add lines (product, qty required, location)
+5. Click "Save"
+
+### **Ship to Another Warehouse**
+1. Go to `/inventory/shipments/`
+2. Click "Add Shipment" button
+3. Select from/to warehouses
+4. Add shipment lines (product, qty)
+5. Enter ship date
+6. Click "Save Shipment"
+
+---
+
+## 📋 Field Validation Rules
+
+### **Code Fields**
+- Required: Yes
+- Unique: Within organization
+- Auto-generated: Yes (configurable prefix)
+- Pattern: Alphanumeric + underscore
+
+### **Price Fields**
+- Type: Decimal(19, 4)
+- Precision: Up to 4 decimal places
+- Example: 1234.5678
+
+### **Quantity Fields**
+- Type: Decimal(15, 4)
+- Precision: Up to 4 decimal places
+- Example: 100.5000
+
+### **GL Account Fields**
+- Required for inventory items: YES
+- Type: ForeignKey to ChartOfAccount
+- Validation: Must be from same organization
+
+### **Date Fields**
+- Format: YYYY-MM-DD
+- Picker: Bootstrap datepicker
+- Example: 2025-12-04
+
+---
+
+## 🐛 Troubleshooting
+
+### **"Select an active organization" Error**
+- Solution: Go to dashboard and select organization
+- Link: `/usermanagement/select_organization/`
+
+### **"You don't have permission" Error**
+- Solution: Check with administrator for inventory permissions
+- Permission needed: `Inventory.<action>_<model>`
+
+### **Form shows "This field is required"**
+- Inventory items must have:
+  - GL Inventory Account
+  - GL COGS Account
+  - Category (recommended)
+
+### **Delete button is disabled/missing**
+- Solution: Check delete permission
+- Permission needed: `Inventory.delete_<model>`
+- Also check if model has dependent records
+
+### **Code field shows "This value already exists"**
+- Solution: Code must be unique within organization
+- Try with different code or check if already created
+
+### **Barcode not scanning**
+- Ensure browser supports barcode input
+- Check if product has barcode field populated
+- May require JavaScript barcode reader plugin
+
+---
+
+## 📱 Mobile Experience
+
+### **Supported Features on Mobile**
+- ✅ List views (responsive tables)
+- ✅ Form entry (single column layout)
+- ✅ Detail views (stacked layout)
+- ✅ Filters (collapsible on small screens)
+
+### **Not Optimized for Mobile**
+- Barcode scanning (use desktop scanner)
+- Large data exports (use desktop)
+- Complex multi-line forms (use desktop for initial setup)
+
+---
+
+## 🔄 Data Flow Examples
+
+### **Stock Receipt Process**
+```
+User Records Receipt
+    ↓
+StockTransaction created
+    ↓
+Service Layer validates
+    ↓
+StockLedger entry created (immutable)
+    ↓
+InventoryItem snapshot updated
+    ↓
+GL Entry created (auto, if configured)
+```
+
+### **Product Creation Process**
+```
+Form submitted with product data
+    ↓
+BootstrapFormMixin validates
+    ↓
+Organization auto-assigned
+    ↓
+Code auto-generated (if empty)
+    ↓
+User tracking (created_by)
+    ↓
+Product saved to database
+    ↓
+Redirect to product list
+```
+
+### **Permission Check Flow**
+```
+User requests list view
+    ↓
+BaseListView.dispatch() called
+    ↓
+get_organization() from UserOrganizationMixin
+    ↓
+PermissionUtils.has_permission() checked
+    ↓
+If no permission → redirect to dashboard
+    ↓
+If permission granted → get_queryset() filters by org
+```
+
+---
+
+## 📚 Related Documentation
+
+- **Status Report:** `INVENTORY_STATUS_REPORT.md` - Detailed analysis
+- **Implementation:** `INVENTORY_IMPLEMENTATION_COMPLETE.md` - Session summary
+- **App README:** `Inventory/README.md` - Integration steps
+- **Architecture:** `accounting_architecture.md` - Similar module pattern
+
+---
+
+## 📞 Support
+
+For issues or questions:
+1. Check this quick reference first
+2. Review `INVENTORY_STATUS_REPORT.md` for details
+3. Check app `README.md` for integration info
+4. Contact development team with specific error messages
+
+---
+
+**Module Status:** ✅ Production Ready (MVP)  
+**Last Updated:** December 4, 2025  
+**Version:** 1.0 Complete

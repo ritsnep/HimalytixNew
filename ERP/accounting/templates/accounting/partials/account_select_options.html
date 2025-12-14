@@ -1,0 +1,5 @@
+{% for acc in accounts %}
+<option value="{{ acc.id }}">{{ acc.account_code }} - {{ acc.name }}</option>
+{% empty %}
+<option value="">No accounts found</option>
+{% endfor %}

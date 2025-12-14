@@ -1,7 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from datetime import timedelta
-from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from usermanagement.models import Organization
@@ -42,8 +41,11 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f"Assigned admin '{admin.username}' to organization '{org.name}'."))
 
         # 3) Ensure default currency
+        org_currency_value = org.base_currency_code
+        if hasattr(org_currency_value, "currency_code"):
+            org_currency_value = org_currency_value.currency_code
         Currency.objects.get_or_create(
-            currency_code=org.base_currency_code or "USD",
+            currency_code=org_currency_value or "USD",
             defaults={"currency_name": "US Dollar", "symbol": "$"},
         )
 
@@ -105,35 +107,134 @@ class Command(BaseCommand):
             },
         )
 
-        # 7) Ensure at least one journal type for the org
-        jt, _ = JournalType.objects.get_or_create(
-            organization=org,
-            code="GJ",
-            defaults={"name": "General Journal", "sequence_next": 1},
-        )
+        def build_item_schema(party_key, party_label, extra_header=None):
+            header = {
+                "journal_date": {"type": "date", "label": "Date", "required": True},
+                "reference_number": {"type": "char", "label": "Reference", "required": False},
+                party_key: {"type": "char", "label": party_label, "required": True},
+                "currency": {"type": "char", "label": "Currency", "required": True},
+                "description": {"type": "char", "label": "Description", "required": False},
+            }
+            if extra_header:
+                header.update(extra_header)
+            lines = {
+                "item": {"type": "char", "label": "Item/Service", "required": True},
+                "description": {"type": "char", "label": "Description", "required": False},
+                "quantity": {"type": "decimal", "label": "Quantity", "required": True, "default": 1},
+                "unit_price": {"type": "decimal", "label": "Unit Price", "required": True},
+                "discount_percent": {"type": "decimal", "label": "Discount %", "required": False, "default": 0},
+                "tax_percent": {"type": "decimal", "label": "Tax %", "required": False, "default": 13},
+                "warehouse": {"type": "char", "label": "Warehouse / Location", "required": False},
+                "batch": {"type": "char", "label": "Batch / Lot", "required": False},
+                "line_total": {"type": "decimal", "label": "Line Total", "required": False},
+            }
+            return {"header": header, "lines": lines}
 
-        # 8) Ensure a default voucher mode config with a minimal UI schema
-        default_ui_schema = {
+        journal_ui_schema = {
             "header": {
                 "journal_date": {"type": "date", "label": "Date", "required": True},
-                "description": {"type": "char", "label": "Description", "required": False},
+                "reference_number": {"type": "char", "label": "Reference", "required": False},
+                "description": {"type": "char", "label": "Narration", "required": False},
+                "currency": {"type": "char", "label": "Currency", "required": True},
             },
             "lines": {
-                "account": {"type": "account", "label": "Account", "required": True},
+                "account": {"type": "char", "label": "Account", "required": True},
+                "description": {"type": "char", "label": "Description", "required": False},
                 "debit_amount": {"type": "decimal", "label": "Debit", "required": False},
                 "credit_amount": {"type": "decimal", "label": "Credit", "required": False},
+                "cost_center": {"type": "char", "label": "Cost Center", "required": False},
             },
         }
-        VoucherModeConfig.objects.get_or_create(
-            organization=org,
-            code="VM001",
-            defaults={
-                "name": "Standard Voucher",
-                "is_default": True,
-                "is_active": True,
-                "journal_type": jt,
-                "ui_schema": default_ui_schema,
+
+        purchase_item_schema = build_item_schema(
+            "vendor_name",
+            "Vendor",
+            extra_header={
+                "expected_date": {"type": "date", "label": "Expected Date", "required": False},
             },
         )
+        goods_receipt_schema = build_item_schema(
+            "vendor_name",
+            "Vendor",
+            extra_header={
+                "receipt_number": {"type": "char", "label": "Receipt Number", "required": False},
+                "warehouse_code": {"type": "char", "label": "Warehouse", "required": False},
+            },
+        )
+        landed_cost_schema = build_item_schema(
+            "vendor_name",
+            "Vendor",
+            extra_header={"cost_sheet_number": {"type": "char", "label": "Cost Sheet #", "required": False}},
+        )
+        landed_cost_schema["lines"]["cost_component"] = {"type": "char", "label": "Cost Component", "required": False}
+
+        sales_item_schema = build_item_schema(
+            "customer_name",
+            "Customer",
+            extra_header={
+                "due_date": {"type": "date", "label": "Due Date", "required": False},
+            },
+        )
+        sales_delivery_schema = build_item_schema(
+            "customer_name",
+            "Customer",
+            extra_header={
+                "delivery_date": {"type": "date", "label": "Delivery Date", "required": False},
+                "delivery_note": {"type": "char", "label": "Delivery Note #", "required": False},
+            },
+        )
+
+        voucher_blueprints = [
+            {
+                "config_code": "VM-JE",
+                "name": "Journal Entry",
+                "journal_type_code": "JE",
+                "journal_type_name": "Journal Entry",
+                "ui_schema": journal_ui_schema,
+                "is_default": True,
+            },
+            {"config_code": "VM-PO", "name": "Purchase Order", "journal_type_code": "PO", "journal_type_name": "Purchase Order", "ui_schema": purchase_item_schema},
+            {"config_code": "VM-GR", "name": "Goods Receipt", "journal_type_code": "GR", "journal_type_name": "Goods Receipt", "ui_schema": goods_receipt_schema},
+            {"config_code": "VM-PI", "name": "Purchase Invoice", "journal_type_code": "PI", "journal_type_name": "Purchase Invoice", "ui_schema": purchase_item_schema},
+            {"config_code": "VM-PR", "name": "Purchase Return", "journal_type_code": "PR", "journal_type_name": "Purchase Return", "ui_schema": purchase_item_schema},
+            {"config_code": "VM-PDN", "name": "Purchase Debit Note", "journal_type_code": "PDN", "journal_type_name": "Purchase Debit Note", "ui_schema": purchase_item_schema},
+            {"config_code": "VM-PCN", "name": "Purchase Credit Note", "journal_type_code": "PCN", "journal_type_name": "Purchase Credit Note", "ui_schema": purchase_item_schema},
+            {"config_code": "VM-LC", "name": "Landed Cost", "journal_type_code": "LC", "journal_type_name": "Landed Cost", "ui_schema": landed_cost_schema},
+            {"config_code": "VM-SQ", "name": "Sales Quote", "journal_type_code": "SQ", "journal_type_name": "Sales Quote", "ui_schema": sales_item_schema},
+            {"config_code": "VM-SO", "name": "Sales Order", "journal_type_code": "SO", "journal_type_name": "Sales Order", "ui_schema": sales_item_schema},
+            {"config_code": "VM-SD", "name": "Sales Delivery", "journal_type_code": "SD", "journal_type_name": "Sales Delivery", "ui_schema": sales_delivery_schema},
+            {"config_code": "VM-SI", "name": "Sales Invoice", "journal_type_code": "SI", "journal_type_name": "Sales Invoice", "ui_schema": sales_item_schema},
+            {"config_code": "VM-SR", "name": "Sales Return", "journal_type_code": "SR", "journal_type_name": "Sales Return", "ui_schema": sales_item_schema},
+            {"config_code": "VM-SDN", "name": "Sales Debit Note", "journal_type_code": "SDN", "journal_type_name": "Sales Debit Note", "ui_schema": sales_item_schema},
+            {"config_code": "VM-SCN", "name": "Sales Credit Note", "journal_type_code": "SCN", "journal_type_name": "Sales Credit Note", "ui_schema": sales_item_schema},
+        ]
+
+        org_currency_code = org.base_currency_code.currency_code if hasattr(org.base_currency_code, "currency_code") else (org.base_currency_code or "USD")
+
+        for spec in voucher_blueprints:
+            jt, _ = JournalType.objects.get_or_create(
+                organization=org,
+                code=spec["journal_type_code"],
+                defaults={"name": spec["journal_type_name"], "sequence_next": 1},
+            )
+            config_defaults = {
+                "name": spec["name"],
+                "is_default": spec.get("is_default", False),
+                "is_active": True,
+                "journal_type": jt,
+                "ui_schema": spec["ui_schema"],
+                "default_currency": org_currency_code,
+            }
+            config, created = VoucherModeConfig.objects.get_or_create(
+                organization=org,
+                code=spec["config_code"],
+                defaults=config_defaults,
+            )
+            if created:
+                self.stdout.write(self.style.SUCCESS(f"Created voucher config '{spec['name']}' ({spec['config_code']})."))
+            elif spec.get("is_default") and not config.is_default:
+                config.is_default = True
+                config.save(update_fields=["is_default"])
+                self.stdout.write(self.style.WARNING(f"Marked '{spec['name']}' as default voucher config."))
 
         self.stdout.write(self.style.SUCCESS("Minimal voucher demo data ensured."))

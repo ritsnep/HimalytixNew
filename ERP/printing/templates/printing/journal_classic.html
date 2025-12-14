@@ -190,10 +190,10 @@
     <div class="org-header-left">
       <div class="logo-box"><span>LOGO</span></div>
       <div class="org-block">
-        <div class="org-name">{{ journal.organization.name }}</div>
-        <div class="org-sub">{{ journal.organization.address|default:"" }}</div>
-        <div class="org-sub">{{ journal.organization.tax_id|default:"" }}</div>
-        <div class="org-sub">{{ journal.organization.phone|default:"" }}{% if journal.organization.email %} • {{ journal.organization.email }}{% endif %}</div>
+        <div class="org-name">{{ document.organization.name }}</div>
+        <div class="org-sub">{{ document.organization.address|default:"" }}</div>
+        <div class="org-sub">{{ document.organization.tax_id|default:"" }}</div>
+        <div class="org-sub">{{ document.organization.phone|default:"" }}{% if document.organization.email %} • {{ document.organization.email }}{% endif %}</div>
       </div>
     </div>
     <div style="text-align: right; display: flex; flex-direction: column; gap: 0.4rem; align-items: flex-end;">
@@ -201,32 +201,32 @@
       <div class="header-meta">
         <div>
           <div class="meta-label">Voucher No.</div>
-          <div class="meta-value">{{ journal.journal_number|default:journal.pk }}</div>
+          <div class="meta-value">{{ document.journal_number|default:document.pk }}</div>
         </div>
         <div>
           <div class="meta-label">Date</div>
-          <div class="meta-value">{{ journal.journal_date }}</div>
+          <div class="meta-value">{{ document.journal_date }}</div>
         </div>
         <div>
           <div class="meta-label">Period</div>
-          <div class="meta-value">{{ journal.period }}</div>
+          <div class="meta-value">{{ document.period }}</div>
         </div>
         <div>
           <div class="meta-label">Currency</div>
-          <div class="meta-value">{{ journal.currency_code }} @ {{ journal.exchange_rate|floatformat:4 }}</div>
+          <div class="meta-value">{{ document.currency_code }} @ {{ document.exchange_rate|floatformat:4 }}</div>
         </div>
       </div>
       <div class="status-chip">
         <span class="status-dot"></span>
-        {{ journal.status|default:""|title }}
+        {{ document.status|default:""|title }}
       </div>
     </div>
   </div>
 
   {% if config.show_description %}
   <div class="desc-strip">
-    <div class="desc-main">{{ journal.description|default:"No description provided" }}</div>
-    <div class="desc-ref">Ref: {{ journal.reference|default:"N/A" }}</div>
+    <div class="desc-main">{{ document.description|default:"No description provided" }}</div>
+    <div class="desc-ref">Ref: {{ document.reference|default:"N/A" }}</div>
   </div>
   {% endif %}
 
@@ -303,27 +303,27 @@
         <div class="audit-grid">
           <div>
             <div class="audit-label">Created By</div>
-            <div class="audit-value">{{ journal.created_by|default:"" }}</div>
+            <div class="audit-value">{{ document.created_by|default:"" }}</div>
           </div>
           <div>
             <div class="audit-label">Created At</div>
-            <div class="audit-value">{{ journal.created_at|default:"" }}</div>
+            <div class="audit-value">{{ document.created_at|default:"" }}</div>
           </div>
           <div>
             <div class="audit-label">Approved By</div>
-            <div class="audit-value">{{ journal.approved_by|default:"" }}</div>
+            <div class="audit-value">{{ document.approved_by|default:"" }}</div>
           </div>
           <div>
             <div class="audit-label">Approved At</div>
-            <div class="audit-value">{{ journal.approved_at|default:"" }}</div>
+            <div class="audit-value">{{ document.approved_at|default:"" }}</div>
           </div>
           <div>
             <div class="audit-label">Posted By</div>
-            <div class="audit-value">{{ journal.posted_by|default:"" }}</div>
+            <div class="audit-value">{{ document.posted_by|default:"" }}</div>
           </div>
           <div>
             <div class="audit-label">Posted At</div>
-            <div class="audit-value">{{ journal.posted_at|default:"" }}</div>
+            <div class="audit-value">{{ document.posted_at|default:"" }}</div>
           </div>
         </div>
 

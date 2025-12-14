@@ -135,6 +135,28 @@
             document.dispatchEvent(new CustomEvent('voucherHtmxSwapped', {
                 detail: { target }
             }));
+
+            // Small visual flash for development when debug is enabled
+            try {
+                const app = document.getElementById('app');
+                const debugOn = app && app.dataset && app.dataset.voucherDebug === '1';
+                if (debugOn) {
+                    const el = document.createElement('div');
+                    el.textContent = 'HTMX swap applied';
+                    el.style.position = 'fixed';
+                    el.style.bottom = '12px';
+                    el.style.left = '12px';
+                    el.style.padding = '6px 10px';
+                    el.style.background = 'rgba(59,130,246,0.95)';
+                    el.style.color = '#fff';
+                    el.style.borderRadius = '6px';
+                    el.style.zIndex = 99999;
+                    document.body.appendChild(el);
+                    setTimeout(() => el.remove(), 800);
+                }
+            } catch (err) {
+                console.warn('Debug flash failed', err);
+            }
         }
 
         /**

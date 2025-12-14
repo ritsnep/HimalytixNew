@@ -53,7 +53,9 @@ const PREFS_SAVE_ENDPOINT = __root?.dataset?.prefsSaveUrl || __root?.dataset?.pr
 const ATTACH_UPLOAD_ENDPOINT = __root?.dataset?.attachUpload || null;
 const ATTACH_DELETE_ENDPOINT = __root?.dataset?.attachDelete || null;
 const PAYMENT_TERMS_ENDPOINT = __root?.dataset?.paymentTerms || null;
+const CAN_EDIT = __root?.dataset?.canEdit !== 'false';
 const PERMISSIONS = {
+  edit: CAN_EDIT,
   submit: __root?.dataset?.canSubmit === 'true',
   approve: __root?.dataset?.canApprove === 'true',
   reject: __root?.dataset?.canReject === 'true',
@@ -68,6 +70,15 @@ const STATUS_LABEL_MAP = {
   submitted: 'Submitted',
 };
 const DEBUG_ENABLED = __root?.dataset?.debugEnabled === 'true';
+let INITIAL_CONFIG = null;
+const initialConfigEl = document.getElementById('initial-config-json');
+if (initialConfigEl && initialConfigEl.textContent) {
+  try {
+    INITIAL_CONFIG = JSON.parse(initialConfigEl.textContent);
+  } catch (err) {
+    console.warn('Unable to parse initial voucher config', err);
+  }
+}
 
 const toIsoDate = (value) => {
   if (!value) return '';
@@ -644,7 +655,7 @@ const App = {
     journalNumber: '',
     status: 'draft',
     isLocked: false,
-    isEditable: true,
+    isEditable: CAN_EDIT,
     postedAt: null,
     postedBy: null,
     postedByName: '',
@@ -696,11 +707,20 @@ const App = {
     choiceMaps: { header: {}, line: {} },
     isSaving: false,
     headerFieldDefs: [],
+    lineFieldDefs: [],
     configLineDefs: [],
     configBaseOverrides: {},
     dynamicLineKeys: [],
+    isJournalSchema: true,
   },
   lastConfigRequest: { code: null, id: null },
+
+  columnPrefKey() {
+    if (this.state.metadata?.configCode) return this.state.metadata.configCode;
+    if (this.state.metadata?.configId) return String(this.state.metadata.configId);
+    if (this.state.voucherType) return this.state.voucherType;
+    return 'default';
+  },
 
   async init() {
     const presets = loadPresets();
@@ -708,7 +728,9 @@ const App = {
     // Ensure header date is always a valid ISO string for the dual calendar
     this.state.header.date = normalizeDate(this.state.header.date) || DEFAULT_DATE;
 
-    if (!Array.isArray(this.state.rows) || !this.state.rows.length) {
+    if (INITIAL_CONFIG) {
+      this.applyConfig(INITIAL_CONFIG);
+    } else if (!Array.isArray(this.state.rows) || !this.state.rows.length) {
       this.resetRows();
     }
     this.render();
@@ -742,21 +764,35 @@ const App = {
   },
 
   getColumns() {
-    const { udfLineDefs, colPrefsByType, configLineDefs, configBaseOverrides } = this.state;
-    const voucherType = 'Journal'; // Always use Journal
-    let cols = buildColumns(voucherType, udfLineDefs, colPrefsByType[voucherType]);
-    
-    // Apply config-based overrides to base columns
-    if (configBaseOverrides) {
-      cols = cols.map((col) => {
-        if (configBaseOverrides[col.id]) {
-          return { ...col, ...configBaseOverrides[col.id] };
-        }
-        return col;
-      });
+    const {
+      udfLineDefs,
+      colPrefsByType,
+      configLineDefs,
+      configBaseOverrides,
+      lineFieldDefs,
+    } = this.state;
+    const prefKey = this.columnPrefKey();
+    let cols = [];
+    if (Array.isArray(lineFieldDefs) && lineFieldDefs.length) {
+      cols = lineFieldDefs.map((field, index) => ({
+        id: field.stateKey,
+        label: field.label || titleCase(field.stateKey),
+        type: field.columnType || field.type || 'text',
+        options: field.options || [],
+        width: field.width || (field.type === 'number' ? 140 : 180),
+        align: field.align || (field.type === 'number' ? 'right' : 'left'),
+        order: index,
+        visible: field.visible !== false,
+      }));
+    } else {
+      const fallbackType = this.state.isJournalSchema ? 'Journal' : 'Sales';
+      cols = buildColumns(fallbackType, [], colPrefsByType[prefKey]);
     }
-    
-    // Add extra columns from config
+
+    if (configBaseOverrides) {
+      cols = cols.map((col) => (configBaseOverrides[col.id] ? { ...col, ...configBaseOverrides[col.id] } : col));
+    }
+
     if (Array.isArray(configLineDefs) && configLineDefs.length) {
       configLineDefs.forEach((extra) => {
         const existing = cols.find((c) => c.id === extra.id);
@@ -767,43 +803,112 @@ const App = {
         }
       });
     }
+
+    if (Array.isArray(udfLineDefs) && udfLineDefs.length) {
+      udfLineDefs.forEach((f) => {
+        const existing = cols.find((c) => c.id === f.id);
+        const udfColumn = {
+          id: f.id,
+          label: `UDF: ${f.label}`,
+          type: f.type === 'decimal' ? 'number' : f.type || 'text',
+          options: f.options || [],
+          width: 160,
+          order: cols.length + 1,
+          visible: true,
+        };
+        if (existing) {
+          Object.assign(existing, udfColumn);
+        } else {
+          cols.push(udfColumn);
+        }
+      });
+    }
+
+    const prefs = colPrefsByType[prefKey];
+    if (Array.isArray(prefs) && prefs.length) {
+      const prefMap = new Map(prefs.map((p, idx) => [p.id, { ...p, order: p.order ?? idx }]));
+      cols = cols.map((col, idx) => {
+        const pref = prefMap.get(col.id);
+        if (!pref) return col;
+        return {
+          ...col,
+          visible: pref.visible !== false,
+          width: pref.width || col.width,
+          order: pref.order ?? idx,
+        };
+      });
+    }
+
+    cols.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     return cols;
   },
-  blankRow() {
-    // Always return journal row structure
-    const base = {
-      id: uid(),
-      accountId: null,
-      accountCode: '',
-      accountName: '',
-      account: '',
-      narr: '',
-      dr: 0,
-      cr: 0,
-      costCenterId: null,
-      costCenter: '',
-      projectId: null,
-      project: '',
-      departmentId: null,
-      department: '',
-      taxCodeId: null,
-      taxCode: '',
-      udf: {},
-    };
+  rowSkeleton() {
+    const skeleton = { udf: {} };
+    if (this.state.isJournalSchema) {
+      Object.assign(skeleton, {
+        accountId: null,
+        accountCode: '',
+        accountName: '',
+        account: '',
+        narr: '',
+        dr: 0,
+        cr: 0,
+        costCenterId: null,
+        costCenter: '',
+        projectId: null,
+        project: '',
+        departmentId: null,
+        department: '',
+        taxCodeId: null,
+        taxCode: '',
+      });
+    } else {
+      Object.assign(skeleton, {
+        itemId: null,
+        item: '',
+        desc: '',
+        qty: 1,
+        uom: '',
+        rate: 0,
+        discP: 0,
+        taxP: 0,
+        taxGroup: '',
+        warehouse: '',
+        batch: '',
+        amount: 0,
+      });
+    }
+    if (Array.isArray(this.state.lineFieldDefs) && this.state.lineFieldDefs.length) {
+      this.state.lineFieldDefs.forEach((field) => {
+        const key = field.stateKey;
+        if (!key || skeleton[key] !== undefined) return;
+        if (field.default !== undefined) {
+          skeleton[key] = field.default;
+        } else if (field.type === 'number') {
+          skeleton[key] = 0;
+        } else {
+          skeleton[key] = '';
+        }
+      });
+    }
     (this.state.dynamicLineKeys || []).forEach((key) => {
-      if (base[key] === undefined) base[key] = '';
+      if (skeleton[key] === undefined) skeleton[key] = '';
     });
     const defaults = this.state.lineDefaults || {};
     Object.keys(defaults).forEach((key) => {
-      if (base[key] === undefined || base[key] === '') {
-        base[key] = defaults[key];
+      if (skeleton[key] === undefined || skeleton[key] === '') {
+        skeleton[key] = defaults[key];
       }
     });
-    return base;
+    return skeleton;
+  },
+  blankRow() {
+    const base = this.rowSkeleton();
+    return { id: uid(), ...base };
   },
   resetRows(n = 5) {
     this.state.rows = Array.from({ length: n }, () => this.blankRow());
-    this.state.isEditable = true;
+    this.state.isEditable = !!PERMISSIONS.edit;
     this.state.isLocked = false;
     this.state.postedAt = null;
     this.state.postedBy = null;
@@ -1223,49 +1328,37 @@ const App = {
   },
 
   normalizeRow(row = {}) {
-    const toStringValue = (value) => (value === null || value === undefined ? '' : String(value));
-    const toNumericId = (value) => {
-      if (value === null || value === undefined || value === '') return null;
-      const num = Number(value);
-      return Number.isNaN(num) ? null : num;
-    };
-    const projectValueRaw = row.project ?? row.projectId ?? '';
-    const departmentValueRaw = row.department ?? row.departmentId ?? '';
-    const taxValueRaw = row.taxCode ?? row.taxCodeId ?? row.tax_code ?? '';
-    const normalized = {
-      id: row.id ?? uid(),
-      accountId: row.accountId ?? null,
-      accountCode: row.accountCode ?? '',
-      accountName: row.accountName ?? '',
-      account: row.account ?? row.accountCode ?? '',
-      narr: row.narr ?? '',
-      dr: asNum(row.dr, 0),
-      cr: asNum(row.cr, 0),
-      costCenterId: row.costCenterId ?? null,
-      costCenter: row.costCenter ?? '',
-      projectId: row.projectId ?? toNumericId(projectValueRaw),
-      project: toStringValue(projectValueRaw),
-      projectLabel: row.projectLabel ?? row.project_name ?? row.projectName ?? '',
-      departmentId: row.departmentId ?? toNumericId(departmentValueRaw),
-      department: toStringValue(departmentValueRaw),
-      departmentLabel: row.departmentLabel ?? row.department_name ?? row.departmentName ?? '',
-      taxCodeId: row.taxCodeId ?? row.tax_code_id ?? toNumericId(taxValueRaw),
-      taxCode: toStringValue(taxValueRaw),
-      taxCodeLabel: row.taxCodeLabel ?? row.taxCode_code ?? row.taxCodeName ?? '',
-      udf: {},
-    };
-    const udfData = row && typeof row.udf === 'object' ? row.udf : {};
-    Object.entries(udfData).forEach(([key, value]) => {
-      normalized.udf[key] = value;
-      normalized[key] = value;
+    const skeleton = this.rowSkeleton();
+    const normalized = { ...skeleton, id: row.id ?? uid(), udf: { ...(row.udf || {}) } };
+    Object.keys(skeleton).forEach((key) => {
+      if (key === 'udf') return;
+      if (row[key] !== undefined && row[key] !== null) {
+        if (typeof skeleton[key] === 'number') {
+          normalized[key] = asNum(row[key], skeleton[key]);
+        } else {
+          normalized[key] = row[key];
+        }
+      }
     });
+    if (Array.isArray(this.state.lineFieldDefs) && this.state.lineFieldDefs.length) {
+      this.state.lineFieldDefs.forEach((field) => {
+        const key = field.stateKey;
+        if (!key) return;
+        if (row[key] !== undefined && row[key] !== null) {
+          normalized[key] = field.type === 'number' ? asNum(row[key], 0) : row[key];
+        } else if (field.default !== undefined && normalized[key] === undefined) {
+          normalized[key] = field.default;
+        } else if (normalized[key] === undefined) {
+          normalized[key] = field.type === 'number' ? 0 : '';
+        }
+      });
+    }
     (this.state.dynamicLineKeys || []).forEach((key) => {
       if (normalized[key] === undefined) normalized[key] = row[key] ?? '';
     });
     const defaults = this.state.lineDefaults || {};
     Object.keys(defaults).forEach((key) => {
-      const current = normalized[key];
-      if (current === undefined || current === '' || current === null) {
+      if (normalized[key] === undefined || normalized[key] === '' || normalized[key] === null) {
         normalized[key] = defaults[key];
       }
     });
@@ -1492,6 +1585,7 @@ const App = {
     const baseOverrides = {};
     const extraColumns = [];
     const dynamicKeys = [];
+    const lineDefs = [];
     Object.entries(lineSchema).forEach(([key, def]) => {
       const stateKey = LINE_FIELD_KEY_MAP[key] || key;
       const label = def.label || titleCase(stateKey);
@@ -1513,6 +1607,17 @@ const App = {
         width: type === 'number' ? 140 : 180,
         align: type === 'number' ? 'right' : 'left',
       };
+      lineDefs.push({
+        key,
+        stateKey,
+        label,
+        type,
+        columnType: type,
+        options: choices,
+        width: columnDef.width,
+        align: columnDef.align,
+        default: def.default,
+      });
       this.state.choiceMaps.line[stateKey] = choiceMap;
       if (['account', 'narr', 'dr', 'cr', 'costCenter'].includes(stateKey)) {
         baseOverrides[stateKey] = { label: columnDef.label, type: columnDef.type, options: columnDef.options, align: columnDef.align };
@@ -1521,9 +1626,16 @@ const App = {
         dynamicKeys.push(stateKey);
       }
     });
+    this.state.lineFieldDefs = lineDefs;
     this.state.configBaseOverrides = baseOverrides;
     this.state.configLineDefs = extraColumns;
     this.state.dynamicLineKeys = dynamicKeys;
+    this.state.isJournalSchema = lineDefs.some((field) => field.stateKey === 'dr' || field.stateKey === 'cr');
+    const derivedVoucherType = metadata.configName || metadata.journalTypeCode || (this.state.isJournalSchema ? 'Journal' : 'Sales');
+    this.state.voucherType = derivedVoucherType;
+    if (metadata.journalTypeCode) {
+      this.state.journalTypeCode = metadata.journalTypeCode;
+    }
     this.state.currentConfigId = metadata.configId ?? null;
     if (metadata.headerExtras && typeof metadata.headerExtras === 'object') {
       Object.entries(metadata.headerExtras).forEach(([key, value]) => {
@@ -1643,11 +1755,38 @@ const App = {
 
   /** Totals engine for journal entries */
   computeTotals() {
-    const { rows } = this.state;
-    // For journal entries, compute debit/credit totals
-    const dr = rows.reduce((s, r) => s + asNum(r.dr), 0);
-    const cr = rows.reduce((s, r) => s + asNum(r.cr), 0);
-    return { dr, cr, diff: +(dr - cr).toFixed(2) };
+    const { rows, isJournalSchema } = this.state;
+    if (isJournalSchema) {
+      const dr = rows.reduce((s, r) => s + asNum(r.dr), 0);
+      const cr = rows.reduce((s, r) => s + asNum(r.cr), 0);
+      return { dr, cr, diff: +(dr - cr).toFixed(2) };
+    }
+    let sub = 0;
+    let tax = 0;
+    rows.forEach((row) => {
+      const qty = asNum(row.qty ?? row.quantity ?? row.units, 0);
+      const rate = asNum(row.rate ?? row.unit_price ?? row.unitPrice ?? row.price, 0);
+      let lineTotal = asNum(row.amount ?? row.line_total ?? row.total, 0);
+      if (!lineTotal && qty && rate) {
+        lineTotal = qty * rate;
+      }
+      sub += lineTotal;
+      const taxAmount = asNum(row.tax_amount ?? row.taxAmount, 0);
+      if (taxAmount) {
+        tax += taxAmount;
+      } else {
+        const taxPercent = asNum(row.taxP ?? row.tax_percent ?? row.taxRate, 0);
+        if (taxPercent) {
+          tax += lineTotal * (taxPercent / 100);
+        }
+      }
+    });
+    const chargesTotal = (this.state.charges || []).reduce(
+      (sum, charge) => sum + (asNum(charge.value, 0) * (charge.sign || 1)),
+      0,
+    );
+    const grand = sub + tax + chargesTotal;
+    return { sub, tax, charges: chargesTotal, grand };
   },
 
   filteredRows() {
@@ -1790,7 +1929,7 @@ const App = {
     const readOnly = !this.state.isEditable;
     const densityClass = this.state.density === 'compact' ? ' ve-density-compact' : '';
     const wrapperClasses = `ve-wrapper${readOnly ? ' ve-readonly' : ''}${densityClass}`;
-    const canSaveDraft = !isSaving && this.state.isEditable;
+    const canSaveDraft = !isSaving && this.state.isEditable && PERMISSIONS.edit;
     const canSubmit = PERMISSIONS.submit && normalizedStatus === 'draft' && !isSaving && this.state.isEditable;
     const canApprove = PERMISSIONS.approve && isWaitingApproval && !isSaving;
     const canReject = PERMISSIONS.reject && isWaitingApproval && !isSaving;
@@ -2445,9 +2584,9 @@ if (action === 'addRow') { this.state.rows.push(this.blankRow()); this.render();
     if (action === 'cmCancel') { this.state.showColManager = false; this.render(); }
     if (action === 'cmToggle') { const id = t.getAttribute('data-col'); this.state.colManagerDraft = this.state.colManagerDraft.map(x => x.id === id ? { ...x, visible: !(x.visible !== false) } : x); this.render(); }
     if (action === 'cmMove') { const id = t.getAttribute('data-col'); const dir = +t.getAttribute('data-dir'); const arr = this.state.colManagerDraft; const idx = arr.findIndex(x => x.id === id); const j = clamp(idx + dir, 0, arr.length - 1); const [x] = arr.splice(idx, 1); arr.splice(j, 0, x); this.render(); }
-    if (action === 'cmApply') { const vt = this.state.voucherType; this.state.colPrefsByType[vt] = this.state.colManagerDraft.map(({ id, visible, width, order }) => ({ id, visible: visible !== false, width, order })); this.state.showColManager = false; this.persistPresets(); this.render(); }
-    if (action === 'saveCols') { const vt = this.state.voucherType; const cols = this.getColumns(); this.state.colPrefsByType[vt] = cols.map(({ id, visible, width, order }) => ({ id, visible: visible !== false, width, order })); this.persistPresets(); alert('Column prefs saved.'); }
-    if (action === 'resetCols') { const vt = this.state.voucherType; delete this.state.colPrefsByType[vt]; this.persistPresets(); this.render(); }
+    if (action === 'cmApply') { const key = this.columnPrefKey(); this.state.colPrefsByType[key] = this.state.colManagerDraft.map(({ id, visible, width, order }) => ({ id, visible: visible !== false, width, order })); this.state.showColManager = false; this.persistPresets(); this.render(); }
+    if (action === 'saveCols') { const key = this.columnPrefKey(); const cols = this.getColumns(); this.state.colPrefsByType[key] = cols.map(({ id, visible, width, order }) => ({ id, visible: visible !== false, width, order })); this.persistPresets(); alert('Column prefs saved.'); }
+    if (action === 'resetCols') { const key = this.columnPrefKey(); delete this.state.colPrefsByType[key]; this.persistPresets(); this.render(); }
     if (action === 'toggleFilters') { this.state.showFilters = !this.state.showFilters; this.persistPresets(); this.render(); }
     if (action === 'toggleDensity') { this.state.density = this.state.density === 'compact' ? 'normal' : 'compact'; this.persistPresets(); this.render(); }
     if (action === 'setFrozen') { const count = Number(t.getAttribute('data-count')) || 0; this.state.frozenColumns = count; this.persistPresets(); this.render(); }
@@ -2865,14 +3004,26 @@ if (action === 'addRow') { this.state.rows.push(this.blankRow()); this.render();
   /** Validation + payload */
   validate() {
     const errs = [];
-    const { header, voucherType, udfHeaderDefs, udfLineDefs, rows } = this.state;
+    const { header, udfHeaderDefs, udfLineDefs, rows, isJournalSchema } = this.state;
     if (!header.date) errs.push('Date is required');
-    if (voucherType !== 'Journal' && !header.party) errs.push('Party/Customer/Supplier is required');
+    (this.state.headerFieldDefs || []).forEach((field) => {
+      if (field.required) {
+        const value = header[field.stateKey];
+        if (value === undefined || value === null || String(value).trim() === '') {
+          errs.push(`Header '${field.label}' is required`);
+        }
+      }
+    });
     udfHeaderDefs.forEach(f => { if (f.required && (header[f.id] === undefined || header[f.id] === '')) errs.push(`Header UDF '${f.label}' is required`); });
-    if (voucherType === 'Journal') {
+    if (isJournalSchema) {
       const { diff } = this.computeTotals(); if (Math.abs(diff) > 0.001) errs.push('Journal is not balanced (Dr != Cr)');
     } else {
-      const nonEmpty = rows.filter(r => (r.item || '').trim() !== ''); if (!nonEmpty.length) errs.push('At least one line with Item/Service is required');
+      const meaningfulDefs = (this.state.lineFieldDefs || []).filter((def) => !['dr', 'cr'].includes(def.stateKey));
+      const nonEmpty = rows.filter((row) => meaningfulDefs.some((def) => {
+        const value = row[def.stateKey];
+        return value !== undefined && value !== null && String(value).trim() !== '';
+      }));
+      if (!nonEmpty.length) errs.push('At least one line item is required');
     }
     rows.forEach((r, i) => udfLineDefs.forEach(f => { if (f.required && (r[f.id] === undefined || r[f.id] === '')) errs.push(`Row ${i + 1}: UDF '${f.label}' is required`); }));
     return errs;
@@ -2893,28 +3044,44 @@ if (action === 'addRow') { this.state.rows.push(this.blankRow()); this.render();
       status,
     } = this.state;
     const totals = this.computeTotals();
+    const lineDefs = this.state.lineFieldDefs || [];
     const preparedRows = rows.map((row, idx) => {
       const prepared = {
         lineNumber: idx + 1,
-        accountId: row.accountId,
-        accountCode: row.accountCode,
-        account: row.account,
-        narr: row.narr,
-        dr: asNum(row.dr, 0),
-        cr: asNum(row.cr, 0),
-        costCenterId: row.costCenterId,
-        costCenter: row.costCenter,
-        projectId: row.projectId ?? null,
-        project: row.project ?? '',
-        projectLabel: row.projectLabel ?? '',
-        departmentId: row.departmentId ?? null,
-        department: row.department ?? '',
-        departmentLabel: row.departmentLabel ?? '',
-        taxCodeId: row.taxCodeId ?? null,
-        taxCode: row.taxCode ?? '',
-        taxCodeLabel: row.taxCodeLabel ?? '',
         udf: row.udf || {},
       };
+      if (this.state.isJournalSchema) {
+        prepared.accountId = row.accountId ?? null;
+        prepared.accountCode = row.accountCode ?? '';
+        prepared.accountName = row.accountName ?? '';
+        prepared.account = row.account ?? '';
+        prepared.narr = row.narr ?? '';
+        prepared.dr = asNum(row.dr, 0);
+        prepared.cr = asNum(row.cr, 0);
+        prepared.costCenterId = row.costCenterId ?? null;
+        prepared.costCenter = row.costCenter ?? '';
+        prepared.projectId = row.projectId ?? null;
+        prepared.project = row.project ?? '';
+        prepared.projectLabel = row.projectLabel ?? '';
+        prepared.departmentId = row.departmentId ?? null;
+        prepared.department = row.department ?? '';
+        prepared.departmentLabel = row.departmentLabel ?? '';
+        prepared.taxCodeId = row.taxCodeId ?? null;
+        prepared.taxCode = row.taxCode ?? '';
+        prepared.taxCodeLabel = row.taxCodeLabel ?? '';
+      }
+      lineDefs.forEach((field) => {
+        const key = field.stateKey;
+        if (!key) return;
+        const value = row[key];
+        if (field.type === 'number') {
+          prepared[key] = asNum(value, 0);
+        } else if (field.type === 'checkbox') {
+          prepared[key] = !!value;
+        } else {
+          prepared[key] = value ?? '';
+        }
+      });
       const dynamicKeys = this.state.dynamicLineKeys || [];
       dynamicKeys.forEach((key) => {
         if (prepared[key] === undefined) prepared[key] = row[key] ?? '';

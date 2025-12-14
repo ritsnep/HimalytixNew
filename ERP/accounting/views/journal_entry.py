@@ -602,6 +602,109 @@ def _collect_udf_definitions(config: Optional[VoucherModeConfig]) -> Tuple[List[
     return header_defs, line_defs
 
 
+def _build_config_payload(organization, config=None, journal_type_param=None, config_id=None):
+    resolved_config = config
+    if not resolved_config and config_id:
+        try:
+            resolved_config = (
+                VoucherModeConfig.objects.select_related("journal_type")
+                .filter(organization=organization, is_active=True)
+                .get(config_id=int(config_id))
+            )
+        except (VoucherModeConfig.DoesNotExist, ValueError, TypeError):
+            resolved_config = None
+    if not resolved_config:
+        resolved_config = _resolve_voucher_config(organization, journal_type_param)
+
+    schema_source = resolved_config.resolve_ui() if resolved_config else default_ui_schema()
+    raw_header_schema = schema_source.get("header") or {}
+    raw_line_schema = schema_source.get("lines") or {}
+
+    (
+        header_schema,
+        header_allowed,
+        header_required,
+        header_defaults,
+        header_labels,
+    ) = _serialize_header_schema(raw_header_schema, organization)
+    (
+        line_schema,
+        line_allowed,
+        line_required,
+        line_defaults,
+        line_labels,
+    ) = _serialize_line_schema(raw_line_schema, organization)
+
+    header_udf_defs, line_udf_defs = _collect_udf_definitions(resolved_config)
+
+    org_currency_code = _base_currency_code(organization)
+    metadata: Dict[str, Any] = {
+        "configId": resolved_config.config_id if resolved_config else None,
+        "configCode": resolved_config.code if resolved_config else None,
+        "configName": resolved_config.name if resolved_config else "Default",
+        "configDescription": resolved_config.description if resolved_config else "",
+        "journalTypeId": resolved_config.journal_type.pk if resolved_config and resolved_config.journal_type else None,
+        "journalTypeCode": (
+            resolved_config.journal_type.code
+            if resolved_config and resolved_config.journal_type
+            else journal_entry_settings.ui_settings.get("default_entry_type") or "JN"
+        ),
+        "journalTypeName": resolved_config.journal_type.name if resolved_config and resolved_config.journal_type else "",
+        "defaultCurrency": (
+            resolved_config.default_currency
+            if resolved_config and resolved_config.default_currency
+            else (
+                org_currency_code
+                or (journal_entry_settings.supported_currencies[0] if journal_entry_settings.supported_currencies else None)
+            )
+        ),
+        "headerRequired": sorted([key for key, value in header_required.items() if value]),
+        "lineRequired": sorted([key for key, value in line_required.items() if value]),
+        "headerAllowedValues": {key: sorted(values) for key, values in header_allowed.items()},
+        "lineAllowedValues": {key: sorted(values) for key, values in line_allowed.items()},
+        "headerDefaults": header_defaults,
+        "lineDefaults": line_defaults,
+        "supportedCurrencies": _supported_currencies(organization),
+        "headerLabels": header_labels,
+        "lineLabels": line_labels,
+    }
+    metadata["headerDefaults"].setdefault("date", _seed_default_date(organization))
+
+    numbering_meta = _build_numbering_metadata(resolved_config)
+    if numbering_meta:
+        metadata["numbering"] = numbering_meta
+
+    allowable_types = journal_entry_settings.allowable_journal_entry_types or []
+    voucher_type_labels = [entry.get("name") or entry.get("value") for entry in allowable_types] or ["Journal"]
+    metadata["availableVoucherTypes"] = voucher_type_labels
+
+    metadata["availableConfigs"] = [
+        {"id": option["config_id"], "code": option["code"], "name": option["name"]}
+        for option in VoucherModeConfig.objects.filter(organization=organization, is_active=True)
+        .order_by("name")
+        .values("config_id", "code", "name")
+    ]
+
+    line_mode = "journal" if {"debit_amount", "credit_amount"} & set(raw_line_schema.keys()) else "item"
+    metadata["lineMode"] = line_mode
+
+    payload = {
+        "id": resolved_config.config_id if resolved_config else None,
+        "code": resolved_config.code if resolved_config else None,
+        "name": resolved_config.name if resolved_config else "Default",
+        "uiSchema": {
+            "header": header_schema,
+            "lines": line_schema,
+        },
+        "udf": {
+            "header": header_udf_defs,
+            "line": line_udf_defs,
+        },
+        "metadata": metadata,
+    }
+    return payload, resolved_config
+
+
 def _build_numbering_metadata(config: Optional[VoucherModeConfig]) -> Optional[Dict[str, Any]]:
     if not config or not config.journal_type:
         return None
@@ -1371,8 +1474,6 @@ def journal_config(request):
     organization = _active_organization(request.user)
     if not organization:
         return _json_error("Active organization required.", status=400)
-    org_currency_code = _base_currency_code(organization)
-
     journal_type_param = (
         request.GET.get("journal_type")
         or request.GET.get("journalType")
@@ -1380,117 +1481,21 @@ def journal_config(request):
         or request.GET.get("journalTypeCode")
     )
     config_id_param = request.GET.get("config_id")
-    config: Optional[VoucherModeConfig] = None
-    if config_id_param:
-        try:
-            config = (
-                VoucherModeConfig.objects.select_related("journal_type")
-                .filter(organization=organization, is_active=True)
-                .get(config_id=int(config_id_param))
-            )
-        except (VoucherModeConfig.DoesNotExist, ValueError, TypeError):
-            config = None
-    if not config:
-        config = _resolve_voucher_config(organization, journal_type_param)
-    schema_source = config.resolve_ui() if config else default_ui_schema()
-    raw_header_schema = schema_source.get("header") or {}
-    raw_line_schema = schema_source.get("lines") or {}
-
-    (
-        header_schema,
-        header_allowed,
-        header_required,
-        header_defaults,
-        header_labels,
-    ) = _serialize_header_schema(raw_header_schema, organization)
-    (
-        line_schema,
-        line_allowed,
-        line_required,
-        line_defaults,
-        line_labels,
-    ) = _serialize_line_schema(raw_line_schema, organization)
-
-    header_udf_defs, line_udf_defs = _collect_udf_definitions(config)
-
-    metadata: Dict[str, Any] = {
-        "configId": config.config_id if config else None,
-        "configCode": config.code if config else None,
-        "configName": config.name if config else "Default",
-        "journalTypeId": config.journal_type.pk if config and config.journal_type else None,
-        "journalTypeCode": (
-            config.journal_type.code
-            if config and config.journal_type
-            else journal_entry_settings.ui_settings.get("default_entry_type") or "JN"
-        ),
-        "defaultCurrency": (
-            config.default_currency
-            if config and config.default_currency
-            else (
-                org_currency_code
-                or (journal_entry_settings.supported_currencies[0] if journal_entry_settings.supported_currencies else None)
-            )
-        ),
-        "headerRequired": sorted([key for key, value in header_required.items() if value]),
-        "lineRequired": sorted([key for key, value in line_required.items() if value]),
-        "headerAllowedValues": {key: sorted(values) for key, values in header_allowed.items()},
-        "lineAllowedValues": {key: sorted(values) for key, values in line_allowed.items()},
-        "headerDefaults": header_defaults,
-        "lineDefaults": line_defaults,
-        "supportedCurrencies": _supported_currencies(organization),
-        "headerLabels": header_labels,
-        "lineLabels": line_labels,
-    }
-    # Ensure a seeded date default is always available for the UI
-    metadata["headerDefaults"].setdefault("date", _seed_default_date(organization))
-
-    numbering_meta = _build_numbering_metadata(config)
-    if numbering_meta:
-        metadata["numbering"] = numbering_meta
-
-    allowable_types = journal_entry_settings.allowable_journal_entry_types or []
-    voucher_type_labels = [entry.get("name") or entry.get("value") for entry in allowable_types] or ["Journal"]
-    metadata["availableVoucherTypes"] = voucher_type_labels
-
-    config_options = (
-        VoucherModeConfig.objects.filter(organization=organization, is_active=True)
-        .order_by("name")
-        .values("config_id", "code", "name")
+    payload, _ = _build_config_payload(
+        organization,
+        journal_type_param=journal_type_param,
+        config_id=config_id_param,
     )
-    metadata["availableConfigs"] = [
-        {"id": option["config_id"], "code": option["code"], "name": option["name"]}
-        for option in config_options
-    ]
-
-    payload = {
-        "id": config.config_id if config else None,
-        "code": config.code if config else None,
-        "name": config.name if config else "Default",
-        "uiSchema": {
-            "header": header_schema,
-            "lines": line_schema,
-        },
-        "udf": {
-            "header": header_udf_defs,
-            "line": line_udf_defs,
-        },
-        "metadata": metadata,
-    }
-
     return JsonResponse({"ok": True, "config": payload})
 
 
-@login_required
-@ensure_csrf_cookie
-def journal_entry(request):
-    """Render the Excel-like Journal Entry UI."""
-    # Support both journal_id and voucher_id parameters (for legacy and new URLs)
-    journal_id_param = request.GET.get("journal_id") or request.GET.get("voucher_id") or ""
+def build_journal_entry_context(request, *, journal_id_param=None, config_id_param=None):
+    if journal_id_param is None:
+        journal_id_param = request.GET.get("journal_id") or request.GET.get("voucher_id") or ""
     if journal_id_param and not journal_id_param.isdigit():
         journal_id_param = ""
-    
-    # Check if config_id is provided
-    config_id_param = request.GET.get("config_id") or ""
+    if config_id_param is None:
+        config_id_param = request.GET.get("config_id") or ""
     show_config_selector = not config_id_param and not journal_id_param
 
     organization = _active_organization(request.user)
@@ -1498,18 +1503,18 @@ def journal_entry(request):
     default_currency = supported_currencies[0] if supported_currencies else ""
     default_date = _seed_default_date(organization)
     base_currency = _base_currency_code(organization)
-    
-    # If no config was chosen and no journal is being edited, route to a dedicated
-    # full-screen configuration selection page instead of an in-page modal.
-    if show_config_selector:
-        return journal_select_config(request)
-    
+
     journal_type_token = _journal_type_param_from_request(request)
-    config = _resolve_voucher_config(organization, journal_type_token)
+    config_payload, config = _build_config_payload(
+        organization,
+        journal_type_param=journal_type_token,
+        config_id=config_id_param or None,
+    )
     auto_balance_settings = _ui_settings_from_config(config).get("auto_balance", {})
     auto_balance_enabled = auto_balance_settings.get("enabled", True)
 
     permission_flags = {
+        "can_edit": bool(PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'change')),
         "can_submit": bool(request.user.has_perm('accounting.can_submit_for_approval') or (organization and PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'submit_journal'))),
         "can_approve": bool(request.user.has_perm('accounting.can_approve_journal') or (organization and PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'approve_journal'))),
         "can_reject": bool(request.user.has_perm('accounting.can_reject_journal') or (organization and PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'reject_journal'))),
@@ -1521,17 +1526,12 @@ def journal_entry(request):
         "costCenter": reverse('accounting:journal_cost_center_lookup'),
     }
 
-    # Compute config endpoint here (wrap reverse in try/except so template rendering
-    # doesn't fail if the named URL is not available at template-evaluation time).
     preferences = _voucher_ui_preferences_for_user(request.user, organization)
     line_density = preferences.get("lineDensity") or preferences.get("density") or "comfortable"
 
     try:
         config_endpoint = reverse('accounting:journal_config')
     except Exception:
-        # Fallback to the hard-coded path used by this app. This avoids template
-        # level NoReverseMatch while we investigate why the named URL may not
-        # be present at runtime (possible duplicate modules / import mismatch).
         config_endpoint = '/accounting/journal-entry/config/'
     try:
         prefs_endpoint = reverse('accounting:journal_ui_preferences')
@@ -1549,6 +1549,31 @@ def journal_entry(request):
         payment_terms_endpoint = reverse('accounting:journal_payment_terms')
     except Exception:
         payment_terms_endpoint = '/accounting/journal-entry/payment-terms/'
+
+    try:
+        save_endpoint = reverse('accounting:journal_save_draft')
+    except Exception:
+        save_endpoint = '/accounting/journal-entry/save-draft/'
+    try:
+        submit_endpoint = reverse('accounting:journal_submit')
+    except Exception:
+        submit_endpoint = '/accounting/journal-entry/submit/'
+    try:
+        approve_endpoint = reverse('accounting:journal_approve')
+    except Exception:
+        approve_endpoint = '/accounting/journal-entry/approve/'
+    try:
+        reject_endpoint = reverse('accounting:journal_reject')
+    except Exception:
+        reject_endpoint = '/accounting/journal-entry/reject/'
+    try:
+        post_endpoint = reverse('accounting:journal_post')
+    except Exception:
+        post_endpoint = '/accounting/journal-entry/post/'
+    try:
+        period_validate_endpoint = reverse('accounting:journal_period_validate')
+    except Exception:
+        period_validate_endpoint = '/accounting/journal-entry/period-validate/'
 
     try:
         row_endpoint = reverse('accounting:journal_entry_row')
@@ -1587,6 +1612,13 @@ def journal_entry(request):
     except Exception:
         auto_balance_endpoint = '/accounting/journal-entry/auto-balance/'
 
+    config_metadata = config_payload.get("metadata", {}) if isinstance(config_payload, dict) else {}
+    initial_config_json = json.dumps(config_payload or {})
+    try:
+        config_selector_url = reverse('accounting:journal_select_config')
+    except Exception:
+        config_selector_url = '#'
+
     context = {
         "voucher_entry_page": True,
         "journal_default_type": journal_entry_settings.ui_settings.get("default_entry_type") or "JN",
@@ -1605,6 +1637,12 @@ def journal_entry(request):
         "attachment_upload_endpoint": attachment_upload_endpoint,
         "attachment_delete_endpoint": attachment_delete_endpoint,
         "payment_terms_endpoint": payment_terms_endpoint,
+        "save_endpoint": save_endpoint,
+        "submit_endpoint": submit_endpoint,
+        "approve_endpoint": approve_endpoint,
+        "reject_endpoint": reject_endpoint,
+        "post_endpoint": post_endpoint,
+        "period_validate_endpoint": period_validate_endpoint,
         "show_config_selector": False,
         "journal_debug_enabled": _is_journal_debug_enabled(organization),
         "row_endpoint": row_endpoint,
@@ -1620,7 +1658,19 @@ def journal_entry(request):
         "ui_preferences_json": json.dumps(preferences),
         "line_density": line_density,
         "auto_balance_enabled": auto_balance_enabled,
+        "initial_config_json": initial_config_json,
+        "active_config_name": config_metadata.get("configName"),
+        "config_selector_url": config_selector_url,
     }
+    return context, show_config_selector
+
+
+@login_required
+@ensure_csrf_cookie
+def journal_entry(request):
+    context, show_config_selector = build_journal_entry_context(request)
+    if show_config_selector:
+        return journal_select_config(request)
     return render(request, "accounting/journal_entry.html", context)
 
 
@@ -2620,6 +2670,91 @@ def resolve_exchange_rate(request):
 
 
 @login_required
+@require_GET
+def voucher_entry_auto_date_hx(request):
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+
+    today = timezone.localdate()
+    latest_journal = (
+        Journal.objects.filter(organization=organization)
+        .exclude(journal_date__isnull=True)
+        .order_by("-journal_date")
+        .first()
+    )
+    auto_date = today
+    if latest_journal and latest_journal.journal_date:
+        auto_date = max(today, latest_journal.journal_date)
+
+    current_period = AccountingPeriod.objects.filter(
+        organization=organization,
+        start_date__lte=auto_date,
+        end_date__gte=auto_date,
+    ).order_by("-start_date").first()
+
+    payload = {
+        "auto_date": auto_date.isoformat(),
+        "last_journal_id": latest_journal.pk if latest_journal else None,
+        "last_journal_date": latest_journal.journal_date.isoformat()
+        if latest_journal and latest_journal.journal_date
+        else None,
+    }
+    if current_period:
+        payload["current_period"] = current_period.name
+        payload["period_status"] = "open"
+    else:
+        payload["period_status"] = "closed"
+    return JsonResponse(payload)
+
+
+@login_required
+@require_GET
+def voucher_entry_approval_actions_hx(request):
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+
+    journal_id = request.GET.get("journal_id")
+    journal = None
+    status = "draft"
+    if journal_id:
+        try:
+            journal = Journal.objects.get(pk=int(journal_id), organization=organization)
+            status = journal.status or "draft"
+        except (Journal.DoesNotExist, ValueError, TypeError):
+            return _json_error("Voucher not found.", status=404)
+
+    permissions = {
+        "can_save": PermissionUtils.has_permission(request.user, organization, "accounting", "journal", "add"),
+        "can_submit": _user_can_workflow(request.user, organization, "submit"),
+        "can_approve": _user_can_workflow(request.user, organization, "approve"),
+        "can_reject": _user_can_workflow(request.user, organization, "reject"),
+        "can_post": _user_can_workflow(request.user, organization, "post"),
+    }
+
+    allowed_actions = []
+    if status in ("draft", "awaiting_approval") and permissions["can_submit"]:
+        allowed_actions.append("submit")
+    if status == "awaiting_approval":
+        if permissions["can_approve"]:
+            allowed_actions.append("approve")
+        if permissions["can_reject"]:
+            allowed_actions.append("reject")
+    if status == "draft" and permissions["can_post"]:
+        allowed_actions.append("post")
+
+    response = {
+        "journal_id": journal.pk if journal else None,
+        "status": status,
+        "status_label": STATUS_LABELS.get(status, status.replace("_", " ").title()),
+        "permissions": permissions,
+        "allowed_actions": allowed_actions,
+    }
+    return JsonResponse(response)
+
+
+@login_required
 @require_POST
 def journal_attachment_delete(request):
     organization = _active_organization(request.user)
@@ -2649,3 +2784,76 @@ def _ai_insights_for_line(line: Dict[str, Any]) -> List[str]:
         if not has_tax and account_code and account_code[:1] in ("4", "5"):
             insights.append("Consider assigning a tax code for this revenue/expense line.")
     return insights
+
+
+# HTMX Handlers for Voucher Entry Grid
+@login_required
+@require_POST
+def journal_entry_add_row(request):
+    """Add a new row to the voucher entry grid via HTMX."""
+    try:
+        # Get the next line number (simple increment for now)
+        line_number = int(request.POST.get('line_count', 0)) + 1
+
+        # Get accounts for the dropdown
+        organization = request.user.get_active_organization()
+        accounts = ChartOfAccount.objects.filter(
+            organization=organization,
+            is_active=True
+        ).order_by('account_code')
+
+        context = {
+            'line': None,  # New empty line
+            'line_number': line_number,
+            'accounts': accounts,
+        }
+
+        html = render_to_string('accounting/htmx/voucher_entry_grid_row.html', context, request)
+        return HttpResponse(html)
+    except Exception as e:
+        logger.error(f"Error adding journal entry row: {e}")
+        return HttpResponse("Error adding row", status=500)
+
+
+@login_required
+@require_POST
+def journal_entry_row(request):
+    """Handle row field updates via HTMX."""
+    try:
+        field = request.POST.get('field')
+        value = request.POST.get('value')
+        line_id = request.POST.get('line_id')
+
+        # For now, just return success - actual persistence will be handled in Phase 2
+        return HttpResponse("OK")
+    except Exception as e:
+        logger.error(f"Error updating journal entry row: {e}")
+        return HttpResponse("Error updating row", status=500)
+
+
+@login_required
+@require_POST
+def journal_entry_row_duplicate(request):
+    """Duplicate a journal entry row via HTMX."""
+    try:
+        line_id = request.POST.get('line_id')
+        # For now, return a new empty row
+        line_number = int(request.POST.get('line_count', 0)) + 1
+
+        organization = request.user.get_active_organization()
+        accounts = ChartOfAccount.objects.filter(
+            organization=organization,
+            is_active=True
+        ).order_by('account_code')
+
+        context = {
+            'line': None,
+            'line_number': line_number,
+            'accounts': accounts,
+        }
+
+        html = render_to_string('accounting/htmx/voucher_entry_grid_row.html', context, request)
+        return HttpResponse(html)
+    except Exception as e:
+        logger.error(f"Error duplicating journal entry row: {e}")
+        return HttpResponse("Error duplicating row", status=500)

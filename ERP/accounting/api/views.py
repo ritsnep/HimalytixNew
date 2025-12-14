@@ -250,3 +250,45 @@ class IntegrationEventViewSet(OrganizationScopedMixin, viewsets.ReadOnlyModelVie
         return IntegrationEvent.objects.filter(
             payload__organization_id=getattr(organization, 'id', None)
         )
+
+
+from .serializers import JournalLineSerializer
+from accounting.models import JournalLine, Journal
+from rest_framework import permissions, mixins, viewsets
+
+
+class JournalLineViewSet(OrganizationScopedMixin, mixins.CreateModelMixin,
+                         mixins.UpdateModelMixin, mixins.DestroyModelMixin,
+                         mixins.RetrieveModelMixin, mixins.ListModelMixin,
+                         viewsets.GenericViewSet):
+    """Minimal REST API for JournalLine create/update/delete to support UI and integration tests."""
+    serializer_class = JournalLineSerializer
+    queryset = JournalLine.objects.select_related('journal', 'account')
+
+    def perform_create(self, serializer):
+        journal = serializer.validated_data.get('journal')
+        # Permission check
+        org = self.get_organization()
+        if not org or journal.organization_id != org.id:
+            raise permissions.PermissionDenied()
+        # Set created_by
+        serializer.save(created_by=self.request.user)
+        # Update totals and balanced flag
+        journal.update_totals()
+        journal.save()
+
+    def perform_update(self, serializer):
+        journal = serializer.instance.journal
+        if journal.organization_id != self.get_organization().id:
+            raise permissions.PermissionDenied()
+        serializer.save(updated_by=self.request.user)
+        journal.update_totals()
+        journal.save()
+
+    def perform_destroy(self, instance):
+        journal = instance.journal
+        if journal.organization_id != self.get_organization().id:
+            raise permissions.PermissionDenied()
+        instance.delete()
+        journal.update_totals()
+        journal.save()

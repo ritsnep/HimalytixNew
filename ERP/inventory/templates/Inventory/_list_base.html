@@ -2,405 +2,441 @@
 {% load static %}
 
 {% block extra_css %}
+  {{ block.super }}
+
+  {% if enable_datatable|default:True %}
     <!-- DataTables + Buttons CSS -->
     <link href="{% static 'libs/datatables.net-bs4/css/dataTables.bootstrap4.min.css' %}" rel="stylesheet" type="text/css" />
     <link href="{% static 'libs/datatables.net-buttons-bs4/css/buttons.bootstrap4.min.css' %}" rel="stylesheet" type="text/css" />
     <link href="{% static 'libs/datatables.net-responsive-bs4/css/responsive.bootstrap4.min.css' %}" rel="stylesheet" type="text/css" />
     <link href="{% static 'libs/datatables.net-fixedheader-bs4/css/fixedHeader.bootstrap4.min.css' %}" rel="stylesheet" type="text/css" />
-    <style>
-        /* Compact table and controls */
-        .dataTables_wrapper .dt-buttons {
-            margin-bottom: 0 !important;
-        }
-        .dataTables_wrapper .dataTables_filter {
-            margin-bottom: 0 !important;
-        }
-        .dataTables_wrapper .row {
-            margin-left: 0;
-            margin-right: 0;
-        }
-        .dataTables_wrapper .row > div {
-            padding-left: 0;
-            padding-right: 0;
-        }
-        .card-body {
-            padding: 1rem 1.25rem;
-        }
-        .table {
-            margin-bottom: 0;
-        }
-        .dt-buttons .btn {
-            margin-right: 0.25rem;
-        }
-        .dataTables_filter label {
-            margin-bottom: 0;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        /* Focus styles for accessibility */
-        a:focus, button:focus, input:focus, select:focus, textarea:focus {
-            outline: 2px solid #007bff !important;
-            outline-offset: 2px;
-            box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25) !important;
-        }
+  {% endif %}
 
-        /* Loading indicator */
-        .loading-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255, 255, 255, 0.7);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1050;
-            transition: opacity 0.2s;
-        }
+  <style>
+    /* Layout */
+    .list-layout-shell { position: relative; min-height: 100vh; }
+    .page-content--list { padding: calc(70px + 12px) 12px 32px 12px; }
+    @media (min-width: 992px) { .page-content--list { padding-left: 20px; padding-right: 20px; } }
+    @media (max-width: 767.98px) { .page-content--list { padding: calc(70px + 8px) 10px 28px 10px; } }
+    .list-layout-shell .container-fluid { padding-left: 0; padding-right: 0; }
 
-        /* Layout tightening for list pages */
-        .list-layout-shell {
-            position: relative;
-            min-height: 100vh;
-        }
-        .page-content--list {
-            padding: calc(70px + 12px) 12px 32px 12px;
-        }
-        @media (min-width: 992px) {
-            .page-content--list {
-                padding-left: 20px;
-                padding-right: 20px;
-            }
-        }
-        @media (max-width: 767.98px) {
-            .page-content--list {
-                padding: calc(70px + 8px) 10px 28px 10px;
-            }
-        }
-        .list-layout-shell .container-fluid {
-            padding-left: 0;
-            padding-right: 0;
-        }
-        .list-card {
-            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
-            border: 1px solid #e5e7eb;
-        }
-        .list-layout-footer .footer {
-            position: static;
-            left: auto;
-            right: auto;
-            bottom: auto;
-            height: auto;
-            padding: 12px 20px;
-            margin: 0;
-        }
-        .list-layout-shell .loading-overlay {
-            position: fixed;
-        }
-    </style>
+    .list-card { box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); border: 1px solid #e5e7eb; }
+    .list-card .card-body { padding: 1rem 1.25rem; }
+
+    /* Toolbar */
+    .list-toolbar { gap: .75rem; }
+    .list-title { line-height: 1.2; }
+    .list-subtitle { color: #6b7280; }
+
+    /* Accessibility focus */
+    a:focus, button:focus, input:focus, select:focus, textarea:focus {
+      outline: 2px solid #007bff !important;
+      outline-offset: 2px;
+      box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25) !important;
+    }
+
+    /* Loading overlay */
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.75);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1050;
+      backdrop-filter: blur(1px);
+    }
+
+    /* DataTables compact */
+    .dataTables_wrapper .dt-buttons { margin-bottom: 0 !important; }
+    .dataTables_wrapper .dataTables_filter { margin-bottom: 0 !important; }
+    .dataTables_filter label { margin-bottom: 0; display:flex; align-items:center; gap:.5rem; }
+    .dt-buttons .btn { margin-right: .25rem; }
+    table.dataTable { margin-bottom: 0 !important; }
+
+    /* Sticky footer actions (optional) */
+    .list-footer-actions {
+      display:flex;
+      gap:.5rem;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content: space-between;
+      padding-top: .75rem;
+      border-top: 1px solid rgba(0,0,0,.06);
+      margin-top: .75rem;
+    }
+  </style>
 {% endblock extra_css %}
 
 {% block content %}
 <div class="list-layout-shell">
-    <div class="loading-overlay" style="display: none;">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-    </div>
-    <div id="toast-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1055"></div>
-    <div class="main-content">
-        <div class="page-content page-content--list">
-            <div class="container-fluid">
-                <div class="card list-card mb-3">
-                    <div class="card-body pb-2 pt-3">
-                        <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
-                            <div class="d-flex flex-column gap-1">
-                                <h4 class="card-title mb-0">
-                                    {{ page_title|default:"List" }}
-                                </h4>
-                                {% if breadcrumbs %}
-                                <nav aria-label="breadcrumb" class="small">
-                                    <ol class="breadcrumb mb-0">
-                                        {% for name, url in breadcrumbs %}
-                                            {% if not forloop.last %}
-                                                <li class="breadcrumb-item"><a href="{{ url }}">{{ name }}</a></li>
-                                            
-                                            {% endif %}
-                                        {% endfor %}
-                                    </ol>
-                                </nav>
-                                {% endif %}
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-wrap" id="list-actions">
-                                {% block create_button %}
-                                {% if create_url and create_button_text %}
-                                <a href="{{ create_url }}" class="btn btn-success btn-sm">
-                                    <i class="mdi mdi-plus me-1"></i> {{ create_button_text }}
-                                </a>
-                                {% endif %}
-                                {% endblock create_button %}
-                                <!-- DataTables search and export buttons will be injected here -->
-                                <div id="datatable-controls" class="d-flex align-items-center flex-wrap gap-2"></div>
-                            </div>
-                        </div>
-                        {% if smart_filter_config %}
-                            {% include 'inventory/partials/smart_filters.html' %}
+
+  <div class="loading-overlay" aria-live="polite" aria-busy="true">
+    <div class="spinner-border text-primary" role="status" aria-label="Loading"></div>
+  </div>
+
+  <div id="toast-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1055"></div>
+
+  <div class="main-content">
+    <div class="page-content page-content--list">
+      <div class="container-fluid">
+
+        <div class="card list-card mb-3">
+          <div class="card-body pb-2 pt-3">
+
+            <!-- Title + Breadcrumb + Actions -->
+            <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap list-toolbar">
+              <div class="d-flex flex-column gap-1">
+                <h4 class="card-title mb-0 list-title">
+                  {{ page_title|default:"List" }}
+                </h4>
+
+                {% if page_subtitle %}
+                  <div class="small list-subtitle">{{ page_subtitle }}</div>
+                {% endif %}
+
+                {% if breadcrumbs %}
+                  <nav aria-label="breadcrumb" class="small">
+                    <ol class="breadcrumb mb-0">
+                      {% for name, url in breadcrumbs %}
+                        {% if not forloop.last %}
+                          <li class="breadcrumb-item"><a href="{{ url }}">{{ name }}</a></li>
+                        {% else %}
+                          <li class="breadcrumb-item active" aria-current="page">{{ name }}</li>
                         {% endif %}
-                        {% block custom_filters %}
-                        {% endblock custom_filters %}
-                        <div class="table-rep-plugin">
-                            <div class="table-responsive mb-0">
-                                <table id="datatable-buttons" class="table table-bordered table-sm dt-responsive nowrap w-100 mb-0" data-view-key="{{ view_key|default:page_title|default:'list'|slugify }}">
-                                    <thead>
-                                        {% block table_head %}{% endblock table_head %}
-                                    </thead>
-                                    <tbody>
-                                        {% block table_body %}{% endblock table_body %}
-                                    </tbody>
-                                    <tfoot>
-                                        {% block table_foot %}{% endblock table_foot %}
-                                    </tfoot>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                      {% endfor %}
+                    </ol>
+                  </nav>
+                {% endif %}
+              </div>
+
+              <div class="d-flex align-items-center gap-2 flex-wrap" id="list-actions">
+                {% block create_button %}
+                  {% if create_url %}
+                    <a href="{{ create_url }}" class="btn btn-success btn-sm">
+                      <i class="mdi mdi-plus me-1"></i>
+                      {{ create_button_text|default:"Create" }}
+                    </a>
+                  {% endif %}
+                {% endblock create_button %}
+
+                {% block list_primary_actions %}{% endblock list_primary_actions %}
+
+                {% if enable_datatable|default:True %}
+                  <!-- DataTables search + export buttons will be injected here -->
+                  <div id="datatable-controls" class="d-flex align-items-center flex-wrap gap-2"></div>
+                {% endif %}
+              </div>
             </div>
+
+            {% if smart_filter_config %}
+              {% include 'inventory/partials/smart_filters.html' %}
+            {% endif %}
+
+            {% block custom_filters %}{% endblock custom_filters %}
+
+            <!-- Table container -->
+            <div class="table-rep-plugin">
+              <div class="table-responsive mb-0" id="list-table-container">
+                {% block table %}
+                  <!-- Default: render a table with table_head/table_body blocks -->
+                  <table
+                    id="{{ table_id|default:'datatable-main' }}"
+                    class="table table-bordered table-sm dt-responsive nowrap w-100 mb-0"
+                    data-view-key="{{ view_key|default:page_title|default:'list'|slugify }}"
+                    {% if enable_datatable|default:True %}data-datatable="1"{% endif %}
+                  >
+                    <thead>{% block table_head %}{% endblock table_head %}</thead>
+                    <tbody>{% block table_body %}{% endblock table_body %}</tbody>
+                    <tfoot>{% block table_foot %}{% endblock table_foot %}</tfoot>
+                  </table>
+                {% endblock table %}
+              </div>
+            </div>
+
+            {% block list_footer %}
+              <!-- Optional footer actions, summary, bulk actions, etc -->
+              {% if list_footer_actions %}
+                <div class="list-footer-actions">
+                  {{ list_footer_actions }}
+                </div>
+              {% endif %}
+            {% endblock list_footer %}
+
+          </div>
         </div>
+
+      </div>
     </div>
-    <div class="list-layout-footer">
-        {% include 'partials/footer.html' %}
-    </div>
+  </div>
+
+  <div class="list-layout-footer">
+    {% include 'partials/footer.html' %}
+  </div>
 </div>
 {% endblock content %}
 
 {% block extra_js %}
-<!-- DataTables core -->
-<script src="{% static 'libs/datatables.net/js/jquery.dataTables.min.js' %}"></script>
-<script src="{% static 'libs/datatables.net-bs4/js/dataTables.bootstrap4.min.js' %}"></script>
-<!-- DataTables Buttons -->
-<script src="{% static 'libs/datatables.net-buttons/js/dataTables.buttons.min.js' %}"></script>
-<script src="{% static 'libs/datatables.net-buttons-bs4/js/buttons.bootstrap4.min.js' %}"></script>
-<script src="{% static 'libs/jszip/jszip.min.js' %}"></script>
-<script src="{% static 'libs/pdfmake/build/pdfmake.min.js' %}"></script>
-<script src="{% static 'libs/pdfmake/build/vfs_fonts.js' %}"></script>
-<script src="{% static 'libs/datatables.net-buttons/js/buttons.html5.min.js' %}"></script>
-<script src="{% static 'libs/datatables.net-buttons/js/buttons.print.min.js' %}"></script>
-<script src="{% static 'libs/datatables.net-buttons/js/buttons.colVis.min.js' %}"></script>
-<!-- DataTables Responsive -->
-<script src="{% static 'libs/datatables.net-responsive/js/dataTables.responsive.min.js' %}"></script>
-<script src="{% static 'libs/datatables.net-responsive-bs4/js/responsive.bootstrap4.min.js' %}"></script>
-<!-- DataTables FixedHeader -->
-<script src="{% static 'libs/datatables.net-fixedheader/js/dataTables.fixedHeader.min.js' %}"></script>
-<script>
-$(document).ready(function() {
-    var tableEl = $('#datatable-buttons');
-    var headCells = tableEl.find('thead th');
+  {{ block.super }}
 
-    // Determine default visibility from data-default-visible attr (default is true)
-    var hiddenTargets = [];
-    headCells.each(function(idx) {
-        var th = $(this);
-        var defVisible = th.data('default-visible');
-        if (defVisible === false || defVisible === "false") {
-            hiddenTargets.push(idx);
-        }
-    });
+  {% if enable_datatable|default:True %}
+    <!-- DataTables core -->
+    <script src="{% static 'libs/datatables.net/js/jquery.dataTables.min.js' %}"></script>
+    <script src="{% static 'libs/datatables.net-bs4/js/dataTables.bootstrap4.min.js' %}"></script>
 
-    // Build column filter inputs in the table footer if not provided
-    var tfoot = tableEl.find('tfoot');
-    if (headCells.length && !tfoot.find('tr').length) {
-        var filterRow = $('<tr/>');
-        headCells.each(function() {
-            var th = $(this);
-            var searchableAttr = th.attr('data-searchable');
-            var isSearchable = searchableAttr === undefined || searchableAttr === "true";
-            if (th.hasClass('no-search') || searchableAttr === "false") {
-                filterRow.append('<th></th>');
-                return;
-            }
-            var placeholder = th.text().trim();
-            var input = $('<input/>', {
-                type: 'text',
-                class: 'form-control form-control-sm column-search',
-                placeholder: placeholder ? ('Search ' + placeholder) : 'Search'
-            });
-            filterRow.append($('<th/>').append(input));
-        });
-        tfoot.append(filterRow);
-    }
+    <!-- DataTables Buttons -->
+    <script src="{% static 'libs/datatables.net-buttons/js/dataTables.buttons.min.js' %}"></script>
+    <script src="{% static 'libs/datatables.net-buttons-bs4/js/buttons.bootstrap4.min.js' %}"></script>
+    <script src="{% static 'libs/jszip/jszip.min.js' %}"></script>
+    <script src="{% static 'libs/pdfmake/build/pdfmake.min.js' %}"></script>
+    <script src="{% static 'libs/pdfmake/build/vfs_fonts.js' %}"></script>
+    <script src="{% static 'libs/datatables.net-buttons/js/buttons.html5.min.js' %}"></script>
+    <script src="{% static 'libs/datatables.net-buttons/js/buttons.print.min.js' %}"></script>
+    <script src="{% static 'libs/datatables.net-buttons/js/buttons.colVis.min.js' %}"></script>
 
-    // Allow injecting per-page DataTables options via a JSON script element with id='datatable-config'
-    var extra = {};
-    var cfgEl = document.getElementById('datatable-config');
-    if (cfgEl) {
-        try { extra = JSON.parse(cfgEl.textContent || '{}'); } catch(e) { extra = {}; }
-    }
-    var baseOpts = {
-        dom: 'Blfrtip',
-        buttons: [
-            { 
-                extend: 'copy', 
-                className: 'btn btn-light btn-sm',
-                text: '<i class="mdi mdi-content-copy"></i>',
-                attr: { title: 'Copy', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' },
-                exportOptions: { columns: ':visible' }
-            },
-            { 
-                extend: 'csv', 
-                className: 'btn btn-light btn-sm',
-                text: '<i class="mdi mdi-file-delimited"></i>',
-                attr: { title: 'CSV', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' },
-                exportOptions: { columns: ':visible' }
-            },
-            { 
-                extend: 'excel', 
-                className: 'btn btn-light btn-sm',
-                text: '<i class="mdi mdi-file-excel"></i>',
-                attr: { title: 'Excel', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' },
-                exportOptions: { columns: ':visible' }
-            },
-            { 
-                extend: 'pdf', 
-                className: 'btn btn-light btn-sm',
-                text: '<i class="mdi mdi-file-pdf"></i>',
-                attr: { title: 'PDF', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' },
-                exportOptions: { columns: ':visible' }
-            },
-            { 
-                extend: 'print', 
-                className: 'btn btn-light btn-sm',
-                text: '<i class="mdi mdi-printer"></i>',
-                attr: { title: 'Print', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' },
-                exportOptions: { columns: ':visible' }
-            },
-            { 
-                extend: 'colvis', 
-                className: 'btn btn-light btn-sm',
-                text: '<i class="mdi mdi-view-column"></i>',
-                attr: { title: 'Column Visibility', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' }
-            },
-            {
-                text: '<i class="mdi mdi-content-save"></i>',
-                className: 'btn btn-light btn-sm',
-                attr: { title: 'Save View', 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'top' },
-                action: function (e, dt) {
-                    var vis = [];
-                    dt.columns().every(function(idx) {
-                        vis.push(this.visible());
-                    });
-                    var key = tableEl.data('view-key') || 'datatable';
-                    localStorage.setItem('dt-view-' + key, JSON.stringify({ visible: vis }));
-                    if (window.bootstrap && typeof showToast === 'function') {
-                        showToast('List view saved.', 'success');
-                    }
-                }
-            }
-        ],
-        responsive: true,
-        fixedHeader: true,
-        lengthMenu: [[10, 20, 40, 50, -1], [10, 20, 40, 50, "All"]],
-        pageLength: {{ request.GET.rows|default:10 }},
-        columnDefs: hiddenTargets.length ? [{ targets: hiddenTargets, visible: false }] : []
-    };
-    // If smart bulk adds a checkbox column, ensure it is not orderable/searchable by default
-    if (extra && extra.columnDefs) {
-        baseOpts.columnDefs = (baseOpts.columnDefs || []).concat(extra.columnDefs);
-    }
-    var opts = Object.assign({}, baseOpts, extra || {});
-    var table = $('#datatable-buttons').DataTable(opts);
-    window.DT_MAIN = table;
+    <!-- DataTables Responsive -->
+    <script src="{% static 'libs/datatables.net-responsive/js/dataTables.responsive.min.js' %}"></script>
+    <script src="{% static 'libs/datatables.net-responsive-bs4/js/responsive.bootstrap4.min.js' %}"></script>
 
-    // Apply saved view (column visibility)
-    try {
-        var viewKey = tableEl.data('view-key') || 'datatable';
-        var savedRaw = localStorage.getItem('dt-view-' + viewKey);
-        if (savedRaw) {
-            var saved = JSON.parse(savedRaw);
-            if (saved && Array.isArray(saved.visible)) {
-                saved.visible.forEach(function(val, idx) {
-                    if (typeof val === 'boolean') {
-                        table.column(idx).visible(val, false);
-                    }
-                });
-                table.columns.adjust().draw(false);
-            }
-        }
-    } catch(e) { /* non-blocking */ }
+    <!-- DataTables FixedHeader -->
+    <script src="{% static 'libs/datatables.net-fixedheader/js/dataTables.fixedHeader.min.js' %}"></script>
+  {% endif %}
 
-    // Column search (if tfoot inputs are present)
-    table.columns().every(function() {
-        var that = this;
-        $('input', this.footer()).on('keyup change clear', function() {
-            if (that.search() !== this.value) {
-                that.search(this.value).draw();
-            }
-        });
-    });
-    // Move search and buttons to the custom controls div
-    var wrapper = $('#datatable-buttons_wrapper');
-    var filter = wrapper.find('.dataTables_filter');
-    var buttons = wrapper.find('.dt-buttons');
-    var controls = $('#datatable-controls');
-    controls.append(buttons.addClass('me-2'));
-    controls.append(filter);
-    // Initialize Bootstrap tooltips for DataTables buttons
-    if (window.bootstrap) {
-        buttons.find('[data-bs-toggle="tooltip"]').each(function() {
-            new bootstrap.Tooltip(this);
-        });
-    }
-});
+  <script>
+    (function() {
+      const overlay = document.querySelector('.loading-overlay');
 
-// Loading indicator logic
-document.addEventListener('htmx:beforeRequest', function(evt) {
-    try {
-        const target = evt && evt.detail && evt.detail.target;
-        if (!target || (target.closest && target.closest('.table-responsive'))) {
-            document.querySelector('.loading-overlay').style.display = 'flex';
-        }
-    } catch(e) { /* Safe guard */ }
-});
-document.addEventListener('htmx:afterRequest', function(evt) {
-    try {
-        const target = evt && evt.detail && evt.detail.target;
-        if (!target || (target.closest && target.closest('.table-responsive'))) {
-            document.querySelector('.loading-overlay').style.display = 'none';
-        }
-    } catch(e) { /* Safe guard */ }
-});
+      function showOverlay(){ if (overlay) overlay.style.display = 'flex'; }
+      function hideOverlay(){ if (overlay) overlay.style.display = 'none'; }
 
-// Toast notification logic
-function showToast(message, type = 'success') {
-    const toastContainer = document.getElementById('toast-container');
-    const toast = document.createElement('div');
-    toast.className = `toast align-items-center text-white bg-${type} border-0`;
-    toast.role = 'alert';
-    toast.ariaLive = 'assertive';
-    toast.ariaAtomic = 'true';
-    toast.innerHTML = `
-        <div class="d-flex">
-            <div class="toast-body">
-                ${message}
-            </div>
+      function safeJsonParse(v, fallback) {
+        try { return JSON.parse(v); } catch(e) { return fallback; }
+      }
+
+      function getViewKey(tableEl){
+        return (tableEl && tableEl.dataset && tableEl.dataset.viewKey) ? tableEl.dataset.viewKey : 'datatable';
+      }
+
+      function toast(message, type='success') {
+        if (!window.bootstrap) return;
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+        const el = document.createElement('div');
+        el.className = `toast align-items-center text-white bg-${type} border-0`;
+        el.role = 'alert';
+        el.ariaLive = 'assertive';
+        el.ariaAtomic = 'true';
+        el.innerHTML = `
+          <div class="d-flex">
+            <div class="toast-body">${message}</div>
             <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-    `;
-    toastContainer.appendChild(toast);
-    const bootstrapToast = new bootstrap.Toast(toast);
-    bootstrapToast.show();
-}
+          </div>`;
+        container.appendChild(el);
+        const t = new bootstrap.Toast(el, { delay: 2500 });
+        t.show();
+        el.addEventListener('hidden.bs.toast', () => el.remove());
+      }
 
-document.body.addEventListener('htmx:afterOnLoad', function(evt) {
-    if (evt.detail.xhr.status >= 200 && evt.detail.xhr.status < 300) {
-        const message = evt.detail.xhr.getResponseHeader("X-Message");
-        if (message) {
-            showToast(decodeURIComponent(message));
+      function buildFooterSearchRow($table) {
+        const $thead = $table.find('thead th');
+        const $tfoot = $table.find('tfoot');
+        if (!$thead.length) return;
+        if ($tfoot.find('tr').length) return;
+
+        const $row = $('<tr/>');
+        $thead.each(function() {
+          const $th = $(this);
+          const searchableAttr = $th.attr('data-searchable');
+          const isSearchable = (searchableAttr === undefined || searchableAttr === "true") && !$th.hasClass('no-search');
+          if (!isSearchable) { $row.append('<th></th>'); return; }
+
+          const label = ($th.text() || '').trim();
+          const input = $('<input/>', {
+            type: 'text',
+            class: 'form-control form-control-sm column-search',
+            placeholder: label ? ('Search ' + label) : 'Search'
+          });
+          $row.append($('<th/>').append(input));
+        });
+        $tfoot.append($row);
+      }
+
+      function readExtraConfig() {
+        const el = document.getElementById('datatable-config');
+        if (!el) return {};
+        return safeJsonParse(el.textContent || '{}', {});
+      }
+
+      function saveState(dt, $table) {
+        const key = 'dt-state-' + getViewKey($table[0]);
+        const state = {
+          visible: [],
+          length: dt.page.len(),
+          search: dt.search(),
+          order: dt.order()
+        };
+        dt.columns().every(function(i){ state.visible.push(this.visible()); });
+        localStorage.setItem(key, JSON.stringify(state));
+        toast('List view saved.', 'success');
+      }
+
+      function loadState(dt, $table) {
+        const key = 'dt-state-' + getViewKey($table[0]);
+        const raw = localStorage.getItem(key);
+        if (!raw) return;
+        const state = safeJsonParse(raw, null);
+        if (!state) return;
+
+        if (Array.isArray(state.visible)) {
+          state.visible.forEach((v, i) => { if (typeof v === 'boolean') dt.column(i).visible(v, false); });
         }
-    }
-});
-</script>
+        if (typeof state.length === 'number') dt.page.len(state.length);
+        if (typeof state.search === 'string') dt.search(state.search);
+        if (Array.isArray(state.order)) dt.order(state.order);
+
+        dt.columns.adjust().draw(false);
+      }
+
+      function resetState($table) {
+        const key = 'dt-state-' + getViewKey($table[0]);
+        localStorage.removeItem(key);
+        toast('List view reset.', 'warning');
+        // simplest: full reload so columns/buttons restore perfectly
+        window.location.reload();
+      }
+
+      function initDataTable(container) {
+        if (!window.jQuery || !$.fn || !$.fn.DataTable) return;
+
+        const $root = container ? $(container) : $(document);
+        const $table = $root.find('table[data-datatable="1"]').first();
+        if (!$table.length) return;
+
+        // Prevent double init
+        if ($.fn.DataTable.isDataTable($table)) {
+          // on HTMX swaps you might want to destroy and recreate:
+          try { $table.DataTable().destroy(true); } catch(e) {}
+        }
+
+        buildFooterSearchRow($table);
+
+        // Determine initial hidden columns by <th data-default-visible="false">
+        const hiddenTargets = [];
+        $table.find('thead th').each(function(i){
+          const v = $(this).data('default-visible');
+          if (v === false || v === "false") hiddenTargets.push(i);
+        });
+
+        const extra = readExtraConfig();
+        const baseOpts = {
+          dom: 'Blfrtip',
+          responsive: true,
+          fixedHeader: true,
+          lengthMenu: [[10, 20, 40, 50, -1], [10, 20, 40, 50, "All"]],
+          pageLength: {{ request.GET.rows|default:10 }},
+          columnDefs: hiddenTargets.length ? [{ targets: hiddenTargets, visible: false }] : [],
+          buttons: [
+            { extend: 'copy',  className: 'btn btn-light btn-sm', text: '<i class="mdi mdi-content-copy"></i>',  exportOptions: { columns: ':visible' } },
+            { extend: 'csv',   className: 'btn btn-light btn-sm', text: '<i class="mdi mdi-file-delimited"></i>', exportOptions: { columns: ':visible' } },
+            { extend: 'excel', className: 'btn btn-light btn-sm', text: '<i class="mdi mdi-file-excel"></i>', exportOptions: { columns: ':visible' } },
+            { extend: 'pdf',   className: 'btn btn-light btn-sm', text: '<i class="mdi mdi-file-pdf"></i>', exportOptions: { columns: ':visible' } },
+            { extend: 'print', className: 'btn btn-light btn-sm', text: '<i class="mdi mdi-printer"></i>', exportOptions: { columns: ':visible' } },
+            { extend: 'colvis',className: 'btn btn-light btn-sm', text: '<i class="mdi mdi-view-column"></i>' },
+            { text: '<i class="mdi mdi-content-save"></i>', className: 'btn btn-light btn-sm',
+              action: function(e, dt){ saveState(dt, $table); }
+            },
+            { text: '<i class="mdi mdi-backup-restore"></i>', className: 'btn btn-light btn-sm',
+              action: function(){ resetState($table); }
+            }
+          ],
+        };
+
+        // Merge
+        const opts = Object.assign({}, baseOpts, extra || {});
+        if (extra && extra.columnDefs) {
+          opts.columnDefs = (baseOpts.columnDefs || []).concat(extra.columnDefs);
+        }
+
+        const dt = $table.DataTable(opts);
+        window.DT_MAIN = dt;
+
+        // Restore saved state
+        loadState(dt, $table);
+
+        // Hook column search inputs
+        dt.columns().every(function() {
+          const that = this;
+          $('input', this.footer()).on('keyup change clear', function() {
+            if (that.search() !== this.value) that.search(this.value).draw();
+          });
+        });
+
+        // Move search + buttons into toolbar
+        const $wrapper = $table.closest('.dataTables_wrapper');
+        const $filter = $wrapper.find('.dataTables_filter');
+        const $buttons = $wrapper.find('.dt-buttons');
+        const $controls = $('#datatable-controls');
+        if ($controls.length) {
+          $controls.empty().append($buttons.addClass('me-2')).append($filter);
+        }
+
+        // Keyboard UX: "/" focuses global search
+        document.addEventListener('keydown', function(ev){
+          if (ev.key === '/' && !ev.ctrlKey && !ev.metaKey && !ev.altKey) {
+            const input = $filter.find('input[type="search"]').get(0);
+            if (input && document.activeElement !== input) {
+              ev.preventDefault();
+              input.focus();
+            }
+          }
+          if (ev.key === 'Escape') {
+            if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+          }
+        }, { passive: false });
+      }
+
+      // HTMX loading overlay (table-related)
+      document.addEventListener('htmx:beforeRequest', function(evt){
+        try {
+          const target = evt?.detail?.target;
+          if (!target || (target.closest && target.closest('#list-table-container'))) showOverlay();
+        } catch(e) {}
+      });
+      document.addEventListener('htmx:afterRequest', function(evt){
+        try {
+          const target = evt?.detail?.target;
+          if (!target || (target.closest && target.closest('#list-table-container'))) hideOverlay();
+        } catch(e) {}
+      });
+
+      // Init on load
+      document.addEventListener('DOMContentLoaded', function() {
+        initDataTable(document);
+      });
+
+      // Re-init after HTMX swaps (if the table content is replaced)
+      document.body.addEventListener('htmx:afterSwap', function(evt) {
+        try {
+          const swapped = evt?.detail?.target;
+          if (swapped && (swapped.id === 'list-table-container' || swapped.querySelector?.('table[data-datatable="1"]'))) {
+            initDataTable(swapped);
+          }
+        } catch(e) {}
+      });
+
+      // Optional: read server messages from headers
+      document.body.addEventListener('htmx:afterOnLoad', function(evt) {
+        try {
+          const xhr = evt.detail.xhr;
+          if (!xhr) return;
+          const message = xhr.getResponseHeader("X-Message");
+          const type = xhr.getResponseHeader("X-Message-Type") || 'success';
+          if (message) toast(decodeURIComponent(message), type);
+        } catch(e) {}
+      });
+
+      // Expose for inline usage
+      window.InventoryList = { initDataTable };
+    })();
+  </script>
 {% endblock extra_js %}

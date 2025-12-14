@@ -15,6 +15,7 @@ router.register(r'bank-accounts', views.BankAccountViewSet, basename='bankaccoun
 router.register(r'assets', views.AssetViewSet, basename='asset')
 router.register(r'events', views.IntegrationEventViewSet, basename='event')
 router.register(r'audit-logs', audit.AuditLogViewSet, basename='auditlog')
+router.register(r'journal-lines', views.JournalLineViewSet, basename='journalline')
 
 urlpatterns = router.urls
 

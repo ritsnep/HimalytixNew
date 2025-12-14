@@ -84,3 +84,21 @@ def save_user_print_config(user, template_name: str, config_data: Dict[str, Any]
     config_obj.config = payload
     config_obj.save()
     return config_obj
+
+
+DOCUMENT_TYPE_MODELS = {
+    'journal': ('accounting.Journal', 'journal'),
+    'purchase_order': ('purchasing.PurchaseOrder', 'purchase_order'),
+    'sales_order': ('accounting.SalesOrder', 'sales_order'),
+    'sales_invoice': ('accounting.SalesInvoice', 'sales_invoice'),
+}
+
+def get_document_model(document_type):
+    """Get the model class and template prefix for a document type."""
+    if document_type not in DOCUMENT_TYPE_MODELS:
+        raise ValueError(f"Unknown document type: {document_type}")
+    app_label, model_name = DOCUMENT_TYPE_MODELS[document_type][0].split('.')
+    from django.apps import apps
+    model = apps.get_model(app_label, model_name)
+    template_prefix = DOCUMENT_TYPE_MODELS[document_type][1]
+    return model, template_prefix

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% if form.instance.pk %}Edit{% else %}Create{% endif %} Print Template</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+    .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    h1 { color: #333; margin-bottom: 30px; }
+    .form-group { margin-bottom: 20px; }
+    label { display: block; margin-bottom: 5px; font-weight: 500; color: #555; }
+    input[type="text"], select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; }
+    .checkbox-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 10px; }
+    .checkbox-item { display: flex; align-items: center; }
+    .checkbox-item input { margin-right: 8px; }
+    .btn { display: inline-block; padding: 12px 24px; background: #007bff; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+    .btn:hover { background: #0056b3; }
+    .btn-secondary { background: #6c757d; }
+    .btn-secondary:hover { background: #545b62; }
+    .actions { margin-top: 30px; display: flex; gap: 10px; }
+    .error { color: #dc3545; font-size: 14px; margin-top: 5px; }
+    .section { margin-bottom: 30px; padding: 20px; border: 1px solid #e9ecef; border-radius: 4px; }
+    .section h3 { margin-top: 0; color: #495057; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>{% if form.instance.pk %}Edit{% else %}Create{% endif %} Print Template</h1>
+
+    <form method="post">
+      {% csrf_token %}
+
+      <div class="section">
+        <h3>Basic Information</h3>
+        <div class="form-group">
+          <label for="{{ form.document_type.id_for_label }}">Document Type:</label>
+          {{ form.document_type }}
+          {% if form.document_type.errors %}
+            <div class="error">{{ form.document_type.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label for="{{ form.name.id_for_label }}">Template Name:</label>
+          {{ form.name }}
+          {% if form.name.errors %}
+            <div class="error">{{ form.name.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label for="{{ form.paper_size.id_for_label }}">Paper Size:</label>
+          {{ form.paper_size }}
+          {% if form.paper_size.errors %}
+            <div class="error">{{ form.paper_size.errors.0 }}</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Template Style</h3>
+        <div class="form-group">
+          <label>Layout Style:</label>
+          <div class="radio-group">
+            <label class="radio-item">
+              <input type="radio" name="template_name" value="classic" {% if form.initial_config.template_name == 'classic' %}checked{% endif %}>
+              Classic Layout
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="template_name" value="compact" {% if form.initial_config.template_name == 'compact' %}checked{% endif %}>
+              Compact Layout (Dense)
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Display Options</h3>
+        <div class="checkbox-group">
+          <label class="checkbox-item">
+            <input type="checkbox" name="config_show_description" {% if form.initial_config.show_description %}checked{% endif %}>
+            Show Description
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" name="config_show_department" {% if form.initial_config.show_department %}checked{% endif %}>
+            Show Department
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" name="config_show_project" {% if form.initial_config.show_project %}checked{% endif %}>
+            Show Project
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" name="config_show_cost_center" {% if form.initial_config.show_cost_center %}checked{% endif %}>
+            Show Cost Center
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" name="config_show_tax_column" {% if form.initial_config.show_tax_column %}checked{% endif %}>
+            Show Tax Column
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" name="config_show_audit" {% if form.initial_config.show_audit %}checked{% endif %}>
+            Show Audit Info
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" name="config_show_signatures" {% if form.initial_config.show_signatures %}checked{% endif %}>
+            Show Signatures
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" name="config_show_imbalance" {% if form.initial_config.show_imbalance %}checked{% endif %}>
+            Show Imbalance
+          </label>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="btn">{% if form.instance.pk %}Update{% else %}Create{% endif %} Template</button>
+        <a href="{% url 'template_list' %}" class="btn btn-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+  <style>
+    .radio-group { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+    .radio-item { display: flex; align-items: center; }
+    .radio-item input { margin-right: 8px; }
+  </style>
+</body>
+</html>

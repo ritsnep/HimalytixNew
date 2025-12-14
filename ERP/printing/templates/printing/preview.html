@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Journal Print Templates – Preview</title>
+  <title>{{ document_type|title }} Print Templates – Preview</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <style>
@@ -149,10 +149,10 @@
     <div class="toolbar">
       <div class="toolbar-left">
         <div>
-          <div class="chip-label">Journal Print Template</div>
+          <div class="chip-label">{{ document_type|title }} Print Template</div>
 
           {% if can_edit %}
-          <form id="print-config-form" method="post" action="{% url 'print_preview' journal.pk %}" style="display: inline;">
+          <form id="print-config-form" method="post" action="{% url 'print_preview' document_type document.pk %}" style="display: inline;">
             {% csrf_token %}
             <select id="templateSelector" class="select" name="template_name">
               {% for key, label in template_choices %}
@@ -181,8 +181,8 @@
       </div>
 
       <div class="toolbar-right">
-        <a class="btn btn-ghost" href="{% url 'print_preview' journal.pk %}">⟳ Reset</a>
-        <a class="btn btn-primary" target="_blank" rel="noopener" href="{% url 'print_page' journal.pk %}?template={{ config.template_name|default:'classic' }}&paper={{ config.paper_size|default:'A4' }}">🖨 Print</a>
+        <a class="btn btn-ghost" href="{% url 'print_preview' document_type document.pk %}">⟳ Reset</a>
+        <a class="btn btn-primary" target="_blank" rel="noopener" href="{% url 'print_page' document_type document.pk %}?template={{ config.template_name|default:'classic' }}&paper={{ config.paper_size|default:'A4' }}">🖨 Print</a>
       </div>
     </div>
 

@@ -82,6 +82,9 @@ self.addEventListener('activate', event => {
 // Fetch event - serve from cache or network
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
+  if (!url.protocol.startsWith('http')) {
+    return;
+  }
 
   // Handle API requests (queue only non-GET endpoints)
   if (API_QUEUE_ENDPOINTS.some(endpoint => url.pathname.startsWith(endpoint))) {
@@ -93,7 +96,7 @@ self.addEventListener('fetch', event => {
   if (url.hostname.includes('fonts.googleapis.com') || url.hostname.includes('fonts.gstatic.com')) {
     event.respondWith(
       Promise.resolve(
-        new Response('', {
+        new Response(null, {
           status: 204,
           headers: { 'Content-Type': 'text/plain' }
         })

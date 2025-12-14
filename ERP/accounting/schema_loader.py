@@ -6,6 +6,7 @@ BASE_DIR = os.path.join(os.path.dirname(__file__), 'schemas')
 _loaded = {}
 from typing import Tuple
 
+
 def load_voucher_schema(config) -> Tuple[dict, str, list]:
     """
     Load the schema YAML for the given config, with fallbacks.
@@ -15,7 +16,7 @@ def load_voucher_schema(config) -> Tuple[dict, str, list]:
     schema = None
     warning = None
     tried_files = []
-    schema_dir = os.path.join(os.path.dirname(__file__), 'schemas')
+    schema_dir = os.path.join(os.path.dirname(__file__), 'views', 'schemas')
 
     # Try by code
     if getattr(config, 'code', None):

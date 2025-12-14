@@ -41,8 +41,9 @@ class PrintTemplate(models.Model):
 
     DOCUMENT_TYPES = [
         ('journal', 'Journal'),
+        ('purchase_order', 'Purchase Order'),
         ('sales_order', 'Sales Order'),
-        ('sales_quote', 'Sales Quote'),
+        ('sales_invoice', 'Sales Invoice'),
         # Add more as needed
     ]
 

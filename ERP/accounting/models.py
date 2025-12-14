@@ -4521,6 +4521,8 @@ class Journal(models.Model):
     exchange_rate = models.DecimalField(max_digits=19, decimal_places=6, default=1)
     total_debit = models.DecimalField(max_digits=19, decimal_places=4, default=0)
     total_credit = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    # Quick balanced flag for fast filtering and reports
+    is_balanced = models.BooleanField(default=True, db_index=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     posted_at = models.DateTimeField(null=True, blank=True)
     posted_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='posted_journals')
@@ -4559,6 +4561,9 @@ class Journal(models.Model):
     class Meta:
         unique_together = [('organization', 'journal_number'), ('organization', 'idempotency_key')]
         ordering = ['-journal_date', '-journal_number']
+        indexes = [
+            models.Index(fields=['status', 'is_balanced'], name='journal_status_bal_idx'),
+        ]
         # For DBA: Partition monthly by journal_date
         permissions = [
             ("add_voucher_entry", "Can add voucher entry"),
@@ -4598,6 +4603,8 @@ class Journal(models.Model):
         )
         self.total_debit = totals.get('total_debit') or 0
         self.total_credit = totals.get('total_credit') or 0
+        # Update balanced flag
+        self.is_balanced = (self.total_debit == self.total_credit)
 
     def save(self, *args, **kwargs):
         from accounting.utils.audit import log_audit_event, get_changed_data
@@ -4680,6 +4687,12 @@ class JournalLine(models.Model):
     class Meta:
         unique_together = ('journal', 'line_number')
         ordering = ['journal', 'line_number']
+        indexes = [
+            models.Index(fields=['account', 'journal'], name='journalline_account_journal_idx'),
+            # GIN index for udf_data (Postgres)
+            # Note: Django's GinIndex is only available when using Postgres
+            
+        ]
         # For DBA: Partition monthly by journal.journal_date
         # For DBA: Non-clustered index (account_id, period_id)
         # For DBA: CHECK (debit_amount = 0 OR credit_amount = 0)

@@ -190,17 +190,19 @@ class FormBuilder:
         FormSet = forms.formset_factory(LineForm, extra=extra)
 
         class DynamicFormSet(FormSet):
+            form_builder = self
             def __init__(self, *args, **kwargs):
-                if self.prefix is not None:
-                    kwargs.setdefault('prefix', self.prefix)
+                if self.form_builder.prefix is not None:
+                    kwargs.setdefault('prefix', self.form_builder.prefix)
                 
                 # We don't use initial data for formsets in the same way
                 # It's typically passed as `initial=[{...}, {...}]`
                 super().__init__(*args, **kwargs)
 
-                if self.disabled_fields:
+                disabled_fields = getattr(self.form_builder, 'disabled_fields', None)
+                if disabled_fields:
                     for form in self.forms:
-                        for f_name in self.disabled_fields:
+                        for f_name in disabled_fields:
                             if f_name in form.fields:
                                 form.fields[f_name].disabled = True
         
