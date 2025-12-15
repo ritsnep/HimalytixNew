@@ -2,6 +2,10 @@ import json
 
 from django.contrib import admin, messages
 from django.utils import timezone
+from django.urls import path, reverse
+from django.shortcuts import render, redirect
+from django.template.response import TemplateResponse
+from django.utils.html import format_html
 
 from accounting.services.ird_submission_service import IRDSubmissionService
 from accounting.tasks import process_ird_submission
@@ -24,6 +28,7 @@ from .models import (VoucherUDFConfig,
     TaxType,
     TaxCode,
     VoucherModeConfig,
+    VoucherConfiguration,
     VoucherModeDefault,
     GeneralLedger,
     Attachment,
@@ -351,6 +356,7 @@ class VoucherModeConfigAdmin(admin.ModelAdmin):
         'journal_type',
         'is_default',
         'is_active',
+        'ui_schema_editor',
     )
     list_filter = ('organization', 'journal_type', 'is_default', 'is_active')
     search_fields = (
@@ -361,6 +367,272 @@ class VoucherModeConfigAdmin(admin.ModelAdmin):
         'journal_type__name',
     )
     autocomplete_fields = ('organization', 'journal_type')
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('<path:object_id>/edit-ui-schema/', self.admin_site.admin_view(self.edit_ui_schema), name='accounting_vouchermodeconfig_edit_ui_schema'),
+        ]
+        return custom_urls + urls
+
+    def ui_schema_editor(self, obj):
+        try:
+            url = reverse('admin:accounting_vouchermodeconfig_edit_ui_schema', args=[obj.pk])
+            return format_html('<a class="button" href="{}">Edit Schema</a>', url)
+        except Exception:
+            return '-'
+    ui_schema_editor.short_description = 'UI Schema'
+
+    def edit_ui_schema(self, request, object_id):
+        obj = self.get_object(request, object_id)
+        if not obj:
+            self.message_user(request, 'Object not found.', messages.ERROR)
+            return redirect('..')
+
+        ui = obj.ui_schema or {}
+
+        if request.method == 'POST':
+            # Reconstruct UI schema from posted form values
+            new_ui = dict(ui) if isinstance(ui, dict) else {}
+            for section in ('header', 'lines'):
+                orig = ui.get(section)
+                if orig is None:
+                    continue
+                if isinstance(orig, dict):
+                    new_section = {}
+                    # determine posted names: prefer explicit list or fallback to original order
+                    posted_names = request.POST.getlist(f'field_names_{section}')
+                    if not posted_names:
+                        posted_names = orig.get('__order__') if isinstance(orig.get('__order__'), list) else [k for k in orig.keys() if k != '__order__']
+
+                    for name in posted_names:
+                        hidden = True if request.POST.get(f'hidden_{section}_{name}') == 'on' else False
+                        disabled = True if request.POST.get(f'disabled_{section}_{name}') == 'on' else False
+                        order_no = request.POST.get(f'order_no_{section}_{name}')
+                        try:
+                            order_no = int(order_no) if order_no not in (None, '') else None
+                        except Exception:
+                            order_no = None
+
+                        cfg = orig.get(name) or {}
+                        if not isinstance(cfg, dict):
+                            cfg = {'label': str(cfg)}
+                        cfg['hidden'] = hidden
+                        cfg['disabled'] = disabled
+                        if order_no is not None:
+                            cfg['order_no'] = order_no
+                        new_section[name] = cfg
+
+                    # construct __order__ from order_no if present, else from posted_names
+                    if any(isinstance(v, dict) and 'order_no' in v for v in new_section.values()):
+                        ordered = sorted([(n, new_section[n].get('order_no', 9999)) for n in new_section.keys()], key=lambda t: t[1])
+                        new_section['__order__'] = [n for n, _ in ordered]
+                    else:
+                        new_section['__order__'] = posted_names
+
+                    new_ui[section] = new_section
+
+                elif isinstance(orig, list):
+                    posted_names = request.POST.getlist(f'field_names_{section}')
+                    if not posted_names:
+                        posted_names = [item.get('name') or f'item_{i}' for i, item in enumerate(orig)]
+                    new_list = []
+                    for name in posted_names:
+                        itm = next((it for it in orig if (isinstance(it, dict) and it.get('name') == name)), None)
+                        if itm is None:
+                            itm = {'name': name}
+                        hidden = True if request.POST.get(f'hidden_{section}_{name}') == 'on' else False
+                        disabled = True if request.POST.get(f'disabled_{section}_{name}') == 'on' else False
+                        order_no = request.POST.get(f'order_no_{section}_{name}')
+                        try:
+                            order_no = int(order_no) if order_no not in (None, '') else None
+                        except Exception:
+                            order_no = None
+                        if not isinstance(itm, dict):
+                            itm = {'name': name, 'label': str(itm)}
+                        itm['hidden'] = hidden
+                        itm['disabled'] = disabled
+                        if order_no is not None:
+                            itm['order_no'] = order_no
+                        new_list.append(itm)
+
+                    # If order_no present, sort by it
+                    if any(isinstance(x, dict) and 'order_no' in x for x in new_list):
+                        new_list = sorted(new_list, key=lambda i: i.get('order_no', 9999))
+
+                    new_ui[section] = new_list
+
+            # Save and redirect
+            obj.ui_schema = new_ui
+            obj.save(update_fields=['ui_schema', 'updated_at'])
+            self.message_user(request, 'UI Schema updated', messages.SUCCESS)
+            return redirect(reverse('admin:accounting_vouchermodeconfig_change', args=[obj.pk]))
+
+        # Build rows for rendering
+        rows = []
+        for section in ('header', 'lines'):
+            sec = ui.get(section)
+            if sec is None:
+                continue
+            if isinstance(sec, dict):
+                order = sec.get('__order__') or [k for k in sec.keys() if k != '__order__']
+                for name in order:
+                    cfg = sec.get(name) or {}
+                    rows.append({'section': section, 'name': name, 'label': cfg.get('label', name), 'hidden': cfg.get('hidden', False), 'disabled': cfg.get('disabled', False), 'order_no': cfg.get('order_no', None)})
+            elif isinstance(sec, list):
+                for itm in sec:
+                    name = itm.get('name') or itm.get('field') or ''
+                    rows.append({'section': section, 'name': name, 'label': itm.get('label', name), 'hidden': itm.get('hidden', False), 'disabled': itm.get('disabled', False), 'order_no': itm.get('order_no', None)})
+
+        context = dict(self.admin_site.each_context(request))
+        context.update({'title': f'Edit UI Schema: {obj}', 'object': obj, 'rows': rows, 'ui_json': json.dumps(ui, indent=2, ensure_ascii=False), 'opts': self.model._meta})
+        return TemplateResponse(request, 'admin/accounting/edit_ui_schema.html', context)
+
+
+@admin.register(VoucherConfiguration)
+class VoucherConfigurationAdmin(admin.ModelAdmin):
+    list_display = (
+        'code', 'name', 'module', 'organization', 'is_active', 'ui_schema_editor'
+    )
+    list_filter = ('organization', 'module', 'is_active')
+    search_fields = ('code', 'name', 'description')
+    actions = ['sync_order_no']
+
+    def sync_order_no(self, request, queryset):
+        """Bulk action to sync order_no values in ui_schema based on current __order__ or insertion order."""
+        updated_count = 0
+        for obj in queryset:
+            ui = obj.ui_schema or {}
+            modified = False
+            for section in ('header', 'lines'):
+                sec = ui.get(section)
+                if sec is None:
+                    continue
+                if isinstance(sec, dict):
+                    order = sec.get('__order__') or [k for k in sec.keys() if k != '__order__']
+                    for idx, name in enumerate(order, start=1):
+                        cfg = sec.get(name)
+                        if isinstance(cfg, dict) and cfg.get('order_no') != idx:
+                            cfg['order_no'] = idx
+                            modified = True
+                elif isinstance(sec, list):
+                    for idx, item in enumerate(sec, start=1):
+                        if isinstance(item, dict) and item.get('order_no') != idx:
+                            item['order_no'] = idx
+                            modified = True
+            if modified:
+                obj.ui_schema = ui
+                obj.save(update_fields=['ui_schema', 'updated_at'])
+                updated_count += 1
+        self.message_user(request, f'Synced order_no for {updated_count} voucher configurations.', messages.SUCCESS)
+    sync_order_no.short_description = 'Sync order_no values in UI schema'
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('<path:object_id>/edit-ui-schema/', self.admin_site.admin_view(self.edit_ui_schema), name='accounting_voucherconfiguration_edit_ui_schema'),
+        ]
+        return custom_urls + urls
+
+    def ui_schema_editor(self, obj):
+        try:
+            url = reverse('admin:accounting_voucherconfiguration_edit_ui_schema', args=[obj.pk])
+            return format_html('<a class="button" href="{}">Edit Schema</a>', url)
+        except Exception:
+            return '-'
+    ui_schema_editor.short_description = 'UI Schema'
+
+    def edit_ui_schema(self, request, object_id):
+        obj = self.get_object(request, object_id)
+        if not obj:
+            self.message_user(request, 'Object not found.', messages.ERROR)
+            return redirect('..')
+
+        ui = obj.ui_schema or {}
+
+        if request.method == 'POST':
+            new_ui = dict(ui) if isinstance(ui, dict) else {}
+            for section in ('header', 'lines'):
+                orig = ui.get(section)
+                if orig is None:
+                    continue
+                if isinstance(orig, dict):
+                    new_section = {}
+                    posted_names = request.POST.getlist(f'field_names_{section}')
+                    if not posted_names:
+                        posted_names = orig.get('__order__') if isinstance(orig.get('__order__'), list) else [k for k in orig.keys() if k != '__order__']
+                    for name in posted_names:
+                        hidden = True if request.POST.get(f'hidden_{section}_{name}') == 'on' else False
+                        disabled = True if request.POST.get(f'disabled_{section}_{name}') == 'on' else False
+                        order_no = request.POST.get(f'order_no_{section}_{name}')
+                        try:
+                            order_no = int(order_no) if order_no not in (None, '') else None
+                        except Exception:
+                            order_no = None
+                        cfg = orig.get(name) or {}
+                        if not isinstance(cfg, dict):
+                            cfg = {'label': str(cfg)}
+                        cfg['hidden'] = hidden
+                        cfg['disabled'] = disabled
+                        if order_no is not None:
+                            cfg['order_no'] = order_no
+                        new_section[name] = cfg
+                    if any(isinstance(v, dict) and 'order_no' in v for v in new_section.values()):
+                        ordered = sorted([(n, new_section[n].get('order_no', 9999)) for n in new_section.keys()], key=lambda t: t[1])
+                        new_section['__order__'] = [n for n, _ in ordered]
+                    else:
+                        new_section['__order__'] = posted_names
+                    new_ui[section] = new_section
+                elif isinstance(orig, list):
+                    posted_names = request.POST.getlist(f'field_names_{section}')
+                    if not posted_names:
+                        posted_names = [item.get('name') or f'item_{i}' for i, item in enumerate(orig)]
+                    new_list = []
+                    for name in posted_names:
+                        itm = next((it for it in orig if (isinstance(it, dict) and it.get('name') == name)), None)
+                        if itm is None:
+                            itm = {'name': name}
+                        hidden = True if request.POST.get(f'hidden_{section}_{name}') == 'on' else False
+                        disabled = True if request.POST.get(f'disabled_{section}_{name}') == 'on' else False
+                        order_no = request.POST.get(f'order_no_{section}_{name}')
+                        try:
+                            order_no = int(order_no) if order_no not in (None, '') else None
+                        except Exception:
+                            order_no = None
+                        if not isinstance(itm, dict):
+                            itm = {'name': name, 'label': str(itm)}
+                        itm['hidden'] = hidden
+                        itm['disabled'] = disabled
+                        if order_no is not None:
+                            itm['order_no'] = order_no
+                        new_list.append(itm)
+                    if any(isinstance(x, dict) and 'order_no' in x for x in new_list):
+                        new_list = sorted(new_list, key=lambda i: i.get('order_no', 9999))
+                    new_ui[section] = new_list
+            # Save
+            obj.ui_schema = new_ui
+            obj.save(update_fields=['ui_schema', 'updated_at'])
+            self.message_user(request, 'UI Schema updated', messages.SUCCESS)
+            return redirect(reverse('admin:accounting_voucherconfiguration_change', args=[obj.pk]))
+
+        rows = []
+        for section in ('header', 'lines'):
+            sec = ui.get(section)
+            if sec is None:
+                continue
+            if isinstance(sec, dict):
+                order = sec.get('__order__') or [k for k in sec.keys() if k != '__order__']
+                for name in order:
+                    cfg = sec.get(name) or {}
+                    rows.append({'section': section, 'name': name, 'label': cfg.get('label', name), 'hidden': cfg.get('hidden', False), 'disabled': cfg.get('disabled', False), 'order_no': cfg.get('order_no', None)})
+            elif isinstance(sec, list):
+                for itm in sec:
+                    name = itm.get('name') or itm.get('field') or ''
+                    rows.append({'section': section, 'name': name, 'label': itm.get('label', name), 'hidden': itm.get('hidden', False), 'disabled': itm.get('disabled', False), 'order_no': itm.get('order_no', None)})
+
+        context = dict(self.admin_site.each_context(request))
+        context.update({'title': f'Edit UI Schema: {obj}', 'object': obj, 'rows': rows, 'ui_json': json.dumps(ui, indent=2, ensure_ascii=False), 'opts': self.model._meta})
+        return TemplateResponse(request, 'admin/accounting/edit_ui_schema.html', context)
 
 admin.site.register(VoucherModeDefault)
 admin.site.register(GeneralLedger)

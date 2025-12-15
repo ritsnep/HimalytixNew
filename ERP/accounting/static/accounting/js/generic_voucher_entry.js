@@ -686,4 +686,35 @@
 
     updateSummary();
     initColumnResizers();
+    // Header inputs: add data-hkey attributes (for keyboard helpers and consistent selectors)
+    const initHeaderHkeys = () => {
+        try {
+            const form = document.getElementById('voucher-form') || document.querySelector('form');
+            if (!form) return;
+            const headerSection = form.querySelector('.header-card');
+            if (!headerSection) return;
+            headerSection.querySelectorAll('input[name], select[name], textarea[name]').forEach(el => {
+                const name = el.name || '';
+                // Attempt to map names like header-date or header[date] or date
+                let key = name.replace(/^.*\[([^\]]+)\].*$/, '$1');
+                if (!key || key === name) {
+                    // fallback strip prefix before last '-'
+                    const parts = name.split('-');
+                    key = parts.length > 1 ? parts.slice(-1)[0] : name;
+                }
+                if (key) {
+                    el.setAttribute('data-hkey', key);
+                }
+            });
+        } catch (err) {
+            // non-fatal
+            console.warn('initHeaderHkeys failed', err);
+        }
+    };
+    // run once on load
+    initHeaderHkeys();
+    document.addEventListener('htmx:afterSwap', (e) => {
+        // re-run when header swapped via HTMX
+        initHeaderHkeys();
+    });
 })();

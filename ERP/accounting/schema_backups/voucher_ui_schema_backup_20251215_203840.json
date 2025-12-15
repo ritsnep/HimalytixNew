@@ -1,0 +1,29 @@
+{
+  "voucher_mode_configs": {},
+  "voucher_configurations": {
+    "2": {
+      "header": {
+        "a": {
+          "type": "char",
+          "label": "A",
+          "order_no": 2,
+          "hidden": false,
+          "disabled": false,
+          "display_order": 0
+        },
+        "b": {
+          "type": "char",
+          "label": "B",
+          "order_no": 1,
+          "hidden": false,
+          "disabled": false,
+          "display_order": 1
+        },
+        "__order__": [
+          "a",
+          "b"
+        ]
+      }
+    }
+  }
+}

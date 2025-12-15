@@ -100,6 +100,23 @@ body.gv-resizing {
     user-select: none;
 }
 
+/* Dual calendar header styling */
+.dual-calendar-picker {
+    display: inline-flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+.dual-calendar-picker input[data-role="ad-input"],
+.dual-calendar-picker input[data-role="bs-input"] {
+    max-width: 220px;
+}
+.dual-calendar-picker .dual-calendar__toggle {
+    padding: 0.35rem 0.55rem;
+    font-size: 0.85rem;
+    min-width: 36px;
+    height: 34px;
+}
+
 .header-actions-row {
     margin-top: 1rem;
 }

@@ -257,14 +257,22 @@ class VoucherTypeSelectionView(PermissionRequiredMixin, BaseVoucherView):
     def get(self, request, *args, **kwargs) -> HttpResponse:
         """Display voucher type selection."""
         organization = self.get_organization()
-        
+
         # Get all active voucher configurations
         configs = VoucherConfiguration.objects.filter(
             organization=organization,
             is_active=True
         ).order_by('module', 'name')
 
-        context = self.get_context_data(configs=configs)
+        # Group configurations by module for better UX
+        configs_by_module = {}
+        for config in configs:
+            module = config.get_module_display()
+            if module not in configs_by_module:
+                configs_by_module[module] = []
+            configs_by_module[module].append(config)
+
+        context = self.get_context_data(configs=configs, configs_by_module=configs_by_module)
         return self.render_to_response(context)
 
     def get_context_data(self, **kwargs) -> Dict[str, Any]:

@@ -18,32 +18,99 @@
     </div>
 
     <!-- Main Content -->
-    <div class="container py-4">
-        <div class="row">
-            {% for config in configs %}
-            <div class="col-md-4 mb-4">
-                <div class="card h-100">
-                    <div class="card-body d-flex flex-column">
-                        <h5 class="card-title">{{ config.name }}</h5>
-                        <p class="card-text text-muted">{{ config.description|default:"No description available" }}</p>
-                        <div class="mt-auto">
-                            <span class="badge bg-secondary">{{ config.get_module_display }}</span>
-                            <a href="{% url 'accounting:generic_voucher_create' voucher_code=config.code %}" class="btn btn-primary btn-sm float-end">
-                                Create {{ config.name }}
-                            </a>
+    <div class="container py-3">
+        {% if configs_by_module %}
+            {% for module_name, module_configs in configs_by_module.items %}
+            <div class="module-section mb-4">
+                <div class="module-header mb-2">
+                    <h3 class="h5 text-primary mb-2">
+                        <i class="fas fa-folder me-2"></i>{{ module_name }} Module
+                    </h3>
+                    <div class="border-bottom border-primary opacity-25 mb-3"></div>
+                </div>
+
+                <div class="row g-3">
+                    {% for config in module_configs %}
+                    <div class="col-lg-4 col-md-6">
+                        <div class="card h-100 border-0 shadow-sm voucher-card">
+                            <div class="card-body d-flex flex-column p-3">
+                                <div class="d-flex align-items-start justify-content-between mb-2">
+                                    <h5 class="card-title mb-0">{{ config.name }}</h5>
+                                    <span class="badge bg-primary-subtle text-primary">{{ config.get_module_display }}</span>
+                                </div>
+                                <p class="card-text text-muted small mb-3">{{ config.description|default:"No description available" }}</p>
+                                <div class="mt-auto">
+                                    <a href="{% url 'accounting:generic_voucher_create' voucher_code=config.code %}" class="btn btn-primary btn-sm w-100">
+                                        <i class="fas fa-plus me-1"></i>Create {{ config.name }}
+                                    </a>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
-            {% empty %}
-            <div class="col-12">
-                <div class="alert alert-info">
-                    <h5>No Voucher Configurations Available</h5>
-                    <p>Please contact your administrator to set up voucher configurations.</p>
+                    {% endfor %}
                 </div>
             </div>
             {% endfor %}
-        </div>
+        {% else %}
+            <div class="text-center py-5">
+                <div class="alert alert-info d-inline-block">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>No Voucher Configurations Available</strong>
+                    <p class="mb-0">Please contact your administrator to set up voucher configurations.</p>
+                </div>
+            </div>
+        {% endif %}
     </div>
 </div>
+
+<style>
+.module-section {
+    position: relative;
+}
+
+.module-header h3 {
+    font-weight: 600;
+    color: #0d6efd !important;
+}
+
+.voucher-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-radius: 8px;
+}
+
+.voucher-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+}
+
+.voucher-card .card-body {
+    padding: 1.25rem;
+}
+
+.voucher-card .card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #212529;
+}
+
+.voucher-card .badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.voucher-card .btn {
+    font-weight: 500;
+    border-radius: 4px;
+}
+
+@media (max-width: 768px) {
+    .module-header h3 {
+        font-size: 1.1rem;
+    }
+
+    .voucher-card .card-body {
+        padding: 1rem;
+    }
+}
+</style>
 {% endblock %}

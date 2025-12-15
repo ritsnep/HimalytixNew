@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Header - journal-entry-vm-je</title></head>
+<body>
+<h1>Header form for journal-entry-vm-je</h1>
+<p>
+    <label for="id_currency">Currency:</label>
+    <input type="text" name="currency" class="form-control" data-pristine-required-message="Currency is required." required id="id_currency">
+    
+    
+  </p>
+
+  
+  <p>
+    <label for="id_reference">Reference:</label>
+    <input type="text" name="reference" class="form-control" id="id_reference">
+    
+    
+  </p>
+
+  
+  <p>
+    <label for="id_description">Description:</label>
+    <input type="text" name="description" class="form-control" id="id_description">
+    
+    
+  </p>
+
+  
+  <p>
+    <label for="id_journal_date">Posting Date:</label>
+    <div class="input-group dual-calendar-picker"
+     data-dual-calendar
+     data-calendar-mode="DUAL"
+     data-initial-view="BS">
+  <input type="text"
+         id="id_journal_date_bs"
+         name="journal_date_bs"
+         class="form-control dual-calendar__bs"
+         placeholder="YYYY-MM-DD (BS)"
+         autocomplete="off"
+         data-role="bs-input"
+         value="2025-12-16"
+         >
+
+  <input  class="form-control dual-calendar__ad" type="date" data-pristine-required-message="Posting Date is required." data-pristine-date-message="Posting Date must be a valid date." required id="id_journal_date"
+         value="2025-12-16"
+         data-role="ad-input"
+         class="form-control dual-calendar__ad"
+         >
+
+  <button type="button"
+          class="btn btn-outline-secondary dual-calendar__toggle "
+          data-role="toggle">
+    AD
+  </button>
+</div>
+    
+    
+      
+    
+  </p>
+</body></html>

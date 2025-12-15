@@ -27,22 +27,19 @@ def create_voucher_configs():
         "is_active": True,
         "organization": org,
         "ui_schema": {
-            "supplier": {
-                "ui:widget": "select",
-                "ui:placeholder": "Select Supplier"
+            "header": {
+                "__order__": ["supplier", "order_date", "expected_delivery_date", "terms", "notes"],
+                "supplier": {"label": "Supplier", "type": "select", "placeholder": "Select Supplier", "order_no": 1},
+                "order_date": {"label": "Order Date", "type": "date", "order_no": 2},
+                "expected_delivery_date": {"label": "Expected Delivery Date", "type": "date", "order_no": 3},
+                "terms": {"label": "Terms", "type": "text", "order_no": 4},
+                "notes": {"label": "Notes", "type": "text", "order_no": 5}
             },
-            "order_date": {
-                "ui:widget": "date"
-            },
-            "expected_delivery_date": {
-                "ui:widget": "date"
-            },
-            "terms": {
-                "ui:widget": "textarea"
-            },
-            "notes": {
-                "ui:widget": "textarea"
-            }
+            "lines": [
+                {"name": "item", "label": "Item", "type": "char", "order_no": 1},
+                {"name": "quantity", "label": "Quantity", "type": "integer", "order_no": 2},
+                {"name": "unit_price", "label": "Unit Price", "type": "decimal", "order_no": 3}
+            ]
         },
         "default_header": {
             "order_date": "today"
@@ -58,22 +55,19 @@ def create_voucher_configs():
         "is_active": True,
         "organization": org,
         "ui_schema": {
-            "customer": {
-                "ui:widget": "select",
-                "ui:placeholder": "Select Customer"
+            "header": {
+                "__order__": ["customer", "order_date", "delivery_date", "payment_terms", "notes"],
+                "customer": {"label": "Customer", "type": "select", "placeholder": "Select Customer", "order_no": 1},
+                "order_date": {"label": "Order Date", "type": "date", "order_no": 2},
+                "delivery_date": {"label": "Delivery Date", "type": "date", "order_no": 3},
+                "payment_terms": {"label": "Payment Terms", "type": "text", "order_no": 4},
+                "notes": {"label": "Notes", "type": "text", "order_no": 5}
             },
-            "order_date": {
-                "ui:widget": "date"
-            },
-            "delivery_date": {
-                "ui:widget": "date"
-            },
-            "payment_terms": {
-                "ui:widget": "textarea"
-            },
-            "notes": {
-                "ui:widget": "textarea"
-            }
+            "lines": [
+                {"name": "item", "label": "Item", "type": "char", "order_no": 1},
+                {"name": "quantity", "label": "Quantity", "type": "integer", "order_no": 2},
+                {"name": "price", "label": "Price", "type": "decimal", "order_no": 3}
+            ]
         },
         "default_header": {
             "order_date": "today"
@@ -89,29 +83,18 @@ def create_voucher_configs():
         "is_active": True,
         "organization": org,
         "ui_schema": {
-            "supplier": {
-                "ui:widget": "select",
-                "ui:placeholder": "Select Supplier"
+            "header": {
+                "__order__": ["supplier", "return_date", "original_invoice", "reason", "notes"],
+                "supplier": {"label": "Supplier", "type": "select", "placeholder": "Select Supplier", "order_no": 1},
+                "return_date": {"label": "Return Date", "type": "date", "order_no": 2},
+                "original_invoice": {"label": "Original Invoice", "type": "char", "placeholder": "Original Invoice Number", "order_no": 3},
+                "reason": {"label": "Reason", "type": "select", "choices": [["damaged","Damaged Goods"],["wrong_item","Wrong Item"],["quality_issue","Quality Issue"],["other","Other"]], "order_no": 4},
+                "notes": {"label": "Notes", "type": "text", "order_no": 5}
             },
-            "return_date": {
-                "ui:widget": "date"
-            },
-            "original_invoice": {
-                "ui:widget": "text",
-                "ui:placeholder": "Original Invoice Number"
-            },
-            "reason": {
-                "ui:widget": "select",
-                "ui:options": [
-                    {"value": "damaged", "label": "Damaged Goods"},
-                    {"value": "wrong_item", "label": "Wrong Item"},
-                    {"value": "quality_issue", "label": "Quality Issue"},
-                    {"value": "other", "label": "Other"}
-                ]
-            },
-            "notes": {
-                "ui:widget": "textarea"
-            }
+            "lines": [
+                {"name": "item", "label": "Item", "type": "char", "order_no": 1},
+                {"name": "qty", "label": "Quantity", "type": "integer", "order_no": 2}
+            ]
         },
         "default_header": {
             "return_date": "today"

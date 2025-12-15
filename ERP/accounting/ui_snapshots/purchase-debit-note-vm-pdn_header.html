@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Header - purchase-debit-note-vm-pdn</title></head>
+<body>
+<h1>Header form for purchase-debit-note-vm-pdn</h1>
+<p>
+    <label for="id_currency">Currency:</label>
+    <input type="text" name="currency" class="form-control" data-pristine-required-message="Currency is required." required id="id_currency">
+    
+    
+  </p>
+
+  
+  <p>
+    <label for="id_description">Description:</label>
+    <input type="text" name="description" class="form-control" id="id_description">
+    
+    
+  </p>
+
+  
+  <p>
+    <label for="id_vendor_name">Vendor:</label>
+    <input type="text" name="vendor_name" class="form-control" data-pristine-required-message="Vendor is required." required id="id_vendor_name">
+    
+    
+  </p>
+
+  
+  <p>
+    <label for="id_reference_number">Reference:</label>
+    <input type="text" name="reference_number" class="form-control" id="id_reference_number">
+    
+    
+  </p>
+
+  
+  <p>
+    <label for="id_transaction_date">Date:</label>
+    <div class="input-group dual-calendar-picker"
+     data-dual-calendar
+     data-calendar-mode="DUAL"
+     data-initial-view="BS">
+  <input type="text"
+         id="id_transaction_date_bs"
+         name="transaction_date_bs"
+         class="form-control dual-calendar__bs"
+         placeholder="YYYY-MM-DD (BS)"
+         autocomplete="off"
+         data-role="bs-input"
+         value="2025-12-16"
+         >
+
+  <input  class="form-control dual-calendar__ad" type="date" data-pristine-required-message="Date is required." data-pristine-date-message="Date must be a valid date." required id="id_transaction_date"
+         value="2025-12-16"
+         data-role="ad-input"
+         class="form-control dual-calendar__ad"
+         >
+
+  <button type="button"
+          class="btn btn-outline-secondary dual-calendar__toggle "
+          data-role="toggle">
+    AD
+  </button>
+</div>
+    
+    
+      
+    
+  </p>
+</body></html>

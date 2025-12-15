@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Header - purchase_return</title></head>
+<body>
+<h1>Header form for purchase_return</h1>
+<p>
+    <label for="id_supplier">Supplier:</label>
+    <select name="supplier" class="form-control" data-pristine-required-message="Supplier is required." id="id_supplier">
+</select>
+    
+    
+  </p>
+
+  
+  <p>
+    <label for="id_return_date">Return Date:</label>
+    <div class="input-group dual-calendar-picker"
+     data-dual-calendar
+     data-calendar-mode="DUAL"
+     data-initial-view="BS">
+  <input type="text"
+         id="id_return_date_bs"
+         name="return_date_bs"
+         class="form-control dual-calendar__bs"
+         placeholder="YYYY-MM-DD (BS)"
+         autocomplete="off"
+         data-role="bs-input"
+         value="2025-12-16"
+         >
+
+  <input  class="form-control dual-calendar__ad" type="date" data-pristine-required-message="Return Date is required." data-pristine-date-message="Return Date must be a valid date." required id="id_return_date"
+         value="2025-12-16"
+         data-role="ad-input"
+         class="form-control dual-calendar__ad"
+         >
+
+  <button type="button"
+          class="btn btn-outline-secondary dual-calendar__toggle "
+          data-role="toggle">
+    AD
+  </button>
+</div>
+    
+    
+  </p>
+
+  
+  <p>
+    <label for="id_original_invoice">Original Invoice:</label>
+    <input type="text" name="original_invoice" class="form-control" data-pristine-required-message="Original Invoice is required." required id="id_original_invoice">
+    
+    
+  </p>
+
+  
+  <p>
+    <label for="id_reason">Reason:</label>
+    <select name="reason" class="form-control" data-pristine-required-message="Reason is required." id="id_reason">
+  <option value="damaged">Damaged Goods</option>
+
+  <option value="wrong_item">Wrong Item</option>
+
+  <option value="quality_issue">Quality Issue</option>
+
+  <option value="other">Other</option>
+
+</select>
+    
+    
+  </p>
+
+  
+  <p>
+    <label for="id_notes">Notes:</label>
+    <textarea name="notes" cols="40" rows="10" class="form-control" data-pristine-required-message="Notes is required." required id="id_notes">
+</textarea>
+    
+    
+      
+    
+  </p>
+</body></html>

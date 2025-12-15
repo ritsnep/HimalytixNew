@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Header - sales_order</title></head>
+<body>
+<h1>Header form for sales_order</h1>
+<p>
+    <label for="id_customer">Customer:</label>
+    <select name="customer" class="form-control" data-pristine-required-message="Customer is required." id="id_customer">
+</select>
+    
+    
+  </p>
+
+  
+  <p>
+    <label for="id_order_date">Order Date:</label>
+    <div class="input-group dual-calendar-picker"
+     data-dual-calendar
+     data-calendar-mode="DUAL"
+     data-initial-view="BS">
+  <input type="text"
+         id="id_order_date_bs"
+         name="order_date_bs"
+         class="form-control dual-calendar__bs"
+         placeholder="YYYY-MM-DD (BS)"
+         autocomplete="off"
+         data-role="bs-input"
+         value="2025-12-16"
+         >
+
+  <input  class="form-control dual-calendar__ad" type="date" data-pristine-required-message="Order Date is required." data-pristine-date-message="Order Date must be a valid date." required id="id_order_date"
+         value="2025-12-16"
+         data-role="ad-input"
+         class="form-control dual-calendar__ad"
+         >
+
+  <button type="button"
+          class="btn btn-outline-secondary dual-calendar__toggle "
+          data-role="toggle">
+    AD
+  </button>
+</div>
+    
+    
+  </p>
+
+  
+  <p>
+    <label for="id_delivery_date">Delivery Date:</label>
+    <div class="input-group dual-calendar-picker"
+     data-dual-calendar
+     data-calendar-mode="DUAL"
+     data-initial-view="BS">
+  <input type="text"
+         id="id_delivery_date_bs"
+         name="delivery_date_bs"
+         class="form-control dual-calendar__bs"
+         placeholder="YYYY-MM-DD (BS)"
+         autocomplete="off"
+         data-role="bs-input"
+         value="2025-12-16"
+         >
+
+  <input  class="form-control dual-calendar__ad" type="date" data-pristine-required-message="Delivery Date is required." data-pristine-date-message="Delivery Date must be a valid date." required id="id_delivery_date"
+         value="2025-12-16"
+         data-role="ad-input"
+         class="form-control dual-calendar__ad"
+         >
+
+  <button type="button"
+          class="btn btn-outline-secondary dual-calendar__toggle "
+          data-role="toggle">
+    AD
+  </button>
+</div>
+    
+    
+  </p>
+
+  
+  <p>
+    <label for="id_payment_terms">Payment Terms:</label>
+    <textarea name="payment_terms" cols="40" rows="10" class="form-control" data-pristine-required-message="Payment Terms is required." required id="id_payment_terms">
+</textarea>
+    
+    
+  </p>
+
+  
+  <p>
+    <label for="id_notes">Notes:</label>
+    <textarea name="notes" cols="40" rows="10" class="form-control" data-pristine-required-message="Notes is required." required id="id_notes">
+</textarea>
+    
+    
+      
+    
+  </p>
+</body></html>

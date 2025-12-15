@@ -1,0 +1,53 @@
+{% extends 'admin/base_site.html' %}
+{% load static %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+<form method="post">
+  {% csrf_token %}
+  <div class="module">
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Section</th>
+          <th>Field Name</th>
+          <th>Label</th>
+          <th>Hidden</th>
+          <th>Disabled</th>
+          <th>Order No</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td>{{ row.section }}</td>
+          <td>{{ row.name }}</td>
+          <td>{{ row.label }}</td>
+          <td><input type="checkbox" name="hidden_{{ row.section }}_{{ row.name }}" {% if row.hidden %}checked{% endif %}></td>
+          <td><input type="checkbox" name="disabled_{{ row.section }}_{{ row.name }}" {% if row.disabled %}checked{% endif %}></td>
+          <td><input type="number" name="order_no_{{ row.section }}_{{ row.name }}" value="{% if row.order_no is not None %}{{ row.order_no }}{% endif %}" style="width:6rem;"></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# Hidden repeated inputs listing names in order for each section #}
+  {% for section in 'header,lines'.split(',') %}
+    {% for row in rows %}
+      {% if row.section == section %}
+        <input type="hidden" name="field_names_{{ section }}" value="{{ row.name }}">
+      {% endif %}
+    {% endfor %}
+  {% endfor %}
+
+  <h3>Raw JSON (alternative)</h3>
+  <p>You can edit the raw `ui_schema` JSON directly here as a fallback. Changes here will replace the UI schema completely.</p>
+  <textarea name="ui_schema_json" rows="12" style="width:100%;">{{ ui_json }}</textarea>
+
+  <p class="submit-row">
+    <button type="submit" class="default">Save</button>
+    <a class="button" href="{% url 'admin:accounting_vouchermodeconfig_change' object.pk %}">Cancel</a>
+  </p>
+</form>
+{% endblock %}

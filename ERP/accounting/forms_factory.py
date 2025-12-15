@@ -244,6 +244,16 @@ class VoucherFormFactory:
         form_fields = {}
         schema = self.configuration.resolve_ui_schema() if hasattr(self.configuration, 'resolve_ui_schema') else self.schema
 
+        # Support ui_schema that contains top-level 'header'/'lines' sections.
+        # When building a header form, prefer the 'header' section if present.
+        if isinstance(schema, dict) and ('header' in schema or 'lines' in schema):
+            # Prefer header when available; fallback to lines only when header missing.
+            header_section = schema.get('header')
+            if header_section is not None:
+                schema = header_section
+            else:
+                schema = schema.get('lines')
+
         model_field_names = set()
         if self.model:
             try:
@@ -252,54 +262,72 @@ class VoucherFormFactory:
                 model_field_names = set()
         
         def _ordered_schema_items(schema_dict: dict):
-            # Respect explicit ordering if provided
+            # Collect items and support explicit `__order__`, but allow
+            # `order_no` (if present) to determine final ordering.
             explicit = schema_dict.get('__order__') if isinstance(schema_dict, dict) else None
+
+            items = []
+            for name, cfg in schema_dict.items():
+                if name == '__order__':
+                    continue
+                items.append((name, cfg))
+
+            # If explicit ordering is provided, respect it as the primary key
             if isinstance(explicit, list) and explicit:
+                ordered = []
+                seen = set()
                 for name in explicit:
                     if name in schema_dict and name != '__order__':
-                        yield name, schema_dict[name]
-                for name, cfg in schema_dict.items():
-                    if name not in explicit and name != '__order__':
-                        yield name, cfg
-                return
+                        ordered.append((name, schema_dict[name]))
+                        seen.add(name)
+                # Append any remaining items preserving dict insertion
+                for name, cfg in items:
+                    if name not in seen:
+                        ordered.append((name, cfg))
+                items = ordered
 
-            keys = [k for k in schema_dict.keys() if k != '__order__']
+            # If any item has an explicit 'order_no', sort by it (stable)
+            has_order_no = any(isinstance(cfg, dict) and 'order_no' in cfg for _, cfg in items)
+            if has_order_no:
+                try:
+                    items = sorted(items, key=lambda nc: (nc[1].get('order_no') if isinstance(nc[1], dict) and nc[1].get('order_no') is not None else 9999))
+                except Exception:
+                    # Be conservative and fall back to original items order
+                    pass
 
-            # Heuristic priorities to avoid jsonb reordering surprises.
-            header_priority = [
-                'journal_date', 'voucher_date', 'date',
-                'branch', 'branch_id',
-                'currency', 'currency_code',
-                'exchange_rate', 'fx_rate',
-                'reference_number', 'reference',
-                'description', 'narration',
-            ]
-            line_priority = [
-                'account', 'account_id',
-                'project',
-                'tax_code',
-                'department',
-                'cost_center',
-                'description',
-                'debit_amount', 'debit',
-                'credit_amount', 'credit',
-                'quantity',
-                'rate',
-                'amount',
-            ]
+            for name, cfg in items:
+                yield name, cfg
 
-            looks_like_lines = any(k in schema_dict for k in ('debit_amount', 'credit_amount', 'debit', 'credit', 'account'))
-            priority = line_priority if looks_like_lines else header_priority
-            priority_index = {name: idx for idx, name in enumerate(priority)}
-
-            keys.sort(key=lambda k: (priority_index.get(k, 10_000), k))
-            for k in keys:
-                yield k, schema_dict[k]
-
-        # Handle schema as a direct dictionary of fields or with a 'fields' key
-        if isinstance(schema, dict):
+        # Handle schema as a list of field configs, a dict with 'fields' list,
+        # or a direct dict of field_name: field_config
+        if isinstance(schema, list):
+            # Schema provided as ordered list -> preserve order, but prefer explicit 'order_no' if present
+            list_items = list(schema)
+            if any(isinstance(it, dict) and 'order_no' in it for it in list_items):
+                try:
+                    list_items = sorted(list_items, key=lambda it: it.get('order_no', 9999) if isinstance(it, dict) else 9999)
+                except Exception:
+                    pass
+            for field_config in list_items:
+                field_name = field_config.get('name')
+                if not field_name:
+                    continue
+                fk_pair = self._maybe_build_fk_typeahead_fields(field_name, field_config)
+                if fk_pair:
+                    base_field, display_field = fk_pair
+                    form_fields[field_name] = base_field
+                    form_fields[f"{field_name}_display"] = display_field
+                else:
+                    form_fields[field_name] = self._create_field_from_schema(field_config, field_name=field_name)
+        elif isinstance(schema, dict):
             if 'fields' in schema and isinstance(schema['fields'], list):
-                for field_config in schema['fields']:
+                field_list = list(schema['fields'])
+                if any(isinstance(it, dict) and 'order_no' in it for it in field_list):
+                    try:
+                        field_list = sorted(field_list, key=lambda it: it.get('order_no', 9999) if isinstance(it, dict) else 9999)
+                    except Exception:
+                        pass
+                for field_config in field_list:
                     field_name = field_config.get('name')
                     if field_name:
                         fk_pair = self._maybe_build_fk_typeahead_fields(field_name, field_config)
@@ -389,7 +417,25 @@ class VoucherFormFactory:
 
     def build_formset(self, extra=1):
         """Dynamically build and return a FormSet class for line items."""
-        LineForm = self.build_form()
+        # For formsets, prefer building the form using the 'lines' schema
+        # If this factory was constructed with a VoucherConfiguration (self.schema is the UI dict),
+        # we must avoid build_form() picking the header section. Build a temporary factory using
+        # only the 'lines' schema so the line form fields are correct.
+        LineForm = None
+        if isinstance(self.schema, dict) and 'lines' in self.schema:
+            lines_schema = self.schema.get('lines') or {}
+            temp_factory = VoucherFormFactory(
+                lines_schema,
+                model=self.model,
+                organization=self.organization,
+                prefix=self.prefix,
+                disabled_fields=self.disabled_fields,
+            )
+            LineForm = temp_factory.build_form()
+
+        # Fallback: build a regular form (will pick top-level schema/ header if lines missing)
+        if LineForm is None:
+            LineForm = self.build_form()
         
         FormSet = forms.formset_factory(LineForm, extra=extra)
 
@@ -429,7 +475,15 @@ class VoucherFormFactory:
             form_kwargs['data'] = data
         if files is not None:
             form_kwargs['files'] = files
-        
+        # Provide the header model so FK fields (vendor, etc) are detected properly.
+        # The authoritative mapping lives in `accounting.forms.form_factory`.
+        try:
+            from accounting.forms.form_factory import VoucherFormFactory as FormsFactoryLegacy
+            header_model = FormsFactoryLegacy._get_model_for_voucher_config(voucher_config)
+            form_kwargs['model'] = header_model
+        except Exception:
+            pass
+
         factory = VoucherFormFactory(**form_kwargs)
         return factory.build_form()
 
@@ -443,6 +497,15 @@ class VoucherFormFactory:
             'organization': organization,
             **kwargs
         }
+
+        # Provide the line model to the factory so line-specific fields (FKs/typeaheads)
+        # can be constructed correctly when building the line forms.
+        try:
+            from accounting.forms.form_factory import VoucherFormFactory as FormsFactoryLegacy
+            line_model = FormsFactoryLegacy._get_line_model_for_voucher_config(voucher_config)
+            form_kwargs['model'] = line_model
+        except Exception:
+            pass
         
         if data is not None:
             form_kwargs['data'] = data
