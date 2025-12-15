@@ -16,7 +16,8 @@ from accounting.models import (
     VoucherConfiguration, Journal, JournalLine,
     PurchaseOrderVoucher, PurchaseReturnVoucher,
     SalesOrderVoucher, PurchaseOrderVoucherLine,
-    PurchaseReturnVoucherLine, SalesOrderVoucherLine
+    PurchaseReturnVoucherLine, SalesOrderVoucherLine,
+    Currency
 )
 from accounting.forms.form_factory import VoucherFormFactory
 from usermanagement.models import Organization
@@ -27,14 +28,153 @@ class DynamicVoucherTestCase(TestCase):
 
     def setUp(self):
         """Set up test data."""
+        # Create currency
+        self.currency = Currency.objects.create(
+            currency_code="USD",
+            currency_name="US Dollar",
+            symbol="$",
+            is_active=True,
+            isdefault=True
+        )
+
+        # Create organization
         self.organization = Organization.objects.create(
             name="Test Organization",
-            base_currency_code_id="USD"
+            code="TEST",
+            type="company",
+            base_currency_code=self.currency
         )
+
+        # Create user
         self.user = get_user_model().objects.create_user(
             username="testuser",
             email="test@example.com",
             password="testpass123"
+        )
+
+        # Create voucher configurations
+        self.vm01_config = VoucherConfiguration.objects.create(
+            code="VM01",
+            name="General Journal",
+            description="General journal voucher configuration",
+            module="accounting",
+            organization=self.organization,
+            ui_schema={
+                "header": {
+                    "date": {"type": "date", "required": True},
+                    "reference": {"type": "text", "required": True},
+                    "description": {"type": "textarea", "required": False}
+                },
+                "lines": {
+                    "account": {"type": "select", "required": True},
+                    "debit": {"type": "decimal", "required": False},
+                    "credit": {"type": "decimal", "required": False},
+                    "description": {"type": "text", "required": False}
+                }
+            },
+            layout_style="standard",
+            show_account_balances=True,
+            show_tax_details=False,
+            show_dimensions=False,
+            allow_multiple_currencies=False,
+            require_line_description=False,
+            default_currency="USD",
+            is_default=True,
+            is_active=True,
+            version=1
+        )
+
+        self.vm08_config = VoucherConfiguration.objects.create(
+            code="VM08",
+            name="Cash Receipt",
+            description="Cash receipt voucher configuration",
+            module="accounting",
+            organization=self.organization,
+            ui_schema={
+                "header": {
+                    "date": {"type": "date", "required": True},
+                    "reference": {"type": "text", "required": True},
+                    "description": {"type": "textarea", "required": False}
+                },
+                "lines": {
+                    "account": {"type": "select", "required": True},
+                    "debit": {"type": "decimal", "required": False},
+                    "credit": {"type": "decimal", "required": False},
+                    "description": {"type": "text", "required": False}
+                }
+            },
+            layout_style="standard",
+            show_account_balances=True,
+            show_tax_details=False,
+            show_dimensions=False,
+            allow_multiple_currencies=False,
+            require_line_description=False,
+            default_currency="USD",
+            is_default=False,
+            is_active=True,
+            version=1
+        )
+
+        self.po01_config = VoucherConfiguration.objects.create(
+            code="PO01",
+            name="Purchase Order",
+            description="Purchase order voucher configuration",
+            module="purchasing",
+            organization=self.organization,
+            ui_schema={
+                "header": {
+                    "date": {"type": "date", "required": True},
+                    "supplier": {"type": "select", "required": True},
+                    "reference": {"type": "text", "required": True}
+                },
+                "lines": {
+                    "item": {"type": "select", "required": True},
+                    "quantity": {"type": "decimal", "required": True},
+                    "price": {"type": "decimal", "required": True},
+                    "description": {"type": "text", "required": False}
+                }
+            },
+            layout_style="standard",
+            show_account_balances=False,
+            show_tax_details=True,
+            show_dimensions=False,
+            allow_multiple_currencies=False,
+            require_line_description=False,
+            default_currency="USD",
+            is_default=True,
+            is_active=True,
+            version=1
+        )
+
+        self.so01_config = VoucherConfiguration.objects.create(
+            code="SO01",
+            name="Sales Order",
+            description="Sales order voucher configuration",
+            module="sales",
+            organization=self.organization,
+            ui_schema={
+                "header": {
+                    "date": {"type": "date", "required": True},
+                    "customer": {"type": "select", "required": True},
+                    "reference": {"type": "text", "required": True}
+                },
+                "lines": {
+                    "item": {"type": "select", "required": True},
+                    "quantity": {"type": "decimal", "required": True},
+                    "price": {"type": "decimal", "required": True},
+                    "description": {"type": "text", "required": False}
+                }
+            },
+            layout_style="standard",
+            show_account_balances=False,
+            show_tax_details=True,
+            show_dimensions=False,
+            allow_multiple_currencies=False,
+            require_line_description=False,
+            default_currency="USD",
+            is_default=True,
+            is_active=True,
+            version=1
         )
 
     def test_voucher_configuration_exists(self):
@@ -174,7 +314,7 @@ class DynamicVoucherTestCase(TestCase):
         # Find configurations with duplicate (module, code)
         from django.db.models import Count
         duplicates = VoucherConfiguration.objects.values('module', 'code') \
-            .annotate(count=Count('id')).filter(count__gt=1)
+            .annotate(count=Count('config_id')).filter(count__gt=1)
 
         for dup in duplicates:
             configs = VoucherConfiguration.objects.filter(
@@ -249,9 +389,21 @@ class DynamicVoucherIntegrationTestCase(TestCase):
     """Integration tests for the complete voucher creation workflow."""
 
     def setUp(self):
+        # Create currency
+        self.currency = Currency.objects.create(
+            currency_code="USD",
+            currency_name="US Dollar",
+            symbol="$",
+            is_active=True,
+            isdefault=True
+        )
+
+        # Create organization
         self.organization = Organization.objects.create(
             name="Integration Test Org",
-            base_currency_code_id="USD"
+            code="INTTEST",
+            type="company",
+            base_currency_code=self.currency
         )
 
     def test_complete_voucher_workflow(self):

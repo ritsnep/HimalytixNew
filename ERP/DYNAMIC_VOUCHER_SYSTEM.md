@@ -204,3 +204,13 @@ Form schemas are validated at runtime. Invalid schemas may cause form creation f
 - **Template System**: Reusable form templates
 - **Audit Trail**: Track configuration changes
 - **Performance**: Caching for frequently used configurations
+
+## Diagrams
+
+An SVG diagram summarizing runtime flow and model relationships is included in the repository:
+
+![Dynamic Voucher Diagram (PNG fallback)](docs/dynamic_voucher_diagram@2x.png)
+
+_Vector source:_ ![SVG source](docs/dynamic_voucher_diagram.svg)
+
+You can also view/edit the Mermaid sources used for design in this file; the diagram shows config lookup, schema merging, form building, model mapping, validation, persistence and related models.

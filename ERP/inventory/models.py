@@ -17,10 +17,10 @@ class Unit(models.Model):
     description  = models.TextField(blank=True)
     is_active    = models.BooleanField(default=True)
     created_at   = models.DateTimeField(default=timezone.now)
-    
+
     class Meta:
         unique_together = ('organization', 'code')
-    
+
     def __str__(self):
         return f"{self.organization.name} - {self.name} ({self.code})"
 
@@ -69,13 +69,13 @@ class Product(models.Model):
     sku                = models.CharField(max_length=100, blank=True)
     created_at         = models.DateTimeField(default=timezone.now)
     updated_at         = models.DateTimeField(auto_now=True)
-    
-    class Meta: 
+
+    class Meta:
         unique_together = ('organization', 'code')
-    
+
     def __str__(self):
         return f"{self.organization.name} - {self.name} ({self.code})"
-    
+
     def clean(self):
         """Validate that inventory items have required GL accounts."""
         super().clean()
@@ -97,10 +97,10 @@ class ProductUnit(models.Model):
     conversion_factor = models.DecimalField(max_digits=15, decimal_places=6, help_text="Number of base units per this unit")
     is_default        = models.BooleanField(default=False)
     created_at        = models.DateTimeField(default=timezone.now)
-    
+
     class Meta:
         unique_together = ('product', 'unit')
-    
+
     def __str__(self):
         return f"{self.product.code} - {self.unit.code}: {self.conversion_factor}"
 
@@ -224,11 +224,11 @@ class PriceList(models.Model):
     valid_to     = models.DateField(null=True, blank=True)
     created_at   = models.DateTimeField(default=timezone.now)
     updated_at   = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         unique_together = ('organization', 'code')
         indexes = [models.Index(fields=['organization', 'is_active'])]
-    
+
     def __str__(self):
         return f"{self.organization.name} - {self.name} ({self.code})"
 
@@ -243,11 +243,11 @@ class PriceListItem(models.Model):
     discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     created_at   = models.DateTimeField(default=timezone.now)
     updated_at   = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         unique_together = ('price_list', 'product', 'min_quantity')
         indexes = [models.Index(fields=['price_list', 'product'])]
-    
+
     def __str__(self):
         return f"{self.price_list.name} - {self.product.code}: {self.unit_price} (MOQ: {self.min_quantity})"
 
@@ -260,11 +260,11 @@ class CustomerPriceList(models.Model):
     priority     = models.IntegerField(default=1)  # Lower number = higher priority
     is_active    = models.BooleanField(default=True)
     created_at   = models.DateTimeField(default=timezone.now)
-    
+
     class Meta:
         unique_together = ('organization', 'customer_id', 'price_list')
         indexes = [models.Index(fields=['organization', 'customer_id', 'is_active'])]
-    
+
     def __str__(self):
         return f"{self.organization.name} - Customer {self.customer_id} - {self.price_list.name}"
 
@@ -278,7 +278,7 @@ class PromotionRule(models.Model):
         ('bundle', 'Bundle Discount'),
         ('volume', 'Volume Discount'),
     ]
-    
+
     organization = models.ForeignKey(Organization, on_delete=models.PROTECT)
     code         = models.CharField(max_length=50)
     name         = models.CharField(max_length=100)
@@ -294,16 +294,16 @@ class PromotionRule(models.Model):
     apply_to_products = models.ManyToManyField(Product, blank=True, related_name='promotions')
     created_at   = models.DateTimeField(default=timezone.now)
     updated_at   = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         unique_together = ('organization', 'code')
         indexes = [
             models.Index(fields=['organization', 'is_active', 'valid_from', 'valid_to'])
         ]
-    
+
     def __str__(self):
         return f"{self.organization.name} - {self.name} ({self.promo_type})"
-    
+
     def is_valid(self):
         """Check if promotion is currently valid"""
         now = timezone.now()
@@ -322,18 +322,18 @@ class TransitWarehouse(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.PROTECT)
     code         = models.CharField(max_length=50)
     name         = models.CharField(max_length=100)
-    from_warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, 
+    from_warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT,
                                        related_name='transit_from', null=True, blank=True)
-    to_warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, 
+    to_warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT,
                                      related_name='transit_to', null=True, blank=True)
     carrier_name = models.CharField(max_length=100, blank=True)
     tracking_number = models.CharField(max_length=100, blank=True)
     is_active    = models.BooleanField(default=True)
     created_at   = models.DateTimeField(default=timezone.now)
-    
+
     class Meta:
         unique_together = ('organization', 'code')
-    
+
     def __str__(self):
         return f"{self.organization.name} - {self.name} (Transit)"
 
@@ -347,7 +347,7 @@ class PickList(models.Model):
         ('picked', 'Picked'),
         ('cancelled', 'Cancelled'),
     ]
-    
+
     organization = models.ForeignKey(Organization, on_delete=models.PROTECT)
     pick_number  = models.CharField(max_length=50, unique=True)
     warehouse    = models.ForeignKey(Warehouse, on_delete=models.PROTECT)
@@ -360,13 +360,13 @@ class PickList(models.Model):
     notes        = models.TextField(blank=True)
     created_at   = models.DateTimeField(default=timezone.now)
     updated_at   = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         indexes = [
             models.Index(fields=['organization', 'warehouse', 'status']),
             models.Index(fields=['pick_number'])
         ]
-    
+
     def __str__(self):
         return f"{self.organization.name} - {self.pick_number} ({self.status})"
 
@@ -382,11 +382,11 @@ class PickListLine(models.Model):
     line_number  = models.IntegerField()
     picked_by    = models.IntegerField(null=True, blank=True)  # User ID
     picked_at    = models.DateTimeField(null=True, blank=True)
-    
+
     class Meta:
         unique_together = ('pick_list', 'line_number')
         ordering = ['line_number']
-    
+
     def __str__(self):
         return f"{self.pick_list.pick_number} - Line {self.line_number}: {self.product.code}"
 
@@ -399,7 +399,7 @@ class PackingSlip(models.Model):
         ('packed', 'Packed'),
         ('cancelled', 'Cancelled'),
     ]
-    
+
     organization = models.ForeignKey(Organization, on_delete=models.PROTECT)
     packing_number = models.CharField(max_length=50, unique=True)
     pick_list    = models.ForeignKey(PickList, on_delete=models.PROTECT, null=True, blank=True)
@@ -413,10 +413,10 @@ class PackingSlip(models.Model):
     notes        = models.TextField(blank=True)
     created_at   = models.DateTimeField(default=timezone.now)
     updated_at   = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         indexes = [models.Index(fields=['organization', 'status'])]
-    
+
     def __str__(self):
         return f"{self.organization.name} - {self.packing_number} ({self.status})"
 
@@ -432,7 +432,7 @@ class Shipment(models.Model):
         ('failed', 'Delivery Failed'),
         ('returned', 'Returned'),
     ]
-    
+
     organization = models.ForeignKey(Organization, on_delete=models.PROTECT)
     shipment_number = models.CharField(max_length=50, unique=True)
     packing_slip = models.ForeignKey(PackingSlip, on_delete=models.PROTECT, null=True, blank=True)
@@ -449,13 +449,13 @@ class Shipment(models.Model):
     notes        = models.TextField(blank=True)
     created_at   = models.DateTimeField(default=timezone.now)
     updated_at   = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         indexes = [
             models.Index(fields=['organization', 'status']),
             models.Index(fields=['tracking_number'])
         ]
-    
+
     def __str__(self):
         return f"{self.organization.name} - {self.shipment_number} ({self.carrier_name})"
 
@@ -476,16 +476,16 @@ class Backorder(models.Model):
     notes        = models.TextField(blank=True)
     created_at   = models.DateTimeField(default=timezone.now)
     updated_at   = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         indexes = [
             models.Index(fields=['organization', 'is_fulfilled', 'priority']),
             models.Index(fields=['product', 'warehouse'])
         ]
-    
+
     def __str__(self):
         return f"{self.organization.name} - {self.backorder_number}: {self.product.code} ({self.quantity_backordered})"
-    
+
     @property
     def quantity_remaining(self):
         return self.quantity_backordered - self.quantity_fulfilled
@@ -503,7 +503,7 @@ class RMA(models.Model):
         ('replaced', 'Replaced'),
         ('closed', 'Closed'),
     ]
-    
+
     REASON_CHOICES = [
         ('defective', 'Defective'),
         ('wrong_item', 'Wrong Item Sent'),
@@ -512,7 +512,7 @@ class RMA(models.Model):
         ('warranty', 'Warranty Claim'),
         ('other', 'Other'),
     ]
-    
+
     organization = models.ForeignKey(Organization, on_delete=models.PROTECT)
     rma_number   = models.CharField(max_length=50, unique=True)
     customer_id  = models.IntegerField()
@@ -531,13 +531,13 @@ class RMA(models.Model):
     notes        = models.TextField(blank=True)
     created_at   = models.DateTimeField(default=timezone.now)
     updated_at   = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         indexes = [
             models.Index(fields=['organization', 'status']),
             models.Index(fields=['customer_id'])
         ]
-    
+
     def __str__(self):
         return f"{self.organization.name} - RMA {self.rma_number} ({self.status})"
 
@@ -551,10 +551,10 @@ class RMALine(models.Model):
     condition    = models.CharField(max_length=50, blank=True)  # new, used, defective
     disposition  = models.CharField(max_length=50, blank=True)  # restock, scrap, repair
     line_number  = models.IntegerField()
-    
+
     class Meta:
         unique_together = ('rma', 'line_number')
         ordering = ['line_number']
-    
+
     def __str__(self):
         return f"RMA {self.rma.rma_number} - Line {self.line_number}: {self.product.code}"

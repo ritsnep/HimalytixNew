@@ -1,0 +1,379 @@
+{% load static %}
+<div class="product-selector-container">
+  <div class="input-group">
+    <input type="text"
+           id="{{ name }}_search"
+           name="{{ name }}_search"
+           class="form-control product-search-input"
+           placeholder="Search products by code, name, or barcode..."
+           autocomplete="off"
+           data-organization-id="{{ organization_id }}"
+           data-search-url="{{ search_url }}"
+           {% for attr, val in attrs.items %} {{ attr }}="{{ val }}"{% endfor %}>
+
+    <input type="hidden"
+           name="{{ name }}"
+           id="{{ name }}"
+           value="{% if value %}{{ value.pk }}{% endif %}">
+
+    <button type="button"
+            class="btn btn-outline-secondary product-clear"
+            {% if value %}style="display: inline-block;"{% else %}style="display: none;"{% endif %}>
+      <i class="fas fa-times"></i>
+    </button>
+
+    <button type="button"
+            class="btn btn-outline-primary product-search">
+      <i class="fas fa-search"></i>
+    </button>
+  </div>
+
+  <!-- Selected Product Display -->
+  <div class="selected-product-info mt-2"
+       id="{{ name }}_info"
+       {% if value %}style="display: block;"{% else %}style="display: none;"{% endif %}>
+    <div class="card border-primary">
+      <div class="card-body p-2">
+        <div class="row">
+          <div class="col-md-6">
+            <strong id="{{ name }}_product_name">{% if value %}{{ value.name }}{% endif %}</strong><br>
+            <small class="text-muted" id="{{ name }}_product_code">
+              {% if value %}Code: {{ value.code }}{% endif %}
+            </small>
+          </div>
+          <div class="col-md-6 text-end">
+            <div id="{{ name }}_selling_price">
+              {% if value %}₨{{ value.selling_price }}{% endif %}
+            </div>
+            <small class="text-muted" id="{{ name }}_stock_info">
+              {% if value %}Stock: {{ value.available_stock }} {{ value.get_display_unit }}{% endif %}
+            </small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Results -->
+  <div class="product-search-results"
+       id="{{ name }}_results"
+       style="display: none; max-height: 300px; overflow-y: auto; border: 1px solid #ddd; background: white; z-index: 1000; position: absolute; width: 100%;">
+  </div>
+
+  <!-- Product Details Modal (for batch/rate selection) -->
+  <div class="modal fade product-details-modal" id="{{ name }}_modal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="{{ name }}_modal_title">Product Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="{{ name }}_modal_body">
+          <!-- Product details will be loaded here -->
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" id="{{ name }}_select_product">Select Product</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  function initProductSelectors(container = document) {
+    const searchInputs = container.querySelectorAll('.product-search-input');
+    searchInputs.forEach(input => {
+      if (input._initialized) return;
+      input._initialized = true;
+
+      const container = input.closest('.product-selector-container');
+      const hiddenInput = container.querySelector('input[type="hidden"]');
+      const infoDiv = container.querySelector('.selected-product-info');
+      const resultsDiv = container.querySelector('.product-search-results');
+      const clearBtn = container.querySelector('.product-clear');
+      const searchBtn = container.querySelector('.product-search');
+      const modal = container.querySelector('.product-details-modal');
+      const selectBtn = container.querySelector('#' + input.id.replace('_search', '') + '_select_product');
+
+      let searchTimeout;
+      let lastQuery = '';
+      let selectedProduct = null;
+
+      function searchProducts(query) {
+        if (!query || query.length < 2) {
+          hideResults();
+          return;
+        }
+
+        if (query === lastQuery) return;
+        lastQuery = query;
+
+        const orgId = input.dataset.organizationId;
+        const searchUrl = input.dataset.searchUrl;
+
+        fetch(`${searchUrl}?q=${encodeURIComponent(query)}&org=${orgId}`, {
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+          },
+          credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+          showResults(data.results || []);
+        })
+        .catch(error => {
+          console.error('Product search failed:', error);
+          hideResults();
+        });
+      }
+
+      function showResults(products) {
+        if (!products.length) {
+          hideResults();
+          return;
+        }
+
+        resultsDiv.innerHTML = products.map(product =>
+          `<div class="product-result-item p-2 border-bottom"
+                data-id="${product.id}"
+                data-code="${product.code}"
+                data-name="${product.name}"
+                data-price="${product.selling_price}"
+                data-stock="${product.available_stock}"
+                data-unit="${product.unit}"
+                style="cursor: pointer;">
+            <div class="d-flex justify-content-between">
+              <div>
+                <div class="fw-bold">${product.code} - ${product.name}</div>
+                <small class="text-muted">Category: ${product.category || 'N/A'}</small>
+              </div>
+              <div class="text-end">
+                <div class="fw-bold text-primary">₨${product.selling_price}</div>
+                <small class="text-muted">Stock: ${product.available_stock} ${product.unit || 'Unit'}</small>
+              </div>
+            </div>
+          </div>`
+        ).join('');
+
+        resultsDiv.style.display = 'block';
+
+        // Add click handlers
+        resultsDiv.querySelectorAll('.product-result-item').forEach(item => {
+          item.addEventListener('click', () => showProductDetails(item));
+        });
+      }
+
+      function hideResults() {
+        resultsDiv.style.display = 'none';
+      }
+
+      function showProductDetails(item) {
+        const productId = item.dataset.id;
+        const productCode = item.dataset.code;
+        const productName = item.dataset.name;
+
+        // Load product details via AJAX
+        loadProductDetails(productId, productCode, productName);
+      }
+
+      function loadProductDetails(productId, productCode, productName) {
+        const detailsUrl = `/inventory/api/products/${productId}/details/`;
+
+        fetch(detailsUrl, {
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+          },
+          credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+          displayProductDetails(data, productId);
+          // Show modal
+          if (window.bootstrap && window.bootstrap.Modal) {
+            const bsModal = new window.bootstrap.Modal(modal);
+            bsModal.show();
+          }
+        })
+        .catch(error => {
+          console.error('Failed to load product details:', error);
+        });
+      }
+
+      function displayProductDetails(data, productId) {
+        const modalBody = container.querySelector('#' + input.id.replace('_search', '') + '_modal_body');
+        const modalTitle = container.querySelector('#' + input.id.replace('_search', '') + '_modal_title');
+
+        modalTitle.textContent = `${data.product.code} - ${data.product.name}`;
+
+        let html = `
+          <div class="row">
+            <div class="col-md-6">
+              <h6>Product Information</h6>
+              <p><strong>Description:</strong> ${data.product.description || 'N/A'}</p>
+              <p><strong>Unit:</strong> ${data.product.unit}</p>
+              <p><strong>Taxable:</strong> ${data.product.is_taxable ? 'Yes' : 'No'} (${data.product.tax_rate}%)</p>
+            </div>
+            <div class="col-md-6">
+              <h6>Current Stock</h6>
+              <p><strong>Available:</strong> ${data.stock.available_stock}</p>
+              <p><strong>Reserved:</strong> ${data.stock.reserved_stock}</p>
+              <p><strong>Low Stock:</strong> ${data.stock.is_low_stock ? '<span class="text-danger">Yes</span>' : 'No'}</p>
+            </div>
+          </div>
+
+          <div class="row mt-3">
+            <div class="col-md-6">
+              <h6>Current Rates</h6>
+              <p><strong>Selling Price:</strong> ₨${data.rates.selling || 'N/A'}</p>
+              <p><strong>Cost Price:</strong> ₨${data.rates.cost || 'N/A'}</p>
+              <p><strong>Wholesale:</strong> ₨${data.rates.wholesale || 'N/A'}</p>
+            </div>
+            <div class="col-md-6">
+              <h6>Available Batches</h6>
+              <div style="max-height: 150px; overflow-y: auto;">
+        `;
+
+        if (data.batches && data.batches.length > 0) {
+          data.batches.forEach(batch => {
+            const expiryClass = batch.days_to_expiry <= 30 ? 'text-warning' : '';
+            html += `
+              <div class="border-bottom py-1">
+                <strong>${batch.batch_number}</strong> - ${batch.current_quantity} ${data.product.unit}<br>
+                <small class="${expiryClass}">
+                  Expires: ${batch.expiry_date || 'N/A'}
+                  ${batch.days_to_expiry ? `(${batch.days_to_expiry} days)` : ''}
+                </small>
+              </div>
+            `;
+          });
+        } else {
+          html += '<p class="text-muted">No batches available</p>';
+        }
+
+        html += `
+              </div>
+            </div>
+          </div>
+        `;
+
+        modalBody.innerHTML = html;
+
+        // Store selected product
+        selectedProduct = {
+          id: productId,
+          code: data.product.code,
+          name: data.product.name,
+          unit: data.product.unit,
+          selling_price: data.rates.selling,
+          available_stock: data.stock.available_stock
+        };
+      }
+
+      function selectProduct() {
+        if (!selectedProduct) return;
+
+        // Update hidden input
+        hiddenInput.value = selectedProduct.id;
+
+        // Update display input
+        input.value = `${selectedProduct.code} - ${selectedProduct.name}`;
+
+        // Update info display
+        updateProductInfo(selectedProduct);
+
+        // Hide modal
+        if (window.bootstrap && window.bootstrap.Modal) {
+          const bsModal = window.bootstrap.Modal.getInstance(modal);
+          bsModal.hide();
+        }
+
+        // Hide results
+        hideResults();
+
+        // Trigger change event
+        hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+
+        // Show clear button
+        clearBtn.style.display = 'inline-block';
+      }
+
+      function updateProductInfo(product) {
+        const nameEl = container.querySelector('#' + input.id.replace('_search', '') + '_product_name');
+        const codeEl = container.querySelector('#' + input.id.replace('_search', '') + '_product_code');
+        const priceEl = container.querySelector('#' + input.id.replace('_search', '') + '_selling_price');
+        const stockEl = container.querySelector('#' + input.id.replace('_search', '') + '_stock_info');
+
+        if (nameEl) nameEl.textContent = product.name;
+        if (codeEl) codeEl.textContent = `Code: ${product.code}`;
+        if (priceEl) priceEl.innerHTML = `₨${product.selling_price}`;
+        if (stockEl) stockEl.textContent = `Stock: ${product.available_stock} ${product.unit}`;
+
+        infoDiv.style.display = 'block';
+      }
+
+      function clearSelection() {
+        hiddenInput.value = '';
+        input.value = '';
+        infoDiv.style.display = 'none';
+        selectedProduct = null;
+        clearBtn.style.display = 'none';
+
+        hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+
+      // Event listeners
+      input.addEventListener('input', (e) => {
+        const query = e.target.value.trim();
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => searchProducts(query), 300);
+
+        if (!query) {
+          clearSelection();
+        }
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          hideResults();
+        }
+      });
+
+      clearBtn.addEventListener('click', clearSelection);
+      searchBtn.addEventListener('click', () => {
+        const query = input.value.trim();
+        if (query) {
+          searchProducts(query);
+        }
+      });
+
+      if (selectBtn) {
+        selectBtn.addEventListener('click', selectProduct);
+      }
+
+      // Hide results when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!container.contains(e.target)) {
+          hideResults();
+        }
+      });
+    });
+  }
+
+  // Initialize on DOM ready and after HTMX swaps
+  document.addEventListener('DOMContentLoaded', () => initProductSelectors());
+  document.addEventListener('htmx:afterSwap', (e) => {
+    initProductSelectors(e.detail.target || document);
+  });
+
+  // Expose for manual initialization
+  window.initProductSelectors = initProductSelectors;
+})();
+</script>

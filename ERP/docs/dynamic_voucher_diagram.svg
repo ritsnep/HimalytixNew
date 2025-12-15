@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1000" viewBox="0 0 1400 1000">
+  <style>
+    .title { font: bold 18px sans-serif; fill: #222 }
+    .subtitle { font: 14px sans-serif; fill: #444 }
+    .box { fill: #fff; stroke: #2b6cb0; stroke-width: 2; rx:8; }
+    .small-box { fill:#f7fafc; stroke:#94a3b8; stroke-width:1.5; rx:6 }
+    .text { font: 13px sans-serif; fill: #111 }
+    .muted { font: 12px sans-serif; fill: #666 }
+    .arrow { stroke: #2b6cb0; stroke-width: 2; fill: none; marker-end: url(#arrowhead);} 
+  </style>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2b6cb0" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="30" y="30" class="title">Dynamic Voucher System — Runtime Flow</text>
+  <text x="30" y="52" class="muted">Left: runtime. Right: entity model summary.</text>
+
+  <!-- Runtime Flow Panel -->
+  <g transform="translate(30,80)">
+    <rect x="0" y="0" width="740" height="400" class="small-box" />
+    <text x="12" y="22" class="subtitle">Runtime flow</text>
+
+    <!-- boxes -->
+    <rect x="20" y="50" width="160" height="36" class="box" />
+    <text x="30" y="74" class="text">User / Client UI</text>
+
+    <rect x="210" y="50" width="220" height="48" class="box" />
+    <text x="220" y="68" class="text">
+      <tspan x="220" dy="0">Load Config</tspan>
+      <tspan x="220" dy="16">VoucherModeConfig / VoucherConfiguration</tspan>
+    </text>
+
+    <rect x="460" y="50" width="220" height="48" class="box" />
+    <text x="470" y="68" class="text">
+      <tspan x="470" dy="0">Merge Schema</tspan>
+      <tspan x="470" dy="16">(default + config + version)</tspan>
+    </text>
+
+    <line x1="180" y1="68" x2="206" y2="68" class="arrow" />
+    <line x1="430" y1="68" x2="456" y2="68" class="arrow" />
+
+    <!-- choice resolution and form factory -->
+    <rect x="120" y="120" width="220" height="48" class="box" />
+    <text x="140" y="136" class="text">
+      <tspan x="140" dy="0">Resolve choices</tspan>
+      <tspan x="140" dy="16">(Currency, ChartOfAccount...)</tspan>
+    </text>
+
+    <rect x="370" y="120" width="220" height="48" class="box" />
+    <text x="390" y="136" class="text">
+      <tspan x="390" dy="0">VoucherFormFactory</tspan>
+      <tspan x="390" dy="16">→ Select Header/Line models</tspan>
+    </text>
+
+    <line x1="340" y1="68" x2="340" y2="120" class="arrow" />
+
+    <!-- build forms -->
+    <rect x="90" y="190" width="220" height="36" class="box" />
+    <text x="110" y="214" class="text">build_form(header)</text>
+
+    <rect x="360" y="190" width="220" height="36" class="box" />
+    <text x="380" y="214" class="text">build_formset(lines)</text>
+
+    <line x1="220" y1="154" x2="220" y2="190" class="arrow" />
+    <line x1="480" y1="154" x2="480" y2="190" class="arrow" />
+
+    <!-- validation and persist -->
+    <rect x="240" y="260" width="260" height="36" class="box" />
+    <text x="260" y="284" class="text">Validate (schema rules, UDFs)</text>
+
+    <rect x="520" y="260" width="180" height="36" class="box" />
+    <text x="535" y="284" class="text">Persist Header &amp; Line</text>
+
+    <line x1="200" y1="226" x2="240" y2="260" class="arrow" />
+    <line x1="460" y1="226" x2="520" y2="260" class="arrow" />
+
+    <rect x="240" y="320" width="460" height="38" class="small-box" />
+    <text x="250" y="344" class="muted">Post-processing: defaults, UDF handling, audit, posting workflow</text>
+
+  </g>
+
+  <!-- Entity / Relationship Panel -->
+  <g transform="translate(30,520)">
+    <rect x="0" y="0" width="1320" height="430" class="small-box" />
+    <text x="12" y="22" class="subtitle">Entity / relationship overview</text>
+
+    <!-- key models -->
+    <rect x="20" y="50" width="250" height="120" class="box" />
+    <text x="32" y="72" class="text">VoucherConfiguration</text>
+    <text x="32" y="92" class="muted">config_id, organization_id, code, module</text>
+    <text x="32" y="112" class="muted">ui_schema(JSON), default_header(JSON)</text>
+
+    <rect x="300" y="50" width="260" height="120" class="box" />
+    <text x="314" y="72" class="text">VoucherModeConfig</text>
+    <text x="314" y="92" class="muted">config_id, organization_id, code, journal_type</text>
+    <text x="314" y="112" class="muted">ui_schema(JSON), default_ledger(FK)</text>
+
+    <rect x="610" y="50" width="240" height="120" class="box" />
+    <text x="624" y="72" class="text">VoucherSchema</text>
+    <text x="624" y="92" class="muted">versioned schema for VoucherModeConfig</text>
+
+    <rect x="900" y="50" width="260" height="120" class="box" />
+    <text x="912" y="72" class="text">VoucherModeDefault / UDF</text>
+    <text x="912" y="92" class="muted">default mappings and UDF definitions</text>
+
+    <!-- mapping to voucher models -->
+    <rect x="20" y="200" width="240" height="86" class="box" />
+    <text x="32" y="224" class="text">Journal / JournalLine</text>
+    <text x="32" y="244" class="muted">Default / fallback for accounting</text>
+
+    <rect x="300" y="200" width="260" height="86" class="box" />
+    <text x="314" y="224" class="text">PurchaseOrderVoucher
+PurchaseOrderVoucherLine</text>
+
+    <rect x="610" y="200" width="260" height="86" class="box" />
+    <text x="624" y="224" class="text">SalesOrderVoucher
+SalesOrderVoucherLine</text>
+
+    <!-- choice models -->
+    <rect x="920" y="200" width="220" height="160" class="box" />
+    <text x="934" y="222" class="text">Choice / lookup models</text>
+    <text x="934" y="242" class="muted">Currency, ChartOfAccount, TaxCode</text>
+    <text x="934" y="262" class="muted">Department, Project, CostCenter</text>
+    <text x="934" y="282" class="muted">Item / Product, Vendor / Customer</text>
+
+    <!-- relationships arrows -->
+    <line x1="250" y1="110" x2="300" y2="110" class="arrow" />
+    <text x="270" y="100" class="muted">links/version</text>
+
+    <line x1="150" y1="200" x2="150" y2="260" class="arrow" />
+    <text x="80" y="230" class="muted">maps to</text>
+
+    <line x1="450" y1="200" x2="450" y2="260" class="arrow" />
+    <line x1="740" y1="200" x2="740" y2="260" class="arrow" />
+
+    <line x1="660" y1="140" x2="920" y2="240" class="arrow" />
+    <text x="760" y="170" class="muted">ui_schema → choices</text>
+
+    <!-- footer note -->
+    <text x="30" y="400" class="muted">Note: ui_schema fields are JSON stored on configs; they map at runtime to model fields or choice lookups (not necessarily one DB column per UI field).</text>
+  </g>
+</svg>

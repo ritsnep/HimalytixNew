@@ -1,0 +1,223 @@
+{% load static %}
+<div class="account-typeahead-container">
+  <div class="input-group">
+    <input type="text"
+           id="{{ name }}_typeahead"
+           name="{{ name }}_display"
+           class="form-control account-typeahead-input"
+           placeholder="Search accounts..."
+           value="{% if value %}{{ value.account_code }} - {{ value.account_name }}{% endif %}"
+           data-organization-id="{{ organization_id }}"
+           data-search-url="{{ search_url }}"
+           autocomplete="off"
+           {% for attr, val in attrs.items %} {{ attr }}="{{ val }}"{% endfor %}>
+
+    <input type="hidden"
+           name="{{ name }}"
+           id="{{ name }}"
+           value="{% if value %}{{ value.pk }}{% endif %}">
+
+    <button type="button"
+            class="btn btn-outline-secondary account-typeahead-clear"
+            {% if value %}style="display: inline-block;"{% else %}style="display: none;"{% endif %}>
+      <i class="fas fa-times"></i>
+    </button>
+
+    <button type="button"
+            class="btn btn-outline-primary account-typeahead-search">
+      <i class="fas fa-search"></i>
+    </button>
+  </div>
+
+  <div class="account-typeahead-results"
+       id="{{ name }}_results"
+       style="display: none; max-height: 200px; overflow-y: auto; border: 1px solid #ddd; background: white; z-index: 1000; position: absolute; width: 100%;">
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  function initAccountTypeahead(container = document) {
+    const inputs = container.querySelectorAll('.account-typeahead-input');
+    inputs.forEach(input => {
+      if (input._initialized) return;
+      input._initialized = true;
+
+      const container = input.closest('.account-typeahead-container');
+      const hiddenInput = container.querySelector('input[type="hidden"]');
+      const resultsDiv = container.querySelector('.account-typeahead-results');
+      const clearBtn = container.querySelector('.account-typeahead-clear');
+      const searchBtn = container.querySelector('.account-typeahead-search');
+
+      let searchTimeout;
+      let lastQuery = '';
+      let selectedIndex = -1;
+
+      function searchAccounts(query) {
+        if (!query || query.length < 2) {
+          hideResults();
+          return;
+        }
+
+        if (query === lastQuery) return;
+        lastQuery = query;
+
+        const orgId = input.dataset.organizationId;
+        const searchUrl = input.dataset.searchUrl;
+
+        fetch(`${searchUrl}?q=${encodeURIComponent(query)}&org=${orgId}`, {
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+          },
+          credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+          showResults(data.results || []);
+        })
+        .catch(error => {
+          console.error('Account search failed:', error);
+          hideResults();
+        });
+      }
+
+      function showResults(results) {
+        if (!results.length) {
+          hideResults();
+          return;
+        }
+
+        resultsDiv.innerHTML = results.map((result, index) =>
+          `<div class="account-result-item p-2 border-bottom"
+                data-id="${result.id}"
+                data-code="${result.code}"
+                data-name="${result.name}"
+                style="cursor: pointer; ${index === selectedIndex ? 'background-color: #f8f9fa;' : ''}">
+            <div class="fw-bold">${result.code}</div>
+            <div class="text-muted small">${result.name}</div>
+            <div class="text-end small text-primary">${result.balance}</div>
+          </div>`
+        ).join('');
+
+        resultsDiv.style.display = 'block';
+
+        // Add click handlers
+        resultsDiv.querySelectorAll('.account-result-item').forEach(item => {
+          item.addEventListener('click', () => selectAccount(item));
+        });
+      }
+
+      function hideResults() {
+        resultsDiv.style.display = 'none';
+        selectedIndex = -1;
+      }
+
+      function selectAccount(item) {
+        const id = item.dataset.id;
+        const code = item.dataset.code;
+        const name = item.dataset.name;
+
+        hiddenInput.value = id;
+        input.value = `${code} - ${name}`;
+
+        // Trigger change event for form validation
+        hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+
+        clearBtn.style.display = 'inline-block';
+        hideResults();
+      }
+
+      function clearSelection() {
+        hiddenInput.value = '';
+        input.value = '';
+        clearBtn.style.display = 'none';
+        hideResults();
+
+        hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+
+      // Event listeners
+      input.addEventListener('input', (e) => {
+        const query = e.target.value.trim();
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => searchAccounts(query), 300);
+
+        if (!query) {
+          clearSelection();
+        }
+      });
+
+      input.addEventListener('keydown', (e) => {
+        const items = resultsDiv.querySelectorAll('.account-result-item');
+
+        switch (e.key) {
+          case 'ArrowDown':
+            e.preventDefault();
+            selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+            updateSelection();
+            break;
+          case 'ArrowUp':
+            e.preventDefault();
+            selectedIndex = Math.max(selectedIndex - 1, -1);
+            updateSelection();
+            break;
+          case 'Enter':
+            e.preventDefault();
+            if (selectedIndex >= 0 && items[selectedIndex]) {
+              selectAccount(items[selectedIndex]);
+            }
+            break;
+          case 'Escape':
+            hideResults();
+            break;
+        }
+      });
+
+      function updateSelection() {
+        const items = resultsDiv.querySelectorAll('.account-result-item');
+        items.forEach((item, index) => {
+          item.style.backgroundColor = index === selectedIndex ? '#f8f9fa' : '';
+        });
+      }
+
+      input.addEventListener('blur', () => {
+        // Delay hiding to allow for clicks on results
+        setTimeout(() => {
+          if (!resultsDiv.matches(':hover')) {
+            hideResults();
+          }
+        }, 150);
+      });
+
+      clearBtn.addEventListener('click', clearSelection);
+      searchBtn.addEventListener('click', () => {
+        const query = input.value.trim();
+        if (query) {
+          searchAccounts(query);
+        }
+      });
+
+      // Hide results when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!container.contains(e.target)) {
+          hideResults();
+        }
+      });
+    });
+  }
+
+  // Initialize on DOM ready and after HTMX swaps
+  document.addEventListener('DOMContentLoaded', () => initAccountTypeahead());
+  document.addEventListener('htmx:afterSwap', (e) => {
+    initAccountTypeahead(e.detail.target || document);
+  });
+
+  // Expose for manual initialization
+  window.initAccountTypeahead = initAccountTypeahead;
+})();
+</script>

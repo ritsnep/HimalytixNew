@@ -1,0 +1,103 @@
+{% load static %}
+<div class="currency-input-container input-group">
+  <span class="input-group-text">{{ currency_symbol }}</span>
+  <input type="number"
+         name="{{ name }}"
+         id="{{ name }}"
+         class="form-control currency-input"
+         value="{{ value }}"
+         step="0.{{ '0' * (decimal_places - 1) }}1"
+         min="0"
+         data-currency-code="{{ currency_code }}"
+         data-decimal-places="{{ decimal_places }}"
+         placeholder="0.{{ '0' * decimal_places }}"
+         {% for attr, val in attrs.items %} {{ attr }}="{{ val }}"{% endfor %}>
+
+  <span class="input-group-text currency-code">{{ currency_code }}</span>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  function initCurrencyInputs(container = document) {
+    const inputs = container.querySelectorAll('.currency-input');
+    inputs.forEach(input => {
+      if (input._initialized) return;
+      input._initialized = true;
+
+      const decimalPlaces = parseInt(input.dataset.decimalPlaces) || 2;
+
+      // Format value on blur
+      input.addEventListener('blur', () => {
+        const value = parseFloat(input.value);
+        if (!isNaN(value)) {
+          input.value = value.toFixed(decimalPlaces);
+        }
+      });
+
+      // Prevent invalid characters
+      input.addEventListener('keypress', (e) => {
+        const char = String.fromCharCode(e.which);
+        const currentValue = input.value;
+        const selectionStart = input.selectionStart;
+        const selectionEnd = input.selectionEnd;
+
+        // Allow digits, decimal point, and navigation keys
+        if (!/[0-9.]/.test(char) && !['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+          e.preventDefault();
+          return;
+        }
+
+        // Prevent multiple decimal points
+        if (char === '.' && currentValue.includes('.')) {
+          e.preventDefault();
+          return;
+        }
+
+        // Prevent more decimal places than allowed
+        if (char !== '.' && currentValue.includes('.')) {
+          const decimalPart = currentValue.split('.')[1];
+          const cursorPosition = selectionStart;
+          const decimalPointIndex = currentValue.indexOf('.');
+
+          if (cursorPosition > decimalPointIndex && decimalPart && decimalPart.length >= decimalPlaces) {
+            e.preventDefault();
+            return;
+          }
+        }
+      });
+
+      // Auto-format on input
+      input.addEventListener('input', () => {
+        let value = input.value;
+
+        // Remove any non-numeric characters except decimal point
+        value = value.replace(/[^0-9.]/g, '');
+
+        // Ensure only one decimal point
+        const parts = value.split('.');
+        if (parts.length > 2) {
+          value = parts[0] + '.' + parts.slice(1).join('');
+        }
+
+        // Limit decimal places
+        if (parts.length === 2 && parts[1].length > decimalPlaces) {
+          value = parts[0] + '.' + parts[1].substring(0, decimalPlaces);
+        }
+
+        input.value = value;
+      });
+    });
+  }
+
+  // Initialize on DOM ready and after HTMX swaps
+  document.addEventListener('DOMContentLoaded', () => initCurrencyInputs());
+  document.addEventListener('htmx:afterSwap', (e) => {
+    initCurrencyInputs(e.detail.target || document);
+  });
+
+  // Expose for manual initialization
+  window.initCurrencyInputs = initCurrencyInputs;
+})();
+</script>
