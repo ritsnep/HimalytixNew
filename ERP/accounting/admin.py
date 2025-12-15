@@ -7,7 +7,7 @@ from accounting.services.ird_submission_service import IRDSubmissionService
 from accounting.tasks import process_ird_submission
 from accounting.services.landed_cost_service import LandedCostService
 
-from .models import (
+from .models import (VoucherUDFConfig,
     FiscalYear,
     AccountingPeriod,
     Department,
@@ -81,6 +81,7 @@ from .models import (
 #     list_display = ('batch_number', 'journal_type', 'period', 'status', 'created_at')
 #     search_fields = ('batch_number', 'description')
 #     list_filter = ('journal_type', 'status', 'period')
+
 
 @admin.register(FiscalYear)
 class FiscalYearAdmin(admin.ModelAdmin):
@@ -341,7 +342,26 @@ class TaxCodeAdmin(admin.ModelAdmin):
     search_fields = ('code', 'name', 'description')
     list_display = ('code', 'name', 'tax_rate', 'is_active')
     list_filter = ('is_active',)
-admin.site.register(VoucherModeConfig)
+@admin.register(VoucherModeConfig)
+class VoucherModeConfigAdmin(admin.ModelAdmin):
+    list_display = (
+        'code',
+        'name',
+        'organization',
+        'journal_type',
+        'is_default',
+        'is_active',
+    )
+    list_filter = ('organization', 'journal_type', 'is_default', 'is_active')
+    search_fields = (
+        'code',
+        'name',
+        'description',
+        'organization__name',
+        'journal_type__name',
+    )
+    autocomplete_fields = ('organization', 'journal_type')
+
 admin.site.register(VoucherModeDefault)
 admin.site.register(GeneralLedger)
 admin.site.register(BankAccount)
@@ -373,6 +393,87 @@ class JournalDebugPreferenceAdmin(admin.ModelAdmin):
     search_fields = ("organization__name",)
     autocomplete_fields = ("organization", "updated_by")
     list_select_related = ("organization", "updated_by")
+
+
+@admin.register(VoucherUDFConfig)
+class VoucherUDFConfigAdmin(admin.ModelAdmin):
+    list_display = (
+        'voucher_mode',
+        'field_name',
+        'display_name',
+        'is_required',
+        'is_active',
+        'organization',
+        'field_type',
+        'default_value',
+        'display_order',
+        'created_at',
+        'updated_at'
+    )
+    list_filter = (
+        'voucher_mode',
+        'is_required',
+        'is_active',
+        'organization',
+        'field_type',
+        'scope'
+    )
+    search_fields = (
+        'organization__name',
+        'voucher_mode__name',
+        'field_name',
+        'display_name'
+    )
+    readonly_fields = ('created_at', 'updated_at', 'created_by', 'updated_by')
+    autocomplete_fields = ('organization', 'voucher_mode')
+    fieldsets = (
+        ('Basic Information', {
+            'fields': (
+                'organization',
+                'voucher_mode',
+                'field_name',
+                'display_name',
+                'field_type',
+                'scope'
+            )
+        }),
+        ('Configuration', {
+            'fields': (
+                'is_required',
+                'is_active',
+                'default_value',
+                'display_order',
+                'help_text'
+            )
+        }),
+        ('Validation', {
+            'fields': (
+                'min_value',
+                'max_value',
+                'min_length',
+                'max_length',
+                'validation_regex',
+                'choices'
+            ),
+            'classes': ('collapse',)
+        }),
+        ('Conditional Logic', {
+            'fields': (
+                'is_conditional',
+                'condition_json'
+            ),
+            'classes': ('collapse',)
+        }),
+        ('Audit Information', {
+            'fields': (
+                ('created_at', 'created_by'),
+                ('updated_at', 'updated_by')
+            ),
+            'classes': ('collapse',)
+        }),
+    )
+    list_select_related = ('organization', 'voucher_mode')
+    ordering = ('voucher_mode', 'display_order', 'field_name')
 
 
 class VendorAddressInline(admin.TabularInline):
@@ -960,4 +1061,3 @@ class AuditLogAdmin(admin.ModelAdmin):
         
         return response
     export_as_csv.short_description = 'Export selected audit logs to CSV'
-

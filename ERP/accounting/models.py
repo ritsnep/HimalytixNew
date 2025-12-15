@@ -5616,6 +5616,199 @@ class VoucherConfiguration(models.Model):
         merged = {**default, **(self.ui_schema or {})}
         return merged
 
+TRANSACTION_MODULE_CHOICES = [
+    ('accounting', 'Accounting'),
+    ('purchasing', 'Purchasing'),
+    ('sales', 'Sales'),
+    ('inventory', 'Inventory'),
+    ('logistics', 'Logistics'),
+    ('other', 'Other'),
+]
+
+ENTRY_DATE_DEFAULT_CHOICES = [
+    ('transaction', 'Transaction Date'),
+    ('posting', 'Posting Date'),
+    ('system', 'System Date'),
+]
+
+NUMBERING_STRATEGY_CHOICES = [
+    ('sequential', 'Sequential'),
+    ('date_based', 'Date-based'),
+]
+
+TEMPLATE_STRATEGY_CHOICES = [
+    ('static', 'Static'),
+    ('fiscal_year', 'Fiscal Year'),
+    ('dynamic', 'Dynamic Rule'),
+]
+
+DEFAULT_LAYOUT_FLAGS = {
+    'allow_multiple_products': True,
+    'allow_multiple_currency': False,
+    'auto_posting': False,
+    'branch_restriction': True,
+}
+
+def _default_layout_flags():
+    return DEFAULT_LAYOUT_FLAGS.copy()
+
+
+class TransactionTypeConfig(models.Model):
+    """Master configuration for every document/voucher class."""
+
+    config_id = models.BigAutoField(primary_key=True)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.PROTECT,
+        related_name='transaction_type_configs',
+        db_column='organization_id',
+    )
+    module = models.CharField(max_length=20, choices=TRANSACTION_MODULE_CHOICES, default='accounting')
+    code = models.CharField(max_length=50)
+    name = models.CharField(max_length=200)
+    abbreviation = models.CharField(max_length=12, blank=True)
+    description = models.TextField(null=True, blank=True)
+
+    numbering_strategy = models.CharField(
+        max_length=20,
+        choices=NUMBERING_STRATEGY_CHOICES,
+        default='sequential',
+        help_text="Determines how the sequence behaves (per document, per date, etc.)",
+    )
+    prefix_strategy = models.CharField(
+        max_length=20,
+        choices=TEMPLATE_STRATEGY_CHOICES,
+        default='static',
+    )
+    suffix_strategy = models.CharField(
+        max_length=20,
+        choices=TEMPLATE_STRATEGY_CHOICES,
+        default='static',
+    )
+    prefix_template = models.CharField(max_length=32, blank=True)
+    suffix_template = models.CharField(max_length=32, blank=True)
+    start_number = models.PositiveBigIntegerField(default=1)
+    sequence_next = models.PositiveBigIntegerField(default=1)
+    zero_padding = models.PositiveSmallIntegerField(default=4)
+    last_sequence_date = models.DateField(null=True, blank=True)
+    last_restart_trigger = models.DateField(null=True, blank=True)
+
+    print_after_save = models.BooleanField(default=False)
+    auto_print = models.BooleanField(default=False)
+    use_effective_date = models.BooleanField(default=True)
+    entry_date_default = models.CharField(max_length=20, choices=ENTRY_DATE_DEFAULT_CHOICES, default='transaction')
+
+    default_ledger = models.ForeignKey(
+        'ChartOfAccount',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='transaction_type_defaults',
+    )
+    default_party_id = models.BigIntegerField(null=True, blank=True)
+
+    layout_flags = models.JSONField(default=_default_layout_flags)
+    ui_schema = models.JSONField(default=dict, blank=True)
+    header_defaults = models.JSONField(default=dict, blank=True)
+    line_defaults = models.JSONField(default=list, blank=True)
+    validation_rules = models.JSONField(default=dict, blank=True)
+
+    legacy_journal_type = models.ForeignKey(
+        'JournalType',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='legacy_transaction_types',
+    )
+    legacy_voucher_config = models.ForeignKey(
+        'VoucherModeConfig',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='legacy_transaction_types',
+    )
+
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'transaction_type_config'
+        unique_together = ('organization', 'code')
+        ordering = ['module', 'name']
+        indexes = [
+            models.Index(fields=['organization', 'code']),
+            models.Index(fields=['module', 'is_active']),
+        ]
+
+    def __str__(self):
+        return f"{self.organization.code}::{self.code}"
+
+    def resolved_layout_flags(self) -> dict:
+        flags = DEFAULT_LAYOUT_FLAGS.copy()
+        flags.update(self.layout_flags or {})
+        return flags
+
+
+class NumberPrefixRule(models.Model):
+    """Defines prefix overrides for force-sizing document numbering."""
+
+    rule_id = models.BigAutoField(primary_key=True)
+    transaction_type = models.ForeignKey(
+        TransactionTypeConfig,
+        on_delete=models.CASCADE,
+        related_name='prefix_rules',
+    )
+    prefix = models.CharField(max_length=32)
+    applicable_from = models.DateField(default=timezone.localdate)
+
+    class Meta:
+        db_table = 'number_prefix_rule'
+        ordering = ['-applicable_from']
+        unique_together = ('transaction_type', 'applicable_from')
+
+    def __str__(self):
+        return f"{self.transaction_type.code} prefix from {self.applicable_from}"
+
+
+class NumberSuffixRule(models.Model):
+    rule_id = models.BigAutoField(primary_key=True)
+    transaction_type = models.ForeignKey(
+        TransactionTypeConfig,
+        on_delete=models.CASCADE,
+        related_name='suffix_rules',
+    )
+    suffix = models.CharField(max_length=32)
+    applicable_from = models.DateField(default=timezone.localdate)
+
+    class Meta:
+        db_table = 'number_suffix_rule'
+        ordering = ['-applicable_from']
+        unique_together = ('transaction_type', 'applicable_from')
+
+    def __str__(self):
+        return f"{self.transaction_type.code} suffix from {self.applicable_from}"
+
+
+class NumberRestartRule(models.Model):
+    rule_id = models.BigAutoField(primary_key=True)
+    transaction_type = models.ForeignKey(
+        TransactionTypeConfig,
+        on_delete=models.CASCADE,
+        related_name='restart_rules',
+    )
+    restart_from = models.PositiveBigIntegerField(default=1)
+    applicable_from = models.DateField(default=timezone.localdate)
+
+    class Meta:
+        db_table = 'number_restart_rule'
+        ordering = ['-applicable_from']
+        unique_together = ('transaction_type', 'applicable_from')
+
+    def __str__(self):
+        return f"{self.transaction_type.code} restart {self.restart_from} @ {self.applicable_from}"
+
+
 
 class BaseVoucher(models.Model):
     """

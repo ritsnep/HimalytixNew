@@ -1,0 +1,13 @@
+{% load crispy_forms_tags %}
+<div class="line-item mb-3 p-3 border rounded" data-line-index="{{ index }}">
+    <div class="row g-3">
+        <div class="col-md-11">
+            {{ form|crispy }}
+        </div>
+        <div class="col-md-1 d-flex align-items-start justify-content-end">
+            <button type="button" class="btn btn-sm btn-outline-danger remove-line-btn" aria-label="Remove line">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    </div>
+</div>

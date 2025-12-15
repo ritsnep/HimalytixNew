@@ -26,14 +26,13 @@ from django.utils.translation import gettext_lazy as _
 
 from accounting.models import Journal, AccountingPeriod, JournalType, Currency
 from accounting.forms_mixin import BootstrapFormMixin
-from accounting.forms.udf_mixins import UDFFormMixin
 from utils.calendars import CalendarMode
 from utils.widgets import DualCalendarWidget
 
 logger = logging.getLogger(__name__)
 
 
-class JournalForm(UDFFormMixin, BootstrapFormMixin, forms.ModelForm):
+class JournalForm(BootstrapFormMixin, forms.ModelForm):
     """
     Form for creating/editing Journal header information.
 

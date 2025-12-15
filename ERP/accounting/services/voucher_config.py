@@ -59,7 +59,13 @@ class VoucherConfigResolver:
                 'id': field.id,
                 'name': field.name,
                 'label': override.label_override if override and override.label_override else field.default_label,
-                'tooltip': override.tooltip_override if override and override.tooltip_override else field.default_tooltip,
+                # Keep the field label/name in the tooltip until richer copy is supplied.
+                'tooltip': (
+                    override.tooltip_override if override and override.tooltip_override else
+                    field.default_tooltip or
+                    field.default_label or
+                    field.name
+                ),
                 'data_type': override.data_type_override if override and override.data_type_override else field.default_data_type,
                 'visible': override.visible if override and override.visible is not None else field.default_visible,
                 'mandatory': override.mandatory if override and override.mandatory is not None else field.default_mandatory,

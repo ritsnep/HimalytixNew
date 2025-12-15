@@ -5,18 +5,20 @@ This module provides views for creating and editing vouchers using
 the generic VoucherConfiguration system.
 """
 
+import inspect
 import logging
 from typing import Dict, Any
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db import models
 from django.http import HttpResponse
-from django.shortcuts import redirect, get_object_or_404
+from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
-from django.views.generic import View
 
 from accounting.forms.form_factory import VoucherFormFactory
+from accounting.forms_factory import build_form
 from accounting.models import VoucherConfiguration, AuditLog
 from accounting.views.base_voucher_view import BaseVoucherView
 from accounting.views.views_mixins import PermissionRequiredMixin
@@ -28,7 +30,7 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
     """
     Generic view for creating vouchers using VoucherConfiguration.
     """
-    template_name = 'accounting/generic_voucher_form.html'
+    template_name = 'accounting/generic_dynamic_voucher_entry.html'
     permission_required = ('accounting', 'voucher', 'add')
 
     def get_voucher_config(self) -> VoucherConfiguration:
@@ -48,14 +50,20 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
         organization = self.get_organization()
 
         # Create forms using generic factory
-        header_form = VoucherFormFactory.get_generic_voucher_form(
+        header_form_cls = VoucherFormFactory.get_generic_voucher_form(
             voucher_config=config,
             organization=organization
         )
 
-        line_formset = VoucherFormFactory.get_generic_voucher_formset(
+        line_formset_cls = VoucherFormFactory.get_generic_voucher_formset(
             voucher_config=config,
             organization=organization
+        )
+
+        header_form = self._instantiate_target(header_form_cls)
+        line_formset = self._instantiate_target(
+            line_formset_cls,
+            initial=config.default_lines if config.default_lines else None
         )
 
         context = self.get_context_data(
@@ -74,16 +82,24 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
         config = self.get_voucher_config()
         organization = self.get_organization()
 
-        header_form = VoucherFormFactory.get_generic_voucher_form(
+        header_form_cls = VoucherFormFactory.get_generic_voucher_form(
             voucher_config=config,
-            organization=organization,
+            organization=organization
+        )
+
+        line_formset_cls = VoucherFormFactory.get_generic_voucher_formset(
+            voucher_config=config,
+            organization=organization
+        )
+
+        header_form = self._instantiate_target(
+            header_form_cls,
             data=request.POST,
             files=request.FILES
         )
 
-        line_formset = VoucherFormFactory.get_generic_voucher_formset(
-            voucher_config=config,
-            organization=organization,
+        line_formset = self._instantiate_target(
+            line_formset_cls,
             data=request.POST,
             files=request.FILES
         )
@@ -92,21 +108,52 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
             try:
                 with transaction.atomic():
                     # Save header
-                    voucher = header_form.save()
+                    voucher = header_form.save(commit=False)
+                    # Attach organization/user fields when present
+                    target_org = organization or getattr(config, 'organization', None)
+                    if target_org is not None and hasattr(voucher, 'organization_id') and not getattr(voucher, 'organization_id', None):
+                        voucher.organization_id = getattr(target_org, 'pk', target_org)
+                    if hasattr(voucher, 'created_by') and not getattr(voucher, 'created_by_id', None):
+                        voucher.created_by = request.user
+                    if hasattr(voucher, 'updated_by'):
+                        voucher.updated_by = request.user
+                    voucher.save()
+
+                    # Determine how to attach lines to header
+                    line_model = VoucherFormFactory._get_line_model_for_voucher_config(config)
+                    header_model = type(voucher)
+                    parent_fk_name = None
+                    try:
+                        for field in line_model._meta.fields:
+                            if isinstance(field, models.ForeignKey) and field.remote_field and field.remote_field.model is header_model:
+                                parent_fk_name = field.name
+                                break
+                    except Exception:
+                        parent_fk_name = None
                     
                     # Save lines
+                    next_line_number = 1
                     for form in line_formset:
                         if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
                             line = form.save(commit=False)
-                            line.voucher = voucher  # Assuming FK to header
+
+                            if parent_fk_name:
+                                setattr(line, parent_fk_name, voucher)
+
+                            # Ensure line numbers exist for line models that require them
+                            if hasattr(line, 'line_number') and not getattr(line, 'line_number', None):
+                                setattr(line, 'line_number', next_line_number)
+                                next_line_number += 1
                             line.save()
 
                     # Log audit
+                    from django.contrib.contenttypes.models import ContentType
+                    audit_org = organization or getattr(config, 'organization', None)
                     AuditLog.objects.create(
                         user=request.user,
-                        organization=organization,
+                        organization=audit_org,
                         action='create',
-                        content_type=type(voucher),
+                        content_type=ContentType.objects.get_for_model(voucher.__class__),
                         object_id=voucher.pk,
                         changes={'created': True},
                         details=f"Created {config.name} voucher"
@@ -143,6 +190,61 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
             'voucher_type': kwargs.get('config').code,
         })
         return context
+
+    @staticmethod
+    def _instantiate_target(target, data=None, files=None, **extra):
+        """Helper that instantiates form/formset classes when needed."""
+        if inspect.isclass(target):
+            init_kwargs = {}
+            if data is not None:
+                init_kwargs['data'] = data
+            if files is not None:
+                init_kwargs['files'] = files
+            for key, value in extra.items():
+                if value is not None:
+                    init_kwargs[key] = value
+            return target(**init_kwargs)
+        return target
+
+
+class GenericVoucherLineView(PermissionRequiredMixin, BaseVoucherView):
+    """HTMX endpoint that renders an additional line item for the generic voucher form."""
+
+    permission_required = ('accounting', 'voucher', 'add')
+
+    def get(self, request, *args, **kwargs) -> HttpResponse:
+        voucher_code = request.GET.get('voucher_code')
+        if not voucher_code:
+            return HttpResponse("voucher_code parameter is required", status=400)
+
+        organization = self.get_organization()
+        config = get_object_or_404(
+            VoucherConfiguration,
+            code=voucher_code,
+            organization=organization,
+            is_active=True
+        )
+
+        index_value = request.GET.get('index', '0')
+        try:
+            line_index = max(0, int(index_value))
+        except ValueError:
+            line_index = 0
+
+        lines_schema = (config.ui_schema or {}).get('lines', {})
+        line_model = VoucherFormFactory._get_line_model_for_voucher_config(config)
+        LineFormClass = build_form(
+            lines_schema,
+            model=line_model,
+            organization=organization,
+            prefix=f"lines-{line_index}"
+        )
+
+        form = LineFormClass()
+        return render(request, 'accounting/partials/generic_dynamic_voucher_line_row.html', {
+            'form': form,
+            'index': line_index,
+        })
 
 
 class VoucherTypeSelectionView(PermissionRequiredMixin, BaseVoucherView):

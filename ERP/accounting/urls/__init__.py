@@ -11,6 +11,7 @@ from accounting.views.audit_log_views import (
 from ..views import journal_entry, journal_entry_view, voucher_views, voucher_crud_views
 from ..views import views_journal_grid as journal_grid_view
 from ..views import generic_voucher_views
+from ..views import generic_voucher_lookups
 from ..views.report_views import (
     ReportListView,
     GeneralLedgerView,
@@ -128,6 +129,12 @@ urlpatterns = [
     path('journal-entry/api/<int:pk>/', journal_entry.journal_entry_data, name='journal_entry_data'),
     path('journal-entry/lookup/accounts/', journal_entry.journal_account_lookup, name='journal_account_lookup'),
     path('journal-entry/lookup/cost-centers/', journal_entry.journal_cost_center_lookup, name='journal_cost_center_lookup'),
+    path('journal-entry/lookup/departments/', journal_entry.journal_department_lookup, name='journal_department_lookup'),
+    path('journal-entry/lookup/projects/', journal_entry.journal_project_lookup, name='journal_project_lookup'),
+    path('journal-entry/lookup/tax-codes/', journal_entry.journal_tax_code_lookup, name='journal_tax_code_lookup'),
+    path('journal-entry/lookup/vendors/', journal_entry.journal_vendor_lookup, name='journal_vendor_lookup'),
+    path('journal-entry/lookup/customers/', journal_entry.journal_customer_lookup, name='journal_customer_lookup'),
+    path('journal-entry/lookup/products/', journal_entry.journal_product_lookup, name='journal_product_lookup'),
     path('journal-entry/resolve-exchange-rate/', journal_entry.resolve_exchange_rate, name='resolve_exchange_rate'),
     path('journal-entry/auto-date/', journal_entry.voucher_entry_auto_date_hx, name='voucher_entry_auto_date_hx'),
     path('journal-entry/approval-actions/', journal_entry.voucher_entry_approval_actions_hx, name='voucher_entry_approval_actions_hx'),
@@ -244,6 +251,10 @@ urlpatterns = [
     # Generic Voucher URLs
     path('generic-voucher/select/', generic_voucher_views.VoucherTypeSelectionView.as_view(), name='generic_voucher_select'),
     path('generic-voucher/<slug:voucher_code>/create/', generic_voucher_views.GenericVoucherCreateView.as_view(), name='generic_voucher_create'),
+    path('generic-voucher/line/', generic_voucher_views.GenericVoucherLineView.as_view(), name='generic_voucher_line'),
+        path('generic-voucher/htmx/vendor-lookup/', generic_voucher_lookups.GenericVoucherVendorLookupJsonView.as_view(), name='generic_voucher_vendor_lookup_hx'),
+        path('generic-voucher/htmx/customer-lookup/', generic_voucher_lookups.GenericVoucherCustomerLookupJsonView.as_view(), name='generic_voucher_customer_lookup_hx'),
+        path('generic-voucher/htmx/product-lookup/', generic_voucher_lookups.GenericVoucherProductLookupJsonView.as_view(), name='generic_voucher_product_lookup_hx'),
     
     # Legacy Voucher Views (kept for backward compatibility)
     path('vouchers/legacy/print/<int:pk>/', voucher_views.VoucherPrintView.as_view(), name='voucher_print'),

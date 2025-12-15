@@ -36,7 +36,7 @@ const DEFAULT_JOURNAL_TYPE = __root?.dataset?.defaultJournalType || 'JN';
 const INITIAL_JOURNAL_ID_RAW = __root?.dataset?.initialJournalId || '';
 const INITIAL_JOURNAL_ID = INITIAL_JOURNAL_ID_RAW ? Number(INITIAL_JOURNAL_ID_RAW) || null : null;
 const DETAIL_URL_TEMPLATE = __root?.dataset?.detailUrlTemplate || null;
-const CALENDAR_MODE = (window.CALENDAR_MODE || 'AD').toUpperCase();
+const CALENDAR_MODE = (window.CALENDAR_MODE || 'DUAL').toUpperCase();
 const CALENDAR_INITIAL_VIEW = (window.CALENDAR_INITIAL_VIEW || CALENDAR_MODE).toUpperCase();
 const LOOKUPS = {
   account: __root?.dataset?.lookupAccount || null,

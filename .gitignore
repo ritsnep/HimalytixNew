@@ -1,7 +1,7 @@
 # Django collectstatic output
 /collected_static_files/
 .coverage
-
+collected_static_files
 /erp/logs/
 logs
 # # --- Python bytecode & build ---

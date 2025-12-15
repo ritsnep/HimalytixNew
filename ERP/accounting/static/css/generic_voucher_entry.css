@@ -1,0 +1,85 @@
+.generic-voucher-entry-page {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding-top: 72px;
+    padding-left: 2rem;
+    padding-right: 2rem;
+}
+
+.header-card .header-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem;
+}
+
+.lines-card .card-header {
+    background: transparent;
+}
+
+.lines-card .card-body {
+    background: #f8f9ff;
+    min-height: 200px;
+}
+
+.lines-card .card-footer {
+    background: #fff;
+}
+
+.generic-line-row {
+    border: 1px solid rgba(13, 110, 253, 0.1);
+    background: #fff;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.generic-line-row:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+}
+
+line-field-grid .form-control,
+line-field-grid .form-select {
+    border-radius: 0.375rem;
+}
+
+.header-actions-row {
+    margin-top: 1rem;
+}
+
+.header-card {
+    border-radius: 0.85rem;
+}
+
+.header-grid {
+    margin-top: 1.5rem;
+}
+
+.lines-card {
+    border-radius: 0.85rem;
+}
+
+.lines-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.lines-grid .generic-line-row {
+    margin-bottom: 0;
+}
+
+.action-card {
+    border-radius: 0.85rem;
+}
+
+.action-card .btn {
+    border-radius: 0.45rem;
+}
+
+@media (max-width: 991px) {
+    .generic-voucher-entry-page {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    .header-actions-row {
+        flex-direction: column;
+    }
+}

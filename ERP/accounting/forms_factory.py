@@ -38,7 +38,7 @@ class VoucherFormFactory:
         self.disabled_fields = disabled_fields or []
         self.kwargs = kwargs
 
-    def _create_field_from_schema(self, config):
+    def _create_field_from_schema(self, config, field_name=None):
         """Create a form field from a schema definition."""
         field_type = config.get('type', 'char')
         field_class = self._map_type_to_field(field_type)
@@ -68,7 +68,7 @@ class VoucherFormFactory:
         if widget_class:
             if widget_class is DualCalendarWidget:
                 default_view = get_calendar_mode(
-                    self.organization, default=CalendarMode.DEFAULT
+                    self.organization, default=CalendarMode.DUAL
                 )
                 field_kwargs['widget'] = widget_class(
                     default_view=default_view,
@@ -132,6 +132,89 @@ class VoucherFormFactory:
 
         return field_class(**field_kwargs)
 
+    def _maybe_build_fk_typeahead_fields(self, field_name, config):
+        """Return (base_field, display_field) when field is an FK we want to render as typeahead."""
+        if not self.model or not field_name:
+            return None
+
+        try:
+            model_field = self.model._meta.get_field(field_name)
+        except Exception:
+            return None
+
+        try:
+            from django.db import models as dj_models
+            if not isinstance(model_field, dj_models.ForeignKey):
+                return None
+        except Exception:
+            return None
+
+        related_model = model_field.remote_field.model
+        related_name = getattr(related_model, '__name__', '')
+        if related_name not in {
+            'ChartOfAccount',
+            'Vendor',
+            'Customer',
+            'Product',
+            'CostCenter',
+            'Department',
+            'Project',
+            'TaxCode',
+        }:
+            return None
+
+        queryset = related_model.objects.all()
+        if self.organization is not None and hasattr(related_model, 'organization'):
+            queryset = queryset.filter(organization=self.organization)
+        if hasattr(related_model, 'is_active'):
+            try:
+                queryset = queryset.filter(is_active=True)
+            except Exception:
+                pass
+
+        base_label = config.get('label')
+        required = config.get('required', True)
+
+        # Hidden base field that actually binds to the model FK
+        base_field = forms.ModelChoiceField(
+            label=base_label,
+            required=required,
+            queryset=queryset,
+            widget=forms.HiddenInput(),
+        )
+
+        # Visible display field used for typeahead
+        endpoint_map = {
+            # Use the exact COA search endpoint requested
+            'ChartOfAccount': '/accounting/journal-entry/lookup/accounts/',
+            'CostCenter': '/accounting/journal-entry/lookup/cost-centers/',
+            'Department': '/accounting/journal-entry/lookup/departments/',
+            'Project': '/accounting/journal-entry/lookup/projects/',
+            'TaxCode': '/accounting/journal-entry/lookup/tax-codes/',
+            'Vendor': '/accounting/journal-entry/lookup/vendors/',
+            'Customer': '/accounting/journal-entry/lookup/customers/',
+            'Product': '/accounting/journal-entry/lookup/products/',
+        }
+        display_attrs = {
+            'class': 'form-control generic-typeahead',
+            'autocomplete': 'off',
+            'data-endpoint': endpoint_map.get(related_name, ''),
+        }
+        placeholder = config.get('placeholder')
+        if placeholder:
+            display_attrs['placeholder'] = placeholder
+        if related_name == 'ChartOfAccount':
+            display_attrs['class'] = 'form-control account-typeahead'
+
+        display_field = forms.CharField(
+            label=base_label,
+            required=required,
+            help_text=config.get('help_text'),
+            widget=forms.TextInput(attrs=display_attrs),
+        )
+
+        return base_field, display_field
+
     def _map_type_to_field(self, field_type):
         """Map schema field type to a Django Form Field."""
         type_map = {
@@ -160,22 +243,87 @@ class VoucherFormFactory:
         """Dynamically build and return a Form class based on the configuration's ui_schema."""
         form_fields = {}
         schema = self.configuration.resolve_ui_schema() if hasattr(self.configuration, 'resolve_ui_schema') else self.schema
+
+        model_field_names = set()
+        if self.model:
+            try:
+                model_field_names = {f.name for f in self.model._meta.fields}
+            except Exception:
+                model_field_names = set()
         
+        def _ordered_schema_items(schema_dict: dict):
+            # Respect explicit ordering if provided
+            explicit = schema_dict.get('__order__') if isinstance(schema_dict, dict) else None
+            if isinstance(explicit, list) and explicit:
+                for name in explicit:
+                    if name in schema_dict and name != '__order__':
+                        yield name, schema_dict[name]
+                for name, cfg in schema_dict.items():
+                    if name not in explicit and name != '__order__':
+                        yield name, cfg
+                return
+
+            keys = [k for k in schema_dict.keys() if k != '__order__']
+
+            # Heuristic priorities to avoid jsonb reordering surprises.
+            header_priority = [
+                'journal_date', 'voucher_date', 'date',
+                'branch', 'branch_id',
+                'currency', 'currency_code',
+                'exchange_rate', 'fx_rate',
+                'reference_number', 'reference',
+                'description', 'narration',
+            ]
+            line_priority = [
+                'account', 'account_id',
+                'project',
+                'tax_code',
+                'department',
+                'cost_center',
+                'description',
+                'debit_amount', 'debit',
+                'credit_amount', 'credit',
+                'quantity',
+                'rate',
+                'amount',
+            ]
+
+            looks_like_lines = any(k in schema_dict for k in ('debit_amount', 'credit_amount', 'debit', 'credit', 'account'))
+            priority = line_priority if looks_like_lines else header_priority
+            priority_index = {name: idx for idx, name in enumerate(priority)}
+
+            keys.sort(key=lambda k: (priority_index.get(k, 10_000), k))
+            for k in keys:
+                yield k, schema_dict[k]
+
         # Handle schema as a direct dictionary of fields or with a 'fields' key
         if isinstance(schema, dict):
             if 'fields' in schema and isinstance(schema['fields'], list):
                 for field_config in schema['fields']:
                     field_name = field_config.get('name')
                     if field_name:
-                        form_fields[field_name] = self._create_field_from_schema(field_config)
-            else: # Assume schema is a direct dictionary of field_name: field_config
-                for field_name, field_config in schema.items():
-                    form_fields[field_name] = self._create_field_from_schema(field_config)
+                        fk_pair = self._maybe_build_fk_typeahead_fields(field_name, field_config)
+                        if fk_pair:
+                            base_field, display_field = fk_pair
+                            form_fields[field_name] = base_field
+                            form_fields[f"{field_name}_display"] = display_field
+                        else:
+                            form_fields[field_name] = self._create_field_from_schema(field_config, field_name=field_name)
+            else:  # Assume schema is a direct dictionary of field_name: field_config
+                for field_name, field_config in _ordered_schema_items(schema):
+                    fk_pair = self._maybe_build_fk_typeahead_fields(field_name, field_config)
+                    if fk_pair:
+                        base_field, display_field = fk_pair
+                        form_fields[field_name] = base_field
+                        form_fields[f"{field_name}_display"] = display_field
+                    else:
+                        form_fields[field_name] = self._create_field_from_schema(field_config, field_name=field_name)
 
         # Create a dynamic form class - ModelForm if model is provided, otherwise regular Form
         if self.model:
             # Create ModelForm
-            Meta = type('Meta', (), {'model': self.model, 'fields': list(form_fields.keys())})
+            meta_fields = [name for name in form_fields.keys() if name in model_field_names]
+            Meta = type('Meta', (), {'model': self.model, 'fields': meta_fields})
             form_fields['Meta'] = Meta
             BaseForm = type('DynamicModelForm', (BootstrapFormMixin, forms.ModelForm), form_fields)
         else:
@@ -191,6 +339,20 @@ class VoucherFormFactory:
                 
                 super().__init__(*args, **kwargs)
 
+                # Populate *_display fields from instance when possible
+                try:
+                    if getattr(self, 'instance', None) is not None:
+                        for name in list(self.fields.keys()):
+                            if not name.endswith('_display'):
+                                continue
+                            base_name = name[:-8]
+                            if hasattr(self.instance, base_name):
+                                val = getattr(self.instance, base_name)
+                                if val:
+                                    self.initial.setdefault(name, str(val))
+                except Exception:
+                    pass
+
                 # Disable fields if needed
                 for f_name in self.form_factory.disabled_fields:
                     if f_name in self.fields:
@@ -199,7 +361,24 @@ class VoucherFormFactory:
             def save(self, commit=True):
                 if self.form_factory.model:
                     # This is a ModelForm, save normally
-                    return super().save(commit=commit)
+                    instance = super().save(commit=commit)
+
+                    # Persist extra schema fields into udf_data if available
+                    try:
+                        if hasattr(instance, 'udf_data') and isinstance(instance.udf_data, dict):
+                            extra = {
+                                k: self.cleaned_data.get(k)
+                                for k in self.cleaned_data.keys()
+                                if k not in model_field_names and not k.endswith('_display')
+                            }
+                            if extra:
+                                instance.udf_data.update(extra)
+                                if commit:
+                                    instance.save(update_fields=['udf_data'])
+                    except Exception:
+                        pass
+
+                    return instance
                 else:
                     # This form is not a ModelForm, so we return cleaned_data
                     # The view will handle saving the model instance
@@ -282,6 +461,9 @@ def build_formset(schema, **kwargs):
     return VoucherFormFactory(schema, **kwargs).build_formset()
 
 from django.utils.functional import LazyObject
+
+# Backward-compatible alias
+FormBuilder = VoucherFormFactory
 
 class LazyVoucherForms(LazyObject):
     def _setup(self):

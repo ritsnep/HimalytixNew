@@ -1,0 +1,202 @@
+{% extends "partials/base.html" %}
+{% load static widget_tweaks %}
+{% load generic_voucher_tags %}
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'accounting/css/generic_voucher_entry.css' %}">
+{{ header_form.media }}
+{{ line_formset.media }}
+{% endblock %}
+
+{% block content %}
+<div class="generic-voucher-entry-page">
+    <form id="voucher-form" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div class="row g-4 header-actions-row">
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm header-card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                            <div>
+                                <p class="text-muted small mb-1">Dynamic Voucher • {{ config.code }}</p>
+                                <h2 class="mb-1">{{ config.name }}</h2>
+                                <p class="text-muted small mb-0">This view renders a configuration-driven voucher entry experience.</p>
+                            </div>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <a href="{% url 'accounting:generic_voucher_select' %}" class="btn btn-outline-secondary btn-sm">Change Type</a>
+                                <button type="submit" class="btn btn-primary btn-sm">Save {{ config.name }}</button>
+                            </div>
+                        </div>
+                        <div class="row g-3 header-grid mt-3">
+                            {% for field in header_form.visible_fields %}
+                                <div class="col-12 col-md-6 col-lg-4">
+                                    <label class="form-label fw-semibold mb-1">
+                                        {{ field.label }}
+                                        {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+                                    </label>
+                                    {% with widget_name=field|widget_type %}
+                                        {% if widget_name == "CheckboxInput" %}
+                                            <div class="form-check">
+                                                {{ field|add_class:"form-check-input" }}
+                                                <label class="form-check-label">{{ field.label }}</label>
+                                            </div>
+                                        {% elif widget_name == "DualCalendarWidget" %}
+                                            <div class="dual-calendar-wrapper">
+                                                {{ field }}
+                                            </div>
+                                        {% else %}
+                                            {{ field|add_class:"form-control" }}
+                                        {% endif %}
+                                    {% endwith %}
+                                    {% if field.help_text %}
+                                        <small class="text-muted">{{ field.help_text }}</small>
+                                    {% endif %}
+                                    {% if field.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ field.errors|join:", " }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {% for hidden in header_form.hidden_fields %}
+                            {{ hidden }}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm action-card h-100">
+                    <div class="card-body d-flex flex-column gap-2">
+                        <div>
+                            <h6 class="text-uppercase text-muted mb-1">Line Actions</h6>
+                            <div class="d-grid gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-info" data-line-action="duplicate-last">
+                                    <i class="fas fa-copy me-1"></i>Duplicate Last Line
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-success" data-line-action="auto-balance">
+                                    <i class="fas fa-balance-scale me-1"></i>Auto Balance
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-warning" data-line-action="sort">
+                                    <i class="fas fa-sort-alpha-down me-1"></i>Sort by Account
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <h6 class="text-uppercase text-muted mb-1">Quick Inputs</h6>
+                            <div class="d-grid gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-line-action="add-line">
+                                    <i class="fas fa-plus me-1"></i>Add Line
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-line-action="add-ten">
+                                    <i class="fas fa-plus-circle me-1"></i>+10
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" data-line-action="clear-lines">
+                                    <i class="fas fa-trash-alt me-1"></i>Clear
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <h6 class="text-uppercase text-muted mb-1">Imports / Exports</h6>
+                            <div class="d-grid gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-dark" data-line-action="import">
+                                    <i class="fas fa-upload me-1"></i>Import CSV
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-dark" data-line-action="export">
+                                    <i class="fas fa-download me-1"></i>Export CSV
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm lines-card mt-4">
+            <div class="card-header bg-white border-0 pb-0">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <h5 class="mb-0">Journal Lines</h5>
+                        <div class="text-muted small" id="lines-count">Showing {{ line_formset.total_form_count }} line{{ line_formset.total_form_count|pluralize }}</div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="add-row" data-line-action="add-line">
+                            <i class="fas fa-plus me-1"></i>Add Row
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-line-action="add-ten">+10 Rows</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-line-action="clear-lines">Clear Rows</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body pt-3">
+                {{ line_formset.management_form }}
+                <div class="lines-table-wrapper" id="lines-table-wrapper">
+                    <table class="table table-sm table-bordered align-middle mb-0 generic-lines-table" id="generic-lines-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="text-center sticky-col line-number-header" scope="col">#</th>
+                                {% if line_formset.forms %}
+                                    {% for field in line_formset.forms.0.visible_fields %}
+                                        <th scope="col" class="generic-col-header" data-col-key="{{ field.name|escape }}">
+                                            <div class="d-flex align-items-center justify-content-between gap-2">
+                                                <span class="text-truncate">{{ field.label }}</span>
+                                                <span class="col-resizer" title="Resize"></span>
+                                            </div>
+                                        </th>
+                                    {% endfor %}
+                                {% endif %}
+                                <th class="text-center action-col" scope="col">&nbsp;</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lines-container" class="lines-grid-body" data-line-endpoint="{% url 'accounting:generic_voucher_line' %}" data-voucher-code="{{ config.code|escapejs }}">
+                            {% if line_formset.forms %}
+                                {% for form in line_formset %}
+                                    {% include "accounting/partials/generic_dynamic_voucher_line_row.html" with form=form index=forloop.counter0 %}
+                                {% endfor %}
+                            {% endif %}
+                            <tr id="no-lines-placeholder"{% if line_formset.forms %} class="d-none"{% endif %}>
+                                <td colspan="999" class="text-center text-muted py-5">
+                                    <i class="fas fa-plus-circle fa-2x mb-2"></i>
+                                    <div class="mb-1">No lines yet</div>
+                                    <div class="small">Use “Add Row” to begin entering journal items.</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer bg-white border-top">
+                <div class="row text-center gy-3">
+                    <div class="col-sm-4">
+                        <div class="small text-uppercase text-muted">Total Lines</div>
+                        <div class="h5 mb-0" id="summary-total-lines">{{ line_formset.total_form_count }}</div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="small text-uppercase text-muted">Completed</div>
+                        <div class="h5 mb-0" id="summary-completed-lines">0</div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="small text-uppercase text-muted">Incomplete</div>
+                        <div class="h5 mb-0" id="summary-incomplete-lines">{{ line_formset.total_form_count }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <a href="{% url 'accounting:generic_voucher_select' %}" class="btn btn-outline-secondary">Cancel</a>
+            <button type="submit" class="btn btn-success">
+                <i class="fas fa-check me-1"></i>Save {{ config.name }}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+<script src="{% static 'accounting/js/generic_voucher_entry.js' %}"></script>
+<script src="{% static 'accounting/js/voucher_typeahead.js' %}"></script>
+{% endblock %}

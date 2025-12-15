@@ -1,12 +1,14 @@
 """
-Base form mixin to apply Dason/Bootstrap widget classes.
+Base form mixin to apply Dason/Bootstrap widget classes and enrich forms with UDF/Pristine wiring.
 """
 from django import forms
 
+from accounting.udf_mixins import UDFFormMixin
 from accounting.models import Currency
 from utils.widgets import dual_date_widget, set_default_date_initial
 
-class BootstrapFormMixin(forms.Form):
+
+class BootstrapFormMixin(UDFFormMixin):
     def __init__(self, *args, **kwargs):
         organization = kwargs.pop('organization', None)
         kwargs.pop('voucher_mode', None)
@@ -29,6 +31,7 @@ class BootstrapFormMixin(forms.Form):
         # widgets and other initialization have been applied. This centralizes
         # default-currency selection across forms and reduces duplication.
         self._apply_currency_defaults()
+        self._apply_pristine_validation()
 
     def _apply_currency_defaults(self):
         """Set currency fields to the organization's base currency where
@@ -152,3 +155,46 @@ class BootstrapFormMixin(forms.Form):
                 classes = [cls for cls in classes if cls != 'is-invalid']
                 widget.attrs.pop('aria-invalid', None)
             widget.attrs['class'] = ' '.join(classes).strip()
+
+    def _apply_pristine_validation(self):
+        """Ensure Pristine.js validation attributes are defined consistently."""
+        for name, field in self.fields.items():
+            widget = field.widget
+            if getattr(widget, 'is_hidden', False):
+                continue
+            attrs = widget.attrs
+            label = self._friendly_field_label(name, field)
+
+            def _set_attr(key, message):
+                if message and key not in attrs:
+                    attrs[key] = message
+
+            if getattr(field, 'required', False):
+                _set_attr('data-pristine-required-message', f"{label} is required.")
+            if isinstance(field, forms.CharField):
+                min_length = getattr(field, 'min_length', None)
+                if min_length is not None and min_length > 0:
+                    _set_attr('data-pristine-minlength-message', f"{label} must be at least {min_length} characters.")
+                max_length = getattr(field, 'max_length', None)
+                if max_length is not None:
+                    _set_attr('data-pristine-maxlength-message', f"{label} cannot exceed {max_length} characters.")
+            if isinstance(field, (forms.DecimalField, forms.FloatField, forms.IntegerField)):
+                _set_attr('data-pristine-number-message', f"{label} must be a valid number.")
+                min_value = getattr(field, 'min_value', None)
+                if min_value is not None:
+                    _set_attr('data-pristine-min-message', f"{label} must be at least {min_value}.")
+                max_value = getattr(field, 'max_value', None)
+                if max_value is not None:
+                    _set_attr('data-pristine-max-message', f"{label} must be no more than {max_value}.")
+            if isinstance(field, forms.DateField):
+                _set_attr('data-pristine-date-message', f"{label} must be a valid date.")
+            if isinstance(field, forms.DateTimeField):
+                _set_attr('data-pristine-date-message', f"{label} must include a valid date and time.")
+            if isinstance(field, forms.EmailField):
+                _set_attr('data-pristine-email-message', f"Please enter a valid {label}.")
+
+    @staticmethod
+    def _friendly_field_label(name, field):
+        if field.label:
+            return str(field.label)
+        return name.replace('_', ' ').strip().capitalize()

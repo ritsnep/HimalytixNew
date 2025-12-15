@@ -1,0 +1,135 @@
+.generic-voucher-entry-page {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding-top: 72px;
+    padding-left: 2rem;
+    padding-right: 2rem;
+}
+
+.header-card .header-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem;
+}
+
+.lines-card .card-body {
+    min-height: 200px;
+}
+
+.lines-card .card-footer {
+    background: #fff;
+}
+
+/* Excel-like lines grid */
+.lines-table-wrapper {
+    max-height: 460px;
+    overflow: auto;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 0.75rem;
+    background: #fff;
+}
+
+.generic-lines-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.generic-lines-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--bs-light);
+}
+
+.generic-lines-table .sticky-col {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background: inherit;
+}
+
+.generic-lines-table .line-number-header,
+.generic-lines-table .line-number-cell {
+    width: 48px;
+    min-width: 48px;
+    max-width: 48px;
+}
+
+.generic-lines-table .action-col {
+    width: 56px;
+    min-width: 56px;
+    max-width: 56px;
+}
+
+.generic-lines-table td {
+    padding: 0.35rem;
+    vertical-align: middle;
+}
+
+.generic-lines-table tbody tr:hover {
+    background: rgba(13, 110, 253, 0.03);
+}
+
+.generic-lines-table .grid-cell {
+    width: 100%;
+}
+
+.generic-lines-table .grid-cell:focus {
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.generic-col-header {
+    white-space: nowrap;
+}
+
+.generic-col-header .col-resizer {
+    display: inline-block;
+    width: 8px;
+    height: 18px;
+    cursor: col-resize;
+    border-radius: 4px;
+}
+
+.generic-col-header .col-resizer:hover {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+body.gv-resizing {
+    cursor: col-resize;
+    user-select: none;
+}
+
+.header-actions-row {
+    margin-top: 1rem;
+}
+
+.header-card {
+    border-radius: 0.85rem;
+}
+
+.header-grid {
+    margin-top: 1.5rem;
+}
+
+.lines-card {
+    border-radius: 0.85rem;
+}
+
+.action-card {
+    border-radius: 0.85rem;
+}
+
+.action-card .btn {
+    border-radius: 0.45rem;
+}
+
+@media (max-width: 991px) {
+    .generic-voucher-entry-page {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    .header-actions-row {
+        flex-direction: column;
+    }
+}

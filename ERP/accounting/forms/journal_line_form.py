@@ -31,12 +31,11 @@ from django.utils.translation import gettext_lazy as _
 from accounting.models import Journal, JournalLine, ChartOfAccount, Currency, Department
 from accounting.models import Project, CostCenter, TaxCode
 from accounting.forms_mixin import BootstrapFormMixin
-from accounting.forms.udf_mixins import UDFFormMixin
 
 logger = logging.getLogger(__name__)
 
 
-class JournalLineForm(UDFFormMixin, BootstrapFormMixin, forms.ModelForm):
+class JournalLineForm(BootstrapFormMixin, forms.ModelForm):
     """
     Form for creating/editing individual journal line items.
 

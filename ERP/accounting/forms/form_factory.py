@@ -15,7 +15,8 @@ from django import forms
 from django.db import models
 from django.forms import ModelForm, BaseFormSet
 
-from accounting.models import Journal, JournalLine
+from usermanagement.models import Organization
+from accounting.models import Journal, JournalLine,VoucherConfiguration
 from accounting.forms.journal_form import JournalForm
 from accounting.forms.journal_line_form import JournalLineForm, JournalLineFormSet
 
@@ -202,13 +203,19 @@ class VoucherFormFactory:
         model_class = VoucherFormFactory._get_model_for_voucher_config(voucher_config)
 
         # Build the form using the schema
+        prefix = kwargs.pop('prefix', 'header')
         form_kwargs = {
             'organization': organization,
-            'instance': instance,
-            'data': data,
-            'files': files,
+            'prefix': prefix,
             **kwargs
         }
+        
+        if instance:
+            form_kwargs['instance'] = instance
+        if data is not None:
+            form_kwargs['data'] = data
+        if files is not None:
+            form_kwargs['files'] = files
 
         # Use build_form to create the ModelForm
         form = build_form(voucher_config.ui_schema.get('header', []), model=model_class, **form_kwargs)
@@ -247,15 +254,19 @@ class VoucherFormFactory:
         lines_schema = voucher_config.ui_schema.get('lines', [])
 
         # Build formset kwargs
+        prefix = kwargs.pop('prefix', 'lines')
         formset_kwargs = {
             'organization': organization,
-            'data': data,
-            'files': files,
+            'prefix': prefix,
             **kwargs
         }
 
-        if not instance and voucher_config.default_lines:
-            formset_kwargs['initial'] = voucher_config.default_lines
+        if data is not None:
+            formset_kwargs['data'] = data
+        if files is not None:
+            formset_kwargs['files'] = files
+        if not instance and voucher_config.default_lines and data is None:
+            formset_kwargs.setdefault('initial', voucher_config.default_lines)
 
         # Build the formset
         FormSetClass = build_formset(lines_schema, model=line_model_class, **formset_kwargs)

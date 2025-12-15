@@ -1,14 +1,33 @@
 (function(){
   'use strict';
 
+  function displayText(r){
+    if (!r) return '';
+    const text = r.text || r.display;
+    if (text) return String(text);
+    const code = (r.code || '').toString();
+    const name = (r.name || '').toString();
+    const joined = `${code}${code && name ? ' - ' : ''}${name}`.trim();
+    return joined || name || code;
+  }
+
   function initTypeaheads(container=document){
-    const inputs = container.querySelectorAll('.account-typeahead');
+    const inputs = container.querySelectorAll('.account-typeahead, .generic-typeahead');
     inputs.forEach(input => {
       if (input._initialized) return;
       input._initialized = true;
-      const listId = input.dataset.listId;
-      const hiddenName = input.dataset.hiddenName;
-      const datalist = document.getElementById(listId);
+      const endpoint = input.dataset.endpoint || '/accounting/vouchers/htmx/account-lookup/';
+
+      const listId = input.dataset.listId || input.getAttribute('list') || (input.id ? `${input.id}__list` : `typeahead-${Math.random().toString(36).slice(2)}`);
+      let datalist = document.getElementById(listId);
+      if (!datalist) {
+        datalist = document.createElement('datalist');
+        datalist.id = listId;
+        document.body.appendChild(datalist);
+      }
+      input.setAttribute('list', listId);
+
+      const hiddenName = input.dataset.hiddenName || input.name.replace(/_display$/, '');
       let lastQuery = '';
       let lastResults = [];
 
@@ -20,24 +39,24 @@
         }
         if (q === lastQuery) return;
         lastQuery = q;
-        fetch(`/accounting/vouchers/htmx/account-lookup/?q=${encodeURIComponent(q)}&limit=10`, {credentials: 'same-origin'})
+        fetch(`${endpoint}?q=${encodeURIComponent(q)}&limit=10`, {credentials: 'same-origin'})
           .then(r => r.json())
           .then(data => {
-            lastResults = data.results || [];
+            lastResults = (data && data.results) ? data.results : [];
             datalist.innerHTML = '';
             lastResults.forEach(r => {
               const opt = document.createElement('option');
-              opt.value = r.code + ' - ' + r.name;
+              opt.value = displayText(r);
               datalist.appendChild(opt);
             });
-          }).catch(err => console.warn('Account lookup failed', err));
+          }).catch(err => console.warn('Typeahead lookup failed', err));
       });
 
       input.addEventListener('change', (e) => {
         const chosen = e.target.value;
         const hidden = input.form ? input.form.querySelector(`[name="${hiddenName}"]`) : document.querySelector(`input[name="${hiddenName}"]`);
         if (!hidden) return;
-        const found = lastResults.find(r => (r.code + ' - ' + r.name) === chosen);
+        const found = lastResults.find(r => displayText(r) === chosen);
         if (found) {
           hidden.value = found.id;
           hidden.dispatchEvent(new Event('change', { bubbles: true }));

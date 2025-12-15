@@ -9,6 +9,7 @@ import hashlib
 import json
 from typing import Optional, Dict, List, Any, Tuple, Union, Callable
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 from django.core.cache import cache
 from django.db.models.signals import post_save, post_delete

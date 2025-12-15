@@ -69,7 +69,7 @@ def set_default_date_initial(form: forms.BaseForm, name: str, field: forms.Field
 
 def dual_date_widget(attrs=None, organization=None, default_view=None):
     """Factory for a DualCalendarWidget with org-aware default view."""
-    view = get_calendar_mode(organization, default=default_view or CalendarMode.DEFAULT)
+    view = get_calendar_mode(organization, default=default_view or CalendarMode.DUAL)
     return DualCalendarWidget(default_view=view, attrs=attrs or {})
 
 

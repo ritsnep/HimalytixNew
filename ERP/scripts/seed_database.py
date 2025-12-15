@@ -41,6 +41,7 @@ if not django.conf.settings.configured:
 from django.db import transaction
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.utils.text import slugify
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
@@ -317,6 +318,16 @@ ROLES = [
 ]
 
 
+def resolve_currency_code(value):
+    """Return a currency code when the field might reference a string or object."""
+
+    if not value:
+        return 'NPR'
+    if hasattr(value, 'currency_code'):
+        return value.currency_code
+    return str(value)
+
+
 # =============================================================================
 # SEED FUNCTIONS
 # =============================================================================
@@ -415,26 +426,29 @@ def seed_tenancy(superuser):
     return tenant
 
 
-def seed_organization(superuser, tenant):
-    """Create the default organization with address and contact."""
+def seed_organization(superuser, tenant, base_currency=None):
+    """Create the default organization with address, contact, and base currency."""
     from usermanagement.models import Organization, OrganizationAddress, OrganizationContact, UserOrganization
     
+    defaults = {
+        'name': 'Nepali Accounting System',
+        'tenant': tenant,
+        'type': 'company',
+        'legal_name': 'Nepali Accounting System Pvt. Ltd.',
+        'tax_id': 'NP-123456',
+        'registration_number': 'REG-2024-001',
+        'industry_code': 'ACCT',
+        'fiscal_year_start_month': 4,  # Baisakh
+        'fiscal_year_start_day': 1,
+        'status': 'active',
+        'is_active': True,
+    }
+    if base_currency:
+        defaults['base_currency_code'] = base_currency
+
     org, created = Organization.objects.get_or_create(
         code='NEPAL-001',
-        defaults={
-            'name': 'Nepali Accounting System',
-            'tenant': tenant,
-            'type': 'company',
-            'legal_name': 'Nepali Accounting System Pvt. Ltd.',
-            'tax_id': 'NP-123456',
-            'registration_number': 'REG-2024-001',
-            'industry_code': 'ACCT',
-            'fiscal_year_start_month': 4,  # Baisakh
-            'fiscal_year_start_day': 1,
-            'base_currency_code': 'NPR',
-            'status': 'active',
-            'is_active': True,
-        }
+        defaults=defaults,
     )
     if created:
         logger.info(f"Created organization: {org.name}")
@@ -490,6 +504,7 @@ def seed_currencies(superuser):
     """Seed currency data."""
     from accounting.models import Currency
     
+    currency_map = {}
     for curr in CURRENCIES:
         currency, created = Currency.objects.get_or_create(
             currency_code=curr['code'],
@@ -502,6 +517,9 @@ def seed_currencies(superuser):
         )
         if created:
             logger.info(f"Created currency: {curr['code']}")
+        currency_map[curr['code']] = currency
+
+    return currency_map
 
 
 def seed_exchange_rates(org, superuser):
@@ -809,7 +827,7 @@ def seed_payment_terms(org, superuser):
             logger.info(f"Created payment term: {pt.name}")
 
 
-def seed_voucher_mode_config(org, superuser, journal_type):
+def seed_voucher_mode_config(org, superuser, journal_type, currency_code='NPR'):
     """Seed default voucher mode config."""
     from accounting.models import VoucherModeConfig
     
@@ -840,13 +858,460 @@ def seed_voucher_mode_config(org, superuser, journal_type):
             'show_dimensions': True,
             'allow_multiple_currencies': True,
             'require_line_description': True,
-            'default_currency': 'NPR',
+            'default_currency': currency_code,
             'ui_schema': default_ui_schema,
             'created_by': superuser,
         }
     )
     if created:
         logger.info("Created voucher mode config: Standard Voucher")
+
+
+def _build_party_schema(party_key, party_label, extra_header=None):
+    header = {
+        "transaction_date": {"type": "date", "label": "Date", "required": True},
+        "reference_number": {"type": "char", "label": "Reference", "required": False},
+        party_key: {"type": "char", "label": party_label, "required": True},
+        "currency": {"type": "char", "label": "Currency", "required": True},
+        "description": {"type": "char", "label": "Description", "required": False},
+    }
+    if extra_header:
+        header.update(extra_header)
+
+    lines = {
+        "item": {"type": "char", "label": "Item/Service", "required": False},
+        "description": {"type": "char", "label": "Line Description", "required": False},
+        "quantity": {"type": "decimal", "label": "Quantity", "required": False},
+        "unit_price": {"type": "decimal", "label": "Unit Price", "required": False},
+        "amount": {"type": "decimal", "label": "Amount", "required": False},
+        "account": {"type": "account", "label": "Account", "required": True},
+        "tax_code": {"type": "select", "label": "Tax Code", "required": False},
+    }
+    return {"header": header, "lines": lines}
+
+
+def get_transaction_voucher_blueprints():
+    """Return the shared blueprint list for transaction-driven voucher configs."""
+
+    ledger_schema = {
+        "header": {
+            "journal_date": {"type": "date", "label": "Posting Date", "required": True},
+            "reference": {"type": "char", "label": "Reference", "required": False},
+            "description": {"type": "char", "label": "Description", "required": False},
+            "currency": {"type": "char", "label": "Currency", "required": True},
+        },
+        "lines": {
+            "account": {"type": "account", "label": "Account", "required": True},
+            "description": {"type": "char", "label": "Line Description", "required": False},
+            "debit_amount": {"type": "decimal", "label": "Debit", "required": False},
+            "credit_amount": {"type": "decimal", "label": "Credit", "required": False},
+            "cost_center": {"type": "char", "label": "Cost Center", "required": False},
+        },
+    }
+
+    purchase_schema = _build_party_schema("vendor_name", "Vendor")
+    goods_receipt_schema = _build_party_schema(
+        "vendor_name",
+        "Vendor",
+        extra_header={
+            "receipt_number": {"type": "char", "label": "Receipt #", "required": False},
+            "warehouse_code": {"type": "char", "label": "Warehouse", "required": False},
+        },
+    )
+    landed_cost_schema = _build_party_schema(
+        "vendor_name",
+        "Vendor",
+        extra_header={
+            "cost_sheet_number": {"type": "char", "label": "Cost Sheet #", "required": False},
+        },
+    )
+    landed_cost_schema["lines"]["cost_component"] = {"type": "char", "label": "Cost Component", "required": False}
+
+    sales_item_schema = _build_party_schema(
+        "customer_name",
+        "Customer",
+        extra_header={"due_date": {"type": "date", "label": "Due Date", "required": False}},
+    )
+    sales_delivery_schema = _build_party_schema(
+        "customer_name",
+        "Customer",
+        extra_header={
+            "delivery_date": {"type": "date", "label": "Delivery Date", "required": False},
+            "delivery_note": {"type": "char", "label": "Delivery Note #", "required": False},
+        },
+    )
+
+    return [
+        {
+            "config_code": "VM-JE",
+            "transaction_code": "TT-JE",
+            "name": "Journal Entry",
+            "journal_type_code": "JE",
+            "journal_type_name": "Journal Entry",
+            "module": "accounting",
+            "description": "Ledger journal entries for core accounting operations.",
+            "ui_schema": ledger_schema,
+            "layout_flags": {"allow_multiple_products": False},
+            "prefix_template": "JE-",
+            "numbering": {"start_number": 1000, "zero_padding": 5},
+            "is_default": True,
+        },
+        {
+            "config_code": "VM-PO",
+            "transaction_code": "TT-PO",
+            "name": "Purchase Order",
+            "journal_type_code": "PO",
+            "journal_type_name": "Purchase Order",
+            "module": "purchasing",
+            "description": "Purchase order to request goods or services.",
+            "ui_schema": purchase_schema,
+            "layout_flags": {"allow_multiple_products": True},
+            "prefix_template": "PO-",
+            "numbering": {"start_number": 5000},
+        },
+        {
+            "config_code": "VM-GR",
+            "transaction_code": "TT-GR",
+            "name": "Goods Receipt",
+            "journal_type_code": "GR",
+            "journal_type_name": "Goods Receipt",
+            "module": "inventory",
+            "description": "Receipt of goods from vendors.",
+            "ui_schema": goods_receipt_schema,
+            "layout_flags": {"allow_multiple_products": True},
+            "prefix_template": "GR-",
+            "numbering": {"start_number": 6000},
+        },
+        {
+            "config_code": "VM-PI",
+            "transaction_code": "TT-PI",
+            "name": "Purchase Invoice",
+            "journal_type_code": "PI",
+            "journal_type_name": "Purchase Invoice",
+            "module": "purchasing",
+            "description": "Invoice issued by vendors.",
+            "ui_schema": purchase_schema,
+            "layout_flags": {"allow_multiple_products": True},
+            "prefix_template": "PI-",
+            "numbering": {"start_number": 2000},
+        },
+        {
+            "config_code": "VM-PR",
+            "transaction_code": "TT-PR",
+            "name": "Purchase Return",
+            "journal_type_code": "PR",
+            "journal_type_name": "Purchase Return",
+            "module": "purchasing",
+            "description": "Return goods to vendors.",
+            "ui_schema": purchase_schema,
+            "layout_flags": {"allow_multiple_products": True},
+            "prefix_template": "PR-",
+            "numbering": {"start_number": 2100},
+        },
+        {
+            "config_code": "VM-PDN",
+            "transaction_code": "TT-PDN",
+            "name": "Purchase Debit Note",
+            "journal_type_code": "PDN",
+            "journal_type_name": "Purchase Debit Note",
+            "module": "purchasing",
+            "description": "Debit notes sent to vendors.",
+            "ui_schema": purchase_schema,
+            "layout_flags": {"allow_multiple_products": True},
+            "prefix_template": "PDN-",
+            "numbering": {"start_number": 2200},
+        },
+        {
+            "config_code": "VM-PCN",
+            "transaction_code": "TT-PCN",
+            "name": "Purchase Credit Note",
+            "journal_type_code": "PCN",
+            "journal_type_name": "Purchase Credit Note",
+            "module": "purchasing",
+            "description": "Credit notes from vendors.",
+            "ui_schema": purchase_schema,
+            "layout_flags": {"allow_multiple_products": True},
+            "prefix_template": "PCN-",
+            "numbering": {"start_number": 2300},
+        },
+        {
+            "config_code": "VM-LC",
+            "transaction_code": "TT-LC",
+            "name": "Landed Cost",
+            "journal_type_code": "LC",
+            "journal_type_name": "Landed Cost",
+            "module": "inventory",
+            "description": "Landed cost adjustments for received goods.",
+            "ui_schema": landed_cost_schema,
+            "layout_flags": {"allow_multiple_products": True},
+            "prefix_template": "LC-",
+            "numbering": {"start_number": 2400},
+        },
+        {
+            "config_code": "VM-SQ",
+            "transaction_code": "TT-SQ",
+            "name": "Sales Quote",
+            "journal_type_code": "SQ",
+            "journal_type_name": "Sales Quote",
+            "module": "sales",
+            "description": "Sales quotation.",
+            "ui_schema": sales_item_schema,
+            "layout_flags": {"allow_multiple_products": True},
+            "prefix_template": "SQ-",
+            "numbering": {"start_number": 3000},
+        },
+        {
+            "config_code": "VM-SO",
+            "transaction_code": "TT-SO",
+            "name": "Sales Order",
+            "journal_type_code": "SO",
+            "journal_type_name": "Sales Order",
+            "module": "sales",
+            "description": "Sales order for goods/services.",
+            "ui_schema": sales_item_schema,
+            "layout_flags": {"allow_multiple_products": True},
+            "prefix_template": "SO-",
+            "numbering": {"start_number": 3100},
+        },
+        {
+            "config_code": "VM-SD",
+            "transaction_code": "TT-SD",
+            "name": "Sales Delivery",
+            "journal_type_code": "SD",
+            "journal_type_name": "Sales Delivery",
+            "module": "sales",
+            "description": "Delivery note for shipped goods.",
+            "ui_schema": sales_delivery_schema,
+            "layout_flags": {"allow_multiple_products": True},
+            "prefix_template": "SD-",
+            "numbering": {"start_number": 3200},
+        },
+        {
+            "config_code": "VM-SI",
+            "transaction_code": "TT-SI",
+            "name": "Sales Invoice",
+            "journal_type_code": "SI",
+            "journal_type_name": "Sales Invoice",
+            "module": "sales",
+            "description": "Invoice issued to customers.",
+            "ui_schema": sales_item_schema,
+            "layout_flags": {"allow_multiple_products": True},
+            "prefix_template": "SI-",
+            "numbering": {"start_number": 3300},
+        },
+        {
+            "config_code": "VM-SR",
+            "transaction_code": "TT-SR",
+            "name": "Sales Return",
+            "journal_type_code": "SR",
+            "journal_type_name": "Sales Return",
+            "module": "sales",
+            "description": "Return of goods from customers.",
+            "ui_schema": sales_item_schema,
+            "layout_flags": {"allow_multiple_products": True},
+            "prefix_template": "SR-",
+            "numbering": {"start_number": 3400},
+        },
+        {
+            "config_code": "VM-SDN",
+            "transaction_code": "TT-SDN",
+            "name": "Sales Debit Note",
+            "journal_type_code": "SDN",
+            "journal_type_name": "Sales Debit Note",
+            "module": "sales",
+            "description": "Debit note to customer.",
+            "ui_schema": sales_item_schema,
+            "layout_flags": {"allow_multiple_products": True},
+            "prefix_template": "SDN-",
+            "numbering": {"start_number": 3500},
+        },
+        {
+            "config_code": "VM-SCN",
+            "transaction_code": "TT-SCN",
+            "name": "Sales Credit Note",
+            "journal_type_code": "SCN",
+            "journal_type_name": "Sales Credit Note",
+            "module": "sales",
+            "description": "Credit note to customer.",
+            "ui_schema": sales_item_schema,
+            "layout_flags": {"allow_multiple_products": True},
+            "prefix_template": "SCN-",
+            "numbering": {"start_number": 3600},
+        },
+    ]
+
+
+def seed_transaction_type_configs(org, superuser, currency_code):
+    """Seed the unified transaction type definitions plus numbering defaults."""
+    from django.utils import timezone
+    from accounting.models import (
+        JournalType,
+        NumberRestartRule,
+        TransactionTypeConfig,
+        VoucherModeConfig,
+    )
+
+    today = timezone.localdate()
+    blueprints = get_transaction_voucher_blueprints()
+
+    for spec in blueprints:
+        jt, _ = JournalType.objects.get_or_create(
+            organization=org,
+            code=spec["journal_type_code"],
+            defaults={
+                "name": spec["journal_type_name"],
+                "auto_numbering_prefix": spec["journal_type_code"],
+                "sequence_next": 1,
+                "created_by": superuser,
+            },
+        )
+
+        config, created = VoucherModeConfig.objects.get_or_create(
+            organization=org,
+            code=spec["config_code"],
+            defaults={
+                "name": spec["name"],
+                "description": spec.get("description"),
+                "is_default": spec.get("is_default", False),
+                "is_active": True,
+                "journal_type": jt,
+                "layout_style": spec.get("layout_style", "standard"),
+                "show_account_balances": False,
+                "show_tax_details": True,
+                "show_dimensions": True,
+                "allow_multiple_currencies": spec.get("allow_multiple_currencies", True),
+                "require_line_description": True,
+                "default_currency": currency_code,
+                "ui_schema": spec["ui_schema"],
+                "created_by": superuser,
+            },
+        )
+        if created:
+            logger.info(f"Created transaction mode config: {config.code}")
+
+        numbering = spec.get("numbering", {})
+        start_number = numbering.get("start_number", 1)
+        zero_padding = numbering.get("zero_padding", 4)
+
+        header_defaults = {"currency": currency_code}
+        header_defaults.update(spec.get("header_defaults", {}))
+
+        transaction_defaults = {
+            "module": spec["module"],
+            "name": spec["name"],
+            "abbreviation": spec.get("abbreviation", spec["transaction_code"]),
+            "description": spec.get("description"),
+            "numbering_strategy": spec.get("numbering_strategy", "sequential"),
+            "prefix_strategy": "static",
+            "suffix_strategy": "static",
+            "prefix_template": spec.get("prefix_template", f"{spec['journal_type_code']}-"),
+            "suffix_template": spec.get("suffix_template", ""),
+            "start_number": start_number,
+            "sequence_next": start_number,
+            "zero_padding": zero_padding,
+            "print_after_save": spec.get("print_after_save", False),
+            "auto_print": spec.get("auto_print", False),
+            "use_effective_date": True,
+            "entry_date_default": spec.get("entry_date_default", "transaction"),
+            "layout_flags": spec.get("layout_flags", {}),
+            "ui_schema": spec["ui_schema"],
+            "header_defaults": header_defaults,
+            "line_defaults": spec.get("line_defaults", []),
+            "validation_rules": spec.get("validation_rules", {}),
+            "legacy_journal_type": jt,
+            "legacy_voucher_config": config,
+            "is_active": True,
+        }
+
+        transaction_config, created = TransactionTypeConfig.objects.get_or_create(
+            organization=org,
+            code=spec["transaction_code"],
+            defaults=transaction_defaults,
+        )
+        if created:
+            logger.info(f"Created transaction type config: {transaction_config.code}")
+
+        restart_defaults = {"restart_from": start_number}
+        restart_rule, restart_created = NumberRestartRule.objects.get_or_create(
+            transaction_type=transaction_config,
+            applicable_from=today,
+            defaults=restart_defaults,
+        )
+        if restart_created:
+            logger.info(f"Created restart rule for {transaction_config.code} at {today}")
+
+
+def seed_voucher_configurations(org, superuser, currency_code):
+    """Seed VoucherConfiguration rows so the generic entry UI sees the configs."""
+    from accounting.models import VoucherConfiguration
+
+    blueprints = get_transaction_voucher_blueprints()
+
+    for spec in blueprints:
+        base_slug = slugify(spec.get("name", "")) or spec.get("config_code", "")
+        code = f"{base_slug}-{spec['config_code'].lower()}"
+        header_defaults = {"currency": currency_code}
+        header_defaults.update(spec.get("header_defaults", {}))
+
+        defaults = {
+            "name": spec["name"],
+            "module": spec["module"],
+            "description": spec.get("description"),
+            "layout_style": spec.get("layout_style", "standard"),
+            "show_account_balances": spec.get("layout_flags", {}).get("show_account_balances", True),
+            "show_tax_details": True,
+            "show_dimensions": True,
+            "allow_multiple_currencies": spec.get("allow_multiple_currencies", True),
+            "require_line_description": True,
+            "default_currency": currency_code,
+            "default_header": header_defaults,
+            "default_lines": spec.get("default_lines", []),
+            "validation_rules": spec.get("validation_rules", {}),
+            "ui_schema": spec.get("ui_schema", {}),
+            "is_default": spec.get("is_default", False),
+            "is_active": True,
+            "created_by": superuser,
+        }
+
+        config, created = VoucherConfiguration.objects.get_or_create(
+            organization=org,
+            code=code,
+            defaults=defaults,
+        )
+        if created:
+            logger.info(f"Created voucher configuration: {config.code}")
+
+
+def seed_document_sequence_configs(org, currency_code):
+    """Seed document sequences used by invoices, orders, and notes."""
+    from accounting.models import DocumentSequenceConfig
+
+    presets = [
+        {"document_type": "sales_order", "prefix": "SO-"},
+        {"document_type": "sales_invoice", "prefix": "SI-"},
+        {"document_type": "purchase_invoice", "prefix": "PI-"},
+        {"document_type": "sales_credit_note", "prefix": "SCN-"},
+        {"document_type": "purchase_debit_note", "prefix": "PDN-"},
+        {"document_type": "quotation", "prefix": "QUO-"},
+    ]
+
+    for preset in presets:
+        defaults = {
+            "prefix": preset["prefix"],
+            "suffix": "",
+            "fiscal_year_prefix": True,
+            "reset_policy": preset.get("reset_policy", "fiscal_year"),
+            "sequence_next": preset.get("start_number", 1),
+            "sequence_padding": preset.get("sequence_padding", 4),
+            "metadata": {"currency": currency_code},
+        }
+        sequence, created = DocumentSequenceConfig.objects.get_or_create(
+            organization=org,
+            document_type=preset["document_type"],
+            defaults=defaults,
+        )
+        if created:
+            logger.info(f"Created document sequence config: {sequence.document_type}")
 
 
 def seed_modules_and_permissions():
@@ -987,43 +1452,121 @@ def seed_default_vendor(org, superuser, account_map):
             logger.info("Created vendor: Nepal Oil Corporation")
 
 
-def seed_inventory_data(org, superuser):
-    """Seed inventory base data (warehouse, categories)."""
+def seed_inventory_data(org, superuser, account_map):
+    """Seed inventory master data (units, categories, warehouses, locations)."""
     try:
-        from inventory.models import Warehouse, ProductCategory
-        
-        # Default warehouse
-        wh, created = Warehouse.objects.get_or_create(
-            organization=org,
-            code='MAIN',
-            defaults={
-                'name': 'Main Warehouse',
-                'address_line1': 'Kathmandu',
-                'city': 'Kathmandu',
-                'country_code': 'NP',
-                'is_active': True,
-            }
-        )
-        if created:
-            logger.info("Created warehouse: Main Warehouse")
-        
-        # Product categories
-        categories = ['General', 'Raw Materials', 'Finished Goods', 'Services', 'Consumables']
-        for cat_name in categories:
-            code = cat_name[:10].upper().replace(' ', '_')
-            cat, created = ProductCategory.objects.get_or_create(
-                organization=org,
-                code=code,
-                defaults={
-                    'name': cat_name,
-                    'is_active': True,
-                }
-            )
-            if created:
-                logger.info(f"Created product category: {cat.name}")
-                
+        from inventory.models import Unit, ProductCategory, Warehouse, Location
     except ImportError:
         logger.warning("Inventory module not available, skipping inventory seed")
+        return
+
+    unit_specs = [
+        {'code': 'PCS', 'name': 'Pieces', 'description': 'Count of individual items'},
+        {'code': 'KG', 'name': 'Kilograms', 'description': 'Weight in kilograms'},
+        {'code': 'LTR', 'name': 'Liters', 'description': 'Volume in liters'},
+        {'code': 'MTR', 'name': 'Meters', 'description': 'Length in meters'},
+    ]
+    for spec in unit_specs:
+        unit, created = Unit.objects.get_or_create(
+            organization=org,
+            code=spec['code'],
+            defaults={
+                'name': spec['name'],
+                'description': spec['description'],
+                'is_active': True,
+            },
+        )
+        if created:
+            logger.info(f"Created inventory unit: {unit.code}")
+
+    category_specs = [
+        {'code': 'GENERAL', 'name': 'General'},
+        {'code': 'RAW', 'name': 'Raw Materials', 'parent': 'GENERAL'},
+        {'code': 'FG', 'name': 'Finished Goods', 'parent': 'GENERAL'},
+        {'code': 'SERV', 'name': 'Services', 'parent': 'GENERAL'},
+        {'code': 'CONS', 'name': 'Consumables', 'parent': 'GENERAL'},
+    ]
+    category_map = {}
+    for spec in category_specs:
+        parent = category_map.get(spec.get('parent'))
+        defaults = {
+            'name': spec['name'],
+            'is_active': True,
+        }
+        if parent:
+            defaults['parent'] = parent
+
+        category, created = ProductCategory.objects.get_or_create(
+            organization=org,
+            code=spec['code'],
+            defaults=defaults,
+        )
+        if not created and parent and category.parent_id != parent.pk:
+            category.parent = parent
+            category.save(update_fields=['parent'])
+        category_map[spec['code']] = category
+        if created:
+            logger.info(f"Created product category: {category.code}")
+
+    default_inventory_account = account_map.get('1200') or account_map.get('1210')
+    warehouse_specs = [
+        {
+            'code': 'MAIN',
+            'name': 'Main Warehouse',
+            'address_line1': '123 Main Street',
+            'city': 'Kathmandu',
+            'country_code': 'NP',
+            'inventory_account': default_inventory_account,
+            'locations': [
+                {'code': 'STORAGE', 'name': 'Storage Area', 'location_type': 'storage'},
+                {'code': 'RECV', 'name': 'Receiving Dock', 'location_type': 'receiving'},
+            ],
+        },
+        {
+            'code': 'SECONDARY',
+            'name': 'Secondary Warehouse',
+            'address_line1': '456 Depot Road',
+            'city': 'Lalitpur',
+            'country_code': 'NP',
+            'inventory_account': default_inventory_account,
+            'locations': [
+                {'code': 'STORAGE', 'name': 'Storage Area', 'location_type': 'storage'},
+            ],
+        },
+    ]
+
+    for spec in warehouse_specs:
+        defaults = {
+            'name': spec['name'],
+            'address_line1': spec['address_line1'],
+            'city': spec['city'],
+            'country_code': spec['country_code'],
+            'is_active': True,
+        }
+        if spec.get('inventory_account'):
+            defaults['inventory_account'] = spec['inventory_account']
+
+        warehouse, created = Warehouse.objects.get_or_create(
+            organization=org,
+            code=spec['code'],
+            defaults=defaults,
+        )
+        if created:
+            logger.info(f"Created warehouse: {warehouse.name}")
+
+        for loc_spec in spec.get('locations', []):
+            location_defaults = {
+                'name': loc_spec['name'],
+                'location_type': loc_spec.get('location_type', 'storage'),
+                'is_active': True,
+            }
+            location, loc_created = Location.objects.get_or_create(
+                warehouse=warehouse,
+                code=loc_spec['code'],
+                defaults=location_defaults,
+            )
+            if loc_created:
+                logger.info(f"Created location {location.code} for warehouse {warehouse.code}")
 
 
 def seed_lpg_data(org):
@@ -1187,12 +1730,14 @@ def seed_all():
     
     # 2. Seed tenancy
     tenant = seed_tenancy(superuser)
-    
-    # 3. Seed organization
-    org = seed_organization(superuser, tenant)
-    
-    # 4. Seed currencies
-    seed_currencies(superuser)
+
+    # 3. Seed currencies (needed before assigning base currency to the organization)
+    currency_map = seed_currencies(superuser)
+    base_currency = currency_map.get('NPR') or next(iter(currency_map.values()), None)
+
+    # 4. Seed organization
+    org = seed_organization(superuser, tenant, base_currency=base_currency)
+    org_currency_code = resolve_currency_code(org.base_currency_code)
     
     # 5. Seed exchange rates
     seed_exchange_rates(org, superuser)
@@ -1224,7 +1769,10 @@ def seed_all():
     from accounting.models import JournalType
     gj = JournalType.objects.filter(organization=org, code='GJ').first()
     if gj:
-        seed_voucher_mode_config(org, superuser, gj)
+        seed_voucher_mode_config(org, superuser, gj, currency_code=org_currency_code)
+    seed_transaction_type_configs(org, superuser, org_currency_code)
+    seed_document_sequence_configs(org, org_currency_code)
+    seed_voucher_configurations(org, superuser, org_currency_code)
     
     # 14. Seed modules, entities, and permissions
     seed_modules_and_permissions()
@@ -1236,7 +1784,7 @@ def seed_all():
     seed_default_vendor(org, superuser, account_map)
     
     # 17. Seed inventory data
-    seed_inventory_data(org, superuser)
+    seed_inventory_data(org, superuser, account_map)
     
     # 18. Seed LPG data
     seed_lpg_data(org)
@@ -1254,7 +1802,7 @@ def seed_all():
 Summary:
 - Organization: {org.name} ({org.code})
 - Fiscal Year: {fy.name}
-- Base Currency: NPR (Nepalese Rupee)
+- Base Currency: {org_currency_code}
 - Superuser: {superuser.username}
 - Tax Authority: Inland Revenue Department
 - Default Vendor: Nepal Oil Corporation (NOC)

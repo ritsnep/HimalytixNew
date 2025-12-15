@@ -1,18 +1,43 @@
-from django.core.management.base import BaseCommand
-from django.utils import timezone
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand
+from django.utils import timezone
 from usermanagement.models import Organization
 from accounting.models import (
-    FiscalYear,
     AccountingPeriod,
     AccountType,
     ChartOfAccount,
     Currency,
+    FiscalYear,
     JournalType,
+    TransactionTypeConfig,
     VoucherModeConfig,
 )
+
+
+def build_item_schema(party_key, party_label, extra_header=None):
+    header = {
+        "journal_date": {"type": "date", "label": "Date", "required": True},
+        "reference_number": {"type": "char", "label": "Reference", "required": False},
+        party_key: {"type": "char", "label": party_label, "required": True},
+        "currency": {"type": "char", "label": "Currency", "required": True},
+        "description": {"type": "char", "label": "Description", "required": False},
+    }
+    if extra_header:
+        header.update(extra_header)
+    lines = {
+        "item": {"type": "char", "label": "Item/Service", "required": True},
+        "description": {"type": "char", "label": "Description", "required": False},
+        "quantity": {"type": "decimal", "label": "Quantity", "required": True, "default": 1},
+        "unit_price": {"type": "decimal", "label": "Unit Price", "required": True},
+        "discount_percent": {"type": "decimal", "label": "Discount %", "required": False, "default": 0},
+        "tax_percent": {"type": "decimal", "label": "Tax %", "required": False, "default": 13},
+        "warehouse": {"type": "char", "label": "Warehouse / Location", "required": False},
+        "batch": {"type": "char", "label": "Batch / Lot", "required": False},
+        "line_total": {"type": "decimal", "label": "Line Total", "required": False},
+    }
+    return {"header": header, "lines": lines}
 
 
 class Command(BaseCommand):
@@ -107,29 +132,7 @@ class Command(BaseCommand):
             },
         )
 
-        def build_item_schema(party_key, party_label, extra_header=None):
-            header = {
-                "journal_date": {"type": "date", "label": "Date", "required": True},
-                "reference_number": {"type": "char", "label": "Reference", "required": False},
-                party_key: {"type": "char", "label": party_label, "required": True},
-                "currency": {"type": "char", "label": "Currency", "required": True},
-                "description": {"type": "char", "label": "Description", "required": False},
-            }
-            if extra_header:
-                header.update(extra_header)
-            lines = {
-                "item": {"type": "char", "label": "Item/Service", "required": True},
-                "description": {"type": "char", "label": "Description", "required": False},
-                "quantity": {"type": "decimal", "label": "Quantity", "required": True, "default": 1},
-                "unit_price": {"type": "decimal", "label": "Unit Price", "required": True},
-                "discount_percent": {"type": "decimal", "label": "Discount %", "required": False, "default": 0},
-                "tax_percent": {"type": "decimal", "label": "Tax %", "required": False, "default": 13},
-                "warehouse": {"type": "char", "label": "Warehouse / Location", "required": False},
-                "batch": {"type": "char", "label": "Batch / Lot", "required": False},
-                "line_total": {"type": "decimal", "label": "Line Total", "required": False},
-            }
-            return {"header": header, "lines": lines}
-
+        # Schema builders reused below
         journal_ui_schema = {
             "header": {
                 "journal_date": {"type": "date", "label": "Date", "required": True},
@@ -211,6 +214,7 @@ class Command(BaseCommand):
 
         org_currency_code = org.base_currency_code.currency_code if hasattr(org.base_currency_code, "currency_code") else (org.base_currency_code or "USD")
 
+        voucher_config_map = {}
         for spec in voucher_blueprints:
             jt, _ = JournalType.objects.get_or_create(
                 organization=org,
@@ -236,5 +240,9 @@ class Command(BaseCommand):
                 config.is_default = True
                 config.save(update_fields=["is_default"])
                 self.stdout.write(self.style.WARNING(f"Marked '{spec['name']}' as default voucher config."))
+            voucher_config_map[spec["config_code"]] = config
 
         self.stdout.write(self.style.SUCCESS("Minimal voucher demo data ensured."))
+
+        self.stdout.write("Seeding unified transaction type configs...")
+        seed_transaction_type_configs(org, org_currency_code, voucher_config_map)

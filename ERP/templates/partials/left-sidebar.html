@@ -55,8 +55,8 @@
                         </li>
                         {% if user|has_permission:'accounting_journal_add' %}
                         <li>
-                            <a href="{% url 'accounting:voucher_create' %}">
-                                Voucher Entry Beta
+                            <a href="{% url 'accounting:generic_voucher_select' %}">
+                                Generic Voucher Entry
                             </a>
                         </li>
                         {% endif %}

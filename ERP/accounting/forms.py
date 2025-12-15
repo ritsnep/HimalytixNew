@@ -8,6 +8,7 @@ from .models import (
     CostCenter,
     Currency,
     Department,
+    FiscalYear,
     Journal,
     Journal,
     JournalLine,
@@ -57,16 +58,10 @@ from .models import (
     ApprovalTask,
     AutoIncrementCodeGenerator,
 )
-from django import forms
-from .models import FiscalYear
 from .forms_mixin import BootstrapFormMixin
-import logging
 import re
 import json
 from django.utils import timezone
-
-logger = logging.getLogger(__name__)
-
 
 def get_active_currency_choices():
     """Return tuples of active currency codes for select widgets."""
@@ -90,12 +85,30 @@ class FiscalYearForm(BootstrapFormMixin, forms.ModelForm):
 
     class Meta:
         model = FiscalYear
-        fields = ('code', 'name', 'start_date', 'end_date', 'status', 'is_current','is_default')
+        fields = ('code', 'name', 'start_date', 'end_date', 'status', 'is_current', 'is_default')
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'start_date': forms.TextInput(attrs={'class': 'form-control datepicker'}),
-            'end_date': forms.TextInput(attrs={'class': 'form-control datepicker'}),
-            'status': forms.Select(attrs={'class': 'form-select'}),
+            'name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'data-pristine-required-message': 'Fiscal Year Name is required.',
+                'required': 'required',
+            }),
+            'start_date': forms.TextInput(attrs={
+                'class': 'form-control datepicker',
+                'data-pristine-required-message': 'Start Date is required.',
+                'required': 'required',
+                'data-pristine-date-message': 'Please enter a valid date.',
+            }),
+            'end_date': forms.TextInput(attrs={
+                'class': 'form-control datepicker',
+                'data-pristine-required-message': 'End Date is required.',
+                'required': 'required',
+                'data-pristine-date-message': 'Please enter a valid date.',
+            }),
+            'status': forms.Select(attrs={
+                'class': 'form-select',
+                'data-pristine-required-message': 'Status is required.',
+                'required': 'required',
+            }),
             'is_current': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'is_default': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
@@ -116,6 +129,16 @@ class FiscalYearForm(BootstrapFormMixin, forms.ModelForm):
             generated_code = code_generator.generate_code()
             self.initial['code'] = generated_code
             self.fields['code'].initial = generated_code
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get('start_date')
+        end_date = cleaned_data.get('end_date')
+
+        if start_date and end_date:
+            if start_date > end_date:
+                self.add_error('end_date', "End Date cannot be before Start Date.")
+        return cleaned_data
 
 
 # New forms below

@@ -2492,6 +2492,136 @@ def journal_cost_center_lookup(request):
 
 @login_required
 @require_GET
+def journal_department_lookup(request):
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+    query = (request.GET.get("q") or "").strip()
+    from django.db.models import Q
+    from accounting.models import Department
+
+    qs = Department.objects.filter(organization=organization, is_active=True)
+    if query:
+        qs = qs.filter(Q(code__icontains=query) | Q(name__icontains=query))
+    qs = qs.order_by("code")[:20]
+    results = [{"id": obj.pk, "code": obj.code, "name": obj.name} for obj in qs]
+    return JsonResponse({"ok": True, "results": results})
+
+
+@login_required
+@require_GET
+def journal_project_lookup(request):
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+    query = (request.GET.get("q") or "").strip()
+    from django.db.models import Q
+    from accounting.models import Project
+
+    qs = Project.objects.filter(organization=organization, is_active=True)
+    if query:
+        qs = qs.filter(Q(code__icontains=query) | Q(name__icontains=query))
+    qs = qs.order_by("code")[:20]
+    results = [{"id": obj.pk, "code": obj.code, "name": obj.name} for obj in qs]
+    return JsonResponse({"ok": True, "results": results})
+
+
+@login_required
+@require_GET
+def journal_tax_code_lookup(request):
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+    query = (request.GET.get("q") or "").strip()
+    from django.db.models import Q
+    from accounting.models import TaxCode
+
+    qs = TaxCode.objects.filter(organization=organization, is_active=True)
+    if query:
+        qs = qs.filter(Q(code__icontains=query) | Q(name__icontains=query))
+    qs = qs.order_by("code")[:20]
+    results = [{"id": obj.pk, "code": obj.code, "name": obj.name} for obj in qs]
+    return JsonResponse({"ok": True, "results": results})
+
+
+@login_required
+@require_GET
+def journal_vendor_lookup(request):
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+    query = (request.GET.get("q") or "").strip()
+    from django.db.models import Q
+    from accounting.models import Vendor
+
+    qs = Vendor.objects.filter(organization=organization, status='active')
+    if query:
+        qs = qs.filter(Q(code__icontains=query) | Q(display_name__icontains=query) | Q(legal_name__icontains=query))
+    qs = qs.order_by("code")[:20]
+    results = [
+        {
+            "id": getattr(obj, 'vendor_id', None) or obj.pk,
+            "code": obj.code,
+            "name": obj.display_name,
+        }
+        for obj in qs
+    ]
+    return JsonResponse({"ok": True, "results": results})
+
+
+@login_required
+@require_GET
+def journal_customer_lookup(request):
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+    query = (request.GET.get("q") or "").strip()
+    from django.db.models import Q
+    from accounting.models import Customer
+
+    qs = Customer.objects.filter(organization=organization, status='active')
+    if query:
+        qs = qs.filter(Q(code__icontains=query) | Q(display_name__icontains=query) | Q(legal_name__icontains=query))
+    qs = qs.order_by("code")[:20]
+    results = [
+        {
+            "id": getattr(obj, 'customer_id', None) or obj.pk,
+            "code": obj.code,
+            "name": obj.display_name,
+        }
+        for obj in qs
+    ]
+    return JsonResponse({"ok": True, "results": results})
+
+
+@login_required
+@require_GET
+def journal_product_lookup(request):
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+    query = (request.GET.get("q") or "").strip()
+    from django.db.models import Q
+    try:
+        from inventory.models import Product
+    except Exception:
+        return JsonResponse({"ok": True, "results": []})
+
+    qs = Product.objects.filter(organization=organization)
+    if hasattr(Product, 'is_active'):
+        try:
+            qs = qs.filter(is_active=True)
+        except Exception:
+            pass
+    if query:
+        qs = qs.filter(Q(code__icontains=query) | Q(name__icontains=query) | Q(barcode__icontains=query))
+    qs = qs.order_by("code")[:20]
+    results = [{"id": obj.pk, "code": getattr(obj, 'code', ''), "name": getattr(obj, 'name', '')} for obj in qs]
+    return JsonResponse({"ok": True, "results": results})
+
+
+@login_required
+@require_GET
 def journal_payment_terms(request):
     organization = _active_organization(request.user)
     if not organization:
