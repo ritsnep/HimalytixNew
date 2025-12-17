@@ -110,14 +110,62 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
                     # Save header
                     voucher = header_form.save(commit=False)
                     # Attach organization/user fields when present
+                    try:
+                        logger.debug(f"Header form produced instance type={type(voucher)}, attrs={list(getattr(voucher, '__dict__', {}).keys())}")
+                        logger.debug(f"Voucher meta fields: {[f.name for f in voucher._meta.fields]}")
+                        logger.debug(f"hasattr(created_by)={hasattr(voucher, 'created_by')}, hasattr(created_by_id)={hasattr(voucher, 'created_by_id')}")
+                        logger.debug(f"Request user: pk={getattr(request.user, 'pk', None)}, username={getattr(request.user, 'username', None)}")
+                    except Exception:
+                        pass
                     target_org = organization or getattr(config, 'organization', None)
                     if target_org is not None and hasattr(voucher, 'organization_id') and not getattr(voucher, 'organization_id', None):
                         voucher.organization_id = getattr(target_org, 'pk', target_org)
-                    if hasattr(voucher, 'created_by') and not getattr(voucher, 'created_by_id', None):
-                        voucher.created_by = request.user
-                    if hasattr(voucher, 'updated_by'):
-                        voucher.updated_by = request.user
-                    voucher.save()
+                    # Ensure created_by/updated_by are set for voucher types that require them.
+                    # Some models may not expose attribute access for the related object until saved,
+                    # so check the model fields explicitly and assign by id where possible.
+                    try:
+                        uid = getattr(request.user, 'pk', None) or getattr(request.user, 'id', None)
+                        field_names = {f.name for f in getattr(voucher, '_meta', {}).fields}
+                        if 'created_by' in field_names or 'created_by_id' in field_names:
+                            voucher.created_by_id = uid
+                            logger.debug(f"Assigned created_by_id on instance (field-based): created_by_id={getattr(voucher, 'created_by_id', None)}")
+                        if 'updated_by' in field_names or 'updated_by_id' in field_names:
+                            voucher.updated_by_id = uid
+                            logger.debug(f"Assigned updated_by_id on instance (field-based): updated_by_id={getattr(voucher, 'updated_by_id', None)}")
+                    except Exception:
+                        # Fall back to object assignment if id assignment fails
+                        try:
+                            voucher.created_by = request.user
+                        except Exception:
+                            pass
+                        try:
+                            voucher.updated_by = request.user
+                        except Exception:
+                            pass
+                    # Debug: log voucher fields before save to aid diagnostics
+                    try:
+                        try:
+                            logger.debug(f"Voucher before save: {type(voucher)} attrs={getattr(voucher, '__dict__', {})}")
+                            logger.debug(f"Voucher pre-save audit attrs: created_by_id={getattr(voucher, 'created_by_id', None)}, updated_by_id={getattr(voucher, 'updated_by_id', None)}")
+                        except Exception:
+                            pass
+                        voucher.save()
+                    except Exception as e:
+                        # If save failed due to missing non-null audit fields, try to set and retry
+                        try:
+                            from django.db import IntegrityError
+                            if isinstance(e, IntegrityError) and hasattr(voucher, 'created_by'):
+                                try:
+                                    voucher.created_by = request.user
+                                    voucher.save()
+                                except Exception:
+                                    logger.exception("Retry save after setting created_by failed")
+                            else:
+                                raise
+                        except Exception:
+                            # Re-raise original exception if handling didn't resolve
+                            logger.exception(f"Error saving voucher: {e}")
+                            raise
 
                     # Determine how to attach lines to header
                     line_model = VoucherFormFactory._get_line_model_for_voucher_config(config)

@@ -5,7 +5,7 @@
 
   function getLookupEndpoint() {
     const app = document.getElementById('app');
-    return (app && app.dataset.endpointAccountLookup) || '/accounting/vouchers/htmx/account-lookup/';
+    return (app && app.dataset.endpointAccountLookup) || '/accounting/journal-entry/lookup/accounts/';
   }
 
   function parseRows(raw) {
@@ -59,7 +59,13 @@
     try {
       const resp = await fetch(`${getLookupEndpoint()}?q=${encodeURIComponent(accountCode)}&limit=5`, {
         credentials: 'same-origin',
+        headers: {'Accept': 'application/json', 'HX-Request': 'true'},
       });
+      const ct = (resp.headers.get('content-type') || '').toLowerCase();
+      if (!resp.ok || ct.includes('text/html')) {
+        console.warn('Account lookup non-JSON/HTTP issue', resp.status, ct);
+        return null;
+      }
       const payload = await resp.json();
       const match =
         (payload.results || []).find((item) => item.code === accountCode) ||

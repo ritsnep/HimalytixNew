@@ -126,18 +126,24 @@ def invalidate_fragment(fragment_name, *vary_on):
 def cache_key_for(context, fragment_name, *vary_on):
     """
     Get the cache key for a template fragment (for debugging).
-    
+
     Usage:
         {% cache_key_for 'sidebar' request.user.id as sidebar_key %}
         <!-- Cache key: {{ sidebar_key }} -->
     """
     vary_on_values = [force_str(v) for v in vary_on]
-    
+
     key_parts = ['template_fragment', fragment_name]
-    
+
     if vary_on_values:
         vary_str = ':'.join(vary_on_values)
         vary_hash = hashlib.md5(vary_str.encode()).hexdigest()[:12]
         key_parts.append(vary_hash)
-    
+
     return ':'.join(key_parts)
+
+
+@register.filter
+def get_item(dictionary, key):
+    """Get item from dictionary by key."""
+    return dictionary.get(key)

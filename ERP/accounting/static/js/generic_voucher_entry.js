@@ -37,6 +37,28 @@
         input.dispatchEvent(new Event('blur', { bubbles: true }));
     };
 
+    const focusNextInput = (current) => {
+        if (!current) return;
+        const form = current.closest('form') || voucherForm;
+        if (!form) return;
+        const focusables = Array.from(form.querySelectorAll('input, select, textarea'))
+            .filter(el => !el.disabled && el.type !== 'hidden' && el.offsetParent !== null);
+        const idx = focusables.indexOf(current);
+        if (idx >= 0 && idx < focusables.length - 1) {
+            const next = focusables[idx + 1];
+            next.focus();
+            if (typeof next.select === 'function') next.select();
+        }
+    };
+
+    const debounce = (fn, delay = 200) => {
+        let timer;
+        return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn(...args), delay);
+        };
+    };
+
     const displayText = (r) => {
         if (!r) return '';
         const text = r.text || r.display;
@@ -46,6 +68,137 @@
         const joined = `${code}${code && name ? ' - ' : ''}${name}`.trim();
         return joined || name || code;
     };
+
+    const ADD_NEW_HANDLERS = {
+        account: () => window.open('/accounting/chart-of-accounts/create/', '_blank'),
+        costcenter: () => window.open('/accounting/cost-centers/create/', '_blank'),
+        department: () => window.open('/accounting/departments/create/', '_blank'),
+        project: () => window.open('/accounting/projects/create/', '_blank'),
+        taxcode: () => window.open('/accounting/tax-codes/create/', '_blank'),
+        vendor: () => window.open('/accounting/vendors/new/', '_blank'),
+        supplier: () => window.open('/accounting/vendors/new/', '_blank'),
+        customer: () => window.open('/accounting/customers/new/', '_blank'),
+        client: () => window.open('/accounting/customers/new/', '_blank'),
+        product: () => window.open('/inventory/products/create/', '_blank'),
+        item: () => window.open('/inventory/products/create/', '_blank'),
+        service: () => window.open('/inventory/products/create/', '_blank'),
+        inventoryitem: () => window.open('/inventory/products/create/', '_blank'),
+    };
+
+    const AccountSuggest = (() => {
+        let container;
+        let listEl;
+        let anchor = null;
+        let activeIndex = 0;
+        let items = [];
+        let onSelect = null;
+        let onAddNew = null;
+
+        const ensure = () => {
+            if (container) return;
+            container = document.createElement('div');
+            container.className = 've-suggest';
+            container.innerHTML = '<div class="ve-suggest-list"></div>';
+            listEl = container.querySelector('.ve-suggest-list');
+            document.body.appendChild(container);
+        };
+
+        const position = () => {
+            if (!container || !anchor) return;
+            const rect = anchor.getBoundingClientRect();
+            container.style.minWidth = `${Math.max(260, rect.width)}px`;
+            container.style.left = `${window.scrollX + rect.left}px`;
+            container.style.top = `${window.scrollY + rect.bottom + 6}px`;
+        };
+
+        const close = () => {
+            if (!container) return;
+            container.classList.remove('open');
+            items = [];
+            anchor = null;
+            activeIndex = 0;
+            window.removeEventListener('resize', position);
+            window.removeEventListener('scroll', position, true);
+            document.removeEventListener('click', outsideHandler, true);
+        };
+
+        const outsideHandler = (evt) => {
+            if (!container || !anchor) return;
+            if (container.contains(evt.target) || anchor.contains(evt.target)) return;
+            close();
+        };
+
+        const render = () => {
+            if (!container || !listEl) return;
+            const addLabel = (onAddNew && onAddNew.label) ? onAddNew.label : '+ Add New';
+            const addMeta = (onAddNew && onAddNew.meta) ? onAddNew.meta : '';
+            const total = items.length + (onAddNew ? 1 : 0);
+            listEl.innerHTML = '';
+            items.forEach((item, idx) => {
+                const div = document.createElement('div');
+                div.className = 've-suggest-item';
+                if (idx === activeIndex) div.classList.add('active');
+                div.innerHTML = `<div class="ve-title">${displayText(item)}</div><div class="ve-sub">${item.path || item.meta || ''}</div>`;
+                div.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    if (onSelect) onSelect(item);
+                    close();
+                });
+                listEl.appendChild(div);
+            });
+            if (onAddNew) {
+                const addDiv = document.createElement('div');
+                addDiv.className = 've-suggest-item ve-add-new';
+                if (activeIndex === total - 1) addDiv.classList.add('active');
+                addDiv.innerHTML = `<div class="ve-title">${addLabel}</div>${addMeta ? `<div class="ve-sub">${addMeta}</div>` : ''}`;
+                addDiv.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    if (typeof onAddNew.handler === 'function') onAddNew.handler();
+                    close();
+                });
+                listEl.appendChild(addDiv);
+            }
+        };
+
+        const open = (inputEl, choices, meta = {}) => {
+            ensure();
+            anchor = inputEl;
+            items = Array.isArray(choices) ? choices : [];
+            onSelect = meta.onSelect;
+            onAddNew = meta.onAddNew;
+            activeIndex = 0;
+            render();
+            position();
+            container.classList.add('open');
+            window.addEventListener('resize', position);
+            window.addEventListener('scroll', position, true);
+            document.addEventListener('click', outsideHandler, true);
+        };
+
+        const move = (delta) => {
+            if (!items.length && !onAddNew) return;
+            const total = items.length + (onAddNew ? 1 : 0);
+            activeIndex = (activeIndex + delta + total) % total;
+            render();
+        };
+
+        const selectActive = () => {
+            const total = items.length + (onAddNew ? 1 : 0);
+            if (!total) return;
+            if (activeIndex === items.length) {
+                if (onAddNew && typeof onAddNew.handler === 'function') onAddNew.handler();
+                close();
+                return;
+            }
+            const choice = items[activeIndex];
+            if (choice && typeof onSelect === 'function') onSelect(choice);
+            close();
+        };
+
+        const isOpenFor = (el) => container && container.classList.contains('open') && anchor === el;
+
+        return { open, close, move, selectActive, isOpenFor };
+    })();
 
     const resolveTypeaheadHidden = async (displayInput, raw) => {
         if (!displayInput) return;
@@ -76,6 +229,121 @@
             // non-fatal
             console.warn('Typeahead resolve failed', err);
         }
+    };
+
+    const getHiddenInput = (displayInput) => {
+        const hiddenName = displayInput?.dataset?.hiddenName || (displayInput?.name ? displayInput.name.replace(/_display$/, '') : null);
+        if (!hiddenName || !voucherForm) return null;
+        return voucherForm.querySelector(`[name="${CSS.escape(hiddenName)}"]`);
+    };
+
+    const selectLookupResult = (inputEl, choice) => {
+        const hidden = getHiddenInput(inputEl);
+        inputEl.value = displayText(choice);
+        if (hidden) {
+            hidden.value = choice?.id || choice?.value || '';
+            triggerInput(hidden);
+        }
+        triggerInput(inputEl);
+        AccountSuggest.close();
+        focusNextInput(inputEl);
+    };
+
+    const fetchSuggestions = async (term, endpoint) => {
+        if (!endpoint || !term) return [];
+        try {
+            const resp = await fetch(`${endpoint}?q=${encodeURIComponent(term)}&limit=10`, { credentials: 'same-origin' });
+            if (!resp.ok) return [];
+            const data = await resp.json();
+            if (Array.isArray(data?.results)) return data.results;
+            return [];
+        } catch (err) {
+            console.warn('lookup fetch failed', err);
+            return [];
+        }
+    };
+
+    const buildAddNewMeta = (inputEl) => {
+        const kind = (inputEl.dataset.lookupKind || '').toLowerCase();
+        const addUrl = inputEl.dataset.addUrl;
+        const handler = addUrl ? () => window.open(addUrl, '_blank') : (ADD_NEW_HANDLERS[kind] || null);
+        if (!handler) return null;
+        const labelMap = {
+            account: '+ Add New Account',
+            costcenter: '+ Add New Cost Center',
+            department: '+ Add New Department',
+            project: '+ Add New Project',
+            taxcode: '+ Add New Tax Code',
+            vendor: '+ Add New Vendor',
+            supplier: '+ Add New Vendor',
+            customer: '+ Add New Customer',
+            client: '+ Add New Customer',
+            product: '+ Add New Product',
+            item: '+ Add New Product',
+            service: '+ Add New Product',
+            inventoryitem: '+ Add New Product',
+        };
+        const metaMap = {
+            account: 'Opens Chart of Accounts',
+            costcenter: 'Opens Cost Centers',
+            department: 'Opens Departments',
+            project: 'Opens Projects',
+            taxcode: 'Opens Tax Codes',
+            vendor: 'Opens Vendors',
+            supplier: 'Opens Vendors',
+            customer: 'Opens Customers',
+            client: 'Opens Customers',
+            product: 'Opens Products',
+            item: 'Opens Products',
+            service: 'Opens Products',
+            inventoryitem: 'Opens Products',
+        };
+        return { label: labelMap[kind] || '+ Add New', meta: metaMap[kind] || '', handler };
+    };
+
+    const bindSuggestInput = (inputEl) => {
+        if (!inputEl || inputEl._suggestBound) return;
+        inputEl._suggestBound = true;
+        const runSuggest = debounce(async () => {
+            const term = (inputEl.value || '').trim();
+            if (!term) {
+                AccountSuggest.close();
+                return;
+            }
+            const endpoint = inputEl.dataset.endpoint;
+            const suggestions = await fetchSuggestions(term, endpoint);
+            if (!suggestions.length && !buildAddNewMeta(inputEl)) {
+                AccountSuggest.close();
+                return;
+            }
+            AccountSuggest.open(inputEl, suggestions, {
+                onSelect: (choice) => selectLookupResult(inputEl, choice),
+                onAddNew: buildAddNewMeta(inputEl),
+            });
+        }, 180);
+
+        inputEl.addEventListener('input', runSuggest);
+        inputEl.addEventListener('focus', runSuggest);
+        inputEl.addEventListener('keydown', (e) => {
+            if (AccountSuggest.isOpenFor(inputEl)) {
+                if (e.key === 'ArrowDown') { e.preventDefault(); AccountSuggest.move(1); return; }
+                if (e.key === 'ArrowUp') { e.preventDefault(); AccountSuggest.move(-1); return; }
+                if (e.key === 'Enter') { e.preventDefault(); AccountSuggest.selectActive(); return; }
+                if (e.key === 'Escape') { e.preventDefault(); AccountSuggest.close(); return; }
+            }
+        });
+
+        inputEl.addEventListener('blur', () => {
+            setTimeout(() => {
+                if (!AccountSuggest.isOpenFor(inputEl)) return;
+                AccountSuggest.close();
+            }, 200);
+        });
+    };
+
+    const initSuggestInputs = (scope = document) => {
+        const candidates = scope.querySelectorAll('.account-typeahead, .generic-typeahead, .ve-suggest-input');
+        candidates.forEach(bindSuggestInput);
     };
 
     const updateSummary = () => {
@@ -283,6 +551,13 @@
     const handleGridKeydown = (e) => {
         const target = e.target;
         if (!target || !target.classList || !target.classList.contains('grid-cell')) return;
+
+        if (AccountSuggest.isOpenFor(target)) {
+            if (e.key === 'ArrowDown') { e.preventDefault(); AccountSuggest.move(1); return; }
+            if (e.key === 'ArrowUp') { e.preventDefault(); AccountSuggest.move(-1); return; }
+            if (e.key === 'Enter') { e.preventDefault(); AccountSuggest.selectActive(); return; }
+            if (e.key === 'Escape') { e.preventDefault(); AccountSuggest.close(); return; }
+        }
 
         const row = target.closest('.generic-line-row');
         if (!row) return;
@@ -651,6 +926,7 @@
             updateSummary();
 
             initColumnResizers();
+            initSuggestInputs(event.detail.target);
 
             if (pendingPaste) {
                 applyPasteMatrix();
@@ -684,6 +960,7 @@
 
     updateSummary();
     initColumnResizers();
+    initSuggestInputs(document);
     // Header inputs: add data-hkey attributes (for keyboard helpers and consistent selectors)
     const initHeaderHkeys = () => {
         try {
@@ -714,5 +991,8 @@
     document.addEventListener('htmx:afterSwap', (e) => {
         // re-run when header swapped via HTMX
         initHeaderHkeys();
+        if (e.detail && e.detail.target) {
+            initSuggestInputs(e.detail.target);
+        }
     });
 })();

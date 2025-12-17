@@ -41,6 +41,12 @@ const CALENDAR_INITIAL_VIEW = (window.CALENDAR_INITIAL_VIEW || CALENDAR_MODE).to
 const LOOKUPS = {
   account: __root?.dataset?.lookupAccount || null,
   costCenter: __root?.dataset?.lookupCostCenter || null,
+  department: __root?.dataset?.lookupDepartment || null,
+  project: __root?.dataset?.lookupProject || null,
+  taxCode: __root?.dataset?.lookupTaxCode || null,
+  vendor: __root?.dataset?.lookupVendor || null,
+  customer: __root?.dataset?.lookupCustomer || null,
+  product: __root?.dataset?.lookupProduct || null,
 };
 let SUPPORTED_CURRENCIES = (__root?.dataset?.supportedCurrencies || '').split(',').filter(Boolean);
 const DEFAULT_CURRENCY = __root?.dataset?.defaultCurrency || SUPPORTED_CURRENCIES[0] || '';
@@ -498,7 +504,11 @@ const AccountSuggest = (() => {
   const select = (idx) => {
     if (idx === items.length) {
       close();
-      if (typeof onAddNew === 'function') onAddNew();
+      if (typeof onAddNew === 'function') {
+        onAddNew();
+      } else if (onAddNew && typeof onAddNew.handler === 'function') {
+        onAddNew.handler();
+      }
       return;
     }
     const choice = items[idx];
@@ -534,12 +544,14 @@ const AccountSuggest = (() => {
     });
     const addIdx = items.length;
     const addRow = document.createElement('div');
+    const addLabel = (onAddNew && onAddNew.label) ? onAddNew.label : '+ Add New';
+    const addMeta = (onAddNew && onAddNew.meta) ? onAddNew.meta : 'Opens in a new tab';
     addRow.className = `ve-suggest-item add-new${activeIndex === addIdx ? ' active' : ''}`;
     addRow.dataset.index = addIdx;
     addRow.innerHTML = `
       <div>
-        <div class="ve-suggest-label">+ Add New Account</div>
-        <div class="ve-suggest-meta">Opens Chart of Accounts in a new tab</div>
+        <div class="ve-suggest-label">${escapeHtml(addLabel)}</div>
+        <div class="ve-suggest-meta">${escapeHtml(addMeta)}</div>
       </div>
     `;
     addRow.onmouseenter = () => highlight(addIdx);
@@ -1074,6 +1086,92 @@ const App = {
     this.render();
   },
 
+  // ---------- Generic lookup plumbing for project/department/tax/vendor/customer/product ----------
+  lookupGeneric(type, term) {
+    const token = (term || '').trim();
+    const endpoint = LOOKUPS[type];
+    if (!endpoint || !token) return Promise.resolve([]);
+    const code = token.split(/\s|-/)[0];
+    const url = `${endpoint}?q=${encodeURIComponent(code)}`;
+    return fetchJSON(url, {}, { action: `Lookup ${type} ${code}` })
+      .then(({ data }) => Array.isArray(data?.results) ? data.results : [])
+      .catch((err) => {
+        console.error(`${type} lookup failed`, err);
+        return [];
+      });
+  },
+
+  buildSuggestions(results) {
+    return results.map((r) => ({
+      id: r.id,
+      code: r.code || r.value || '',
+      name: r.name || r.label || r.display_name || '',
+      badge: '',
+    }));
+  },
+
+  queueGenericSuggestions(type, inputEl, ri, ci) {
+    if (!inputEl || !inputEl.classList.contains('cell-input')) return;
+    const row = this.state.rows[ri];
+    const term = (inputEl.value || '').trim();
+    const idKey = `${type}Id`;
+    const valKey = type;
+    if (row) {
+      row[valKey] = inputEl.value;
+      row[idKey] = null;
+    }
+    if (!term) {
+      AccountSuggest.close();
+      return;
+    }
+    if (!this._debouncedGenericLookup) {
+      this._debouncedGenericLookup = {};
+    }
+    if (!this._debouncedGenericLookup[type]) {
+      this._debouncedGenericLookup[type] = debounce((value, anchor, rowIdx, colIdx) => {
+        this.fetchGenericSuggestions(type, value, anchor, rowIdx, colIdx);
+      }, 180);
+    }
+    this._debouncedGenericLookup[type](term, inputEl, ri, ci);
+  },
+
+  async fetchGenericSuggestions(type, term, inputEl, ri, ci) {
+    const endpoint = LOOKUPS[type];
+    if (!endpoint || !inputEl) return;
+    const queryToken = `${type}:${term}:${ri}:${Date.now()}`;
+    this._latestGenericQuery = this._latestGenericQuery || {};
+    this._latestGenericQuery[type] = queryToken;
+    try {
+      const results = await this.lookupGeneric(type, term);
+      if (this._latestGenericQuery[type] !== queryToken) return;
+      const suggestions = this.buildSuggestions(results);
+      AccountSuggest.open(inputEl, suggestions, {
+        term,
+        onSelect: (choice) => this.applyGenericSelection(type, choice, ri, ci),
+        onAddNew: this._addNewHandlers[type],
+      });
+    } catch (err) {
+      console.error(`${type} lookup failed`, err);
+    }
+  },
+
+  applyGenericSelection(type, choice, ri, ci) {
+    if (!choice || !this.state.rows[ri]) return;
+    const row = this.state.rows[ri];
+    row[`${type}Id`] = choice.id ?? null;
+    row[type] = choice.code || choice.name || '';
+    row[`${type}Label`] = [choice.code, choice.name].filter(Boolean).join(' - ');
+    this.state.focus = { r: ri, c: ci };
+    const input = document.querySelector(`.cell-input[data-ri="${ri}"][data-ci="${ci}"]`);
+    if (input) {
+      const disp = row[`${type}Label`] || row[type];
+      input.value = disp;
+      input.setAttribute('title', disp);
+    }
+    AccountSuggest.close();
+    this.render();
+  },
+
   async fetchPaymentTerms() {
     if (!PAYMENT_TERMS_ENDPOINT) return;
     const date = this.state.header?.date;
@@ -1289,7 +1387,7 @@ const App = {
       AccountSuggest.open(inputEl, suggestions, {
         term,
         onSelect: (choice) => this.applyAccountSelection(choice, ri, ci),
-        onAddNew: () => this.handleAddNewAccount(),
+        onAddNew: this._addNewHandlers.account,
       });
     } catch (err) {
       console.error('Account lookup failed', err);
@@ -1319,6 +1417,17 @@ const App = {
     AccountSuggest.close();
     const url = '/accounting/chart-of-accounts/create/';
     window.open(url, '_blank');
+  },
+
+  _addNewHandlers: {
+    account: { label: '+ Add New Account', meta: 'Opens Chart of Accounts', handler: () => window.open('/accounting/chart-of-accounts/create/', '_blank') },
+    costCenter: { label: '+ Add New Cost Center', meta: 'Opens Cost Center page', handler: () => window.open('/accounting/cost-centers/create/', '_blank') },
+    department: { label: '+ Add New Department', meta: 'Opens Department page', handler: () => window.open('/accounting/departments/create/', '_blank') },
+    project: { label: '+ Add New Project', meta: 'Opens Project page', handler: () => window.open('/accounting/projects/create/', '_blank') },
+    taxCode: { label: '+ Add New Tax Code', meta: 'Opens Tax Code page', handler: () => window.open('/accounting/tax-codes/create/', '_blank') },
+    vendor: { label: '+ Add New Vendor', meta: 'Opens Vendor page', handler: () => window.open('/accounting/vendors/new/', '_blank') },
+    customer: { label: '+ Add New Customer', meta: 'Opens Customer page', handler: () => window.open('/accounting/customers/new/', '_blank') },
+    product: { label: '+ Add New Product', meta: 'Opens Product page', handler: () => window.open('/inventory/products/create/', '_blank') },
   },
 
   availableVoucherTypes() {
@@ -2248,6 +2357,12 @@ const App = {
         const ri = +target.getAttribute('data-ri');
         const ci = +target.getAttribute('data-ci');
         this.queueCostCenterSuggestions(target, ri, ci);
+      }
+      const lookupCol = target && target.getAttribute('data-colid');
+      if (target && target.classList.contains('cell-input') && ['project', 'department', 'taxCode', 'vendor', 'customer', 'product'].includes(lookupCol)) {
+        const ri = +target.getAttribute('data-ri');
+        const ci = +target.getAttribute('data-ci');
+        this.queueGenericSuggestions(lookupCol, target, ri, ci);
       }
     };
   },

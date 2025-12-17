@@ -57,7 +57,13 @@
       const adInput = container.querySelector("[data-role='ad-input']");
       const bsInput = container.querySelector("[data-role='bs-input']");
       const toggle = container.querySelector("[data-role='toggle']");
-      if (!adInput || !bsInput) return;
+
+      // Defensive: if the container markup is incomplete, skip attaching listeners.
+      if (!adInput || !bsInput) {
+        console.warn("[DualCalendar] Missing AD/BS input in", container);
+        container.dataset.dualCalendarMounted = "1";
+        return;
+      }
 
       const mode =
         (container.dataset.calendarMode || window.CALENDAR_MODE || "AD").toUpperCase();

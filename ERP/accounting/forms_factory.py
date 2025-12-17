@@ -1,4 +1,6 @@
 from django import forms
+from datetime import date
+import copy
 from django.forms import modelform_factory, modelformset_factory
 
 from utils.calendars import CalendarMode, get_calendar_mode
@@ -127,6 +129,49 @@ class VoucherFormFactory:
         if placeholder:
             attrs['placeholder'] = placeholder
 
+        # If this is a well-known lookup field but not modeled as FK, still attach suggest metadata
+        def _canonical_lookup_kind(name: str):
+            key = (name or '').replace('-', '_').lower()
+            aliases = {
+                'account': {'account', 'gl_account', 'ledger', 'chartofaccount'},
+                'vendor': {'vendor', 'supplier'},
+                'customer': {'customer', 'client'},
+                'product': {'product', 'item', 'service', 'inventoryitem', 'inventory_item'},
+                'tax_code': {'tax_code', 'taxcode'},
+                'cost_center': {'cost_center'},
+                'department': {'department'},
+                'project': {'project'},
+            }
+            for canon, names in aliases.items():
+                if key in names:
+                    return canon
+                for suffix in ('_id', '_code', '_name', '_display'):
+                    if key.endswith(suffix) and key[:-len(suffix)] in names:
+                        return canon
+            return None
+
+        lookup_endpoints = {
+            'account': '/accounting/journal-entry/lookup/accounts/',
+            'vendor': '/accounting/journal-entry/lookup/vendors/',
+            'customer': '/accounting/journal-entry/lookup/customers/',
+            'product': '/accounting/journal-entry/lookup/products/',
+            'tax_code': '/accounting/journal-entry/lookup/tax-codes/',
+            'cost_center': '/accounting/journal-entry/lookup/cost-centers/',
+            'department': '/accounting/journal-entry/lookup/departments/',
+            'project': '/accounting/journal-entry/lookup/projects/',
+        }
+
+        canonical_kind = _canonical_lookup_kind(field_name or '')
+        if canonical_kind in lookup_endpoints and not isinstance(field_kwargs.get('widget'), forms.HiddenInput):
+            attrs.setdefault('autocomplete', 'off')
+            attrs.setdefault('data-endpoint', lookup_endpoints[canonical_kind])
+            attrs.setdefault('data-hidden-name', field_name)
+            attrs.setdefault('data-lookup-kind', canonical_kind.replace('_', ''))
+            base_classes = attrs.get('class', '').strip()
+            if 've-suggest-input' not in base_classes:
+                attrs['class'] = f"{base_classes} ve-suggest-input generic-typeahead".strip()
+            field_kwargs['widget'] = forms.TextInput(attrs=attrs)
+
         # Filter out None values
         field_kwargs = {k: v for k, v in field_kwargs.items() if v is not None}
 
@@ -151,16 +196,25 @@ class VoucherFormFactory:
 
         related_model = model_field.remote_field.model
         related_name = getattr(related_model, '__name__', '')
-        if related_name not in {
-            'ChartOfAccount',
-            'Vendor',
-            'Customer',
-            'Product',
-            'CostCenter',
-            'Department',
-            'Project',
-            'TaxCode',
-        }:
+        # Broaden support for lookup-enabled FKs (synonyms map to canonical kinds)
+        lookup_kind_map = {
+            'ChartOfAccount': 'account',
+            'Account': 'account',
+            'Vendor': 'vendor',
+            'Supplier': 'vendor',
+            'Customer': 'customer',
+            'Client': 'customer',
+            'Product': 'product',
+            'Item': 'product',
+            'Service': 'product',
+            'InventoryItem': 'product',
+            'CostCenter': 'costcenter',
+            'Department': 'department',
+            'Project': 'project',
+            'TaxCode': 'taxcode',
+        }
+
+        if related_name not in lookup_kind_map:
             return None
 
         queryset = related_model.objects.all()
@@ -185,26 +239,50 @@ class VoucherFormFactory:
 
         # Visible display field used for typeahead
         endpoint_map = {
-            # Use the exact COA search endpoint requested
             'ChartOfAccount': '/accounting/journal-entry/lookup/accounts/',
+            'Account': '/accounting/journal-entry/lookup/accounts/',
             'CostCenter': '/accounting/journal-entry/lookup/cost-centers/',
             'Department': '/accounting/journal-entry/lookup/departments/',
             'Project': '/accounting/journal-entry/lookup/projects/',
             'TaxCode': '/accounting/journal-entry/lookup/tax-codes/',
             'Vendor': '/accounting/journal-entry/lookup/vendors/',
+            'Supplier': '/accounting/journal-entry/lookup/vendors/',
             'Customer': '/accounting/journal-entry/lookup/customers/',
+            'Client': '/accounting/journal-entry/lookup/customers/',
             'Product': '/accounting/journal-entry/lookup/products/',
+            'Item': '/accounting/journal-entry/lookup/products/',
+            'Service': '/accounting/journal-entry/lookup/products/',
+            'InventoryItem': '/accounting/journal-entry/lookup/products/',
         }
+        base_classes = 'form-control generic-typeahead ve-suggest-input'
         display_attrs = {
-            'class': 'form-control generic-typeahead',
+            'class': base_classes,
             'autocomplete': 'off',
             'data-endpoint': endpoint_map.get(related_name, ''),
+            'data-hidden-name': field_name,
+            'data-lookup-kind': lookup_kind_map.get(related_name, related_name.lower()),
+            'data-add-url': {
+                'ChartOfAccount': '/accounting/chart-of-accounts/create/',
+                'Account': '/accounting/chart-of-accounts/create/',
+                'CostCenter': '/accounting/cost-centers/create/',
+                'Department': '/accounting/departments/create/',
+                'Project': '/accounting/projects/create/',
+                'TaxCode': '/accounting/tax-codes/create/',
+                'Vendor': '/accounting/vendors/new/',
+                'Supplier': '/accounting/vendors/new/',
+                'Customer': '/accounting/customers/new/',
+                'Client': '/accounting/customers/new/',
+                'Product': '/inventory/products/create/',
+                'Item': '/inventory/products/create/',
+                'Service': '/inventory/products/create/',
+                'InventoryItem': '/inventory/products/create/',
+            }.get(related_name, ''),
         }
         placeholder = config.get('placeholder')
         if placeholder:
             display_attrs['placeholder'] = placeholder
         if related_name == 'ChartOfAccount':
-            display_attrs['class'] = 'form-control account-typeahead'
+            display_attrs['class'] = base_classes.replace('generic-typeahead', 'account-typeahead')
 
         display_field = forms.CharField(
             label=base_label,
@@ -423,7 +501,85 @@ class VoucherFormFactory:
         # only the 'lines' schema so the line form fields are correct.
         LineForm = None
         if isinstance(self.schema, dict) and 'lines' in self.schema:
-            lines_schema = self.schema.get('lines') or {}
+            lines_schema = copy.deepcopy(self.schema.get('lines') or {})
+
+            # Augment lines schema with required model fields when missing (to avoid validation/DB errors)
+            line_model_fields = set()
+            try:
+                if self.model:
+                    line_model_fields = {f.name for f in self.model._meta.fields}
+            except Exception:
+                line_model_fields = set()
+
+            def ensure_line_field(name, cfg):
+                if isinstance(lines_schema, list):
+                    if not any(isinstance(it, dict) and it.get('name') == name for it in lines_schema):
+                        lines_schema.append({'name': name, **cfg})
+                elif isinstance(lines_schema, dict):
+                    if name not in lines_schema:
+                        lines_schema[name] = cfg
+
+            numeric_cfg = lambda default_val='0': {'label': '', 'type': 'decimal', 'required': False, 'order_no': 9999, 'kwargs': {'widget': {'attrs': {'value': default_val}}}}
+
+            if 'line_number' in line_model_fields:
+                ensure_line_field(
+                    'line_number',
+                    {
+                        'label': 'Line #',
+                        'type': 'integer',
+                        'required': False,
+                        'order_no': 0,
+                        'kwargs': {'widget': {'attrs': {'value': '1'}}},
+                    },
+                )
+            if 'account' in line_model_fields:
+                ensure_line_field('account', {'label': 'Account', 'type': 'char', 'required': False, 'order_no': 1})
+            for amt_field in ['debit', 'credit', 'amount', 'tax_amount', 'debit_amount', 'credit_amount', 'amount_txn', 'amount_base', 'functional_debit_amount', 'functional_credit_amount']:
+                if amt_field in line_model_fields:
+                    ensure_line_field(amt_field, numeric_cfg())
+
+            # Enforce a sensible visual column order for lines: S.No, Account, Description,
+            # Debit/Credit/Amount, Cost Center (if present). This ensures UI consistency
+            # regardless of how the schema was authored.
+            desired_seq = [
+                'line_number',
+                'account',
+                'description',
+                'debit', 'debit_amount',
+                'credit', 'credit_amount',
+                'amount',
+                'cost_center',
+            ]
+
+            # If lines_schema is a dict, set explicit __order__ to prefer desired_seq
+            if isinstance(lines_schema, dict):
+                order = []
+                existing_keys = [k for k in lines_schema.keys() if k != '__order__']
+                # Add fields in desired order if they exist in the schema or model
+                for name in desired_seq:
+                    if name in lines_schema and name not in order:
+                        order.append(name)
+                # Append remaining fields preserving their original order
+                for name in existing_keys:
+                    if name not in order:
+                        order.append(name)
+                if order:
+                    lines_schema['__order__'] = order
+
+            # If lines_schema is a list, reorder the list entries according to desired_seq
+            elif isinstance(lines_schema, list):
+                # Build a map name->item for quick lookup
+                item_map = { (it.get('name') if isinstance(it, dict) else None): it for it in lines_schema }
+                reordered = []
+                for name in desired_seq:
+                    if name in item_map and item_map[name] not in reordered:
+                        reordered.append(item_map[name])
+                # Append any remaining items preserving original relative order
+                for it in lines_schema:
+                    if it not in reordered:
+                        reordered.append(it)
+                lines_schema[:] = reordered
+
             temp_factory = VoucherFormFactory(
                 lines_schema,
                 model=self.model,
@@ -481,6 +637,95 @@ class VoucherFormFactory:
             from accounting.forms.form_factory import VoucherFormFactory as FormsFactoryLegacy
             header_model = FormsFactoryLegacy._get_model_for_voucher_config(voucher_config)
             form_kwargs['model'] = header_model
+        except Exception:
+            pass
+
+        # Build an augmented schema so required model fields exist even if missing in ui_schema.
+        try:
+            header_model_fields = {f.name for f in form_kwargs.get('model')._meta.fields} if form_kwargs.get('model') else set()
+        except Exception:
+            header_model_fields = set()
+
+        def _augment_header_schema(config_obj):
+            schema_copy = copy.deepcopy(getattr(config_obj, 'ui_schema', {}) or {})
+            header = schema_copy.setdefault('header', {}) if isinstance(schema_copy, dict) else {}
+
+            def ensure_field(name, cfg):
+                if name not in header:
+                    header[name] = cfg
+                order = header.setdefault('__order__', [])
+                if name not in order:
+                    order.append(name)
+
+            # Alias supplier -> vendor
+            if 'vendor' not in header and 'supplier' in header and 'vendor' in header_model_fields:
+                header['vendor'] = header['supplier']
+                try:
+                    order = header.get('__order__', [])
+                    header['__order__'] = [ ('vendor' if x == 'supplier' else x) for x in order ]
+                except Exception:
+                    pass
+
+            # Add vendor/customer if model requires but schema missing
+            if 'vendor' in header_model_fields and 'vendor' not in header:
+                ensure_field('vendor', {'label': 'Vendor', 'type': 'char', 'required': False})
+            if 'customer' in header_model_fields and 'customer' not in header:
+                ensure_field('customer', {'label': 'Customer', 'type': 'char', 'required': False})
+
+            # Alias customer if needed (common in sales schemas)
+            if 'customer' not in header and 'customer' in header_model_fields and 'customer' in header:
+                # already there, no action
+                pass
+
+            # Voucher date
+            if 'voucher_date' in header_model_fields:
+                ensure_field('voucher_date', {
+                    'label': 'Date',
+                    'type': 'date',
+                    'required': False,
+                    'order_no': 0,
+                    'kwargs': {'widget': {'attrs': {'value': date.today().isoformat()}}}
+                })
+
+            # Currency / currency_code
+            currency_field = 'currency_code' if 'currency_code' in header_model_fields else ('currency' if 'currency' in header_model_fields else None)
+            if currency_field:
+                ensure_field(currency_field, {
+                    'label': 'Currency',
+                    'type': 'char',
+                    'required': False,
+                    'order_no': 1,
+                    'kwargs': {'widget': {'attrs': {'value': getattr(organization, 'base_currency_code', None) or getattr(organization, 'base_currency_code_id', None) or ''}}}
+                })
+
+            # Exchange rate
+            if 'exchange_rate' in header_model_fields:
+                ensure_field('exchange_rate', {
+                    'label': 'Exchange Rate',
+                    'type': 'decimal',
+                    'required': False,
+                    'order_no': 2,
+                    'kwargs': {'widget': {'attrs': {'value': '1.0'}}}
+                })
+
+            # Status (hidden, default draft)
+            if 'status' in header_model_fields:
+                ensure_field('status', {
+                    'label': 'Status',
+                    'type': 'char',
+                    'required': False,
+                    'hidden': True,
+                    'kwargs': {'widget': {'attrs': {'value': 'draft'}}}
+                })
+
+            return schema_copy
+
+        augmented_schema = _augment_header_schema(voucher_config)
+        # Temporarily inject the augmented schema without touching the DB-stored object
+        try:
+            voucher_config = copy.copy(voucher_config)
+            voucher_config.ui_schema = augmented_schema
+            form_kwargs['configuration'] = voucher_config
         except Exception:
             pass
 

@@ -1,0 +1,105 @@
+.report-shell .page-content {
+  padding-top: 1rem;
+}
+
+.report-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.report-header__title h1,
+.report-header__title h2,
+.report-header__title h4 {
+  margin-bottom: 0.2rem;
+}
+.report-header__title p {
+  margin-bottom: 0;
+}
+.report-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.report-header__meta {
+  font-size: 0.85rem;
+  color: var(--bs-secondary-color);
+}
+
+.report-card {
+  border-radius: 0.6rem;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+.report-card + .report-card {
+  margin-top: 0.75rem;
+}
+
+.report-filters .form-control,
+.report-filters .form-select {
+  min-height: 2.35rem;
+}
+.report-filters .form-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.report-stat {
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 0.5rem;
+  padding: 0.75rem 0.9rem;
+  height: 100%;
+}
+.report-stat__label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--bs-secondary-color);
+  letter-spacing: 0.05em;
+}
+.report-stat__value {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.report-table {
+  font-size: 0.88rem;
+}
+.report-table thead th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: #f5f6fb;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+.report-table tbody tr:hover {
+  background: rgba(28, 132, 238, 0.04);
+}
+.report-table td,
+.report-table th {
+  padding: 0.45rem 0.6rem;
+}
+
+.report-empty {
+  border: 1px dashed rgba(0, 0, 0, 0.1);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--bs-secondary-color);
+}
+
+.report-export .btn {
+  min-width: 72px;
+}
+
+@media (max-width: 767px) {
+  .report-header__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .report-filters .form-label {
+    letter-spacing: normal;
+  }
+}

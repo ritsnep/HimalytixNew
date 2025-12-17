@@ -25,6 +25,10 @@
             max-height: calc(100vh - 10rem);
             overflow-y: auto;
         }
+        .form-shell .card-header,
+        .form-shell .card-body {
+            padding: 0.85rem 1rem;
+        }
         .form-shell__actions {
             position: sticky;
             bottom: -1px;
@@ -56,7 +60,7 @@
 
 {% block content %}
 <div id="form-toast-container" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1085"></div>
-<div class="main-content">
+<div class="main-content compact-page">
     <div class="page-content">
         <div class="container-fluid">
             <div class="page-title-box d-sm-flex align-items-center justify-content-between">
@@ -89,9 +93,9 @@
                  id="{{ form_shell_id|default:'form-shell' }}"
                  data-form-shell
                  data-form-config-id="{{ form_config_id|default:'form-config' }}">
-                <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div class="card-header py-2 d-flex flex-wrap justify-content-between align-items-center gap-1">
                     <div>
-                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <div class="d-flex align-items-center gap-1 flex-wrap">
                             <h4 class="card-title mb-0">
                                 {% block form_title_text %}{{ form_title|default:page_title|default:"Form" }}{% endblock %}
                             </h4>
@@ -104,7 +108,7 @@
                             <p class="text-muted small mb-0">{{ form_description }}</p>
                         {% endif %}
                     </div>
-                    <div class="d-flex gap-2 align-items-center flex-wrap">
+                    <div class="d-flex gap-1 align-items-center flex-wrap">
                         {% block form_header_extras %}{% endblock %}
                         <button type="button"
                                 class="btn btn-outline-secondary btn-sm"
@@ -135,14 +139,14 @@
                             {% block form_fields %}
                                 <p class="text-muted mb-0">Override <code>form_fields</code> to supply form content.</p>
                             {% endblock %}
-                            <div class="form-shell__actions d-flex flex-wrap gap-2 justify-content-between align-items-center"
+                            <div class="form-shell__actions d-flex flex-wrap gap-1 justify-content-between align-items-center"
                                  data-form-actions>
                                 <span class="text-muted small">
                                     <i class="mdi mdi-keyboard-outline"></i>
                                     {% trans "Press Ctrl+S to save" %}
                                 </span>
                                 {% block form_actions %}
-                                    <div class="d-flex gap-2 ms-auto">
+                                    <div class="d-flex gap-1 ms-auto">
                                         {% if cancel_url %}
                                             <a href="{{ cancel_url }}" class="btn btn-outline-secondary">
                                                 {% trans "Cancel" %}

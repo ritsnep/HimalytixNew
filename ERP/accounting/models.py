@@ -7216,7 +7216,10 @@ class SalesOrderVoucherLine(BaseVoucherLine):
 
     def save(self, *args, **kwargs):
         # Calculate amounts
-        line_total = self.quantity_ordered * self.unit_price
-        self.discount_amount = line_total * (self.discount_percent / 100)
+        from decimal import Decimal
+
+        # Coerce to Decimal to avoid mixing Decimal and float types during arithmetic
+        line_total = Decimal(self.quantity_ordered) * Decimal(self.unit_price)
+        self.discount_amount = line_total * (Decimal(self.discount_percent) / Decimal('100'))
         self.amount = line_total - self.discount_amount
         super().save(*args, **kwargs)

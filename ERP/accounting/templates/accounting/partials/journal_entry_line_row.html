@@ -75,6 +75,7 @@
             value="{{ row.project|default:'' }}"
             class="form-control form-control-sm"
             placeholder="{{ line_labels.project|default:'Project' }}"
+            data-lookup="project"
             data-row-index="{{ index }}"
           />
         </td>
@@ -86,6 +87,7 @@
             value="{{ row.department|default:'' }}"
             class="form-control form-control-sm"
             placeholder="{{ line_labels.department|default:'Department' }}"
+            data-lookup="department"
           />
         </td>
       {% elif key == 'taxCode' %}
@@ -96,6 +98,7 @@
             value="{{ row.taxCode|default:'' }}"
             class="form-control form-control-sm"
             placeholder="{{ line_labels.taxCode|default:'Tax Code' }}"
+            data-lookup="taxCode"
           />
         </td>
       {% elif key == 'actions' %}

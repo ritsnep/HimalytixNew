@@ -16,7 +16,7 @@
     inputs.forEach(input => {
       if (input._initialized) return;
       input._initialized = true;
-      const endpoint = input.dataset.endpoint || '/accounting/vouchers/htmx/account-lookup/';
+      const endpoint = input.dataset.endpoint || '/accounting/journal-entry/lookup/accounts/';
 
       const listId = input.dataset.listId || input.getAttribute('list') || (input.id ? `${input.id}__list` : `typeahead-${Math.random().toString(36).slice(2)}`);
       let datalist = document.getElementById(listId);
@@ -27,7 +27,7 @@
       }
       input.setAttribute('list', listId);
 
-      const hiddenName = input.dataset.hiddenName || input.name.replace(/_display$/, '');
+      const hiddenName = input.dataset.hiddenName || (input.name ? input.name.replace(/_display$/, '') : '');
       let lastQuery = '';
       let lastResults = [];
 
@@ -39,17 +39,53 @@
         }
         if (q === lastQuery) return;
         lastQuery = q;
-        fetch(`${endpoint}?q=${encodeURIComponent(q)}&limit=10`, {credentials: 'same-origin'})
-          .then(r => r.json())
-          .then(data => {
-            lastResults = (data && data.results) ? data.results : [];
+        // Prefer the explicit endpoint; if none given, fall back to the stable journal-entry account lookup.
+        const endpoints = endpoint
+          ? [endpoint]
+          : ['/accounting/journal-entry/lookup/accounts/'];
+
+        function attemptFetch(i) {
+          if (i >= endpoints.length) {
+            console.warn('Typeahead lookup exhausted all endpoints');
             datalist.innerHTML = '';
-            lastResults.forEach(r => {
-              const opt = document.createElement('option');
-              opt.value = displayText(r);
-              datalist.appendChild(opt);
+            return;
+          }
+          const url = `${endpoints[i]}?q=${encodeURIComponent(q)}&limit=10`;
+          fetch(url, {credentials: 'same-origin', headers: {'Accept': 'application/json', 'HX-Request': 'true'}})
+            .then(r => {
+              const ct = (r.headers.get('content-type') || '').toLowerCase();
+
+              // Bail early on HTTP errors or HTML responses (login pages/404 templates)
+              if (!r.ok || ct.includes('text/html')) {
+                r.text().then(txt => console.warn('Typeahead lookup non-JSON/HTTP issue', r.status, ct, url, txt.slice(0, 120)));
+                attemptFetch(i + 1);
+                return null;
+              }
+
+              // If it is JSON but parsing fails, treat it as a failure and try the next endpoint.
+              return r.json().catch(err => {
+                console.warn('Typeahead lookup JSON parse failed', err, url);
+                attemptFetch(i + 1);
+                return null;
+              });
+            })
+            .then(data => {
+              if (!data) return;
+              lastResults = Array.isArray(data.results) ? data.results : [];
+              datalist.innerHTML = '';
+              lastResults.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = displayText(r);
+                datalist.appendChild(opt);
+              });
+            })
+            .catch(err => {
+              console.warn('Typeahead lookup failed', err, url);
+              attemptFetch(i + 1);
             });
-          }).catch(err => console.warn('Typeahead lookup failed', err));
+        }
+
+        attemptFetch(0);
       });
 
       input.addEventListener('change', (e) => {

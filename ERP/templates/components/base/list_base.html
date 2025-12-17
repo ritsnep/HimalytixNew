@@ -16,6 +16,14 @@
         .list-shell .card-header h4 {
             margin-bottom: 0;
         }
+        .list-shell .card-header,
+        .list-shell .card-body {
+            padding: 0.75rem 1rem;
+        }
+        .list-shell .card {
+            border-radius: 10px;
+            box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
+        }
         .list-shell .list-toolbar .input-group-text kbd {
             font-size: 10px;
             padding: 0.15rem 0.35rem;
@@ -65,7 +73,7 @@
 
 {% block content %}
 <div id="list-toast-container" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1085"></div>
-<div class="main-content">
+<div class="main-content compact-page">
     <div class="page-content">
         <div class="container-fluid">
             <div class="page-title-box d-sm-flex align-items-center justify-content-between">
@@ -103,9 +111,9 @@
                  data-shortcuts-target="{{ list_shortcuts_id|default:'list-shortcuts' }}"
                  data-filter-target="{{ filter_drawer_id|default:'list-filter-drawer' }}"
                  data-htmx-target="{{ htmx_target_id|default:'' }}">
-                <div class="card-header py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
-                    <div class="d-flex flex-column">
-                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                <div class="card-header py-2">
+                    <div class="list-header">
+                        <div class="list-header__title">
                             <h4 class="card-title mb-0">
                                 {% block list_title %}{{ page_title|default:"List" }}{% endblock %}
                             </h4>
@@ -114,37 +122,42 @@
                         {% if list_subtitle %}
                             <small class="text-muted">{{ list_subtitle }}</small>
                         {% endif %}
-                    </div>
-                    <div class="d-flex flex-wrap gap-2 align-items-center">
-                        {% block list_header_extras %}{% endblock %}
-                        <button class="btn btn-outline-secondary btn-sm"
-                                type="button"
-                                data-list-expand
-                                aria-pressed="false">
-                            <i class="mdi mdi-arrow-expand-all"></i>
-                            <span class="d-none d-md-inline">{% trans "Expand" %}</span>
-                            <kbd class="ms-2 d-none d-lg-inline">Ctrl+Shift+E</kbd>
-                        </button>
-                        {% if show_filter_toggle|default:True %}
-                            <button class="btn btn-outline-secondary btn-sm"
-                                    type="button"
-                                    data-list-filter-toggle="true"
-                                    data-bs-toggle="collapse"
-                                    data-bs-target="#{{ filter_drawer_id|default:'list-filter-drawer' }}"
-                                    aria-expanded="false"
-                                    aria-controls="{{ filter_drawer_id|default:'list-filter-drawer' }}">
-                                <i class="mdi mdi-filter-variant"></i>
-                                <span class="d-none d-md-inline">{% trans "Filters" %}</span>
-                                <kbd class="ms-2 d-none d-lg-inline">Ctrl+Shift+F</kbd>
-                            </button>
-                        {% endif %}
-                        {% block list_actions %}
-                            {% if can_add|default:True and create_url %}
-                                <a href="{{ create_url }}" class="btn btn-success btn-sm">
-                                    <i class="mdi mdi-plus"></i> {{ create_button_text|default:"Add New" }}
-                                </a>
-                            {% endif %}
-                        {% endblock %}
+                        <div class="list-header__actions">
+                            <div class="list-header__primary d-flex flex-wrap gap-1 align-items-center" id="list-actions">
+                                {% block list_header_extras %}{% endblock %}
+                                <button class="btn btn-outline-secondary btn-sm"
+                                        type="button"
+                                        data-list-expand
+                                        aria-pressed="false">
+                                    <i class="mdi mdi-arrow-expand-all"></i>
+                                    <span class="d-none d-md-inline">{% trans "Expand" %}</span>
+                                    <kbd class="ms-2 d-none d-lg-inline">Ctrl+Shift+E</kbd>
+                                </button>
+                                {% if show_filter_toggle|default:True %}
+                                    <button class="btn btn-outline-secondary btn-sm"
+                                            type="button"
+                                            data-list-filter-toggle="true"
+                                            data-bs-toggle="collapse"
+                                            data-bs-target="#{{ filter_drawer_id|default:'list-filter-drawer' }}"
+                                            aria-expanded="false"
+                                            aria-controls="{{ filter_drawer_id|default:'list-filter-drawer' }}">
+                                        <i class="mdi mdi-filter-variant"></i>
+                                        <span class="d-none d-md-inline">{% trans "Filters" %}</span>
+                                        <kbd class="ms-2 d-none d-lg-inline">Ctrl+Shift+F</kbd>
+                                    </button>
+                                {% endif %}
+                                {% block list_actions %}
+                                    {% if can_add|default:True and create_url %}
+                                        <a href="{{ create_url }}" class="btn btn-success btn-sm">
+                                            <i class="mdi mdi-plus"></i> {{ create_button_text|default:"Add New" }}
+                                        </a>
+                                    {% endif %}
+                                {% endblock %}
+                            </div>
+                            <div id="datatable-controls"
+                                 class="list-header__secondary d-flex align-items-center flex-wrap gap-1"
+                                 aria-label="{% trans 'Table controls' %}"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -159,11 +172,11 @@
                 </div>
 
                 <div class="card-body list-toolbar pb-1">
-                    <div class="d-flex flex-wrap gap-3 align-items-center justify-content-between mb-3">
-                        <div class="d-flex flex-wrap gap-2 align-items-center" data-list-quick-filters>
+                    <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-2">
+                        <div class="d-flex flex-wrap gap-1 align-items-center" data-list-quick-filters>
                             {% block list_quick_filters %}{% endblock %}
                         </div>
-                        <div class="d-flex flex-wrap gap-2 align-items-center" data-list-controls>
+                        <div class="d-flex flex-wrap gap-1 align-items-center" data-list-controls>
                             {% trans "Quick search (/)" as default_search_placeholder %}
                             <div class="input-group input-group-sm" data-list-search>
                                 <span class="input-group-text">

@@ -1,0 +1,63 @@
+{% extends "inventory/_list_base.html" %}
+
+{% block page_title %}Transfer Orders{% endblock %}
+{% block list_subtitle %}Move inventory between warehouses while capturing reference and notes.{% endblock %}
+
+{% block custom_filters %}
+  <form method="get" class="row g-3 mb-3">
+    <div class="col-md-3">
+      {{ filter_form.source_warehouse.label_tag }}
+      {{ filter_form.source_warehouse }}
+    </div>
+    <div class="col-md-3">
+      {{ filter_form.destination_warehouse.label_tag }}
+      {{ filter_form.destination_warehouse }}
+    </div>
+    <div class="col-md-4">
+      {{ filter_form.status.label_tag }}
+      <div class="d-flex flex-wrap gap-2">
+        {{ filter_form.status }}
+      </div>
+    </div>
+    <div class="col-md-2 d-flex align-items-end gap-2">
+      <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
+      <a class="btn btn-outline-secondary btn-sm" href="{{ export_url }}">Export CSV</a>
+    </div>
+  </form>
+{% endblock %}
+
+{% block table_head %}
+  <tr>
+    <th>Order</th>
+    <th>Source</th>
+    <th>Destination</th>
+    <th>Status</th>
+    <th>Requested</th>
+    <th>Scheduled</th>
+    <th>Reference</th>
+    <th>Notes</th>
+  </tr>
+{% endblock %}
+
+{% block table_body %}
+  {% for order in transfer_orders %}
+    <tr>
+      <td>
+        <a href="{% url 'inventory:transfer_order_detail' order.pk %}">
+          {{ order.order_number }}
+        </a>
+      </td>
+      <td>{{ order.source_warehouse.name }}</td>
+      <td>{{ order.destination_warehouse.name }}</td>
+      <td>{{ order.get_status_display }}</td>
+      <td>{{ order.requested_date|date:"Y-m-d H:i" }}</td>
+      <td>{% if order.scheduled_date %}{{ order.scheduled_date|date:"Y-m-d H:i" }}{% else %}&mdash;{% endif %}</td>
+      <td>{{ order.reference_id|default:"—" }}</td>
+      <td>{{ order.notes|default:"—" }}</td>
+    </tr>
+  {% empty %}
+    <tr>
+      <td colspan="8" class="text-center text-muted py-3">Create a transfer order to move stock across warehouses.</td>
+    </tr>
+  {% endfor %}
+{% endblock %}

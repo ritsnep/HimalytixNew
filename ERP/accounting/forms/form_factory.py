@@ -283,19 +283,22 @@ class VoucherFormFactory:
         if voucher_config.module == 'accounting':
             return apps.get_model('accounting', 'Journal')
         elif voucher_config.module == 'purchasing':
+            # Use the actual purchasing models so FK fields (vendor, product, tax, etc.) resolve correctly
             if voucher_config.code == 'purchase_order':
-                return apps.get_model('accounting', 'PurchaseOrderVoucher')
-            elif voucher_config.code == 'purchase_return':
-                return apps.get_model('accounting', 'PurchaseReturnVoucher')
+                return apps.get_model('purchasing', 'PurchaseOrder')
             else:
-                # Default to PurchaseOrderVoucher for purchasing module
-                return apps.get_model('accounting', 'PurchaseOrderVoucher')
+                return apps.get_model('purchasing', 'PurchaseOrder')
         elif voucher_config.module == 'sales':
             if voucher_config.code == 'sales_order':
-                return apps.get_model('accounting', 'SalesOrderVoucher')
+                try:
+                    return apps.get_model('sales', 'SalesOrder')
+                except Exception:
+                    return apps.get_model('accounting', 'Journal')
             else:
-                # Default to SalesOrderVoucher for sales module
-                return apps.get_model('accounting', 'SalesOrderVoucher')
+                try:
+                    return apps.get_model('sales', 'SalesOrder')
+                except Exception:
+                    return apps.get_model('accounting', 'Journal')
         elif voucher_config.module == 'inventory':
             # For inventory, we might need specific models, but for now use Journal
             return apps.get_model('accounting', 'Journal')
@@ -313,18 +316,20 @@ class VoucherFormFactory:
             return apps.get_model('accounting', 'JournalLine')
         elif voucher_config.module == 'purchasing':
             if voucher_config.code == 'purchase_order':
-                return apps.get_model('accounting', 'PurchaseOrderVoucherLine')
-            elif voucher_config.code == 'purchase_return':
-                return apps.get_model('accounting', 'PurchaseReturnVoucherLine')
+                return apps.get_model('purchasing', 'PurchaseOrderLine')
             else:
-                # Default to PurchaseOrderVoucherLine for purchasing module
-                return apps.get_model('accounting', 'PurchaseOrderVoucherLine')
+                return apps.get_model('purchasing', 'PurchaseOrderLine')
         elif voucher_config.module == 'sales':
             if voucher_config.code == 'sales_order':
-                return apps.get_model('accounting', 'SalesOrderVoucherLine')
+                try:
+                    return apps.get_model('sales', 'SalesOrderLine')
+                except Exception:
+                    return apps.get_model('accounting', 'JournalLine')
             else:
-                # Default to SalesOrderVoucherLine for sales module
-                return apps.get_model('accounting', 'SalesOrderVoucherLine')
+                try:
+                    return apps.get_model('sales', 'SalesOrderLine')
+                except Exception:
+                    return apps.get_model('accounting', 'JournalLine')
         elif voucher_config.module == 'inventory':
             # For inventory, we might need specific models, but for now use JournalLine
             return apps.get_model('accounting', 'JournalLine')

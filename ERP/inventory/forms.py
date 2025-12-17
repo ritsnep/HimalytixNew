@@ -8,7 +8,8 @@ from .models import (
     Product, ProductCategory, Warehouse, Location, Unit, ProductUnit,
     PriceList, PriceListItem, CustomerPriceList, PromotionRule,
     PickList, PickListLine, PackingSlip, Shipment, Backorder, RMA,
-    TransitWarehouse,InventoryItem, StockLedger
+    TransitWarehouse, InventoryItem, StockLedger, StockAdjustment, StockAdjustmentLine,
+    TransferOrder, TransferOrderLine, Batch
 )
 from enterprise.models import BillOfMaterial, BillOfMaterialItem
 from accounting.forms_mixin import BootstrapFormMixin
@@ -366,3 +367,178 @@ class StockIssueForm(BaseStockTransactionForm):
     def _apply_tailwind_styles(self):
         super()._apply_tailwind_styles()
         self.fields['reason'].widget.attrs['rows'] = 2
+
+
+class TransferOrderForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = TransferOrder
+        fields = (
+            'order_number', 'source_warehouse', 'destination_warehouse',
+            'reference_id', 'scheduled_date', 'notes', 'instructions', 'pick_list'
+        )
+        widgets = {
+            'order_number': forms.TextInput(attrs={'class': 'form-control', 'readonly': True}),
+            'source_warehouse': forms.Select(attrs={'class': 'form-select'}),
+            'destination_warehouse': forms.Select(attrs={'class': 'form-select'}),
+            'reference_id': forms.TextInput(attrs={'class': 'form-control'}),
+            'scheduled_date': forms.DateTimeInput(attrs={'class': 'form-control datepicker'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'instructions': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'pick_list': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+    def __init__(self, *args, organization=None, **kwargs):
+        self.organization = organization
+        super().__init__(*args, **kwargs)
+        if self.organization:
+            wh_qs = Warehouse.objects.filter(organization=self.organization, is_active=True)
+            self.fields['source_warehouse'].queryset = wh_qs
+            self.fields['destination_warehouse'].queryset = wh_qs
+            self.fields['destination_warehouse'].empty_label = "Select destination"
+            self.fields['source_warehouse'].empty_label = "Select source"
+            self.fields['pick_list'].queryset = PickList.objects.filter(
+                organization=self.organization
+            ).order_by('-created_at')
+            self.fields['pick_list'].required = False
+
+
+class TransferOrderLineForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = TransferOrderLine
+        fields = (
+            'product', 'from_location', 'to_location', 'batch',
+            'quantity_requested', 'notes'
+        )
+        widgets = {
+            'product': forms.Select(attrs={'class': 'form-select'}),
+            'from_location': forms.Select(attrs={'class': 'form-select'}),
+            'to_location': forms.Select(attrs={'class': 'form-select'}),
+            'batch': forms.Select(attrs={'class': 'form-select'}),
+            'quantity_requested': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.0001'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+
+    def __init__(self, *args, organization=None, **kwargs):
+        self.organization = organization
+        super().__init__(*args, **kwargs)
+        if self.organization:
+            self.fields['product'].queryset = Product.objects.filter(
+                organization=self.organization,
+                is_inventory_item=True
+            ).order_by('name')
+            loc_qs = Location.objects.filter(
+                warehouse__organization=self.organization,
+                is_active=True
+            ).order_by('warehouse__name', 'code')
+            self.fields['from_location'].queryset = loc_qs
+            self.fields['to_location'].queryset = loc_qs
+            self.fields['from_location'].required = False
+            self.fields['to_location'].required = False
+            self.fields['batch'].queryset = Batch.objects.filter(
+                organization=self.organization
+            ).order_by('product__code', 'batch_number')
+
+
+TransferOrderLineFormSet = forms.inlineformset_factory(
+    TransferOrder,
+    TransferOrderLine,
+    form=TransferOrderLineForm,
+    extra=1,
+    can_delete=True
+)
+
+
+class TransferOrderFilterForm(forms.Form):
+    status = forms.MultipleChoiceField(
+        choices=TransferOrder.STATUS_CHOICES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label="Status"
+    )
+    source_warehouse = forms.ModelChoiceField(
+        queryset=Warehouse.objects.none(),
+        required=False,
+        label="Source Warehouse"
+    )
+    destination_warehouse = forms.ModelChoiceField(
+        queryset=Warehouse.objects.none(),
+        required=False,
+        label="Destination Warehouse"
+    )
+
+    def __init__(self, *args, organization=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if organization:
+            qs = Warehouse.objects.filter(organization=organization, is_active=True)
+            self.fields['source_warehouse'].queryset = qs
+            self.fields['destination_warehouse'].queryset = qs
+
+
+class StockAdjustmentForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = StockAdjustment
+        fields = ('adjustment_number', 'warehouse', 'reason', 'reference_id', 'notes')
+        widgets = {
+            'adjustment_number': forms.TextInput(attrs={'class': 'form-control', 'readonly': True}),
+            'warehouse': forms.Select(attrs={'class': 'form-select'}),
+            'reason': forms.Select(attrs={'class': 'form-select'}),
+            'reference_id': forms.TextInput(attrs={'class': 'form-control'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+    def __init__(self, *args, organization=None, **kwargs):
+        self.organization = organization
+        super().__init__(*args, **kwargs)
+        if self.organization:
+            self.fields['warehouse'].queryset = Warehouse.objects.filter(
+                organization=self.organization, is_active=True
+            ).order_by('name')
+
+
+class StockAdjustmentLineForm(BootstrapFormMixin, forms.ModelForm):
+    system_quantity = forms.DecimalField(
+        max_digits=15,
+        decimal_places=4,
+        required=False,
+        widget=forms.NumberInput(
+            attrs={'class': 'form-control', 'step': '0.0001', 'readonly': True}
+        ),
+        initial=0,
+    )
+
+    class Meta:
+        model = StockAdjustmentLine
+        fields = ('product', 'location', 'batch', 'counted_quantity', 'system_quantity', 'notes')
+        widgets = {
+            'product': forms.Select(attrs={'class': 'form-select'}),
+            'location': forms.Select(attrs={'class': 'form-select'}),
+            'batch': forms.Select(attrs={'class': 'form-select'}),
+            'counted_quantity': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.0001'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+
+    def __init__(self, *args, organization=None, **kwargs):
+        self.organization = organization
+        super().__init__(*args, **kwargs)
+        if self.organization:
+            self.fields['product'].queryset = Product.objects.filter(
+                organization=self.organization, is_inventory_item=True
+            ).order_by('name')
+            self.fields['location'].queryset = Location.objects.filter(
+                warehouse__organization=self.organization,
+                is_active=True
+            ).order_by('warehouse__name', 'code')
+            self.fields['batch'].queryset = Batch.objects.filter(
+                organization=self.organization
+            ).order_by('product__code', 'batch_number')
+        self.fields['location'].required = False
+        self.fields['batch'].required = False
+
+
+StockAdjustmentLineFormSet = forms.inlineformset_factory(
+    StockAdjustment,
+    StockAdjustmentLine,
+    form=StockAdjustmentLineForm,
+    extra=1,
+    can_delete=True
+)

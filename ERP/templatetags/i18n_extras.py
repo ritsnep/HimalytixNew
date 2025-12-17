@@ -12,4 +12,3 @@ def i18n_get(translations, key):
     if not isinstance(translations, dict):
         return ""
     return translations.get(key, "")
-

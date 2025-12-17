@@ -14,6 +14,8 @@ class ListConfig(TypedDict, total=False):
     date_range_fields: List[str]
     bulk_actions: List[str]
     order_by: List[str]
+    group_by: List[str]
+    aggregate_fields: Dict[str, str]
 
 
 # Explicit overrides per model name (lowercase model_name)
@@ -80,6 +82,8 @@ REGISTRY: Dict[str, ListConfig] = {
         "boolean_fields": ["is_archived", "system_type"],
         "bulk_actions": ["activate", "deactivate"],
         "order_by": ["code"],
+        "group_by": ["nature"],
+        "aggregate_fields": {"code": "count"},
     },
     "currency": {
         "search_fields": ["currency_code", "currency_name", "symbol"],
@@ -136,6 +140,8 @@ DEFAULTS: ListConfig = {
     "date_range_fields": ["created_at", "updated_at"],
     "bulk_actions": [],
     "order_by": [],
+    "group_by": [],
+    "aggregate_fields": {},
 }
 
 
@@ -206,11 +212,13 @@ def get_config(model: models.Model) -> ListConfig:
     base["currency_field"] = override.get("currency_field") or _infer_currency_field(model)
     base["date_range_fields"] = override.get("date_range_fields") or DEFAULTS["date_range_fields"]
     base["order_by"] = override.get("order_by") or []
+    base["group_by"] = override.get("group_by") or []
+    base["aggregate_fields"] = override.get("aggregate_fields") or {}
 
     base["bulk_actions"] = _infer_bulk_actions(model, override)
 
     # Ensure uniqueness
-    for key in ["search_fields", "choice_fields", "boolean_fields", "date_range_fields", "order_by", "bulk_actions"]:
+    for key in ["search_fields", "choice_fields", "boolean_fields", "date_range_fields", "order_by", "bulk_actions", "group_by"]:
         base[key] = list(dict.fromkeys(base.get(key, [])))
 
     return base

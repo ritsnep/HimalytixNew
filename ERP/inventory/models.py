@@ -1,6 +1,7 @@
 # inventory/models.py  – Django 4.2+
 from decimal import Decimal
 
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 from mptt.models import MPTTModel, TreeForeignKey          # pip install django-mptt
@@ -197,6 +198,66 @@ class StockLedger(models.Model):
         return f"{self.organization.name} - {self.txn_type} {self.product.code} @ {self.warehouse.code}/{loc_code} ({batch_num}): +{self.qty_in}/-{self.qty_out}"
 
 
+class StockAdjustment(models.Model):
+    """Record physical count adjustments and ledger variance tracking."""
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('posted', 'Posted'),
+    ]
+    REASON_CHOICES = [
+        ('cycle_count', 'Cycle Count'),
+        ('damage', 'Damage / Scrap'),
+        ('correction', 'Correction'),
+        ('other', 'Other'),
+    ]
+
+    organization = models.ForeignKey(Organization, on_delete=models.PROTECT)
+    adjustment_number = models.CharField(max_length=50, unique=True)
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    reason = models.CharField(max_length=20, choices=REASON_CHOICES)
+    reference_id = models.CharField(max_length=100, blank=True)
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='inventory_adjustments_created')
+    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='inventory_adjustments_approved')
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+    posted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['organization', 'warehouse', 'status']),
+        ]
+
+    def __str__(self):
+        return f"{self.organization.name} - {self.adjustment_number} ({self.status})"
+
+
+class StockAdjustmentLine(models.Model):
+    """Line items for a stock adjustment."""
+    adjustment = models.ForeignKey(StockAdjustment, on_delete=models.CASCADE, related_name='lines')
+    product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    location = models.ForeignKey(Location, null=True, blank=True, on_delete=models.PROTECT)
+    batch = models.ForeignKey(Batch, null=True, blank=True, on_delete=models.PROTECT)
+    counted_quantity = models.DecimalField(max_digits=15, decimal_places=4)
+    system_quantity = models.DecimalField(max_digits=15, decimal_places=4)
+    unit_cost = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    variance_value = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = ('adjustment', 'product', 'location', 'batch')
+
+    @property
+    def variance(self):
+        return self.counted_quantity - self.system_quantity
+
+    def __str__(self):
+        loc_code = self.location.code if self.location else 'N/A'
+        batch_num = self.batch.batch_number if self.batch else 'N/A'
+        return f"{self.adjustment.adjustment_number} - {self.product.code} @ {loc_code} ({batch_num})"
+
+
 class StockLedgerReport(StockLedger):
     class Meta:
         proxy = True
@@ -336,6 +397,65 @@ class TransitWarehouse(models.Model):
 
     def __str__(self):
         return f"{self.organization.name} - {self.name} (Transit)"
+
+
+class TransferOrder(models.Model):
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('released', 'Released'),
+        ('in_transit', 'In Transit'),
+        ('received', 'Received'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    organization = models.ForeignKey(Organization, on_delete=models.PROTECT)
+    order_number = models.CharField(max_length=50, unique=True)
+    source_warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name='transfer_source')
+    destination_warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name='transfer_destination')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    requested_date = models.DateTimeField(default=timezone.now)
+    scheduled_date = models.DateTimeField(null=True, blank=True)
+    reference_id = models.CharField(max_length=100, blank=True)
+    notes = models.TextField(blank=True)
+    instructions = models.TextField(blank=True)
+    pick_list = models.ForeignKey('PickList', null=True, blank=True, on_delete=models.SET_NULL)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='transfer_orders_created')
+    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='transfer_orders_approved')
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['organization', 'status']),
+        ]
+
+    def __str__(self):
+        return f"{self.organization.name} - {self.order_number} ({self.status})"
+
+
+class TransferOrderLine(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('picked', 'Picked'),
+        ('transferred', 'Transferred'),
+        ('received', 'Received'),
+    ]
+
+    transfer_order = models.ForeignKey(TransferOrder, on_delete=models.CASCADE, related_name='lines')
+    product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    from_location = models.ForeignKey(Location, null=True, blank=True, on_delete=models.PROTECT, related_name='+')
+    to_location = models.ForeignKey(Location, null=True, blank=True, on_delete=models.PROTECT, related_name='+')
+    batch = models.ForeignKey(Batch, null=True, blank=True, on_delete=models.PROTECT)
+    quantity_requested = models.DecimalField(max_digits=15, decimal_places=4)
+    quantity_transferred = models.DecimalField(max_digits=15, decimal_places=4, default=Decimal('0'))
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = ('transfer_order', 'product', 'from_location', 'to_location', 'batch')
+
+    def __str__(self):
+        return f"{self.transfer_order.order_number} - {self.product.code} ({self.quantity_requested})"
 
 
 class PickList(models.Model):

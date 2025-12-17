@@ -67,17 +67,17 @@
             min-height: 100vh;
         }
         .page-content--list {
-            padding: calc(70px + 12px) 12px 32px 12px;
+            padding: calc(56px + 10px) 10px 24px 10px;
         }
         @media (min-width: 992px) {
             .page-content--list {
-                padding-left: 20px;
-                padding-right: 20px;
+                padding-left: 16px;
+                padding-right: 16px;
             }
         }
         @media (max-width: 767.98px) {
             .page-content--list {
-                padding: calc(70px + 8px) 10px 28px 10px;
+                padding: calc(56px + 6px) 8px 18px 8px;
             }
         }
         .list-layout-shell .container-fluid {
@@ -85,8 +85,15 @@
             padding-right: 0;
         }
         .list-card {
-            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+            box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
             border: 1px solid #e5e7eb;
+            border-radius: 10px;
+        }
+        .list-card .card-body {
+            padding: 0.75rem 1rem;
+        }
+        .list-card .table-responsive {
+            padding-bottom: 0;
         }
         .list-layout-footer .footer {
             position: static;
@@ -111,13 +118,13 @@
         </div>
     </div>
     <div id="toast-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1055"></div>
-    <div class="main-content">
+    <div class="main-content compact-page">
         <div class="page-content page-content--list">
             <div class="container-fluid">
-                <div class="card list-card mb-3">
-                    <div class="card-body pb-2 pt-3">
-                        <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
-                            <div class="d-flex flex-column gap-1">
+                <div class="card list-card mb-2">
+                    <div class="card-body py-2">
+                        <div class="list-header">
+                            <div class="list-header__title">
                                 <h4 class="card-title mb-0">
                                     {{ page_title|default:"List" }}
                                 </h4>
@@ -134,16 +141,20 @@
                                 </nav>
                                 {% endif %}
                             </div>
-                            <div class="d-flex align-items-center gap-2 flex-wrap" id="list-actions">
-                                {% block create_button %}
-                                {% if create_url and create_button_text %}
+                            <div class="list-header__actions">
+                                <div class="list-header__primary d-flex align-items-center gap-1 flex-wrap" id="list-actions">
+                                    {% block create_button %}
+                                    {% if create_url and create_button_text %}
                                 <a href="{{ create_url }}" class="btn btn-success btn-sm">
                                     <i class="mdi mdi-plus me-1"></i> {{ create_button_text }}
                                 </a>
-                                {% endif %}
-                                {% endblock create_button %}
+                                    {% endif %}
+                                    {% endblock create_button %}
+                                </div>
                                 <!-- DataTables search and export buttons will be injected here -->
-                                <div id="datatable-controls" class="d-flex align-items-center flex-wrap gap-2"></div>
+                                <div id="datatable-controls"
+                                     class="list-header__secondary d-flex align-items-center flex-wrap gap-1"
+                                     aria-label="Table controls"></div>
                             </div>
                         </div>
                         {% if smart_filter_config %}

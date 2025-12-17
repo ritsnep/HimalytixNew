@@ -447,7 +447,7 @@ class AccountTypeListView(SmartListView):
     context_object_name = 'account_types'
 
     def get_queryset(self):
-        return AccountType.objects.all().order_by('code')
+        return super().get_queryset().order_by('code')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -554,5 +554,3 @@ class TaxCodeListView(BaseListView):
         context['create_button_text'] = 'New Tax Code'
         return context
 # (Move all ListView classes for AccountType, Currency, TaxType, TaxAuthority, Project, AccountingPeriod, JournalType, etc. from views.py to this file)
-
- 

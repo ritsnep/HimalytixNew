@@ -32,11 +32,30 @@ from accounting.models import (
     PaymentTerm,
     Project,
     TaxCode,
+    Vendor,
     VoucherModeConfig,
     VoucherUDFConfig,
     VoucherUIPreference,
     default_ui_schema,
 )
+try:  # Optional customer/product modules
+    from accounting.models import Customer  # type: ignore
+except Exception:
+    Customer = None  # noqa: N816
+try:
+    from inventory.models import Product  # type: ignore
+except Exception:
+    Product = None  # noqa: N816
+
+# Fallback Customer model from sales/commerce if accounting.Customer is absent
+if Customer is None:
+    try:
+        from sales.models import Customer  # type: ignore
+    except Exception:
+        try:
+            from commerce.models import Customer  # type: ignore
+        except Exception:
+            Customer = None  # noqa: N816
 from accounting.services.journal_entry_service import JournalEntryService
 from usermanagement.utils import PermissionUtils
 from utils.calendars import DateSeedStrategy
@@ -83,6 +102,27 @@ WORKFLOW_PERMISSION_RULES = {
     "reject": ("can_reject_journal", "reject_journal"),
     "post": ("can_post_journal", "post_journal"),
 }
+
+
+def _org_filter(qs, request):
+    """Scope queryset to the user's organization when the model has an organization FK."""
+    org = getattr(getattr(request, 'user', None), 'organization', None)
+    if org is None or not hasattr(qs.model, 'organization'):
+        return qs
+    try:
+        return qs.filter(organization=org)
+    except Exception:
+        return qs
+
+
+def _lookup_payload(qs, fields, limit=10):
+    rows = []
+    for obj in qs[:limit]:
+        row = {'id': getattr(obj, 'pk', None)}
+        for key, attr in fields.items():
+            row[key] = getattr(obj, attr, '') or ''
+        rows.append(row)
+    return rows
 
 
 LINE_COLUMN_DEFAULTS = [
@@ -155,6 +195,66 @@ def _apply_required_overrides(required_map, required_keys):
         if not isinstance(key, str):
             continue
         required_map[key] = True
+
+
+@login_required
+@require_GET
+def journal_vendor_lookup(request):
+    q = (request.GET.get('q') or '').strip()
+    qs = Vendor.objects.all()
+    qs = _org_filter(qs, request)
+    if q:
+        qs = qs.filter(
+            Q(code__icontains=q)
+            | Q(display_name__icontains=q)
+            | Q(legal_name__icontains=q)
+            | Q(email__icontains=q)
+            | Q(phone_number__icontains=q)
+        )
+    data = _lookup_payload(qs.order_by('code'), {'code': 'code', 'name': 'display_name'})
+    return JsonResponse({'results': data})
+
+
+@login_required
+@require_GET
+def journal_tax_code_lookup(request):
+    q = (request.GET.get('q') or '').strip()
+    qs = TaxCode.objects.all()
+    qs = _org_filter(qs, request)
+    if q:
+        qs = qs.filter(Q(code__icontains=q) | Q(name__icontains=q))
+    data = _lookup_payload(qs.order_by('code'), {'code': 'code', 'name': 'name'})
+    return JsonResponse({'results': data})
+
+
+@login_required
+@require_GET
+def journal_product_lookup(request):
+    if Product is None:
+        return JsonResponse({'results': []})
+    q = (request.GET.get('q') or '').strip()
+    qs = Product.objects.all()
+    qs = _org_filter(qs, request)
+    if q:
+        qs = qs.filter(Q(code__icontains=q) | Q(name__icontains=q) | Q(description__icontains=q))
+    data = _lookup_payload(qs.order_by('code'), {'code': 'code', 'name': 'name'})
+    return JsonResponse({'results': data})
+
+
+@login_required
+@require_GET
+def journal_customer_lookup(request):
+    # Fallback to Vendor if no dedicated Customer model is installed
+    model_cls = Customer or Vendor
+    if model_cls is None:
+        return JsonResponse({'results': []})
+    q = (request.GET.get('q') or '').strip()
+    qs = model_cls.objects.all()
+    qs = _org_filter(qs, request)
+    if q:
+        qs = qs.filter(Q(code__icontains=q) | Q(display_name__icontains=q) | Q(legal_name__icontains=q))
+    data = _lookup_payload(qs.order_by('code'), {'code': 'code', 'name': 'display_name'})
+    return JsonResponse({'results': data})
 
 
 def _line_columns_from_preferences(line_labels, preferences):
@@ -753,6 +853,30 @@ def _journal_lookup_urls():
         urls["costCenter"] = reverse('accounting:journal_cost_center_lookup')
     except Exception:
         urls["costCenter"] = '/accounting/journal-entry/lookup/cost-centers/'
+    try:
+        urls["department"] = reverse('accounting:journal_department_lookup')
+    except Exception:
+        urls["department"] = '/accounting/journal-entry/lookup/departments/'
+    try:
+        urls["project"] = reverse('accounting:journal_project_lookup')
+    except Exception:
+        urls["project"] = '/accounting/journal-entry/lookup/projects/'
+    try:
+        urls["taxCode"] = reverse('accounting:journal_tax_code_lookup')
+    except Exception:
+        urls["taxCode"] = '/accounting/journal-entry/lookup/tax-codes/'
+    try:
+        urls["vendor"] = reverse('accounting:journal_vendor_lookup')
+    except Exception:
+        urls["vendor"] = '/accounting/journal-entry/lookup/vendors/'
+    try:
+        urls["customer"] = reverse('accounting:journal_customer_lookup')
+    except Exception:
+        urls["customer"] = '/accounting/journal-entry/lookup/customers/'
+    try:
+        urls["product"] = reverse('accounting:journal_product_lookup')
+    except Exception:
+        urls["product"] = '/accounting/journal-entry/lookup/products/'
     return urls
 
 

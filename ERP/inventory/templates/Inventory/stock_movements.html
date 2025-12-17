@@ -1,0 +1,55 @@
+{% extends "inventory/_list_base.html" %}
+{% load static %}
+
+{% block page_title %}Inventory Stock Movements{% endblock %}
+{% block list_subtitle %}Recent ledger entries with product, location, and cost details.{% endblock %}
+{% block view_key %}inventory-stock-movements{% endblock %}
+
+{% block create_button %}
+  <a href="{% url 'inventory:stock_adjustment_create' %}" class="btn btn-success btn-sm">
+    <i class="mdi mdi-adjust me-1"></i>
+    New Stock Adjustment
+  </a>
+{% endblock %}
+
+{% block table_head %}
+  <tr>
+    <th>Date</th>
+    <th>Product</th>
+    <th>Warehouse</th>
+    <th>Location</th>
+    <th>Type</th>
+    <th class="text-end">Qty In</th>
+    <th class="text-end">Qty Out</th>
+    <th class="text-end">Unit Cost</th>
+    <th class="text-end">Reference</th>
+  </tr>
+{% endblock %}
+
+{% block table_body %}
+  {% for entry in recent_movements %}
+    <tr>
+      <td>{{ entry.txn_date|date:"Y-m-d H:i" }}</td>
+      <td>{{ entry.product.code }} – {{ entry.product.name }}</td>
+      <td>{{ entry.warehouse.code }}</td>
+      <td>
+        {% if entry.location %}
+          {{ entry.location.code }}
+        {% else %}
+          &mdash;
+        {% endif %}
+      </td>
+      <td>{{ entry.txn_type|capfirst }}</td>
+      <td class="text-end">{{ entry.qty_in|floatformat:4 }}</td>
+      <td class="text-end">{{ entry.qty_out|floatformat:4 }}</td>
+      <td class="text-end">{{ entry.unit_cost|floatformat:4 }}</td>
+      <td class="text-end">{{ entry.reference_id }}</td>
+    </tr>
+  {% empty %}
+    <tr>
+      <td colspan="9" class="text-center text-muted py-3">
+        No recent movements yet; post receipts, transfers, or adjustments to populate this report.
+      </td>
+    </tr>
+  {% endfor %}
+{% endblock %}

@@ -1,58 +1,47 @@
-{% extends "partials/base.html" %}
+{% extends "accounting/reports/report_base.html" %}
 {% load i18n %}
 
 {% block title %}{% trans "Profit & Loss Statement" %}{% endblock %}
 
-{% block content %}
-<div class="main-content">
-    <div class="page-content">
-        <div class="container-fluid">
-    <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1 class="mb-1">
-                        <i class="fas fa-chart-bar me-2"></i>
-                        {% trans "Profit & Loss Statement" %}
-                    </h1>
-                    <p class="text-muted">{% trans "Analyze revenues, expenses, and net income" %}</p>
-                </div>
-                <a href="{% url 'accounting:report_list' %}" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-left me-2"></i>
-                    {% trans "Back to Reports" %}
-                </a>
-            </div>
+{% block report_body %}
+    <div class="report-header">
+        <div class="report-header__title">
+            <p class="report-header__meta text-uppercase">{% trans "Advanced Reports" %}</p>
+            <h1 class="mb-0">
+                <i class="fas fa-chart-bar me-2"></i>
+                {% trans "Profit & Loss Statement" %}
+            </h1>
+            <p class="text-muted mb-0">{% trans "Analyze revenues, expenses, and net income" %}</p>
+        </div>
+        <div class="report-header__actions">
+            <a href="{% url 'accounting:report_list' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left me-1"></i>
+                {% trans "Back to Reports" %}
+            </a>
         </div>
     </div>
 
-    <!-- Filter Form -->
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <form method="get" class="row g-3">
-                        <div class="col-md-3">
-                            <label for="start_date" class="form-label">{% trans "Start Date" %}</label>
-                            <input type="date" name="start_date" id="start_date" class="form-control" value="{{ start_date }}">
-                        </div>
-                        <div class="col-md-3">
-                            <label for="end_date" class="form-label">{% trans "End Date" %}</label>
-                            <input type="date" name="end_date" id="end_date" class="form-control" value="{{ end_date }}">
-                        </div>
-                        <div class="col-md-6 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-filter me-2"></i>
-                                {% trans "Generate" %}
-                            </button>
-                        </div>
-                    </form>
+    <div class="card report-card mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-2 report-filters">
+                <div class="col-md-3">
+                    <label for="start_date" class="form-label">{% trans "Start Date" %}</label>
+                    <input type="date" name="start_date" id="start_date" class="form-control" value="{{ start_date }}">
                 </div>
-            </div>
+                <div class="col-md-3">
+                    <label for="end_date" class="form-label">{% trans "End Date" %}</label>
+                    <input type="date" name="end_date" id="end_date" class="form-control" value="{{ end_date }}">
+                </div>
+                <div class="col-md-2 d-grid align-self-end">
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="fas fa-filter me-1"></i>
+                        {% trans "Generate" %}
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- Report Data -->
     {% if report_data %}
         {% if report_data.error %}
             <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -61,100 +50,79 @@
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         {% else %}
-            <div class="row mb-4">
-                <div class="col-md-12">
-                    <div class="card shadow-sm">
-                        <div class="card-header bg-light">
-                            <div class="row">
-                                <div class="col">
-                                    <h5 class="mb-0">{% trans "Profit & Loss Statement" %}</h5>
-                                    <small class="text-muted">
-                                        {% trans "Organization" %}: {{ report_data.organization }}
-                                        | {% trans "Period" %}: {{ report_data.start_date }} to {{ report_data.end_date }}
-                                    </small>
-                                </div>
-                                <div class="col text-end">
-                                    <form method="post" action="{% url 'accounting:report_export' %}" style="display: inline;">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="report_type" value="profit_loss">
-                                        <input type="hidden" name="start_date" value="{{ start_date }}">
-                                        <input type="hidden" name="end_date" value="{{ end_date }}">
-                                        
-                                        <div class="btn-group" role="group">
-                                            <button type="submit" name="export_format" value="csv" class="btn btn-sm btn-outline-secondary">
-                                                <i class="fas fa-file-csv me-1"></i>CSV
-                                            </button>
-                                            <button type="submit" name="export_format" value="excel" class="btn btn-sm btn-outline-secondary">
-                                                <i class="fas fa-file-excel me-1"></i>Excel
-                                            </button>
-                                            <button type="submit" name="export_format" value="pdf" class="btn btn-sm btn-outline-secondary">
-                                                <i class="fas fa-file-pdf me-1"></i>PDF
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
+            <div class="card report-card mb-3">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0">{% trans "Profit & Loss Statement" %}</h5>
+                        <small class="text-muted">
+                            {% trans "Organization" %}: {{ report_data.organization }}
+                            · {% trans "Period" %}: {{ report_data.start_date }} – {{ report_data.end_date }}
+                        </small>
+                    </div>
+                    <form method="post" action="{% url 'accounting:report_export' %}" class="report-export d-flex gap-1">
+                        {% csrf_token %}
+                        <input type="hidden" name="report_type" value="profit_loss">
+                        <input type="hidden" name="start_date" value="{{ start_date }}">
+                        <input type="hidden" name="end_date" value="{{ end_date }}">
+                        <button type="submit" name="export_format" value="csv" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-file-csv me-1"></i>CSV
+                        </button>
+                        <button type="submit" name="export_format" value="excel" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-file-excel me-1"></i>Excel
+                        </button>
+                        <button type="submit" name="export_format" value="pdf" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-file-pdf me-1"></i>PDF
+                        </button>
+                    </form>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h6 class="text-success text-uppercase mb-2">
+                            <i class="fas fa-arrow-up me-2"></i>{% trans "Revenue" %}
+                        </h6>
+                        <table class="table table-sm report-table mb-2">
+                            <tbody>
+                                {% for line in report_data.lines %}
+                                    {% if line.line_type == "revenue_account" %}
+                                        <tr>
+                                            <td class="ps-4">{{ line.account_name }}</td>
+                                            <td class="text-end">{{ line.amount|floatformat:2 }}</td>
+                                        </tr>
+                                    {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <div class="text-end fw-bold">
+                            {% trans "Total Revenue" %}: {{ report_data.totals.total_revenue|floatformat:2 }}
                         </div>
-                        
-                        <div class="card-body">
-                            <!-- Revenue Section -->
-                            <div class="mb-4">
-                                <h6 class="text-success fw-bold text-uppercase mb-3">
-                                    <i class="fas fa-arrow-up me-2"></i>{% trans "Revenue" %}
-                                </h6>
-                                <table class="table table-sm">
-                                    <tbody>
-                                        {% for line in report_data.lines %}
-                                            {% if line.line_type == "revenue_account" %}
-                                            <tr>
-                                                <td class="ps-4">{{ line.account_name }}</td>
-                                                <td class="text-end">{{ line.amount|floatformat:2 }}</td>
-                                            </tr>
-                                            {% endif %}
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                                <div class="border-top-2 pt-2">
-                                    <div class="row fw-bold">
-                                        <div class="col text-end">{% trans "Total Revenue" %}:</div>
-                                        <div class="col-2 text-end">{{ report_data.totals.total_revenue|floatformat:2 }}</div>
-                                    </div>
-                                </div>
-                            </div>
+                    </div>
 
-                            <!-- Expenses Section -->
-                            <div class="mb-4">
-                                <h6 class="text-danger fw-bold text-uppercase mb-3">
-                                    <i class="fas fa-arrow-down me-2"></i>{% trans "Expenses" %}
-                                </h6>
-                                <table class="table table-sm">
-                                    <tbody>
-                                        {% for line in report_data.lines %}
-                                            {% if line.line_type == "expense_account" %}
-                                            <tr>
-                                                <td class="ps-4">{{ line.account_name }}</td>
-                                                <td class="text-end">{{ line.amount|floatformat:2 }}</td>
-                                            </tr>
-                                            {% endif %}
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                                <div class="border-top-2 pt-2">
-                                    <div class="row fw-bold">
-                                        <div class="col text-end">{% trans "Total Expenses" %}:</div>
-                                        <div class="col-2 text-end">{{ report_data.totals.total_expenses|floatformat:2 }}</div>
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="mb-4">
+                        <h6 class="text-danger text-uppercase mb-2">
+                            <i class="fas fa-arrow-down me-2"></i>{% trans "Expenses" %}
+                        </h6>
+                        <table class="table table-sm report-table mb-2">
+                            <tbody>
+                                {% for line in report_data.lines %}
+                                    {% if line.line_type == "expense_account" %}
+                                        <tr>
+                                            <td class="ps-4">{{ line.account_name }}</td>
+                                            <td class="text-end">{{ line.amount|floatformat:2 }}</td>
+                                        </tr>
+                                    {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <div class="text-end fw-bold">
+                            {% trans "Total Expenses" %}: {{ report_data.totals.total_expenses|floatformat:2 }}
+                        </div>
+                    </div>
 
-                            <!-- Net Income -->
-                            <div class="border-top-3 pt-3">
-                                <div class="row fw-bold fs-5">
-                                    <div class="col text-end">{% trans "Net Income" %}:</div>
-                                    <div class="col-2 text-end {% if report_data.totals.net_income < 0 %}text-danger{% else %}text-success{% endif %}">
-                                        {{ report_data.totals.net_income|floatformat:2 }}
-                                    </div>
-                                </div>
+                    <div class="border-top pt-3">
+                        <div class="row fw-bold fs-5">
+                            <div class="col text-end">{% trans "Net Income" %}:</div>
+                            <div class="col-3 text-end {% if report_data.totals.net_income < 0 %}text-danger{% else %}text-success{% endif %}">
+                                {{ report_data.totals.net_income|floatformat:2 }}
                             </div>
                         </div>
                     </div>
@@ -162,13 +130,9 @@
             </div>
         {% endif %}
     {% else %}
-        <div class="alert alert-info alert-dismissible fade show" role="alert">
+        <div class="report-empty alert-info alert mb-0">
             <i class="fas fa-info-circle me-2"></i>
             {% trans "Select a date range and click Generate to view the P&L statement." %}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     {% endif %}
-        </div>
-    </div>
-</div>
 {% endblock %}

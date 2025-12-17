@@ -232,3 +232,9 @@ class InventoryNavigationViewTests(TestCase):
 		)
 		response = self.client.get(reverse('inventory:stock_movements'))
 		self.assertContains(response, 'Recent Movements')
+
+	def test_transfer_views_exposed(self):
+		list_url = reverse('inventory:transfer_order_list')
+		create_url = reverse('inventory:transfer_order_create')
+		self.assertEqual(self.client.get(list_url).status_code, 200)
+		self.assertEqual(self.client.get(create_url).status_code, 200)

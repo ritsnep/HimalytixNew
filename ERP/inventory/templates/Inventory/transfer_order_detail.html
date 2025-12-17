@@ -1,0 +1,99 @@
+{% extends "inventory/_form_base.html" %}
+{% block page_title %}Transfer Order {{ transfer_order.order_number }}{% endblock %}
+
+{% block form_content %}
+<div class="row">
+  <div class="col-md-6">
+    <dl class="row">
+      <dt class="col-5">Source</dt>
+      <dd class="col-7">{{ transfer_order.source_warehouse.name }}</dd>
+      <dt class="col-5">Destination</dt>
+      <dd class="col-7">{{ transfer_order.destination_warehouse.name }}</dd>
+      <dt class="col-5">Status</dt>
+      <dd class="col-7">{{ transfer_order.get_status_display }}</dd>
+      <dt class="col-5">Reference</dt>
+      <dd class="col-7">{{ transfer_order.reference_id|default:"—" }}</dd>
+    </dl>
+  </div>
+<div class="col-md-6 text-end">
+    {% if can_release %}
+      <form method="post" class="d-inline">
+        {% csrf_token %}
+        <button name="action" value="release" class="btn btn-warning">Release</button>
+      </form>
+    {% endif %}
+    {% if can_execute %}
+      <form method="post" class="d-inline">
+        {% csrf_token %}
+        <button name="action" value="execute" class="btn btn-success">Execute Transfer</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+
+{% if transfer_order.instructions %}
+  <div class="card mb-3">
+    <div class="card-body">
+      <h5 class="card-title mb-2">Instructions</h5>
+      <p class="card-text">{{ transfer_order.instructions }}</p>
+    </div>
+  </div>
+{% endif %}
+
+{% if transfer_order.pick_list %}
+  <div class="mb-3">
+    <a href="{% url 'inventory:picklist_detail' transfer_order.pick_list.pk %}" class="btn btn-outline-info btn-sm">
+      View Related Pick List {{ transfer_order.pick_list.pick_number }}
+    </a>
+  </div>
+{% endif %}
+
+<hr>
+
+<h5>Lines</h5>
+<div class="table-responsive">
+  <table class="table table-sm table-bordered mb-0">
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>From</th>
+        <th>To</th>
+        <th>Batch</th>
+        <th class="text-end">Qty</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in transfer_order.lines.all %}
+        <tr>
+          <td>{{ line.product.name }}</td>
+          <td>
+            {% if line.from_location %}
+              {{ line.from_location.code }}
+            {% else %}
+              &mdash;
+            {% endif %}
+          </td>
+          <td>
+            {% if line.to_location %}
+              {{ line.to_location.code }}
+            {% else %}
+              &mdash;
+            {% endif %}
+          </td>
+          <td>
+            {% if line.batch %}
+              {{ line.batch.batch_number }}
+            {% else %}
+              &mdash;
+            {% endif %}
+          </td>
+          <td class="text-end">{{ line.quantity_requested }}</td>
+          <td>{{ line.get_status_display }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

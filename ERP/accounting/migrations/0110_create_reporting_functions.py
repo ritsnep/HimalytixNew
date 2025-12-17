@@ -43,7 +43,7 @@ WITH filtered AS (
     JOIN accounting_journal j ON j.journal_id = gl.journal_id
     JOIN accounting_journalline jl ON jl.journal_line_id = gl.journal_line_id
     JOIN chart_of_account acc ON acc.account_id = gl.account_id
-    WHERE gl.organization_id_id = p_org_id
+    WHERE gl.organization_id = p_org_id
       AND gl.transaction_date BETWEEN p_start_date AND p_end_date
       AND (p_account_id IS NULL OR gl.account_id = p_account_id)
     ORDER BY gl.account_id, gl.transaction_date, gl.gl_entry_id
@@ -53,7 +53,7 @@ opening AS (
         gl.account_id,
         COALESCE(SUM(gl.debit_amount - gl.credit_amount), 0) AS opening_balance
     FROM accounting_generalledger gl
-    WHERE gl.organization_id_id = p_org_id
+    WHERE gl.organization_id = p_org_id
       AND gl.transaction_date < p_start_date
       AND (p_account_id IS NULL OR gl.account_id = p_account_id)
     GROUP BY gl.account_id
@@ -105,7 +105,7 @@ WITH balances AS (
         SUM(gl.debit_amount) AS debit_total,
         SUM(gl.credit_amount) AS credit_total
     FROM accounting_generalledger gl
-    WHERE gl.organization_id_id = p_org_id
+    WHERE gl.organization_id = p_org_id
       AND gl.transaction_date <= p_as_of
     GROUP BY gl.account_id
 )
@@ -151,7 +151,7 @@ WITH movements AS (
         SUM(gl.debit_amount) AS debit_total,
         SUM(gl.credit_amount) AS credit_total
     FROM accounting_generalledger gl
-    WHERE gl.organization_id_id = p_org_id
+    WHERE gl.organization_id = p_org_id
       AND gl.transaction_date BETWEEN p_start_date AND p_end_date
     GROUP BY gl.account_id
 )
@@ -199,7 +199,7 @@ WITH balances AS (
         SUM(gl.debit_amount) AS debit_total,
         SUM(gl.credit_amount) AS credit_total
     FROM accounting_generalledger gl
-    WHERE gl.organization_id_id = p_org_id
+    WHERE gl.organization_id = p_org_id
       AND gl.transaction_date <= p_as_of
     GROUP BY gl.account_id
 )
@@ -245,7 +245,7 @@ WITH categorized AS (
     FROM accounting_generalledger gl
     JOIN chart_of_account acc ON acc.account_id = gl.account_id
     JOIN account_type at ON at.account_type_id = acc.account_type_id
-    WHERE gl.organization_id_id = p_org_id
+    WHERE gl.organization_id = p_org_id
       AND gl.transaction_date BETWEEN p_start_date AND p_end_date
       AND acc.is_active = TRUE
     GROUP BY acc.account_id, acc.account_code, acc.account_name, category
@@ -309,7 +309,7 @@ balances AS (
             ELSE 4
         END AS bucket_order
     FROM accounting_generalledger gl
-    WHERE gl.organization_id_id = p_org_id
+    WHERE gl.organization_id = p_org_id
       AND gl.transaction_date <= p_as_of
     GROUP BY gl.account_id, bucket, bucket_order
 )

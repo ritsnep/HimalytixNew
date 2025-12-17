@@ -14,9 +14,12 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.db.models import Sum, Count, F
 from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 from django.utils.dateparse import parse_date
+from django.http import HttpResponseRedirect, HttpResponse
+from django.template import loader
 from django.views.generic import (
-    ListView, CreateView, UpdateView, DetailView, DeleteView,
+    ListView, CreateView, UpdateView, DetailView, DeleteView, View,
 )
 
 from accounting.models import AutoIncrementCodeGenerator
@@ -32,6 +35,11 @@ from utils.calendars import (
 from .forms import (
     StockReceiptForm,
     StockIssueForm,
+    StockAdjustmentForm,
+    StockAdjustmentLineFormSet,
+    TransferOrderForm,
+    TransferOrderLineFormSet,
+    TransferOrderFilterForm,
     ProductCategoryForm,
     ProductForm,
     WarehouseForm,
@@ -54,13 +62,16 @@ from .models import (
     Unit,
     ProductUnit,
     StockLedger,
+    StockAdjustment,
+    TransferOrder,
+    TransferOrderLine,
     PriceList,
     PickList,
     Shipment,
     RMA,
 )
 from enterprise.models import BillOfMaterial
-from .services import InventoryService
+from .services import InventoryService, TransferOrderService
 
 
 def _get_request_organization(request):
@@ -395,6 +406,87 @@ def stock_issue_create(request):
         'form_id': 'stock-issue-form',
     }
     return render(request, 'inventory/stock_transaction_form.html', context)
+
+
+@login_required
+def stock_adjustment_create(request):
+    organization = _get_request_organization(request)
+    if organization is None:
+        messages.error(request, 'Select an organization before recording an adjustment.')
+        return redirect('inventory:dashboard')
+
+    adjustment = StockAdjustment(organization=organization)
+    code_generator = AutoIncrementCodeGenerator(
+        StockAdjustment, 'adjustment_number',
+        organization=organization, prefix='ADJ'
+    )
+    proposed_number = code_generator.generate_code()
+
+    if request.method == 'POST':
+        form = StockAdjustmentForm(request.POST, organization=organization)
+    else:
+        form = StockAdjustmentForm(
+            organization=organization,
+            initial={'adjustment_number': proposed_number}
+        )
+
+    formset = StockAdjustmentLineFormSet(
+        request.POST or None,
+        instance=adjustment,
+        prefix='lines',
+        form_kwargs={'organization': organization}
+    )
+
+    if request.method == 'POST' and form.is_valid() and formset.is_valid():
+        adjustment = form.save(commit=False)
+        adjustment.organization = organization
+        adjustment.adjustment_number = form.cleaned_data.get('adjustment_number') or proposed_number
+        adjustment.created_by = request.user
+        adjustment.status = 'posted'
+        adjustment.posted_at = timezone.now()
+        adjustment.save()
+
+        formset.instance = adjustment
+        reference_id = form.cleaned_data.get('reference_id') or adjustment.adjustment_number
+        saved_lines = formset.save(commit=False)
+
+        for obj in formset.deleted_objects:
+            obj.delete()
+
+        for line in saved_lines:
+            warehouse = line.location.warehouse if line.location else adjustment.warehouse
+            result = InventoryService.apply_stock_adjustment(
+                organization=organization,
+                product=line.product,
+                warehouse=warehouse,
+                location=line.location,
+                batch=line.batch,
+                counted_quantity=line.counted_quantity,
+                reference_id=reference_id,
+            )
+            line.system_quantity = result['system_quantity']
+            line.unit_cost = result['unit_cost']
+            line.variance_value = result['quantity_delta'] * result['unit_cost']
+            line.adjustment = adjustment
+            line.save()
+
+        messages.success(
+            request,
+            f'Stock adjustment {adjustment.adjustment_number} posted successfully.',
+        )
+        return redirect('inventory:stock_adjustment_create')
+
+    context = {
+        'form': form,
+        'formset': formset,
+        'page_title': 'Stock Adjustment',
+        'card_title': 'Stock Take / Adjustment',
+        'card_subtitle': 'Record physical counts and post variances against the ledger.',
+        'cancel_url': reverse('inventory:stock_movements'),
+        'form_id': 'stock-adjustment-form',
+        'submit_label': 'Post Adjustment',
+    }
+    return render(request, 'inventory/stock_adjustment_form.html', context)
 
 
 # ---------------------------------------------------------------------------
@@ -985,6 +1077,163 @@ class PickListCreateView(PermissionRequiredMixin, UserOrganizationMixin, CreateV
             f'Pick List "{form.instance.pick_list_number}" created successfully.',
         )
         return super().form_valid(form)
+
+
+class TransferOrderListView(PermissionRequiredMixin, UserOrganizationMixin, ListView):
+    model = TransferOrder
+    template_name = 'inventory/transfer_order_list.html'
+    context_object_name = 'transfer_orders'
+    permission_required = 'Inventory.view_transferorder'
+
+    def get_queryset(self):
+        organization = self.get_organization()
+        queryset = (
+            super().get_queryset()
+            .filter(organization=organization)
+            .order_by('-created_at')
+            .select_related('source_warehouse', 'destination_warehouse', 'created_by')
+        )
+        form = TransferOrderFilterForm(
+            data=self.request.GET or None,
+            organization=organization
+        )
+        if form.is_valid():
+            statuses = form.cleaned_data.get('status')
+            if statuses:
+                queryset = queryset.filter(status__in=statuses)
+            src = form.cleaned_data.get('source_warehouse')
+            if src:
+                queryset = queryset.filter(source_warehouse=src)
+            dst = form.cleaned_data.get('destination_warehouse')
+            if dst:
+                queryset = queryset.filter(destination_warehouse=dst)
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        organization = self.get_organization()
+        context['create_url'] = reverse_lazy('inventory:transfer_order_create')
+        context['create_button_text'] = 'New Transfer Order'
+        context['filter_form'] = TransferOrderFilterForm(
+            data=self.request.GET or None,
+            organization=organization
+        )
+        context['export_url'] = reverse_lazy('inventory:transfer_order_export')
+        return context
+
+
+class TransferOrderCreateView(PermissionRequiredMixin, UserOrganizationMixin, CreateView):
+    model = TransferOrder
+    form_class = TransferOrderForm
+    template_name = 'inventory/transfer_order_form.html'
+    permission_required = 'Inventory.add_transferorder'
+    success_url = reverse_lazy('inventory:transfer_order_list')
+
+    def get_initial(self):
+        initial = super().get_initial()
+        organization = self.get_organization()
+        if organization:
+            code_gen = AutoIncrementCodeGenerator(
+                TransferOrder, 'order_number', organization=organization, prefix='TO'
+            )
+            initial['order_number'] = code_gen.generate_code()
+        return initial
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['organization'] = self.get_organization()
+        return kwargs
+
+    def get_line_formset(self, data=None, instance=None):
+        instance = instance or getattr(self, 'object', None)
+        if instance is None:
+            instance = TransferOrder(organization=self.get_organization())
+        return TransferOrderLineFormSet(
+            data,
+            instance=instance,
+            prefix='lines',
+            form_kwargs={'organization': self.get_organization()}
+        )
+
+    def get_context_data(self, formset=None, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['formset'] = formset or self.get_line_formset()
+        return context
+
+    def form_valid(self, form):
+        organization = self.get_organization()
+        order = form.save(commit=False)
+        order.organization = organization
+        order.created_by = self.request.user
+        order.status = 'draft'
+        order.save()
+
+        formset = self.get_line_formset(self.request.POST, instance=order)
+        if not formset.is_valid():
+            order.delete()
+            return self.render_to_response(
+                self.get_context_data(form=form, formset=formset)
+            )
+
+        formset.save()
+        messages.success(self.request, f'Transfer order {order.order_number} created.')
+        return redirect(self.success_url)
+
+
+class TransferOrderDetailView(PermissionRequiredMixin, UserOrganizationMixin, DetailView):
+    model = TransferOrder
+    template_name = 'inventory/transfer_order_detail.html'
+    context_object_name = 'transfer_order'
+    permission_required = 'Inventory.view_transferorder'
+
+    def dispatch(self, request, *args, **kwargs):
+        self.order = self.get_object()
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        action = request.POST.get('action')
+        service = TransferOrderService(self.order.organization)
+        try:
+            if action == 'release':
+                service.release_order(self.order)
+                messages.success(request, 'Transfer order released.')
+            elif action == 'execute':
+                service.execute_transfer(self.order)
+                messages.success(request, 'Transfer executed and inventory adjusted.')
+        except ValueError as exc:
+            messages.error(request, str(exc))
+        return redirect('inventory:transfer_order_detail', pk=self.order.pk)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['can_release'] = self.order.status == 'draft'
+        context['can_execute'] = self.order.status in ['released', 'in_transit']
+        return context
+
+
+class TransferOrderExportView(PermissionRequiredMixin, UserOrganizationMixin, View):
+    permission_required = 'Inventory.view_transferorder'
+
+    def get(self, request, *args, **kwargs):
+        organization = self.get_organization()
+        queryset = TransferOrder.objects.filter(organization=organization).select_related(
+            'source_warehouse', 'destination_warehouse'
+        )
+        rows = [["Order", "Source", "Destination", "Status", "Requested", "Scheduled", "Reference"]]
+        for order in queryset:
+            rows.append([
+                order.order_number,
+                order.source_warehouse.code,
+                order.destination_warehouse.code,
+                order.get_status_display(),
+                order.requested_date.strftime("%Y-%m-%d %H:%M"),
+                order.scheduled_date.strftime("%Y-%m-%d %H:%M") if order.scheduled_date else "",
+                order.reference_id or "",
+            ])
+        content = "\n".join([",".join(row) for row in rows])
+        response = HttpResponse(content, content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="transfer_orders.csv"'
+        return response
 
 
 class ShipmentCreateView(PermissionRequiredMixin, UserOrganizationMixin, CreateView):

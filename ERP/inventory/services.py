@@ -1,11 +1,21 @@
 import logging
 from decimal import Decimal
+from typing import List, Dict, Optional, Tuple
 
 from django.db import transaction
 from django.utils import timezone
 from django.db.models import F, DecimalField, Value, Case, When, ExpressionWrapper
 
-from .models import StockLedger, InventoryItem, Batch, Product, Warehouse, Location
+from .models import StockLedger, InventoryItem, Batch, Product, Warehouse, Location, TransferOrder, TransferOrderLine
+import importlib.util
+from pathlib import Path
+
+# Load the legacy utils module by file path to avoid the package name conflict (inventory.utils package exists).
+_utils_path = Path(__file__).resolve().parent / "utils.py"
+_utils_spec = importlib.util.spec_from_file_location("inventory_raw_utils", _utils_path)
+inventory_utils = importlib.util.module_from_spec(_utils_spec)
+inventory_utils.__package__ = 'inventory'
+_utils_spec.loader.exec_module(inventory_utils)
 from accounting import services as accounting_services  # Assuming accounting app has services
 
 logger = logging.getLogger(__name__)
@@ -98,6 +108,69 @@ class InventoryService:
         )
 
         return ledger_entry, inventory_item
+
+    @staticmethod
+    @transaction.atomic
+    def apply_stock_adjustment(
+        organization,
+        product,
+        warehouse,
+        location,
+        batch,
+        counted_quantity,
+        reference_id,
+    ):
+        """Apply a manual stock adjustment line and post a ledger entry."""
+        inventory_item = InventoryItem.objects.filter(
+            organization=organization,
+            product=product,
+            warehouse=warehouse,
+            location=location,
+            batch=batch,
+        ).first()
+
+        system_quantity = inventory_item.quantity_on_hand if inventory_item else Decimal('0')
+        unit_cost = (
+            inventory_item.unit_cost
+            if inventory_item and inventory_item.unit_cost
+            else product.cost_price
+        ) or Decimal('0')
+
+        quantity_delta = counted_quantity - system_quantity
+        if quantity_delta == 0:
+            return {
+                'inventory_item': inventory_item,
+                'system_quantity': system_quantity,
+                'unit_cost': unit_cost,
+                'quantity_delta': Decimal('0'),
+                'ledger_entry': None,
+            }
+
+        txn_type = 'adjustment_receipt' if quantity_delta > 0 else 'adjustment_issue'
+        qty_in = quantity_delta if quantity_delta > 0 else Decimal('0')
+        qty_out = -quantity_delta if quantity_delta < 0 else Decimal('0')
+
+        ledger_entry, inventory_item = InventoryService.create_stock_ledger_entry(
+            organization=organization,
+            product=product,
+            warehouse=warehouse,
+            location=location,
+            batch=batch,
+            txn_type=txn_type,
+            reference_id=reference_id,
+            qty_in=qty_in,
+            qty_out=qty_out,
+            unit_cost=unit_cost,
+            async_ledger=False,
+        )
+
+        return {
+            'inventory_item': inventory_item,
+            'system_quantity': system_quantity,
+            'unit_cost': unit_cost,
+            'quantity_delta': quantity_delta,
+            'ledger_entry': ledger_entry,
+        }
 
 class PurchaseReceiptService:
     @staticmethod
@@ -196,4 +269,54 @@ class TransferService:
 
         logger.info(f"Processed transfer of {qty} x {product.code} from {from_warehouse.code}/{from_location.code} to {to_warehouse.code}/{to_location.code}")
 
+
+class TransferOrderService:
+    """Service to manage transfer order lifecycle and posting."""
+
+    def __init__(self, organization):
+        self.organization = organization
+
+    @transaction.atomic
+    def release_order(self, order: TransferOrder) -> TransferOrder:
+        if order.status != 'draft':
+            raise ValueError("Only draft transfer orders can be released.")
+        order.status = 'released'
+        order.save(update_fields=['status', 'updated_at'])
+        return order
+
+    @transaction.atomic
+    def execute_transfer(self, order: TransferOrder) -> Tuple[TransferOrder, List[TransferOrderLine]]:
+        if order.status not in ['released', 'in_transit']:
+            raise ValueError("Transfer order must be released before execution.")
+
+        reference = order.reference_id or order.order_number
+        transferred_lines = []
+
+        for line in order.lines.select_related('product').all():
+            if line.quantity_requested <= 0:
+                continue
+
+            success, message = inventory_utils.WarehouseService.transfer_stock(
+                from_warehouse=order.source_warehouse,
+                to_warehouse=order.destination_warehouse,
+                product=line.product,
+                quantity=line.quantity_requested,
+                from_location=line.from_location,
+                to_location=line.to_location,
+                batch=line.batch,
+                reference_id=f"{reference}-{line.pk}",
+                user=order.created_by
+            )
+
+            if not success:
+                raise ValueError(f"Line {line.pk}: {message}")
+
+            line.quantity_transferred = line.quantity_requested
+            line.status = 'transferred'
+            line.save(update_fields=['quantity_transferred', 'status'])
+            transferred_lines.append(line)
+
+        order.status = 'received'
+        order.save(update_fields=['status', 'updated_at'])
+        return order, transferred_lines
 # Add other services like SalesShipmentService, InventoryAdjustmentService etc.

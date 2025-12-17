@@ -12,6 +12,7 @@ from inventory.views import (
     ShipmentListView, ShipmentCreateView, ShipmentUpdateView, ShipmentDetailView, ShipmentDeleteView,
     RMAListView, RMACreateView, RMAUpdateView, RMADetailView, RMADeleteView,
     BillOfMaterialListView, BillOfMaterialCreateView, BillOfMaterialUpdateView, BillOfMaterialDetailView, BillOfMaterialDeleteView,
+    TransferOrderListView, TransferOrderCreateView, TransferOrderDetailView, TransferOrderExportView,
 )
 
 app_name = 'inventory'
@@ -26,6 +27,7 @@ urlpatterns = [
     path('stock-ledger/<int:pk>/reverse/', views_module.stock_ledger_reverse, name='stock_ledger_reverse'),
     path('stock/receipts/new/', views_module.stock_receipt_create, name='stock_receipt_create'),
     path('stock/issues/new/', views_module.stock_issue_create, name='stock_issue_create'),
+    path('stock/adjustments/new/', views_module.stock_adjustment_create, name='stock_adjustment_create'),
     
     # Stock Reports
     path('stock/', views_module.stock_report, name='stock_report'),
@@ -109,4 +111,10 @@ urlpatterns = [
     path('boms/<int:pk>/', BillOfMaterialDetailView.as_view(), name='bom_detail'),
     path('boms/<int:pk>/edit/', BillOfMaterialUpdateView.as_view(), name='bom_update'),
     path('boms/<int:pk>/delete/', BillOfMaterialDeleteView.as_view(), name='bom_delete'),
+
+    # Transfer Order URLs
+    path('transfers/', TransferOrderListView.as_view(), name='transfer_order_list'),
+    path('transfers/create/', TransferOrderCreateView.as_view(), name='transfer_order_create'),
+    path('transfers/<int:pk>/', TransferOrderDetailView.as_view(), name='transfer_order_detail'),
+    path('transfers/export/', TransferOrderExportView.as_view(), name='transfer_order_export'),
 ]

@@ -1,0 +1,82 @@
+{% extends "inventory/_form_base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title|default:"Stock Adjustment" }}{% endblock %}
+
+{% block form_content %}
+<form method="post" id="{{ form_id }}" novalidate>
+  {% csrf_token %}
+  <div class="row g-3">
+    {% for field in form %}
+      <div class="col-md-4">
+        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}
+          <div class="form-text">{{ field.help_text }}</div>
+        {% endif %}
+        {% for error in field.errors %}
+          <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+
+  <hr class="my-4">
+
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <h5 class="mb-0">Adjustment Lines</h5>
+    <small class="text-muted">Counted vs current ledger quantities</small>
+  </div>
+  {{ formset.management_form }}
+
+  <div class="table-responsive">
+    <table class="table table-striped">
+      <thead class="table-light">
+        <tr>
+          <th>Product</th>
+          <th>Location</th>
+          <th>Batch</th>
+          <th>Counted Qty</th>
+          <th>System Qty</th>
+          <th>Notes</th>
+          <th>Remove</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for line in formset %}
+        <tr>
+          <td>{{ line.product }}</td>
+          <td>{{ line.location }}</td>
+          <td>{{ line.batch }}</td>
+          <td>{{ line.counted_quantity }}</td>
+          <td>{{ line.system_quantity }}</td>
+          <td>{{ line.notes }}</td>
+          <td>{{ line.DELETE }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mt-4 d-flex gap-2">
+    <button type="submit" class="btn btn-primary">
+      <i class="mdi mdi-check me-1"></i>
+      {{ submit_label|default:"Post Adjustment" }}
+    </button>
+    <a href="{{ cancel_url }}" class="btn btn-secondary">Cancel</a>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_content %}
+<div class="row mt-4">
+  <div class="col-12">
+    <div class="alert alert-info" role="alert">
+      <h5 class="alert-heading mb-1"><i class="mdi mdi-cash-register"></i> Adjustment Guidance</h5>
+      <p class="mb-0">
+        Capture the physical count for each line and the system quantity will be pulled from the current ledger. Posting the adjustment will generate matching ledger entries using the current unit cost so GL balances stay aligned.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
