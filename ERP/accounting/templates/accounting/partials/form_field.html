@@ -4,7 +4,7 @@
       <label for="{{ field_id }}" class="form-label fw-semibold{% if field.field.required %} required-field{% endif %}">
         {{ field.label }}
         {% if field.field.widget.attrs.data_bs_toggle %}
-          <i class="bi bi-info-circle text-primary" data-bs-toggle="tooltip" 
+          <i class="bi bi-info-circle text-primary" data-bs-toggle="tooltip"
              title="{{ field.field.widget.attrs.title|default:field.field.help_text|default:'Field description' }}"></i>
         {% endif %}
       </label>
@@ -23,11 +23,22 @@
         <div id="{{ help_id }}" class="form-text text-muted">{{ field.help_text }}</div>
       {% endif %}
 
-      {# Add custom styling for required fields #}
+      {# Add custom styling for required fields and dropdown dividers #}
       <style>
         .required-field::after {
           content: " *";
           color: red;
+        }
+        /* Style for dropdown dividers in classification field */
+        select option[value="divider"] {
+          border-top: 1px solid #dee2e6;
+          background-color: #f8f9fa;
+          color: #6c757d;
+          font-weight: bold;
+          padding: 2px 0;
+        }
+        select option[value="divider"]:hover {
+          background-color: #f8f9fa !important;
         }
       </style>
     </div>

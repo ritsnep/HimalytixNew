@@ -1,5 +1,18 @@
 {% load widget_tweaks %}
-<tr class="generic-line-row" data-line-index="{{ index }}" id="line-{{ index }}">
+{% if form.non_field_errors %}
+<tr class="error-row bg-danger bg-opacity-10">
+    <td colspan="999" class="py-2">
+        <div class="alert alert-danger mb-0 py-2 px-3 d-flex align-items-center">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <div>
+                <strong>Line {{ index|add:1 }} Error:</strong>
+                {{ form.non_field_errors|join:", " }}
+            </div>
+        </div>
+    </td>
+</tr>
+{% endif %}
+<tr class="generic-line-row{% if form.non_field_errors or form.errors %} table-danger{% endif %}" data-line-index="{{ index }}" id="line-{{ index }}">
     <td class="text-center text-muted small sticky-col line-number-cell">{{ index|add:1 }}</td>
     {% for field in form.visible_fields %}
         <td class="generic-grid-cell">
@@ -31,9 +44,6 @@
         <button type="button" class="btn btn-sm btn-outline-danger remove-line-btn" title="Remove row">
             <i class="fas fa-times"></i>
         </button>
-        {% if form.non_field_errors %}
-            <div class="small text-danger mt-1">{{ form.non_field_errors|join:", " }}</div>
-        {% endif %}
         {% for hidden in form.hidden_fields %}
             {{ hidden }}
         {% endfor %}

@@ -57,6 +57,19 @@
                 </div>
             </div>
 
+            <h5 class="mt-4 mb-3">Costing Method</h5>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Costing Method</label>
+                    {{ form.costing_method }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Standard Cost</label>
+                    {{ form.standard_cost }}
+                    <small class="form-text text-muted">Required when using standard costing; will override unit cost.</small>
+                </div>
+            </div>
+
             <!-- GL Accounts Section -->
             <h5 class="mt-4 mb-3">GL Accounts</h5>
             <div class="row">

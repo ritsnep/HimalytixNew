@@ -52,6 +52,74 @@
     </div>
   </div>
 </div>
+<div class="row mt-4">
+  <div class="col-lg-4 col-md-6 mb-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="card-title">Reorder Alerts</h6>
+        <h3 class="mb-2">{{ reorder_summary.count }}</h3>
+        <p class="text-muted mb-0">Shortage: {{ reorder_summary.shortage|floatformat:2 }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-8 col-md-6 mb-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <h6 class="card-title mb-0">Shortage by Warehouse</h6>
+            <p class="text-muted mb-0">Top warehouses needing stock</p>
+          </div>
+          <a href="{% url 'inventory:reorder_recommendation_list' %}" class="btn btn-sm btn-outline-primary">
+            View Recommendations
+          </a>
+        </div>
+        <canvas id="reorderChart" height="160"></canvas>
+        <script id="reorder-data" type="application/json">{{ reorder_chart_data|json_script:"reorder-data" }}</script>
+      </div>
+    </div>
+  </div>
+</div>
+{% block extra_js %}
+  {{ block.super }}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const chartEl = document.getElementById('reorderChart');
+      if (!chartEl) return;
+      const raw = document.getElementById('reorder-data');
+      const data = raw ? JSON.parse(raw.textContent || '[]') : [];
+      if (!data.length) return;
+      const labels = data.map(item => item['warehouse__code']);
+      const values = data.map(item => item.total_shortage || 0);
+      new Chart(chartEl, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Shortage',
+            data: values,
+            backgroundColor: '#fb7185',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: { title: { display: true, text: 'Warehouse' } },
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: 'Shortage Qty' }
+            }
+          }
+        }
+      });
+    });
+  </script>
+{% endblock %}
 {% endblock %}
     </div>
   </div>

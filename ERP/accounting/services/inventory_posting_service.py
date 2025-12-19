@@ -7,7 +7,14 @@ from typing import Optional
 from django.db import transaction
 from django.utils import timezone
 
-from inventory.models import InventoryItem, Product, StockLedger, Warehouse
+from inventory.models import (
+    CostLayer,
+    CostingMethod,
+    InventoryItem,
+    Product,
+    StockLedger,
+    Warehouse,
+)
 from accounting.models import ChartOfAccount, JournalLine
 
 
@@ -22,6 +29,61 @@ class InventoryPostingResult:
     credit_account: ChartOfAccount
 
 
+class CostCalculator:
+    def __init__(self, *, organization, product, warehouse, location=None, batch=None):
+        self.organization = organization
+        self.product = product
+        self.warehouse = warehouse
+        self.location = location
+        self.batch = batch
+
+    def _layer_queryset(self):
+        qs = CostLayer.objects.filter(
+            organization=self.organization,
+            product=self.product,
+            warehouse=self.warehouse,
+            quantity_available__gt=Decimal("0"),
+        )
+        if self.location is not None:
+            qs = qs.filter(location=self.location)
+        else:
+            qs = qs.filter(location__isnull=True)
+        if self.batch is not None:
+            qs = qs.filter(batch=self.batch)
+        else:
+            qs = qs.filter(batch__isnull=True)
+        return qs
+
+    def create_layer(self, quantity, unit_cost, reference_id):
+        return CostLayer.objects.create(
+            organization=self.organization,
+            product=self.product,
+            warehouse=self.warehouse,
+            location=self.location,
+            batch=self.batch,
+            reference_id=reference_id or "",
+            quantity_received=quantity,
+            quantity_available=quantity,
+            unit_cost=unit_cost,
+        )
+
+    def consume_layers(self, quantity, method):
+        order = "created_at" if method == CostingMethod.FIFO else "-created_at"
+        layers = self._layer_queryset().order_by(order)
+        remaining = quantity
+        total_cost = Decimal("0")
+        for layer in layers:
+            if remaining <= 0:
+                break
+            take = min(layer.quantity_available, remaining)
+            total_cost += take * layer.unit_cost
+            layer.consume(take)
+            remaining -= take
+        if remaining > 0:
+            raise ValueError("Insufficient stock layers to cover the requested quantity.")
+        return total_cost, (total_cost / quantity) if quantity else Decimal("0")
+
+
 class InventoryPostingService:
     """
     Handle inventory movement accounting with weighted-average costing.
@@ -33,6 +95,15 @@ class InventoryPostingService:
 
     def __init__(self, *, organization):
         self.organization = organization
+
+    def _build_calculator(self, *, product, warehouse, location, batch):
+        return CostCalculator(
+            organization=self.organization,
+            product=product,
+            warehouse=warehouse,
+            location=location,
+            batch=batch,
+        )
 
     def _get_or_create_item(self, product: Product, warehouse: Warehouse) -> InventoryItem:
         item, _ = InventoryItem.objects.get_or_create(
@@ -65,21 +136,42 @@ class InventoryPostingService:
 
         txn_date = txn_date or timezone.now()
         item = self._get_or_create_item(product, warehouse)
+        calculator = self._build_calculator(
+            product=product, warehouse=warehouse, location=location, batch=batch
+        )
+        method = product.costing_method
+        calculator = self._build_calculator(
+            product=product, warehouse=warehouse, location=location, batch=batch
+        )
+        method = product.costing_method
 
-        current_qty = item.quantity_on_hand
-        current_cost = item.unit_cost
-        new_qty = current_qty + quantity
+        if method == CostingMethod.WEIGHTED_AVERAGE:
+            current_qty = item.quantity_on_hand
+            current_cost = item.unit_cost
+            new_qty = current_qty + quantity
 
-        if new_qty <= 0:
-            raise ValueError("Receipt would drive on-hand to zero or negative; aborting.")
+            if new_qty <= 0:
+                raise ValueError("Receipt would drive on-hand to zero or negative; aborting.")
 
-        total_existing_value = current_qty * current_cost
-        total_new_value = quantity * unit_cost
-        new_unit_cost = (total_existing_value + total_new_value) / new_qty
+            total_existing_value = current_qty * current_cost
+            total_new_value = quantity * unit_cost
+            new_unit_cost = (total_existing_value + total_new_value) / new_qty
+            ledger_unit_cost = new_unit_cost
+        elif method in (CostingMethod.FIFO, CostingMethod.LIFO):
+            ledger_unit_cost = unit_cost
+            calculator.create_layer(quantity, unit_cost, reference_id)
+        elif method == CostingMethod.STANDARD:
+            ledger_unit_cost = product.standard_cost or unit_cost
+        else:
+            ledger_unit_cost = unit_cost
 
-        item.quantity_on_hand = new_qty
-        item.unit_cost = new_unit_cost
-        item.save(update_fields=["quantity_on_hand", "unit_cost", "updated_at"])
+        item.quantity_on_hand += quantity
+        item.updated_at = timezone.now()
+        if method in (CostingMethod.WEIGHTED_AVERAGE, CostingMethod.STANDARD):
+            item.unit_cost = ledger_unit_cost
+            item.save(update_fields=["quantity_on_hand", "unit_cost", "updated_at"])
+        else:
+            item.save(update_fields=["quantity_on_hand", "updated_at"])
 
         ledger = StockLedger.objects.create(
             organization=self.organization,
@@ -91,13 +183,13 @@ class InventoryPostingService:
             reference_id=reference_id,
             txn_date=txn_date,
             qty_in=quantity,
-            unit_cost=new_unit_cost,
+            unit_cost=ledger_unit_cost,
         )
 
         return InventoryPostingResult(
             quantity=quantity,
-            unit_cost=new_unit_cost,
-            total_cost=quantity * new_unit_cost,
+            unit_cost=ledger_unit_cost,
+            total_cost=quantity * ledger_unit_cost,
             inventory_item=item,
             ledger_entry=ledger,
             debit_account=product.inventory_account,
@@ -129,8 +221,24 @@ class InventoryPostingService:
         if item.quantity_on_hand < quantity:
             raise ValueError("Insufficient quantity on hand for issue.")
 
+        if method == CostingMethod.FIFO:
+            total_cost, ledger_unit_cost = calculator.consume_layers(quantity, CostingMethod.FIFO)
+        elif method == CostingMethod.LIFO:
+            total_cost, ledger_unit_cost = calculator.consume_layers(quantity, CostingMethod.LIFO)
+        elif method == CostingMethod.STANDARD:
+            ledger_unit_cost = product.standard_cost or item.unit_cost
+            total_cost = ledger_unit_cost * quantity
+        else:
+            ledger_unit_cost = item.unit_cost
+            total_cost = ledger_unit_cost * quantity
+
         item.quantity_on_hand -= quantity
-        item.save(update_fields=["quantity_on_hand", "updated_at"])
+        item.updated_at = timezone.now()
+        if method in (CostingMethod.WEIGHTED_AVERAGE, CostingMethod.STANDARD):
+            item.unit_cost = ledger_unit_cost
+            item.save(update_fields=["quantity_on_hand", "unit_cost", "updated_at"])
+        else:
+            item.save(update_fields=["quantity_on_hand", "updated_at"])
 
         ledger = StockLedger.objects.create(
             organization=self.organization,
@@ -142,17 +250,15 @@ class InventoryPostingService:
             reference_id=reference_id,
             txn_date=txn_date,
             qty_out=quantity,
-            unit_cost=item.unit_cost,
+            unit_cost=ledger_unit_cost,
         )
 
-        total_cost = (item.unit_cost or Decimal("0")) * quantity
         return InventoryPostingResult(
             quantity=quantity,
-            unit_cost=item.unit_cost,
+            unit_cost=ledger_unit_cost,
             total_cost=total_cost,
             inventory_item=item,
             ledger_entry=ledger,
             debit_account=cogs_account or product.expense_account,
             credit_account=product.inventory_account,
         )
-

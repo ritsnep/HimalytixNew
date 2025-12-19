@@ -451,6 +451,10 @@
                         <li><a href="{% url 'inventory:shipment_list' %}">Shipments</a></li>
                         <li><a href="{% url 'inventory:rma_list' %}">RMAs</a></li>
                         <li><a href="{% url 'inventory:transfer_order_list' %}">Transfer Orders</a></li>
+                        {% if perms.inventory.scan_barcode %}
+                          <li><a href="{% url 'inventory:barcode_scanner' %}">Barcode Scanner</a></li>
+                        {% endif %}
+                        <li><a href="{% url 'inventory:reorder_recommendation_list' %}">Reorder Recommendations</a></li>
                         <li><a href="{% url 'inventory:stock_movements' %}">Stock Movements</a></li>
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">

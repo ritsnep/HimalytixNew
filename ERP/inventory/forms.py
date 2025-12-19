@@ -34,9 +34,9 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
         fields = (
             'category', 'code', 'name', 'description', 'base_unit', 'sale_price',
             'cost_price', 'currency_code', 'income_account', 'expense_account',
-            'inventory_account', 'is_inventory_item', 'min_order_quantity',
-            'reorder_level', 'preferred_vendor', 'weight', 'weight_unit',
-            'length', 'width', 'height', 'barcode', 'sku'
+            'inventory_account', 'costing_method', 'standard_cost', 'is_inventory_item',
+            'min_order_quantity', 'reorder_level', 'preferred_vendor', 'weight',
+            'weight_unit', 'length', 'width', 'height', 'barcode', 'sku'
         )
         widgets = {
             'category': forms.Select(attrs={'class': 'form-select'}),
@@ -50,6 +50,8 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
             'income_account': forms.Select(attrs={'class': 'form-select'}),
             'expense_account': forms.Select(attrs={'class': 'form-select'}),
             'inventory_account': forms.Select(attrs={'class': 'form-select'}),
+            'costing_method': forms.Select(attrs={'class': 'form-select'}),
+            'standard_cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'is_inventory_item': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'min_order_quantity': forms.NumberInput(attrs={'class': 'form-control', 'step': '1'}),
             'reorder_level': forms.NumberInput(attrs={'class': 'form-control', 'step': '1'}),
@@ -473,6 +475,19 @@ class TransferOrderFilterForm(forms.Form):
             self.fields['source_warehouse'].queryset = qs
             self.fields['destination_warehouse'].queryset = qs
 
+class ReorderRecommendationFilterForm(forms.Form):
+    warehouse = forms.ModelChoiceField(
+        queryset=Warehouse.objects.none(),
+        required=False,
+        label="Warehouse"
+    )
+
+    def __init__(self, *args, organization=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if organization:
+            self.fields['warehouse'].queryset = Warehouse.objects.filter(
+                organization=organization, is_active=True
+            )
 
 class StockAdjustmentForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:

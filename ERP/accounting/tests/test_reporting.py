@@ -6,7 +6,7 @@ from django.db import connection
 from django.test import Client, SimpleTestCase, TestCase
 from django.urls import reverse
 
-from accounting.models import ReportDefinition
+from reporting.models import ReportDefinition
 from accounting.tests import factories
 from accounting.services.report_export_service import ReportExportService
 from accounting.services.report_service import ReportService

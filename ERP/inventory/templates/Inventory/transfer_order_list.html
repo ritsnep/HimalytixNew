@@ -1,4 +1,4 @@
-{% extends "inventory/_list_base.html" %}
+﻿{% extends "inventory/_list_base.html" %}
 
 {% block page_title %}Transfer Orders{% endblock %}
 {% block list_subtitle %}Move inventory between warehouses while capturing reference and notes.{% endblock %}
@@ -51,13 +51,21 @@
       <td>{{ order.destination_warehouse.name }}</td>
       <td>{{ order.get_status_display }}</td>
       <td>{{ order.requested_date|date:"Y-m-d H:i" }}</td>
-      <td>{% if order.scheduled_date %}{{ order.scheduled_date|date:"Y-m-d H:i" }}{% else %}&mdash;{% endif %}</td>
+      <td>
+        {% if order.scheduled_date %}
+          {{ order.scheduled_date|date:"Y-m-d H:i" }}
+        {% else %}
+          &mdash;
+        {% endif %}
+      </td>
       <td>{{ order.reference_id|default:"—" }}</td>
       <td>{{ order.notes|default:"—" }}</td>
     </tr>
   {% empty %}
     <tr>
-      <td colspan="8" class="text-center text-muted py-3">Create a transfer order to move stock across warehouses.</td>
+      <td colspan="8" class="text-center text-muted py-3">
+        Create a transfer order to move stock across warehouses.
+      </td>
     </tr>
   {% endfor %}
 {% endblock %}

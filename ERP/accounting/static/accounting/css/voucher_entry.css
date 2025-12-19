@@ -229,3 +229,49 @@
   scroll-margin-top: 96px;
 }
 
+/* Error row styling for better UX */
+.error-row {
+    background-color: #dc354508 !important;
+}
+
+.error-row .alert-danger {
+    border-left: 4px solid #dc3545;
+    font-size: 0.9rem;
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.15);
+}
+
+.journal-line-row.table-danger,
+.table tr.table-danger {
+    background-color: #dc354515 !important;
+    border-left: 3px solid #dc3545;
+}
+
+.journal-line-row.table-danger td,
+.table tr.table-danger td {
+    background-color: transparent;
+}
+
+.journal-line-row.table-danger .grid-cell,
+.journal-line-row.table-danger .form-control,
+.journal-line-row.table-danger .form-select,
+.table tr.table-danger .grid-cell,
+.table tr.table-danger .form-control,
+.table tr.table-danger .form-select {
+    border-color: #dc3545 !important;
+}
+
+/* Animation for error rows */
+@keyframes highlight-error {
+    0% {
+        background-color: #dc354530;
+    }
+    100% {
+        background-color: #dc354515;
+    }
+}
+
+.journal-line-row.table-danger,
+.table tr.table-danger {
+    animation: highlight-error 0.5s ease-in-out;
+}
+

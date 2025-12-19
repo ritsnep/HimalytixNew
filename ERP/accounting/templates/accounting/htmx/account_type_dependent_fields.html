@@ -4,7 +4,7 @@
       <div class="mb-3">
         <label for="{{ form.classification.id_for_label }}" class="form-label fw-semibold required-field">
           {{ form.classification.label }}
-          <i class="bi bi-info-circle text-primary" data-bs-toggle="tooltip" 
+          <i class="bi bi-info-circle text-primary" data-bs-toggle="tooltip"
              title="Specific classification within the chosen nature. Determines detailed financial statement categorization and reporting structure. Examples: Current Asset, Fixed Asset, Current Liability, etc."></i>
         </label>
         {{ form.classification }}
@@ -23,18 +23,24 @@
     </div>
   </div>
 
-  <div class="row">
-    <div class="col-12">
-      <h6 class="text-success mb-3"><i class="bi bi-graph-up me-2"></i>Financial Statement Categories</h6>
+  {# Financial Statement Categories Grouped Together #}
+  <div class="card border-success mb-4">
+    <div class="card-header bg-success text-white">
+      <h6 class="mb-0"><i class="bi bi-graph-up me-2"></i>Financial Statement Categories</h6>
+      <small class="text-white-50">These usually determine how reports (P&L, Balance Sheet) are generated</small>
     </div>
-    <div class="col-md-4">
-      {% include 'accounting/partials/form_field.html' with field=form.balance_sheet_category %}
-    </div>
-    <div class="col-md-4">
-      {% include 'accounting/partials/form_field.html' with field=form.income_statement_category %}
-    </div>
-    <div class="col-md-4">
-      {% include 'accounting/partials/form_field.html' with field=form.cash_flow_category %}
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-4">
+          {% include 'accounting/partials/form_field.html' with field=form.balance_sheet_category %}
+        </div>
+        <div class="col-md-4">
+          {% include 'accounting/partials/form_field.html' with field=form.income_statement_category %}
+        </div>
+        <div class="col-md-4">
+          {% include 'accounting/partials/form_field.html' with field=form.cash_flow_category %}
+        </div>
+      </div>
     </div>
   </div>
 </div>

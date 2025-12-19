@@ -19,7 +19,7 @@ from django.urls import reverse
 
 from accounting.forms.form_factory import VoucherFormFactory
 from accounting.forms_factory import build_form
-from accounting.models import VoucherConfiguration, AuditLog
+from accounting.models import VoucherModeConfig, AuditLog  # Using VoucherModeConfig (existing table)
 from accounting.views.base_voucher_view import BaseVoucherView
 from accounting.views.views_mixins import PermissionRequiredMixin
 
@@ -28,17 +28,17 @@ logger = logging.getLogger(__name__)
 
 class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
     """
-    Generic view for creating vouchers using VoucherConfiguration.
+    Generic view for creating vouchers using VoucherModeConfig.
     """
     template_name = 'accounting/generic_dynamic_voucher_entry.html'
     permission_required = ('accounting', 'voucher', 'add')
 
-    def get_voucher_config(self) -> VoucherConfiguration:
+    def get_voucher_config(self) -> VoucherModeConfig:
         """Get the voucher configuration by code."""
         code = self.kwargs.get('voucher_code')
         organization = self.get_organization()
         return get_object_or_404(
-            VoucherConfiguration,
+            VoucherModeConfig,
             code=code,
             organization=organization,
             is_active=True
@@ -61,16 +61,32 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
         )
 
         header_form = self._instantiate_target(header_form_cls)
+        # VoucherModeConfig doesn't have default_lines attribute, use getattr with fallback
+        default_lines = getattr(config, 'default_lines', None)
         line_formset = self._instantiate_target(
             line_formset_cls,
-            initial=config.default_lines if config.default_lines else None
+            initial=default_lines if default_lines else None
         )
 
+        # Determine line section title based on voucher type
+        line_section_title = "Line Items"
+        if config.code in ['VM08', 'VM-JV', 'VM-GJ']:  # Journal vouchers
+            line_section_title = "Journal Lines"
+        elif 'INV' in config.code.upper() or 'STOCK' in config.code.upper():
+            line_section_title = "Inventory Items"
+        elif config.name and 'receipt' in config.name.lower():
+            line_section_title = "Receipt Items"
+        elif config.name and 'invoice' in config.name.lower():
+            line_section_title = "Invoice Items"
+        elif config.name and ('purchase' in config.name.lower() or 'sales' in config.name.lower()):
+            line_section_title = "Transaction Items"
+        
         context = self.get_context_data(
             config=config,
             header_form=header_form,
             line_formset=line_formset,
-            is_create=True
+            is_create=True,
+            line_section_title=line_section_title
         )
 
         logger.debug(f"GenericVoucherCreateView GET - Config: {config.code}")
@@ -120,6 +136,19 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
                     target_org = organization or getattr(config, 'organization', None)
                     if target_org is not None and hasattr(voucher, 'organization_id') and not getattr(voucher, 'organization_id', None):
                         voucher.organization_id = getattr(target_org, 'pk', target_org)
+                    
+                    # Set journal_type from config if voucher is a Journal model
+                    if hasattr(voucher, 'journal_type_id') and hasattr(config, 'journal_type_id'):
+                        if config.journal_type_id and not getattr(voucher, 'journal_type_id', None):
+                            voucher.journal_type_id = config.journal_type_id
+                    
+                    # Set period for Journal models
+                    if hasattr(voucher, 'period_id') and not getattr(voucher, 'period_id', None):
+                        from accounting.models import AccountingPeriod
+                        period = AccountingPeriod.objects.filter(organization=target_org, is_closed=False).first()
+                        if period:
+                            voucher.period_id = period.period_id
+                    
                     # Ensure created_by/updated_by are set for voucher types that require them.
                     # Some models may not expose attribute access for the related object until saved,
                     # so check the model fields explicitly and assign by id where possible.
@@ -216,11 +245,25 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
         else:
             messages.error(request, "Please correct the errors below.")
 
+        # Determine line section title based on voucher type (same logic as GET)
+        line_section_title = "Line Items"
+        if config.code in ['VM08', 'VM-JV', 'VM-GJ']:  # Journal vouchers
+            line_section_title = "Journal Lines"
+        elif 'INV' in config.code.upper() or 'STOCK' in config.code.upper():
+            line_section_title = "Inventory Items"
+        elif config.name and 'receipt' in config.name.lower():
+            line_section_title = "Receipt Items"
+        elif config.name and 'invoice' in config.name.lower():
+            line_section_title = "Invoice Items"
+        elif config.name and ('purchase' in config.name.lower() or 'sales' in config.name.lower()):
+            line_section_title = "Transaction Items"
+
         context = self.get_context_data(
             config=config,
             header_form=header_form,
             line_formset=line_formset,
-            is_create=True
+            is_create=True,
+            line_section_title=line_section_title
         )
 
         return self.render_to_response(context)
@@ -267,7 +310,7 @@ class GenericVoucherLineView(PermissionRequiredMixin, BaseVoucherView):
 
         organization = self.get_organization()
         config = get_object_or_404(
-            VoucherConfiguration,
+            VoucherModeConfig,
             code=voucher_code,
             organization=organization,
             is_active=True
@@ -307,18 +350,13 @@ class VoucherTypeSelectionView(PermissionRequiredMixin, BaseVoucherView):
         organization = self.get_organization()
 
         # Get all active voucher configurations
-        configs = VoucherConfiguration.objects.filter(
+        configs = VoucherModeConfig.objects.filter(
             organization=organization,
             is_active=True
-        ).order_by('module', 'name')
+        ).order_by('code')
 
-        # Group configurations by module for better UX
-        configs_by_module = {}
-        for config in configs:
-            module = config.get_module_display()
-            if module not in configs_by_module:
-                configs_by_module[module] = []
-            configs_by_module[module].append(config)
+        # Group configurations by journal type (since VoucherModeConfig doesn't have module field)
+        configs_by_module = {'Accounting': list(configs)}
 
         context = self.get_context_data(configs=configs, configs_by_module=configs_by_module)
         return self.render_to_response(context)

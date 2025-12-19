@@ -52,6 +52,16 @@ class VoucherFormFactory:
             'min_length': config.get('min_length'),
             'max_length': config.get('max_length'),
         }
+        
+        # Handle default value
+        if 'default' in config:
+            field_kwargs['initial'] = config['default']
+        
+        # If field is read_only, make it not required and ensure it has initial value
+        if config.get('read_only') or config.get('disabled'):
+            field_kwargs['required'] = False
+            if 'initial' not in field_kwargs and 'default' in config:
+                field_kwargs['initial'] = config['default']
 
         # Handle kwargs for widget attributes
         widget_kwargs = config.get('kwargs', {})
@@ -65,6 +75,13 @@ class VoucherFormFactory:
 
         if field_type == 'date':
             attrs['type'] = 'date'  # Ensure date input type for date fields
+        
+        # Apply field-level schema flags BEFORE widget creation (autofocus, placeholder, etc.)
+        placeholder = config.get('placeholder')
+        if placeholder:
+            attrs['placeholder'] = placeholder
+        if config.get('autofocus'):
+            attrs['autofocus'] = 'autofocus'
 
         widget_class = self._map_type_to_widget(field_type)
         if widget_class:
@@ -119,15 +136,13 @@ class VoucherFormFactory:
             else:
                 field_class = forms.CharField # Fallback if no model name provided
 
-        # Apply field-level schema flags (hidden/disabled/placeholder)
+        # Apply field-level schema flags (hidden/disabled/read_only)
         if config.get('hidden'):
             from django.forms import widgets
             field_kwargs['widget'] = widgets.HiddenInput(attrs=attrs)
-        if config.get('disabled'):
+        if config.get('disabled') or config.get('read_only'):
             field_kwargs['disabled'] = True
-        placeholder = config.get('placeholder')
-        if placeholder:
-            attrs['placeholder'] = placeholder
+            attrs['readonly'] = 'readonly'
 
         # If this is a well-known lookup field but not modeled as FK, still attach suggest metadata
         def _canonical_lookup_kind(name: str):
@@ -322,6 +337,10 @@ class VoucherFormFactory:
         form_fields = {}
         schema = self.configuration.resolve_ui_schema() if hasattr(self.configuration, 'resolve_ui_schema') else self.schema
 
+        # Unwrap "sections" if present (e.g., {"sections": {"header": {...}}})
+        if isinstance(schema, dict) and 'sections' in schema:
+            schema = schema['sections']
+
         # Support ui_schema that contains top-level 'header'/'lines' sections.
         # When building a header form, prefer the 'header' section if present.
         if isinstance(schema, dict) and ('header' in schema or 'lines' in schema):
@@ -331,6 +350,14 @@ class VoucherFormFactory:
                 schema = header_section
             else:
                 schema = schema.get('lines')
+        
+        # If schema has a 'fields' key, extract it (e.g., {"fields": {...}})
+        if isinstance(schema, dict) and 'fields' in schema and isinstance(schema.get('fields'), dict):
+            # Preserve __order__ if present at the parent level
+            order = schema.get('__order__')
+            schema = schema['fields']
+            if order and '__order__' not in schema:
+                schema['__order__'] = order
 
         model_field_names = set()
         if self.model:
@@ -648,32 +675,57 @@ class VoucherFormFactory:
 
         def _augment_header_schema(config_obj):
             schema_copy = copy.deepcopy(getattr(config_obj, 'ui_schema', {}) or {})
-            header = schema_copy.setdefault('header', {}) if isinstance(schema_copy, dict) else {}
+            
+            # Handle "sections" wrapper (e.g., {"sections": {"header": {...}}})
+            has_sections_wrapper = isinstance(schema_copy, dict) and 'sections' in schema_copy
+            if has_sections_wrapper:
+                sections = schema_copy['sections']
+            else:
+                sections = schema_copy
+            
+            header = sections.setdefault('header', {}) if isinstance(sections, dict) else {}
+            
+            # Handle "fields" wrapper inside header (e.g., {"header": {"fields": {...}}})
+            has_fields_wrapper = isinstance(header, dict) and 'fields' in header and isinstance(header.get('fields'), dict)
+            if has_fields_wrapper:
+                # Work with the fields dict directly
+                header_fields = header['fields']
+            else:
+                # Header directly contains fields
+                header_fields = header
 
             def ensure_field(name, cfg):
-                if name not in header:
-                    header[name] = cfg
-                order = header.setdefault('__order__', [])
+                if name not in header_fields:
+                    header_fields[name] = cfg
+                # Handle __order__ which might be at header or header.fields level
+                if has_fields_wrapper:
+                    order = header.setdefault('__order__', [])
+                else:
+                    order = header_fields.setdefault('__order__', [])
                 if name not in order:
                     order.append(name)
 
             # Alias supplier -> vendor
-            if 'vendor' not in header and 'supplier' in header and 'vendor' in header_model_fields:
-                header['vendor'] = header['supplier']
+            if 'vendor' not in header_fields and 'supplier' in header_fields and 'vendor' in header_model_fields:
+                header_fields['vendor'] = header_fields['supplier']
                 try:
-                    order = header.get('__order__', [])
-                    header['__order__'] = [ ('vendor' if x == 'supplier' else x) for x in order ]
+                    if has_fields_wrapper:
+                        order = header.get('__order__', [])
+                        header['__order__'] = [ ('vendor' if x == 'supplier' else x) for x in order ]
+                    else:
+                        order = header_fields.get('__order__', [])
+                        header_fields['__order__'] = [ ('vendor' if x == 'supplier' else x) for x in order ]
                 except Exception:
                     pass
 
             # Add vendor/customer if model requires but schema missing
-            if 'vendor' in header_model_fields and 'vendor' not in header:
+            if 'vendor' in header_model_fields and 'vendor' not in header_fields:
                 ensure_field('vendor', {'label': 'Vendor', 'type': 'char', 'required': False})
-            if 'customer' in header_model_fields and 'customer' not in header:
+            if 'customer' in header_model_fields and 'customer' not in header_fields:
                 ensure_field('customer', {'label': 'Customer', 'type': 'char', 'required': False})
 
             # Alias customer if needed (common in sales schemas)
-            if 'customer' not in header and 'customer' in header_model_fields and 'customer' in header:
+            if 'customer' not in header_fields and 'customer' in header_model_fields and 'customer' in header_fields:
                 # already there, no action
                 pass
 
@@ -690,12 +742,16 @@ class VoucherFormFactory:
             # Currency / currency_code
             currency_field = 'currency_code' if 'currency_code' in header_model_fields else ('currency' if 'currency' in header_model_fields else None)
             if currency_field:
+                try:
+                    default_currency = getattr(organization, 'base_currency_code', None) or getattr(organization, 'base_currency_code_id', None) or ''
+                except Exception:
+                    default_currency = ''
                 ensure_field(currency_field, {
                     'label': 'Currency',
                     'type': 'char',
                     'required': False,
                     'order_no': 1,
-                    'kwargs': {'widget': {'attrs': {'value': getattr(organization, 'base_currency_code', None) or getattr(organization, 'base_currency_code_id', None) or ''}}}
+                    'kwargs': {'widget': {'attrs': {'value': default_currency}}}
                 })
 
             # Exchange rate

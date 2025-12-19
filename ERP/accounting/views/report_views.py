@@ -15,9 +15,10 @@ from django.views import View
 from django.views.generic import TemplateView
 
 from accounting.models import (
-    ChartOfAccount, Journal, JournalLine, ReportDefinition, 
+    ChartOfAccount, Journal, JournalLine, 
     SalesInvoice, Customer, JournalType, SalesInvoiceLine
 )
+from reporting.models import ReportDefinition
 from inventory.models import InventoryItem, Product as InventoryProduct, Warehouse
 from accounting.services.report_export_service import ReportExportService
 from accounting.services.report_service import ReportService

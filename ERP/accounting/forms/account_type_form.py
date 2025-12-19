@@ -109,11 +109,35 @@ class AccountTypeForm(BootstrapFormMixin, forms.ModelForm):
             AccountType.CLASSIFICATIONS_BY_NATURE.get(nature)
             or [value for value, _ in AccountType.Classification.choices]
         )
-        self.fields['classification'].choices = [('', 'Select Classification')] + self._build_choices(
-            AccountType.Classification,
-            classification_options,
-            classification_value,
-        )
+
+        # Build choices with legacy options separated
+        choices = [('', 'Select Classification')]
+
+        # Add current classification options
+        for option in classification_options:
+            if option in (None, ''):
+                continue
+            choices.append((option, AccountType._choice_label(AccountType.Classification, option)))
+
+        # Add legacy options separated by a divider
+        legacy_options = [
+            AccountType.Classification.LEGACY_ASSET,
+            AccountType.Classification.LEGACY_LIABILITY,
+            AccountType.Classification.LEGACY_EQUITY,
+            AccountType.Classification.LEGACY_INCOME,
+            AccountType.Classification.LEGACY_EXPENSE,
+        ]
+
+        if legacy_options:
+            choices.append(('divider', '─' * 20 + ' Legacy Options ' + '─' * 20))
+            for option in legacy_options:
+                choices.append((option, AccountType._choice_label(AccountType.Classification, option)))
+
+        # Add current value if not already present
+        if classification_value and not any(choice[0] == classification_value for choice in choices):
+            choices.append((classification_value, AccountType._choice_label(AccountType.Classification, classification_value)))
+
+        self.fields['classification'].choices = choices
 
         bs_options = AccountType.BALANCE_SHEET_OPTIONS.get(nature)
         if bs_options is None:

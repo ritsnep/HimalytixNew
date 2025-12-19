@@ -3321,6 +3321,7 @@ class SalesInvoice(models.Model):
     base_currency_total = models.DecimalField(max_digits=19, decimal_places=4, default=0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     reference_number = models.CharField(max_length=100, blank=True)
+    notes = models.TextField(blank=True, null=True)
     metadata = models.JSONField(default=dict, blank=True)
     journal = models.ForeignKey(
         'Journal',
@@ -5561,8 +5562,11 @@ class VoucherConfiguration(models.Model):
         ('inventory', 'Inventory'),
         ('purchasing', 'Purchasing'),
         ('sales', 'Sales'),
-        ('crm', 'CRM'),
-        ('payroll', 'Payroll'),
+        ('billing', 'Billing'),
+        ('pos', 'Point of Sale'),
+        ('manufacturing', 'Manufacturing'),
+        ('hr', 'Human Resources'),
+        ('other', 'Other'),
     ]
     
     LAYOUT_CHOICES = [
@@ -5573,25 +5577,31 @@ class VoucherConfiguration(models.Model):
     
     config_id = models.BigAutoField(primary_key=True)
     organization = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name='voucher_configurations', db_column='organization_id')
-    code = models.SlugField(max_length=50, unique=True, help_text="Unique identifier for the voucher type (e.g., journal, sales_order)")
+    code = models.SlugField(max_length=50, help_text="Unique identifier for the voucher type (e.g., journal, sales_order)")
     name = models.CharField(max_length=100, help_text="Human-readable name shown in selection dialogs")
-    module = models.CharField(max_length=20, choices=MODULE_CHOICES, help_text="Module this voucher belongs to")
+    module = models.CharField(max_length=20, choices=MODULE_CHOICES, default='accounting', help_text="Module this voucher belongs to")
     description = models.TextField(null=True, blank=True)
     
     # UI Configuration
-    ui_schema = models.JSONField(default=dict, help_text="JSON defining header and line fields, data types, validation rules")
+    ui_schema = models.JSONField(default=dict, blank=True, help_text="JSON defining header and line fields, data types, validation rules")
     layout_style = models.CharField(max_length=20, choices=LAYOUT_CHOICES, default='standard')
+    
+    # Layout toggles
+    show_account_balances = models.BooleanField(default=True)
+    show_tax_details = models.BooleanField(default=True)
     show_dimensions = models.BooleanField(default=True)
     allow_multiple_currencies = models.BooleanField(default=False)
     require_line_description = models.BooleanField(default=True)
+    default_currency = models.CharField(max_length=3, default='USD')
     
     # Default Values
-    default_header = models.JSONField(default=dict, help_text="JSON of default header values")
-    default_lines = models.JSONField(default=list, help_text="List of default line dictionaries")
+    default_header = models.JSONField(default=dict, blank=True, help_text="JSON of default header values")
+    default_lines = models.JSONField(default=list, blank=True, help_text="List of default line dictionaries")
     
     # Validation and Versioning
-    validation_rules = models.JSONField(default=dict, help_text="Optional custom validation logic")
+    validation_rules = models.JSONField(default=dict, blank=True, help_text="Optional custom validation logic")
     version = models.CharField(max_length=32, default="1.0", help_text="Configuration version")
+    is_default = models.BooleanField(default=False, help_text="Is this the default config for this code?")
     is_active = models.BooleanField(default=True)
     
     # Metadata
@@ -5606,6 +5616,10 @@ class VoucherConfiguration(models.Model):
         db_table = 'voucher_configuration'
         unique_together = ('organization', 'code')
         ordering = ['module', 'name']
+        indexes = [
+            models.Index(fields=['organization', 'module']),
+            models.Index(fields=['code', 'is_active']),
+        ]
 
     def __str__(self):
         return f"{self.module} - {self.name} ({self.code})"
@@ -5615,6 +5629,10 @@ class VoucherConfiguration(models.Model):
         default = {"header": {}, "lines": {}}
         merged = {**default, **(self.ui_schema or {})}
         return merged
+
+    def resolve_ui_schema(self):
+        """Alias for resolve_ui for compatibility."""
+        return self.resolve_ui()
 
 TRANSACTION_MODULE_CHOICES = [
     ('accounting', 'Accounting'),
@@ -5813,29 +5831,65 @@ class NumberRestartRule(models.Model):
 class BaseVoucher(models.Model):
     """
     Abstract base model for all voucher types across modules.
-    Provides common header fields.
+    Provides common header fields and behavior.
     """
-    organization = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name='%(class)s_vouchers')
-    voucher_number = models.CharField(max_length=50, unique=True, help_text="Unique voucher number")
-    voucher_date = models.DateField(help_text="Date of the voucher")
-    narration = models.TextField(null=True, blank=True, help_text="Description or narration")
-    currency = models.CharField(max_length=3, default='USD', help_text="Currency code")
+    voucher_id = models.BigAutoField(primary_key=True)
+    voucher_number = models.CharField(max_length=50, unique=True)
+    voucher_date = models.DateField()
+    reference_number = models.CharField(max_length=100, blank=True, null=True)
+    narration = models.TextField(blank=True, null=True)
+    configuration = models.ForeignKey(
+        'VoucherConfiguration',
+        on_delete=models.PROTECT,
+        related_name='%(class)s_vouchers',
+        null=True,
+        blank=True
+    )
+    currency = models.CharField(max_length=3, default='USD')
     exchange_rate = models.DecimalField(max_digits=10, decimal_places=4, default=1.0)
-    
+
     # Status and workflow
-    status = models.CharField(max_length=20, choices=[
-        ('draft', 'Draft'),
-        ('approved', 'Approved'),
-        ('posted', 'Posted'),
-        ('cancelled', 'Cancelled'),
-    ], default='draft')
-    
-    # Audit fields
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('draft', 'Draft'),
+            ('pending', 'Pending Approval'),
+            ('approved', 'Approved'),
+            ('posted', 'Posted'),
+            ('cancelled', 'Cancelled'),
+        ],
+        default='draft'
+    )
+
+    # Organization and audit
+    organization = models.ForeignKey(
+        'usermanagement.Organization',
+        on_delete=models.PROTECT,
+        related_name='%(class)s_vouchers'
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='created_%(class)s'
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='updated_%(class)s'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_%(class)s_vouchers')
-    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='updated_%(class)s_vouchers')
-    
+
+    # Totals
+    total_amount = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    total_debit = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    total_credit = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+
+    # UDF support
+    udf_data = models.JSONField(default=dict, blank=True, help_text="User-defined fields data")
+
     class Meta:
         abstract = True
         ordering = ['-voucher_date', '-created_at']
@@ -5843,21 +5897,73 @@ class BaseVoucher(models.Model):
     def __str__(self):
         return f"{self.voucher_number} - {self.voucher_date}"
 
+    def save(self, *args, **kwargs):
+        if not self.voucher_number:
+            # Generate voucher number based on type and date
+            prefix = self.__class__.__name__.upper()[:3]
+            date_str = self.voucher_date.strftime('%Y%m%d') if self.voucher_date else timezone.now().strftime('%Y%m%d')
+            # This would need a proper sequence generator in production
+            self.voucher_number = f"{prefix}-{date_str}-001"
+        super().save(*args, **kwargs)
+
 
 class BaseVoucherLine(models.Model):
     """
     Abstract base model for voucher line items.
+    Provides common line fields and functionality.
     """
-    line_number = models.PositiveIntegerField(help_text="Line number in the voucher")
-    description = models.TextField(null=True, blank=True, help_text="Line description")
-    quantity = models.DecimalField(max_digits=19, decimal_places=4, null=True, blank=True)
-    unit_price = models.DecimalField(max_digits=19, decimal_places=4, null=True, blank=True)
-    amount = models.DecimalField(max_digits=19, decimal_places=4, help_text="Total amount for this line")
-    
-    # Audit fields
+    line_id = models.BigAutoField(primary_key=True)
+    line_number = models.PositiveIntegerField()
+    description = models.TextField(blank=True, null=True)
+
+    # Financial amounts
+    quantity = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    rate = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    amount = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+
+    # Accounting specific (optional)
+    account = models.ForeignKey(
+        'ChartOfAccount',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='%(class)s_lines'
+    )
+    debit = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    credit = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+
+    # Dimensions
+    cost_center = models.ForeignKey(
+        'CostCenter',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='%(class)s_lines'
+    )
+    department = models.ForeignKey(
+        'Department',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='%(class)s_lines'
+    )
+    project = models.ForeignKey(
+        'Project',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='%(class)s_lines'
+    )
+
+    tax_code = models.CharField(max_length=50, blank=True, null=True)
+    tax_amount = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
+    # UDF support
+    udf_data = models.JSONField(default=dict, blank=True, help_text="User-defined fields data")
+
     class Meta:
         abstract = True
         ordering = ['line_number']
@@ -6341,6 +6447,13 @@ class ScheduledTaskExecution(models.Model):
     # Audit
     triggered_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='triggered_task_executions')
     
+    @property
+    def duration(self):
+        """Calculate task duration in seconds."""
+        if self.started_at and self.completed_at:
+            return (self.completed_at - self.started_at).total_seconds()
+        return None
+
     class Meta:
         db_table = 'scheduled_task_execution'
         ordering = ['-executed_at']
@@ -6429,527 +6542,17 @@ class FieldConfig(models.Model):
 
     def __str__(self):
         return f"{self.organization.name} - {self.field}"
-    
-    def __str__(self):
-        return f"{self.task_name} - {self.status} at {self.executed_at}"
-    
-    @property
-    def duration(self):
-        """Calculate task duration in seconds."""
-        if self.started_at and self.completed_at:
-            return (self.completed_at - self.started_at).total_seconds()
-        return None
 
-
-class ReportDefinition(models.Model):
-    """
-    Allows power users to register custom stored-procedure backed reports.
-    """
-
-    report_id = models.BigAutoField(primary_key=True)
-    organization = models.ForeignKey(
-        Organization,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name='report_definitions',
-        help_text="Optional organization scope; null makes the report available to every tenant.",
-    )
-    code = models.CharField(max_length=100)
-    name = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
-    stored_procedure = models.CharField(
-        max_length=255,
-        help_text="Name of the database function or stored procedure to call.",
-    )
-    parameter_schema = models.JSONField(
-        default=dict,
-        blank=True,
-        help_text="Declarative parameter definitions for dynamic parameter forms.",
-    )
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='created_report_definitions',
-    )
-    updated_by = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='updated_report_definitions',
-    )
-
-    class Meta:
-        db_table = 'report_definition'
-        unique_together = ('organization', 'code')
-        ordering = ['organization_id', 'code']
-
-    def __str__(self):
-        scope = self.organization.name if self.organization else 'Global'
-        return f"{self.code} ({scope})"
-
-
-class VoucherConfiguration(models.Model):
-    """
-    Generic voucher configuration that can represent any voucher type across modules.
-    Replaces VoucherModeConfig for cross-module use.
-    """
-    MODULE_CHOICES = [
-        ('accounting', 'Accounting'),
-        ('inventory', 'Inventory'),
-        ('purchasing', 'Purchasing'),
-        ('sales', 'Sales'),
-        ('billing', 'Billing'),
-        ('pos', 'Point of Sale'),
-        ('manufacturing', 'Manufacturing'),
-        ('hr', 'Human Resources'),
-        ('other', 'Other'),
-    ]
-
-    LAYOUT_CHOICES = [
-        ('standard', 'Standard'),
-        ('compact', 'Compact'),
-        ('detailed', 'Detailed'),
-    ]
-
-    config_id = models.BigAutoField(primary_key=True)
-    organization = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name='voucher_configurations', db_column='organization_id')
-    code = models.SlugField(max_length=50, help_text="Unique slug for the voucher type, e.g. 'journal', 'sales_order', 'purchase_invoice'")
-    name = models.CharField(max_length=100)
-    description = models.TextField(null=True, blank=True)
-    module = models.CharField(max_length=20, choices=MODULE_CHOICES, default='accounting')
-
-    # UI Configuration
-    ui_schema = models.JSONField(default=dict, blank=True, help_text="UI schema for form building")
-    layout_style = models.CharField(max_length=20, choices=LAYOUT_CHOICES, default='standard')
-
-    # Layout toggles
-    show_account_balances = models.BooleanField(default=True)
-    show_tax_details = models.BooleanField(default=True)
-    show_dimensions = models.BooleanField(default=True)
-    allow_multiple_currencies = models.BooleanField(default=False)
-    require_line_description = models.BooleanField(default=True)
-    default_currency = models.CharField(max_length=3, default='USD')
-
-    # Default values
-    default_header = models.JSONField(default=dict, blank=True, help_text="Default values for header fields")
-    default_lines = models.JSONField(default=dict, blank=True, help_text="Default values for line fields")
-
-    # Validation
-    validation_rules = models.JSONField(default=dict, blank=True, help_text="Validation rules as JSON")
-
-    # Metadata
-    is_default = models.BooleanField(default=False, help_text="Is this the default config for this code?")
-    is_active = models.BooleanField(default=True)
-    version = models.CharField(max_length=20, default='1.0')
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_voucher_configurations')
-    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='updated_voucher_configurations')
-
-    class Meta:
-        db_table = 'voucher_configuration'
-        unique_together = ('organization', 'code')
-        indexes = [
-            models.Index(fields=['organization', 'module']),
-            models.Index(fields=['code', 'is_active']),
-        ]
-
-    def __str__(self):
-        return f"{self.code} - {self.name} ({self.module})"
-
-    def resolve_ui_schema(self):
-        """Return cleaned schema merged with system defaults."""
-        default = {"header": {}, "lines": {}}
-        merged = {**default, **(self.ui_schema or {})}
-        return merged
-
-
-class BaseVoucher(models.Model):
-    """
-    Abstract base model for all voucher types across modules.
-    Provides common fields and behavior.
-    """
-    voucher_id = models.BigAutoField(primary_key=True)
-    organization = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name='%(class)s_vouchers')
-    voucher_number = models.CharField(max_length=50, unique=True)
-    voucher_date = models.DateField()
-    reference_number = models.CharField(max_length=100, null=True, blank=True)
-    narration = models.TextField(null=True, blank=True)
-
-    # Status and workflow
-    status = models.CharField(max_length=20, default='draft', choices=[
-        ('draft', 'Draft'),
-        ('submitted', 'Submitted'),
-        ('approved', 'Approved'),
-        ('posted', 'Posted'),
-        ('cancelled', 'Cancelled'),
-    ])
-
-    # Financial metadata
-    currency = models.CharField(max_length=3, default='USD')
-    exchange_rate = models.DecimalField(max_digits=10, decimal_places=4, default=1.0)
-    total_amount = models.DecimalField(max_digits=19, decimal_places=4, default=0)
-
-    # Audit fields
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_%(class)s_vouchers')
-    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='updated_%(class)s_vouchers')
-
-    # Configuration reference
-    configuration = models.ForeignKey(VoucherConfiguration, on_delete=models.PROTECT, related_name='%(class)s_vouchers')
-
-    # UDF support
-    udf_data = models.JSONField(default=dict, blank=True, help_text="User-defined fields data")
-
-    class Meta:
-        abstract = True
-        ordering = ['-voucher_date', '-created_at']
-
-    def __str__(self):
-        return f"{self.voucher_number} - {self.voucher_date}"
-
-    def save(self, *args, **kwargs):
-        if not self.voucher_number:
-            # Generate voucher number based on configuration
-            self.voucher_number = self._generate_voucher_number()
-        super().save(*args, **kwargs)
-
-    def _generate_voucher_number(self):
-        """Generate voucher number - override in subclasses if needed."""
-        from .utils import generate_voucher_number
-        return generate_voucher_number(self.configuration.code, self.organization)
-
-
-class BaseVoucherLine(models.Model):
-    """
-    Abstract base model for voucher line items.
-    """
-    line_id = models.BigAutoField(primary_key=True)
-    line_number = models.PositiveIntegerField()
-
-    # Common line fields
-    description = models.TextField(null=True, blank=True)
-    amount = models.DecimalField(max_digits=19, decimal_places=4)
-    quantity = models.DecimalField(max_digits=12, decimal_places=4, default=1)
-    rate = models.DecimalField(max_digits=19, decimal_places=4, null=True, blank=True)
-
-    # Accounting specific (optional)
-    account = models.ForeignKey('ChartOfAccount', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_lines')
-    debit = models.DecimalField(max_digits=19, decimal_places=4, default=0)
-    credit = models.DecimalField(max_digits=19, decimal_places=4, default=0)
-
-    # Dimensions
-    cost_center = models.ForeignKey('CostCenter', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_lines')
-    department = models.ForeignKey('Department', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_lines')
-    project = models.ForeignKey('Project', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_lines')
-
-    # Tax
-    tax_code = models.ForeignKey('TaxCode', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_lines')
-    tax_amount = models.DecimalField(max_digits=19, decimal_places=4, default=0)
-
-    # UDF support
-    udf_data = models.JSONField(default=dict, blank=True, help_text="User-defined fields data")
-
-    class Meta:
-        abstract = True
-        ordering = ['line_number']
-
-    def __str__(self):
-        return f"Line {self.line_number}: {self.description or 'No description'}"
-
-
-class VoucherConfiguration(models.Model):
-    """
-    Configuration for different voucher types across modules.
-    Defines form schemas, validation rules, and UI behavior.
-    """
-    MODULE_CHOICES = [
-        ('accounting', 'Accounting'),
-        ('inventory', 'Inventory'),
-        ('purchasing', 'Purchasing'),
-        ('sales', 'Sales'),
-        ('billing', 'Billing'),
-        ('pos', 'Point of Sale'),
-        ('manufacturing', 'Manufacturing'),
-        ('hr', 'Human Resources'),
-        ('other', 'Other'),
-    ]
-
-    LAYOUT_STYLE_CHOICES = [
-        ('standard', 'Standard'),
-        ('compact', 'Compact'),
-        ('detailed', 'Detailed'),
-    ]
-
-    config_id = models.BigAutoField(primary_key=True)
-    code = models.SlugField(
-        help_text="Unique slug for the voucher type, e.g. 'journal', 'sales_order', 'purchase_invoice'"
-    )
-    name = models.CharField(max_length=100)
-    description = models.TextField(blank=True, null=True)
-    module = models.CharField(
-        max_length=20,
-        choices=MODULE_CHOICES,
-        default='accounting'
-    )
-    organization = models.ForeignKey(
-        'usermanagement.Organization',
-        db_column='organization_id',
-        on_delete=models.PROTECT,
-        related_name='voucher_configurations'
-    )
-
-    # Schema definitions
-    ui_schema = models.JSONField(
-        default=dict,
-        blank=True,
-        help_text='UI schema for form building'
-    )
-
-    # Layout and display options
-    layout_style = models.CharField(
-        max_length=20,
-        choices=LAYOUT_STYLE_CHOICES,
-        default='standard'
-    )
-    show_account_balances = models.BooleanField(default=True)
-    show_tax_details = models.BooleanField(default=True)
-    show_dimensions = models.BooleanField(default=True)
-    allow_multiple_currencies = models.BooleanField(default=False)
-    require_line_description = models.BooleanField(default=True)
-
-    # Defaults
-    default_currency = models.CharField(max_length=3, default='USD')
-    default_header = models.JSONField(
-        default=dict,
-        blank=True,
-        help_text='Default values for header fields'
-    )
-    default_lines = models.JSONField(
-        default=dict,
-        blank=True,
-        help_text='Default values for line fields'
-    )
-
-    # Validation
-    validation_rules = models.JSONField(
-        default=dict,
-        blank=True,
-        help_text='Validation rules as JSON'
-    )
-
-    # Status
-    is_default = models.BooleanField(
-        default=False,
-        help_text='Is this the default config for this code?'
-    )
-    is_active = models.BooleanField(default=True)
-    version = models.CharField(max_length=20, default='1.0')
-
-    # Audit fields
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name='created_voucher_configurations'
-    )
-    updated_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name='updated_voucher_configurations'
-    )
-
-    class Meta:
-        db_table = 'voucher_configuration'
-        unique_together = ('organization', 'code')
-        indexes = [
-            models.Index(fields=['organization', 'module'], name='voucher_con_organiz_6dea38_idx'),
-            models.Index(fields=['code', 'is_active'], name='voucher_con_code_1bdfcd_idx'),
-        ]
-
-    def __str__(self):
-        return f"{self.module} - {self.name} ({self.code})"
-
-
-class BaseVoucher(models.Model):
-    """
-    Abstract base model for all voucher types.
-    Provides common header fields and functionality.
-    """
-    voucher_number = models.CharField(max_length=50, unique=True)
-    voucher_date = models.DateField()
-    reference = models.CharField(max_length=100, blank=True, null=True)
-    description = models.TextField(blank=True, null=True)
-    currency = models.CharField(max_length=3, default='USD')
-    exchange_rate = models.DecimalField(max_digits=10, decimal_places=4, default=1.0)
-
-    # Status and workflow
-    status = models.CharField(
-        max_length=20,
-        choices=[
-            ('draft', 'Draft'),
-            ('pending', 'Pending Approval'),
-            ('approved', 'Approved'),
-            ('posted', 'Posted'),
-            ('cancelled', 'Cancelled'),
-        ],
-        default='draft'
-    )
-
-    # Organization and audit
-    organization = models.ForeignKey(
-        'usermanagement.Organization',
-        on_delete=models.PROTECT,
-        related_name='%(class)s_vouchers'
-    )
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        related_name='created_%(class)s'
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    # Totals
-    total_amount = models.DecimalField(max_digits=19, decimal_places=4, default=0)
-    total_debit = models.DecimalField(max_digits=19, decimal_places=4, default=0)
-    total_credit = models.DecimalField(max_digits=19, decimal_places=4, default=0)
-
-    # UDF support
-    udf_data = models.JSONField(default=dict, blank=True, help_text="User-defined fields data")
-
-    class Meta:
-        abstract = True
-        ordering = ['-voucher_date', '-created_at']
-
-    def __str__(self):
-        return f"{self.voucher_number} - {self.voucher_date}"
-
-    def save(self, *args, **kwargs):
-        if not self.voucher_number:
-            # Generate voucher number based on type and date
-            prefix = self.__class__.__name__.upper()[:3]
-            date_str = self.voucher_date.strftime('%Y%m%d') if self.voucher_date else timezone.now().strftime('%Y%m%d')
-            # This would need a proper sequence generator in production
-            self.voucher_number = f"{prefix}-{date_str}-001"
-        super().save(*args, **kwargs)
-
-
-class BaseVoucherLine(models.Model):
-    """
-    Abstract base model for voucher line items.
-    Provides common line fields and functionality.
-    """
-    line_number = models.PositiveIntegerField()
-    description = models.TextField(blank=True, null=True)
-
-    # Financial amounts
-    amount = models.DecimalField(max_digits=19, decimal_places=4, default=0)
-
-    # Accounting specific (optional)
-    account = models.ForeignKey(
-        'ChartOfAccount',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='%(class)s_lines'
-    )
-    debit = models.DecimalField(max_digits=19, decimal_places=4, default=0)
-    credit = models.DecimalField(max_digits=19, decimal_places=4, default=0)
-
-    # Dimensions
-    cost_center = models.ForeignKey(
-        'CostCenter',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='%(class)s_lines'
-    )
-    department = models.ForeignKey(
-        'Department',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='%(class)s_lines'
-    )
-    project = models.ForeignKey(
-        'Project',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='%(class)s_lines'
-    )
-
-    tax_amount = models.DecimalField(max_digits=19, decimal_places=4, default=0)
-
-    # UDF support
-    udf_data = models.JSONField(default=dict, blank=True, help_text="User-defined fields data")
-
-    class Meta:
-        abstract = True
-        ordering = ['line_number']
-
-    def __str__(self):
-        return f"Line {self.line_number}: {self.description or 'No description'}"
 
 
 class PurchaseOrderVoucher(BaseVoucher):
-    """
-    Purchase Order voucher inheriting from BaseVoucher.
-    Adds purchasing-specific fields.
-    """
-    # Vendor relationship
-    vendor = models.ForeignKey(
-        'Vendor',
-        on_delete=models.PROTECT,
-        related_name='purchase_order_vouchers'
-    )
-
-    # Dates
+    vendor = models.ForeignKey('Vendor', on_delete=models.PROTECT, related_name='purchase_order_vouchers')
     due_date = models.DateField(null=True, blank=True)
     expected_receipt_date = models.DateField(null=True, blank=True)
     send_date = models.DateField(null=True, blank=True)
-
-    # Additional amounts
     subtotal = models.DecimalField(max_digits=19, decimal_places=4, default=0)
     tax_amount = models.DecimalField(max_digits=19, decimal_places=4, default=0)
-
-    # Status override with PO-specific choices
-    status = models.CharField(
-        max_length=20,
-        choices=[
-            ('draft', 'Draft'),
-            ('approved', 'Approved'),
-            ('sent', 'Sent to Vendor'),
-            ('received', 'Received'),
-            ('closed', 'Closed'),
-            ('cancelled', 'Cancelled'),
-        ],
-        default='draft'
-    )
-
-    # Warehouse for inventory management (commented out for now)
-    # warehouse = models.ForeignKey(
-    #     'inventory.Warehouse',
-    #     on_delete=models.SET_NULL,
-    #     null=True,
-    #     blank=True,
-    #     related_name='purchase_order_vouchers'
-    # )
+    status = models.CharField(max_length=20, choices=[('draft', 'Draft'), ('approved', 'Approved'), ('sent', 'Sent to Vendor'), ('received', 'Received'), ('closed', 'Closed'), ('cancelled', 'Cancelled')], default='draft')
 
     class Meta(BaseVoucher.Meta):
         db_table = 'purchase_order_voucher'
@@ -6958,250 +6561,62 @@ class PurchaseOrderVoucher(BaseVoucher):
     def __str__(self):
         return f"PO-{self.voucher_number}"
 
-    def recalc_totals(self):
-        """Recompute totals from lines."""
-        self.subtotal = sum(line.amount for line in self.purchase_order_voucher_lines.all())
-        self.tax_amount = sum(line.tax_amount for line in self.purchase_order_voucher_lines.all())
-        self.total_amount = self.subtotal + self.tax_amount
-        self.total_debit = self.total_amount
-        self.total_credit = self.total_amount
-
-
 class PurchaseOrderVoucherLine(BaseVoucherLine):
-    """
-    Purchase Order line inheriting from BaseVoucherLine.
-    Adds purchasing-specific fields.
-    """
-    purchase_order_voucher = models.ForeignKey(
-        PurchaseOrderVoucher,
-        on_delete=models.CASCADE,
-        related_name='purchase_order_voucher_lines'
-    )
-
-    # Product relationship (commented out for now)
-    # product = models.ForeignKey(
-    #     'inventory.Product',
-    #     on_delete=models.PROTECT,
-    #     related_name='purchase_order_voucher_lines'
-    # )
-
-    # Product as text for now
+    purchase_order_voucher = models.ForeignKey(PurchaseOrderVoucher, on_delete=models.CASCADE, related_name='purchase_order_voucher_lines')
     product_name = models.CharField(max_length=200, blank=True)
-
-    # Quantities
     quantity_ordered = models.DecimalField(max_digits=19, decimal_places=4, default=0)
     quantity_received = models.DecimalField(max_digits=19, decimal_places=4, default=0)
     quantity_invoiced = models.DecimalField(max_digits=19, decimal_places=4, default=0)
-
-    # Pricing
     unit_price = models.DecimalField(max_digits=19, decimal_places=4, default=0)
-
-    # Dates
     expected_delivery_date = models.DateField(null=True, blank=True)
-
-    # GL accounts
-    inventory_account = models.ForeignKey(
-        'ChartOfAccount',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='po_voucher_inventory_lines'
-    )
+    inventory_account = models.ForeignKey('ChartOfAccount', on_delete=models.SET_NULL, null=True, blank=True, related_name='po_voucher_inventory_lines')
 
     class Meta(BaseVoucherLine.Meta):
         db_table = 'purchase_order_voucher_line'
         unique_together = ('purchase_order_voucher', 'line_number')
         abstract = False
 
-    def __str__(self):
-        return f"PO Line {self.line_number}: {self.product_name or 'No product'}"
-
-    def save(self, *args, **kwargs):
-        # Calculate amount from quantity and unit price
-        self.amount = self.quantity_ordered * self.unit_price
-        super().save(*args, **kwargs)
-
-
 class PurchaseReturnVoucher(BaseVoucher):
-    """
-    Purchase Return voucher inheriting from BaseVoucher.
-    Adds purchasing-specific fields.
-    """
-    # Vendor relationship
-    vendor = models.ForeignKey(
-        'Vendor',
-        on_delete=models.PROTECT,
-        related_name='purchase_return_vouchers'
-    )
-
-    # Reference to original purchase order/invoice
-    original_purchase_order = models.ForeignKey(
-        PurchaseOrderVoucher,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='purchase_return_vouchers'
-    )
-
-    # Return details
+    vendor = models.ForeignKey('Vendor', on_delete=models.PROTECT, related_name='purchase_return_vouchers')
+    original_purchase_order = models.ForeignKey(PurchaseOrderVoucher, on_delete=models.SET_NULL, null=True, blank=True, related_name='purchase_return_vouchers')
     return_date = models.DateField()
     reason = models.TextField(blank=True)
-
-    # Warehouse (commented out for now)
-    # warehouse = models.ForeignKey(
-    #     'inventory.Warehouse',
-    #     on_delete=models.SET_NULL,
-    #     null=True,
-    #     blank=True,
-    #     related_name='purchase_return_vouchers'
-    # )
 
     class Meta(BaseVoucher.Meta):
         db_table = 'purchase_return_voucher'
         abstract = False
 
-    def __str__(self):
-        return f"PR-{self.voucher_number}"
-
-
 class PurchaseReturnVoucherLine(BaseVoucherLine):
-    """
-    Purchase Return line inheriting from BaseVoucherLine.
-    Adds purchasing-specific fields.
-    """
-    purchase_return_voucher = models.ForeignKey(
-        PurchaseReturnVoucher,
-        on_delete=models.CASCADE,
-        related_name='purchase_return_voucher_lines'
-    )
-
-    # Product relationship (commented out for now)
-    # product = models.ForeignKey(
-    #     'inventory.Product',
-    #     on_delete=models.PROTECT,
-    #     related_name='purchase_return_voucher_lines'
-    # )
-
-    # Product as text for now
+    purchase_return_voucher = models.ForeignKey(PurchaseReturnVoucher, on_delete=models.CASCADE, related_name='purchase_return_voucher_lines')
     product_name = models.CharField(max_length=200, blank=True)
-
-    # Quantities
     quantity_returned = models.DecimalField(max_digits=19, decimal_places=4, default=0)
-
-    # Pricing
     unit_price = models.DecimalField(max_digits=19, decimal_places=4, default=0)
-
-    # Reference to original PO line
-    original_po_line = models.ForeignKey(
-        PurchaseOrderVoucherLine,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='return_voucher_lines'
-    )
+    original_po_line = models.ForeignKey(PurchaseOrderVoucherLine, on_delete=models.SET_NULL, null=True, blank=True, related_name='return_voucher_lines')
 
     class Meta(BaseVoucherLine.Meta):
         db_table = 'purchase_return_voucher_line'
         unique_together = ('purchase_return_voucher', 'line_number')
         abstract = False
 
-    def __str__(self):
-        return f"PR Line {self.line_number}: {self.product_name or 'No product'}"
-
-    def save(self, *args, **kwargs):
-        # Calculate amount from quantity and unit price
-        self.amount = self.quantity_returned * self.unit_price
-        super().save(*args, **kwargs)
-
-
 class SalesOrderVoucher(BaseVoucher):
-    """
-    Sales Order voucher inheriting from BaseVoucher.
-    Adds sales-specific fields.
-    """
-    # Customer relationship
-    customer = models.ForeignKey(
-        'Customer',
-        on_delete=models.PROTECT,
-        related_name='sales_order_vouchers'
-    )
-
-    # Dates
+    customer = models.ForeignKey('Customer', on_delete=models.PROTECT, related_name='sales_order_vouchers')
     due_date = models.DateField(null=True, blank=True)
     expected_ship_date = models.DateField(null=True, blank=True)
-
-    # Additional amounts
     subtotal = models.DecimalField(max_digits=19, decimal_places=4, default=0)
     tax_amount = models.DecimalField(max_digits=19, decimal_places=4, default=0)
     discount_amount = models.DecimalField(max_digits=19, decimal_places=4, default=0)
-
-    # Status override with sales-specific choices
-    status = models.CharField(
-        max_length=20,
-        choices=[
-            ('draft', 'Draft'),
-            ('confirmed', 'Confirmed'),
-            ('shipped', 'Shipped'),
-            ('invoiced', 'Invoiced'),
-            ('paid', 'Paid'),
-            ('cancelled', 'Cancelled'),
-        ],
-        default='draft'
-    )
-
-    # Warehouse (commented out for now)
-    # warehouse = models.ForeignKey(
-    #     'inventory.Warehouse',
-    #     on_delete=models.SET_NULL,
-    #     null=True,
-    #     blank=True,
-    #     related_name='sales_order_vouchers'
-    # )
+    status = models.CharField(max_length=20, choices=[('draft', 'Draft'), ('confirmed', 'Confirmed'), ('shipped', 'Shipped'), ('invoiced', 'Invoiced'), ('paid', 'Paid'), ('cancelled', 'Cancelled')], default='draft')
 
     class Meta(BaseVoucher.Meta):
         db_table = 'sales_order_voucher'
         abstract = False
 
-    def __str__(self):
-        return f"SO-{self.voucher_number}"
-
-    def recalc_totals(self):
-        """Recompute totals from lines."""
-        self.subtotal = sum(line.amount for line in self.sales_order_voucher_lines.all())
-        self.tax_amount = sum(line.tax_amount for line in self.sales_order_voucher_lines.all())
-        self.discount_amount = sum(getattr(line, 'discount_amount', 0) for line in self.sales_order_voucher_lines.all())
-        self.total_amount = self.subtotal + self.tax_amount - self.discount_amount
-        self.total_debit = self.total_amount
-        self.total_credit = self.total_amount
-
-
 class SalesOrderVoucherLine(BaseVoucherLine):
-    """
-    Sales Order line inheriting from BaseVoucherLine.
-    Adds sales-specific fields.
-    """
-    sales_order_voucher = models.ForeignKey(
-        SalesOrderVoucher,
-        on_delete=models.CASCADE,
-        related_name='sales_order_voucher_lines'
-    )
-
-    # Product relationship (commented out for now)
-    # product = models.ForeignKey(
-    #     'inventory.Product',
-    #     on_delete=models.PROTECT,
-    #     related_name='sales_order_voucher_lines'
-    # )
-
-    # Product as text for now
+    sales_order_voucher = models.ForeignKey(SalesOrderVoucher, on_delete=models.CASCADE, related_name='sales_order_voucher_lines')
     product_name = models.CharField(max_length=200, blank=True)
-
-    # Quantities
     quantity_ordered = models.DecimalField(max_digits=19, decimal_places=4, default=0)
     quantity_shipped = models.DecimalField(max_digits=19, decimal_places=4, default=0)
     quantity_invoiced = models.DecimalField(max_digits=19, decimal_places=4, default=0)
-
-    # Pricing
     unit_price = models.DecimalField(max_digits=19, decimal_places=4, default=0)
     discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     discount_amount = models.DecimalField(max_digits=19, decimal_places=4, default=0)
@@ -7210,16 +6625,3 @@ class SalesOrderVoucherLine(BaseVoucherLine):
         db_table = 'sales_order_voucher_line'
         unique_together = ('sales_order_voucher', 'line_number')
         abstract = False
-
-    def __str__(self):
-        return f"SO Line {self.line_number}: {self.product_name or 'No product'}"
-
-    def save(self, *args, **kwargs):
-        # Calculate amounts
-        from decimal import Decimal
-
-        # Coerce to Decimal to avoid mixing Decimal and float types during arithmetic
-        line_total = Decimal(self.quantity_ordered) * Decimal(self.unit_price)
-        self.discount_amount = line_total * (Decimal(self.discount_percent) / Decimal('100'))
-        self.amount = line_total - self.discount_amount
-        super().save(*args, **kwargs)

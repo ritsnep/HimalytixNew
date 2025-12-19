@@ -1,4 +1,4 @@
-{% extends "inventory/_form_base.html" %}
+﻿{% extends "inventory/_form_base.html" %}
 {% block page_title %}Transfer Order {{ transfer_order.order_number }}{% endblock %}
 
 {% block form_content %}
@@ -15,7 +15,7 @@
       <dd class="col-7">{{ transfer_order.reference_id|default:"—" }}</dd>
     </dl>
   </div>
-<div class="col-md-6 text-end">
+  <div class="col-md-6 text-end">
     {% if can_release %}
       <form method="post" class="d-inline">
         {% csrf_token %}

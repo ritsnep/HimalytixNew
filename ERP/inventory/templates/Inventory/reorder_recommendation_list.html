@@ -1,0 +1,58 @@
+{% extends "inventory/_list_base.html" %}
+
+{% block page_title %}Reorder Recommendations{% endblock %}
+{% block list_subtitle %}Suggested replenishment quantities for low-stock items.{% endblock %}
+
+{% block custom_filters %}
+  <form method="get" class="row g-3 mb-3 align-items-end">
+    <div class="col-md-4">
+      {{ filter_form.warehouse.label_tag }}
+      {{ filter_form.warehouse }}
+    </div>
+    <div class="col-md-2">
+      <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+    </div>
+  </form>
+{% endblock %}
+
+{% block table_head %}
+  <tr>
+    <th>Product</th>
+    <th>Warehouse</th>
+    <th class="text-end">Current Qty</th>
+    <th class="text-end">Reorder Level</th>
+    <th class="text-end">Shortage</th>
+    <th class="text-end">Suggested Qty</th>
+    <th class="text-end">Est. Cost</th>
+    <th>Vendor</th>
+    <th>Status</th>
+  </tr>
+{% endblock %}
+
+{% block table_body %}
+  {% for rec in recommendations %}
+    <tr>
+      <td>{{ rec.product.code }} – {{ rec.product.name }}</td>
+      <td>{{ rec.warehouse.name }}</td>
+      <td class="text-end">{{ rec.current_stock }}</td>
+      <td class="text-end">{{ rec.reorder_level }}</td>
+      <td class="text-end">{{ rec.shortage }}</td>
+      <td class="text-end">{{ rec.suggested_qty }}</td>
+      <td class="text-end">{{ rec.estimated_cost|floatformat:2 }}</td>
+      <td>
+        {% if rec.vendor %}
+          {{ rec.vendor.name }}
+        {% else %}
+          &mdash;
+        {% endif %}
+      </td>
+      <td>{{ rec.get_status_display }}</td>
+    </tr>
+  {% empty %}
+    <tr>
+      <td colspan="9" class="text-center text-muted py-4">
+        No reorder recommendations at the moment.
+      </td>
+    </tr>
+  {% endfor %}
+{% endblock %}

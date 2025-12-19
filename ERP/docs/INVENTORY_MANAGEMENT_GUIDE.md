@@ -358,3 +358,11 @@ The inventory management system is now fully integrated with:
 - ✅ Complete audit trail via StockLedger
 
 All transactions create proper GL entries and maintain referential integrity between inventory and accounting modules.
+
+## Costing Method Selection
+
+Inventory masters can now select how each SKU is valued:
+
+1. Open the product form (`/inventory/products/<id>/edit/` or via the product create page).
+2. Scroll to the **Costing Method** block, choose between `Weighted Average`, `FIFO`, `LIFO`, or `Standard Cost`, and save.
+3. Provide a **Standard Cost** when the Standard option is active; FIFO and LIFO will build `CostLayer` records per receipt and consume them when issuing stock.

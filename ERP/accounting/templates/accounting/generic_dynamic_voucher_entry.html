@@ -129,7 +129,7 @@
                 <div class="card-header bg-white border-0 pb-0">
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <div>
-                            <h5 class="mb-0">Journal Lines</h5>
+                            <h5 class="mb-0">{{ line_section_title|default:"Line Items" }}</h5>
                             <div class="text-muted small" id="lines-count">Showing {{ line_formset.total_form_count }} line{{ line_formset.total_form_count|pluralize }}</div>
                         </div>
                         <div class="d-flex gap-1 flex-wrap">
@@ -142,6 +142,13 @@
                     </div>
                 </div>
                 <div class="card-body pt-2">
+                    {% if line_formset.non_form_errors %}
+                        <div class="alert alert-danger py-2 px-3 mb-3">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            <strong>Line Validation Errors:</strong>
+                            {{ line_formset.non_form_errors|join:" " }}
+                        </div>
+                    {% endif %}
                     {{ line_formset.management_form }}
                     <div class="lines-table-wrapper" id="lines-table-wrapper">
                         <table class="table table-sm table-bordered align-middle mb-0 generic-lines-table" id="generic-lines-table">

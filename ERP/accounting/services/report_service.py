@@ -10,7 +10,8 @@ from django.db import connection
 from django.urls import reverse
 from django.utils import timezone
 
-from accounting.models import FiscalYear, ReportDefinition
+from accounting.models import FiscalYear
+from reporting.models import ReportDefinition
 from accounting.services.ap_aging_service import APAgingService
 from usermanagement.models import Organization
 

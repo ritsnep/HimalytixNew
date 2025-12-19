@@ -9,6 +9,8 @@ from usermanagement.models import Organization, CustomUser
 
 from .models import Product, ProductCategory, Warehouse, Location, InventoryItem, StockLedger
 from .services import InventoryService
+from django.urls import reverse
+from django.http import JsonResponse
 
 
 class StockTransactionViewTests(TestCase):
@@ -233,6 +235,42 @@ class InventoryNavigationViewTests(TestCase):
 		response = self.client.get(reverse('inventory:stock_movements'))
 		self.assertContains(response, 'Recent Movements')
 
+	class BarcodeScannerTests(TestCase):
+		def setUp(self):
+			self.organization = Organization.objects.create(
+				name="Scan Org",
+				code="SCAN",
+				type="company",
+			)
+			self.user = CustomUser.objects.create_user(
+				username="scan-user",
+				password="pass",
+				organization=self.organization,
+			)
+			self.client.force_login(self.user)
+			self.product = Product.objects.create(
+				organization=self.organization,
+				code="SCN-01",
+				name="Scanner Product",
+				is_inventory_item=True,
+				barcode="SCN-BARCODE",
+				sku="SCN-SKU",
+			)
+
+		def test_scanner_page_loads(self):
+			response = self.client.get(reverse('inventory:barcode_scanner'))
+			self.assertEqual(response.status_code, 200)
+			self.assertContains(response, "Barcode Scanner")
+
+		def test_scan_returns_product(self):
+			response = self.client.get(reverse('inventory:scan_barcode'), {'code': 'SCN-BARCODE'})
+			self.assertEqual(response.status_code, 200)
+			payload = response.json()
+			self.assertEqual(payload['product']['code'], 'SCN-01')
+
+		def test_scan_missing_code(self):
+			response = self.client.get(reverse('inventory:scan_barcode'))
+			self.assertEqual(response.status_code, 400)
 	def test_transfer_views_exposed(self):
 		list_url = reverse('inventory:transfer_order_list')
 		create_url = reverse('inventory:transfer_order_create')

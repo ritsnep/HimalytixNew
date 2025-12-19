@@ -1,7 +1,20 @@
 {% load widget_tweaks %}
 {% with row_index=form_index|default:forloop.counter0 %}
 {% with display_index=forloop.counter|default:row_index|default_if_none:0 %}
-<tr id="form-{{ row_index }}-row" class="journal-line-row">
+{% if form.non_field_errors %}
+<tr class="error-row bg-danger bg-opacity-10">
+    <td colspan="12" class="py-2">
+        <div class="alert alert-danger mb-0 py-2 px-3 d-flex align-items-center">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <div>
+                <strong>Line {{ display_index|add:1 }} Error:</strong>
+                {{ form.non_field_errors|join:", " }}
+            </div>
+        </div>
+    </td>
+</tr>
+{% endif %}
+<tr id="form-{{ row_index }}-row" class="journal-line-row{% if form.non_field_errors or form.errors %} table-danger{% endif %}">
     <td data-label="#">{{ display_index|add:1 }}</td>
     <td data-label="Drag"><i class="fas fa-grip-vertical"></i></td>
     <td data-label="Account">{% render_field form.account class="form-select grid-cell" aria-label="Account" %}</td>

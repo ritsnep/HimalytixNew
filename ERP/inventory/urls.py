@@ -13,6 +13,7 @@ from inventory.views import (
     RMAListView, RMACreateView, RMAUpdateView, RMADetailView, RMADeleteView,
     BillOfMaterialListView, BillOfMaterialCreateView, BillOfMaterialUpdateView, BillOfMaterialDetailView, BillOfMaterialDeleteView,
     TransferOrderListView, TransferOrderCreateView, TransferOrderDetailView, TransferOrderExportView,
+    ReorderRecommendationListView, barcode_scanner, scan_barcode,
 )
 
 app_name = 'inventory'
@@ -117,4 +118,7 @@ urlpatterns = [
     path('transfers/create/', TransferOrderCreateView.as_view(), name='transfer_order_create'),
     path('transfers/<int:pk>/', TransferOrderDetailView.as_view(), name='transfer_order_detail'),
     path('transfers/export/', TransferOrderExportView.as_view(), name='transfer_order_export'),
+    path('reorder-recommendations/', ReorderRecommendationListView.as_view(), name='reorder_recommendation_list'),
+    path('barcode-scanner/', barcode_scanner, name='barcode_scanner'),
+    path('barcode-scan/', scan_barcode, name='scan_barcode'),
 ]

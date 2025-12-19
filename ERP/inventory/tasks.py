@@ -67,7 +67,7 @@ def generate_replenishment_suggestions():
     Generate procurement suggestions based on reorder levels and lead times
     Runs daily
     """
-    from .models import Product, InventoryItem, Warehouse
+from .models import Product, InventoryItem, Warehouse, ReorderRecommendation
     from usermanagement.models import Organization
     
     suggestions = []
@@ -79,8 +79,10 @@ def generate_replenishment_suggestions():
             reorder_level__isnull=False
         )
         
+        ReorderRecommendation.objects.filter(organization=org).delete()
+        warehouse_qs = Warehouse.objects.filter(organization=org, is_active=True)
         for product in products:
-            for warehouse in Warehouse.objects.filter(organization=org, is_active=True):
+            for warehouse in warehouse_qs:
                 # Get current stock at this warehouse
                 wh_stock = InventoryItem.objects.filter(
                     organization=org,
@@ -110,6 +112,17 @@ def generate_replenishment_suggestions():
                         'vendor_id': product.preferred_vendor_id,
                         'estimated_cost': float(suggested_qty * product.cost_price)
                     })
+                    ReorderRecommendation.objects.create(
+                        organization=org,
+                        product=product,
+                        warehouse=warehouse,
+                        reorder_level=product.reorder_level,
+                        current_stock=wh_stock,
+                        shortage=product.reorder_level - wh_stock,
+                        suggested_qty=suggested_qty,
+                        estimated_cost=suggested_qty * product.cost_price,
+                        vendor_id=product.preferred_vendor_id,
+                    )
     
     logger.info(f"Generated {len(suggestions)} replenishment suggestions")
     return {

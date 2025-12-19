@@ -31,18 +31,22 @@
                 <tbody id="line-formset">
                     {% for line_form in line_formset %}
                         {% if line_form.non_field_errors %}
-                            <tr class="table-danger">
-                                <td colspan="8">
-                                    <small>
-                                        {% for error in line_form.non_field_errors %}
-                                            {{ error }}
-                                        {% endfor %}
-                                    </small>
+                            <tr class="error-row bg-danger bg-opacity-10">
+                                <td colspan="8" class="py-2">
+                                    <div class="alert alert-danger mb-0 py-2 px-3 d-flex align-items-center">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        <div>
+                                            <strong>Line {{ forloop.counter }} Error:</strong>
+                                            {% for error in line_form.non_field_errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         {% endif %}
 
-                        <tr class="{% if line_form.DELETE.value %}table-secondary opacity-50{% endif %}" 
+                        <tr class="{% if line_form.DELETE.value %}table-secondary opacity-50{% endif %}{% if line_form.non_field_errors or line_form.errors %} table-danger{% endif %}" 
                             id="line-{{ line_form.instance.id|default:'new' }}">
                             <!-- Line Number -->
                             <td>

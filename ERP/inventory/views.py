@@ -9,14 +9,15 @@ views_update, views_detail, reports).
 from decimal import Decimal
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.db.models import Sum, Count, F
+from django.db import models
 from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.dateparse import parse_date
-from django.http import HttpResponseRedirect, HttpResponse
+from django.http import HttpResponseRedirect, HttpResponse, JsonResponse
 from django.template import loader
 from django.views.generic import (
     ListView, CreateView, UpdateView, DetailView, DeleteView, View,
@@ -40,6 +41,7 @@ from .forms import (
     TransferOrderForm,
     TransferOrderLineFormSet,
     TransferOrderFilterForm,
+    ReorderRecommendationFilterForm,
     ProductCategoryForm,
     ProductForm,
     WarehouseForm,
@@ -65,6 +67,7 @@ from .models import (
     StockAdjustment,
     TransferOrder,
     TransferOrderLine,
+    ReorderRecommendation,
     PriceList,
     PickList,
     Shipment,
@@ -182,6 +185,66 @@ def stock_movements(request):
 
 
 @login_required
+@permission_required('inventory.scan_barcode', raise_exception=True)
+def barcode_scanner(request):
+    organization = _get_request_organization(request)
+    if organization is None:
+        messages.error(request, 'Select an organization before using the barcode scanner.')
+        return redirect('dashboard')
+    return render(request, 'inventory/barcode_scanner.html', {
+        'organization': organization,
+        'page_title': 'Barcode Scanner',
+    })
+
+
+@login_required
+@permission_required('inventory.scan_barcode', raise_exception=True)
+def scan_barcode(request):
+    organization = _get_request_organization(request)
+    code = (request.GET.get('code') or '').strip()
+    if not code or organization is None:
+        return JsonResponse({'error': 'Please provide a barcode or SKU.'}, status=400)
+
+    product = Product.objects.filter(
+        organization=organization,
+        is_inventory_item=True
+    ).filter(
+        models.Q(barcode__iexact=code) |
+        models.Q(sku__iexact=code) |
+        models.Q(code__iexact=code)
+    ).first()
+
+    if not product:
+        return JsonResponse({'error': 'Product not found.'}, status=404)
+
+    inventory_items = InventoryItem.objects.filter(
+        organization=organization,
+        product=product,
+        quantity_on_hand__gt=0
+    ).select_related('warehouse', 'location', 'batch')
+
+    locations = [
+        {
+            'warehouse': item.warehouse.name,
+            'location': item.location.code if item.location else '',
+            'quantity': float(item.quantity_on_hand),
+            'batch': item.batch.batch_number if item.batch else ''
+        }
+        for item in inventory_items
+    ]
+
+    return JsonResponse({
+        'product': {
+            'code': product.code,
+            'name': product.name,
+            'sku': product.sku,
+            'barcode': product.barcode
+        },
+        'locations': locations
+    })
+
+
+@login_required
 def inventory_dashboard(request):
     """Inventory dashboard overview."""
     organization = _get_request_organization(request)
@@ -195,6 +258,14 @@ def inventory_dashboard(request):
     total_categories = ProductCategory.objects.filter(organization=organization).count()
     total_units = Unit.objects.filter(organization=organization).count()
     total_locations = Location.objects.filter(warehouse__organization=organization).count()
+    reorder_qs = ReorderRecommendation.objects.filter(organization=organization)
+    reorder_count = reorder_qs.count()
+    reorder_shortage = reorder_qs.aggregate(total=Sum('shortage'))['total'] or Decimal('0')
+    reorder_chart_data = list(
+        reorder_qs.values('warehouse__code')
+        .annotate(total_shortage=Sum('shortage'))
+        .order_by('-total_shortage')[:5]
+    )
 
     context = {
         'organization': organization,
@@ -234,6 +305,13 @@ def inventory_dashboard(request):
                 'value': total_locations,
                 'description': 'Tracked sub-locations',
             },
+            {
+                'icon': 'mdi-alert-circle',
+                'color': 'danger',
+                'title': 'Reorder Alerts',
+                'value': reorder_count,
+                'description': 'Products needing replenishment',
+            },
         ],
         'quick_actions': [
             {'url': 'inventory:product_list', 'icon': 'mdi-package', 'label': 'Manage Products'},
@@ -244,7 +322,13 @@ def inventory_dashboard(request):
             {'url': 'inventory:productunit_list', 'icon': 'mdi-package-variant-closed', 'label': 'Product Units'},
             {'url': 'inventory:stock_report', 'icon': 'mdi-chart-bar', 'label': 'Stock Report'},
             {'url': 'inventory:ledger_report', 'icon': 'mdi-book-open', 'label': 'Stock Ledger'},
+            {'url': 'inventory:reorder_recommendation_list', 'icon': 'mdi-alert-circle', 'label': 'Reorder Suggestions'},
         ],
+        'reorder_summary': {
+            'count': reorder_count,
+            'shortage': reorder_shortage,
+        },
+        'reorder_chart_data': reorder_chart_data,
     }
     return render(request, 'inventory/dashboard.html', context)
 
@@ -1234,6 +1318,35 @@ class TransferOrderExportView(PermissionRequiredMixin, UserOrganizationMixin, Vi
         response = HttpResponse(content, content_type='text/csv')
         response['Content-Disposition'] = 'attachment; filename="transfer_orders.csv"'
         return response
+
+
+class ReorderRecommendationListView(PermissionRequiredMixin, UserOrganizationMixin, ListView):
+    model = ReorderRecommendation
+    template_name = 'inventory/reorder_recommendation_list.html'
+    context_object_name = 'recommendations'
+    permission_required = 'Inventory.view_reorderrecommendation'
+
+    def get_queryset(self):
+        organization = self.get_organization()
+        queryset = (
+            super().get_queryset()
+            .filter(organization=organization)
+            .select_related('product', 'warehouse')
+            .order_by('-shortage')
+        )
+        warehouse = self.request.GET.get('warehouse')
+        if warehouse:
+            queryset = queryset.filter(warehouse_id=warehouse)
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        organization = self.get_organization()
+        context['filter_form'] = ReorderRecommendationFilterForm(
+            data=self.request.GET or None,
+            organization=organization
+        )
+        return context
 
 
 class ShipmentCreateView(PermissionRequiredMixin, UserOrganizationMixin, CreateView):

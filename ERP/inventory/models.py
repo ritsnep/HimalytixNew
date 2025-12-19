@@ -5,7 +5,7 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 from mptt.models import MPTTModel, TreeForeignKey          # pip install django-mptt
-from accounting.models import ChartOfAccount
+from accounting.models import ChartOfAccount, Vendor
 from usermanagement.models import Organization               # your multi-tenant app
 # from accounting.models import ChartOfAccount               # GL integration
 
@@ -38,6 +38,13 @@ class ProductCategory(MPTTModel):
     def __str__(self):
         return f"{self.organization.name} - {self.name} ({self.code})"
 
+class CostingMethod(models.TextChoices):
+    WEIGHTED_AVERAGE = ('weighted_average', 'Weighted Average')
+    FIFO = ('fifo', 'FIFO')
+    LIFO = ('lifo', 'LIFO')
+    STANDARD = ('standard', 'Standard Cost')
+
+
 class Product(models.Model):
     organization       = models.ForeignKey(Organization, on_delete=models.PROTECT)
     category           = TreeForeignKey(ProductCategory, null=True, blank=True,
@@ -57,6 +64,19 @@ class Product(models.Model):
     inventory_account  = models.ForeignKey(ChartOfAccount, null=True, blank=True,
                                            related_name="inventory_products", on_delete=models.PROTECT,
                                            help_text="Asset account for inventory items")
+    costing_method     = models.CharField(
+        max_length=24,
+        choices=CostingMethod.choices,
+        default=CostingMethod.WEIGHTED_AVERAGE,
+        help_text="Choose how this product is valued during inventory movements.",
+    )
+    standard_cost      = models.DecimalField(
+        max_digits=19,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Required for standard costing; used as the issue unit cost.",
+    )
     is_inventory_item  = models.BooleanField(default=False)
     min_order_quantity = models.DecimalField(max_digits=15, decimal_places=4, default=1)
     reorder_level      = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
@@ -87,8 +107,42 @@ class Product(models.Model):
                 errors['inventory_account'] = 'Inventory account is required for inventory items.'
             if not self.expense_account:
                 errors['expense_account'] = 'COGS (expense) account is required for inventory items.'
+            if self.costing_method == CostingMethod.STANDARD and not self.standard_cost:
+                errors['standard_cost'] = 'Standard cost is required when using standard costing.'
             if errors:
                 raise ValidationError(errors)
+
+
+class CostLayer(models.Model):
+    organization = models.ForeignKey(Organization, on_delete=models.PROTECT)
+    product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    warehouse = models.ForeignKey('Warehouse', on_delete=models.PROTECT)
+    location = models.ForeignKey('Location', null=True, blank=True, on_delete=models.PROTECT)
+    batch = models.ForeignKey('Batch', null=True, blank=True, on_delete=models.PROTECT)
+    reference_id = models.CharField(max_length=100, blank=True)
+    quantity_received = models.DecimalField(max_digits=15, decimal_places=4)
+    quantity_available = models.DecimalField(max_digits=15, decimal_places=4)
+    unit_cost = models.DecimalField(max_digits=19, decimal_places=4)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=['organization', 'product', 'warehouse'],
+                name='inv_costlayer_org_prod_wh'
+            ),
+        ]
+        ordering = ['created_at']
+
+    def __str__(self):
+        loc = self.location.code if self.location else 'N/A'
+        return f"{self.organization.name} - {self.product.code} @ {self.warehouse.code}/{loc}: {self.quantity_available} @ {self.unit_cost}"
+
+    def consume(self, quantity):
+        if quantity > self.quantity_available:
+            raise ValueError("Cannot consume more than available from a cost layer.")
+        self.quantity_available -= quantity
+        self.save(update_fields=['quantity_available'])
 
 
 class ProductUnit(models.Model):
@@ -169,6 +223,9 @@ class InventoryItem(models.Model):
     updated_at          = models.DateTimeField(auto_now=True)
     class Meta:
         unique_together = ('organization', 'product', 'warehouse', 'location', 'batch')
+        permissions = [
+            ('scan_barcode', 'Can access barcode scanner'),
+        ]
     def __str__(self):
         loc_code = self.location.code if self.location else 'N/A'
         batch_num = self.batch.batch_number if self.batch else 'N/A'
@@ -456,6 +513,35 @@ class TransferOrderLine(models.Model):
 
     def __str__(self):
         return f"{self.transfer_order.order_number} - {self.product.code} ({self.quantity_requested})"
+
+
+class ReorderRecommendation(models.Model):
+    STATUS_CHOICES = [
+        ('recommended', 'Recommended'),
+        ('ordered', 'Ordered'),
+        ('skipped', 'Skipped'),
+    ]
+
+    organization = models.ForeignKey(Organization, on_delete=models.PROTECT)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE)
+    reorder_level = models.DecimalField(max_digits=15, decimal_places=4)
+    current_stock = models.DecimalField(max_digits=15, decimal_places=4)
+    shortage = models.DecimalField(max_digits=15, decimal_places=4)
+    suggested_qty = models.DecimalField(max_digits=15, decimal_places=4)
+    estimated_cost = models.DecimalField(max_digits=19, decimal_places=4)
+    vendor = models.ForeignKey(Vendor, null=True, blank=True, on_delete=models.SET_NULL)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='recommended')
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['organization', 'status']),
+            models.Index(fields=['product', 'warehouse']),
+        ]
+
+    def __str__(self):
+        return f"{self.organization.name} - {self.product.code} @ {self.warehouse.code}"
 
 
 class PickList(models.Model):

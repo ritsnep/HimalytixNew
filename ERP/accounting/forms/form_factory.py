@@ -265,8 +265,10 @@ class VoucherFormFactory:
             formset_kwargs['data'] = data
         if files is not None:
             formset_kwargs['files'] = files
-        if not instance and voucher_config.default_lines and data is None:
-            formset_kwargs.setdefault('initial', voucher_config.default_lines)
+        # VoucherModeConfig doesn't have default_lines attribute, use getattr with fallback
+        default_lines = getattr(voucher_config, 'default_lines', None)
+        if not instance and default_lines and data is None:
+            formset_kwargs.setdefault('initial', default_lines)
 
         # Build the formset
         FormSetClass = build_formset(lines_schema, model=line_model_class, **formset_kwargs)
@@ -280,27 +282,40 @@ class VoucherFormFactory:
         
         # Map module and code to model classes
         # Since multiple configs can have same (module, code), we use module-based logic
-        if voucher_config.module == 'accounting':
+        # For VoucherModeConfig (new model), default to accounting module
+        module = getattr(voucher_config, 'module', 'accounting')
+        
+        if module == 'accounting':
+            if voucher_config.code == 'sales-invoice-vm-si':
+                return apps.get_model('accounting', 'SalesInvoice')
             return apps.get_model('accounting', 'Journal')
-        elif voucher_config.module == 'purchasing':
+        elif module == 'purchasing':
             # Use the actual purchasing models so FK fields (vendor, product, tax, etc.) resolve correctly
             if voucher_config.code == 'purchase_order':
                 return apps.get_model('purchasing', 'PurchaseOrder')
+            elif voucher_config.code == 'purchase-invoice-vm-pi':
+                return apps.get_model('accounting', 'PurchaseInvoice')
             else:
                 return apps.get_model('purchasing', 'PurchaseOrder')
-        elif voucher_config.module == 'sales':
+        elif module == 'sales':
             if voucher_config.code == 'sales_order':
                 try:
                     return apps.get_model('sales', 'SalesOrder')
                 except Exception:
                     return apps.get_model('accounting', 'Journal')
+            elif voucher_config.code == 'sales-invoice-vm-si':
+                return apps.get_model('accounting', 'SalesInvoice')
             else:
                 try:
                     return apps.get_model('sales', 'SalesOrder')
                 except Exception:
                     return apps.get_model('accounting', 'Journal')
-        elif voucher_config.module == 'inventory':
-            # For inventory, we might need specific models, but for now use Journal
+        elif module == 'inventory':
+            if 'adjustment' in voucher_config.code.lower() or voucher_config.code == 'VM08':
+                try:
+                    return apps.get_model('inventory', 'StockAdjustment')
+                except Exception:
+                    return apps.get_model('accounting', 'Journal')
             return apps.get_model('accounting', 'Journal')
         else:
             # Default fallback
@@ -312,29 +327,55 @@ class VoucherFormFactory:
         from django.apps import apps
         
         # Map module and code to line model classes
-        if voucher_config.module == 'accounting':
+        # VoucherModeConfig doesn't have module attribute, default to 'accounting'
+        module = getattr(voucher_config, 'module', 'accounting')
+        code = voucher_config.code.upper() if voucher_config.code else ''
+        
+        # Special code-based mapping that overrides module (for backwards compatibility)
+        # Inventory vouchers - use StockAdjustmentLine for now (proper models to be created later)
+        if 'GR' in code or 'RECEIPT' in code.replace('-', '').replace('_', ''):
+            try:
+                return apps.get_model('inventory', 'StockAdjustmentLine')
+            except Exception:
+                pass
+        
+        # Module-based mapping
+        if module == 'accounting':
+            if voucher_config.code == 'sales-invoice-vm-si':
+                return apps.get_model('accounting', 'SalesInvoiceLine')
+            # Only use JournalLine for actual journal vouchers
+            if code in ['VM08', 'VM-JV', 'VM-GJ'] or 'JOURNAL' in code:
+                return apps.get_model('accounting', 'JournalLine')
+            # For all other accounting vouchers, also use JournalLine for now
             return apps.get_model('accounting', 'JournalLine')
-        elif voucher_config.module == 'purchasing':
+        elif module == 'purchasing':
             if voucher_config.code == 'purchase_order':
                 return apps.get_model('purchasing', 'PurchaseOrderLine')
+            elif voucher_config.code == 'purchase-invoice-vm-pi':
+                return apps.get_model('accounting', 'PurchaseInvoiceLine')
             else:
                 return apps.get_model('purchasing', 'PurchaseOrderLine')
-        elif voucher_config.module == 'sales':
+        elif module == 'sales':
             if voucher_config.code == 'sales_order':
                 try:
                     return apps.get_model('sales', 'SalesOrderLine')
                 except Exception:
                     return apps.get_model('accounting', 'JournalLine')
+            elif voucher_config.code == 'sales-invoice-vm-si':
+                return apps.get_model('accounting', 'SalesInvoiceLine')
             else:
                 try:
                     return apps.get_model('sales', 'SalesOrderLine')
                 except Exception:
                     return apps.get_model('accounting', 'JournalLine')
-        elif voucher_config.module == 'inventory':
-            # For inventory, we might need specific models, but for now use JournalLine
-            return apps.get_model('accounting', 'JournalLine')
+        elif module == 'inventory':
+            # All inventory transactions use StockAdjustmentLine for now
+            try:
+                return apps.get_model('inventory', 'StockAdjustmentLine')
+            except Exception:
+                return apps.get_model('accounting', 'JournalLine')
         else:
-            # Default fallback
+            # Default fallback - only for journal vouchers
             return apps.get_model('accounting', 'JournalLine')
 
 
