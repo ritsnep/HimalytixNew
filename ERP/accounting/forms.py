@@ -1028,27 +1028,29 @@ class TaxCodeForm(BootstrapFormMixin, forms.ModelForm):
         return instance
 
 class VoucherModeConfigForm(BootstrapFormMixin, forms.ModelForm):
-    ui_schema = forms.JSONField(
-        required=False,
-        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 10})
-    )
     currency_warning = None  # Will be set if no currencies
 
     class Meta:
         model = VoucherModeConfig
         fields = (
-            'name', 'description', 'journal_type', 'is_default',
+            'code', 'name', 'description', 'module', 'journal_type', 'is_default',
+            'affects_gl', 'affects_inventory', 'requires_approval',
             'layout_style', 'show_account_balances', 'show_tax_details',
             'show_dimensions', 'allow_multiple_currencies',
-            'require_line_description', 'default_currency', 'ui_schema',
+            'require_line_description', 'default_currency',
             'default_ledger', 'default_narration_template', 'default_voucher_mode',
             'default_cost_center', 'default_tax_ledger'
         )
         widgets = {
+            'code': forms.TextInput(attrs={'class': 'form-control'}),
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'module': forms.Select(attrs={'class': 'form-select'}),
             'journal_type': forms.Select(attrs={'class': 'form-select'}),
             'is_default': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'affects_gl': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'affects_inventory': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'requires_approval': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'layout_style': forms.Select(attrs={'class': 'form-select'}),
             'show_account_balances': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'show_tax_details': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
@@ -1111,18 +1113,10 @@ class VoucherModeConfigForm(BootstrapFormMixin, forms.ModelForm):
     def get_currency_warning(self):
         return getattr(self, 'currency_warning', None)
 
-    def clean_ui_schema(self):
-        data = self.cleaned_data.get('ui_schema')
-        if not data:
-            return {}
-        if isinstance(data, str):
-            try:
-                data = json.loads(data)
-            except json.JSONDecodeError as exc:
-                raise forms.ValidationError(f"Invalid JSON: {exc}")
-        if not isinstance(data, dict):
-            raise forms.ValidationError("UI schema must be a JSON object.")
-        return data
+    def clean_code(self):
+        code = self.cleaned_data.get('code') or ''
+        return code.strip()
+
 
     def save(self, commit=True):
         instance = super().save(commit=False)

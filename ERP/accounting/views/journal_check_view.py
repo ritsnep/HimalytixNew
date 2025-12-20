@@ -7,7 +7,7 @@ import json
 
 from accounting.models import Journal
 from accounting.forms import JournalForm, JournalLineFormSet
-from accounting.forms.form_factory import get_voucher_ui_header
+from accounting.forms_factory import get_voucher_ui_header
 from accounting.views.views_mixins import UserOrganizationMixin
 from utils.htmx import require_htmx
 

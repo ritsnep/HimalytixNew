@@ -19,7 +19,7 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
-from accounting.forms.form_factory import VoucherFormFactory
+from accounting.forms_factory import VoucherFormFactory
 from accounting.models import Journal, JournalLine
 from accounting.services.validation import JournalValidationService
 from accounting.views.base_voucher_view import BaseVoucherView

@@ -67,7 +67,13 @@ class LandedCostService:
         return jt
 
     @transaction.atomic
-    def apply(self, document: LandedCostDocument, journal_type: Optional[JournalType] = None) -> Journal:
+    def apply(
+        self,
+        document: LandedCostDocument,
+        journal_type: Optional[JournalType] = None,
+        *,
+        idempotency_key: str | None = None,
+    ) -> Journal:
         if document.is_applied:
             return document.journal
 
@@ -222,7 +228,8 @@ class LandedCostService:
                 f"Landed cost journal is not balanced: debit={total_debit}, credit={total_credit}"
             )
 
-        posted = self.posting_service.post(journal)
+        from accounting.services.post_journal import post_journal
+        posted = post_journal(journal, user=self.user, idempotency_key=idempotency_key)
         document.journal = posted
         document.is_applied = True
         document.applied_at = timezone.now()

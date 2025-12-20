@@ -1,0 +1,219 @@
+{% extends 'accounting/_form_base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}{{ page_title|default:"Purchase Document" }}{% endblock %}
+
+{% block form_content %}
+<form method="post" novalidate id="unified-purchasing-form">
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+  <div class="alert alert-danger">
+    {% for error in form.non_field_errors %}{{ error }}<br>{% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Header Section -->
+  <div class="card mb-3">
+    <div class="card-header bg-light">
+      <h5 class="mb-0">{{ form_title }} Details</h5>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        {% if document_type == 'purchase_order' %}
+          <!-- PO Header -->
+          <div class="col-md-4">
+            <label class="form-label small text-uppercase text-muted" for="{{ form.vendor.id_for_label }}">Vendor</label>
+            {% render_field form.vendor class+="form-select form-select-sm" %}
+            {% for error in form.vendor.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small text-uppercase text-muted" for="{{ form.order_date.id_for_label }}">Order Date</label>
+            {% render_field form.order_date class+="form-control form-control-sm" %}
+            {% for error in form.order_date.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small text-uppercase text-muted" for="{{ form.currency.id_for_label }}">Currency</label>
+            {% render_field form.currency class+="form-select form-select-sm" %}
+            {% for error in form.currency.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-uppercase text-muted" for="{{ form.due_date.id_for_label }}">Due Date</label>
+            {% render_field form.due_date class+="form-control form-control-sm" %}
+            {% for error in form.due_date.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-uppercase text-muted" for="{{ form.exchange_rate.id_for_label }}">Exchange Rate</label>
+            {% render_field form.exchange_rate class+="form-control form-control-sm text-end" %}
+            {% for error in form.exchange_rate.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small text-uppercase text-muted" for="{{ form.notes.id_for_label }}">Notes</label>
+            {% render_field form.notes class+="form-control form-control-sm" rows="2" %}
+            {% for error in form.notes.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+
+        {% elif document_type == 'goods_receipt' %}
+          <!-- GR Header -->
+          <div class="col-md-4">
+            <label class="form-label small text-uppercase text-muted" for="{{ form.purchase_order.id_for_label }}">Purchase Order</label>
+            {% render_field form.purchase_order class+="form-select form-select-sm" %}
+            {% for error in form.purchase_order.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small text-uppercase text-muted" for="{{ form.warehouse.id_for_label }}">Warehouse</label>
+            {% render_field form.warehouse class+="form-select form-select-sm" %}
+            {% for error in form.warehouse.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small text-uppercase text-muted" for="{{ form.receipt_date.id_for_label }}">Receipt Date</label>
+            {% render_field form.receipt_date class+="form-control form-control-sm" %}
+            {% for error in form.receipt_date.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small text-uppercase text-muted" for="{{ form.reference_number.id_for_label }}">Reference #</label>
+            {% render_field form.reference_number class+="form-control form-control-sm" %}
+            {% for error in form.reference_number.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small text-uppercase text-muted" for="{{ form.notes.id_for_label }}">QC Notes</label>
+            {% render_field form.notes class+="form-control form-control-sm" rows="2" %}
+            {% for error in form.notes.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Line Items Section -->
+  <div class="card mb-3">
+    <div class="card-header bg-light">
+      <div class="d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Line Items</h5>
+        <button class="btn btn-outline-primary btn-sm" type="button" data-line-add>
+          <i class="mdi mdi-plus"></i> Add line
+        </button>
+      </div>
+    </div>
+    <div class="card-body">
+      {% if line_formset.non_form_errors %}
+      <div class="alert alert-danger">
+        {% for error in line_formset.non_form_errors %}{{ error }}<br>{% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="table-responsive">
+        {{ line_formset.management_form }}
+        <table class="table table-sm align-middle mb-0" id="line-items-table">
+          <thead class="table-light text-muted">
+            <tr>
+              {% if document_type == 'purchase_order' %}
+                <th>Product</th>
+                <th class="text-end">Qty Ordered</th>
+                <th class="text-end">Unit Cost</th>
+                <th class="text-end">VAT %</th>
+                <th class="text-end">Total</th>
+                <th>Inventory Account</th>
+                <th class="text-center" style="width: 60px;"></th>
+              {% elif document_type == 'goods_receipt' %}
+                <th>Product (from PO)</th>
+                <th class="text-end">Qty Ordered</th>
+                <th class="text-end">Qty Received</th>
+                <th class="text-end">Qty Accepted</th>
+                <th>QC Result</th>
+                <th>Batch #</th>
+                <th class="text-center" style="width: 60px;"></th>
+              {% endif %}
+            </tr>
+          </thead>
+          <tbody id="line-items-body">
+            {% if document_type == 'purchase_order' %}
+              {% include "purchasing/partials/_po_line_row.html" %}
+            {% elif document_type == 'goods_receipt' %}
+              {% include "purchasing/partials/_gr_line_row.html" %}
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Totals for PO -->
+      {% if document_type == 'purchase_order' %}
+      <div class="mt-3 d-flex justify-content-end">
+        <div style="width: 300px;">
+          <div class="row g-2">
+            <div class="col-6 text-end"><strong>Subtotal:</strong></div>
+            <div class="col-6 text-end"><span id="po-subtotal">0.00</span></div>
+            
+            <div class="col-6 text-end"><strong>Tax:</strong></div>
+            <div class="col-6 text-end"><span id="po-tax">0.00</span></div>
+            
+            <div class="col-6 text-end"><strong class="text-primary">Total:</strong></div>
+            <div class="col-6 text-end"><strong class="text-primary" id="po-total">0.00</strong></div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Form Actions -->
+  <div class="d-flex justify-content-between gap-2">
+    <a href="{% url 'purchasing:invoice-table' %}" class="btn btn-outline-secondary">Cancel</a>
+    <button type="submit" class="btn btn-primary">Save {{ form_title }}</button>
+  </div>
+</form>
+
+<!-- Template for empty line row -->
+<script type="text/template" id="line-item-empty-form">
+  {% if document_type == 'purchase_order' %}
+    {% include "purchasing/partials/_po_line_row.html" with form=line_formset.empty_form row_index="__prefix__" %}
+  {% elif document_type == 'goods_receipt' %}
+    {% include "purchasing/partials/_gr_line_row.html" with form=line_formset.empty_form row_index="__prefix__" %}
+  {% endif %}
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Add line button handler
+  document.querySelector('[data-line-add]').addEventListener('click', function() {
+    const formsetData = document.querySelector('#id_lines-TOTAL_FORMS');
+    const currentForms = parseInt(formsetData.value);
+    const template = document.querySelector('#line-item-empty-form').innerHTML;
+    const newForm = template.replace(/__prefix__/g, currentForms);
+    
+    document.querySelector('#line-items-body').insertAdjacentHTML('beforeend', newForm);
+    formsetData.value = currentForms + 1;
+  });
+
+  // Calculate totals for PO
+  {% if document_type == 'purchase_order' %}
+  function calculateTotals() {
+    let subtotal = 0;
+    let tax = 0;
+    
+    document.querySelectorAll('input[name*="quantity_ordered"]').forEach((qtyInput, idx) => {
+      const priceInput = document.querySelector(`input[name*="${idx}-unit_price"]`);
+      const vatInput = document.querySelector(`input[name*="${idx}-vat_rate"]`);
+      
+      if (qtyInput.value && priceInput && priceInput.value) {
+        const qty = parseFloat(qtyInput.value) || 0;
+        const price = parseFloat(priceInput.value) || 0;
+        const vat = parseFloat(vatInput?.value || 0);
+        
+        const lineTotal = qty * price;
+        subtotal += lineTotal;
+        tax += lineTotal * (vat / 100);
+      }
+    });
+    
+    const total = subtotal + tax;
+    document.querySelector('#po-subtotal').textContent = subtotal.toFixed(2);
+    document.querySelector('#po-tax').textContent = tax.toFixed(2);
+    document.querySelector('#po-total').textContent = total.toFixed(2);
+  }
+  
+  calculateTotals();
+  document.querySelector('#unified-purchasing-form').addEventListener('input', calculateTotals);
+  {% endif %}
+});
+</script>
+{% endblock %}

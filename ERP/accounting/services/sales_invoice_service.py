@@ -212,7 +212,19 @@ class SalesInvoiceService:
         *,
         submit_to_ird: Optional[bool] = None,
         warehouse: Optional[Warehouse] = None,
+        idempotency_key: Optional[str] = None,
     ) -> Journal:
+        invoice = SalesInvoice.objects.select_for_update().get(pk=invoice.pk)
+        if invoice.status == "posted" and invoice.journal_id:
+            return invoice.journal
+        if idempotency_key:
+            metadata = dict(invoice.metadata or {})
+            existing_key = metadata.get("idempotency_key")
+            if existing_key and existing_key != idempotency_key:
+                raise ValidationError("Idempotency key mismatch for this invoice.")
+            metadata["idempotency_key"] = idempotency_key
+            invoice.metadata = metadata
+            invoice.save(update_fields=["metadata"])
         if invoice.status not in {'validated', 'draft'}:
             raise ValidationError("Invoice must be validated before posting.")
         if invoice.customer.accounts_receivable_account is None:

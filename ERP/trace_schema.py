@@ -13,10 +13,11 @@ config = VoucherModeConfig.objects.filter(code='VM-SI').first()
 
 if config and org:
     print(f"Testing: {config.code}")
-    print(f"\nOriginal ui_schema keys: {config.ui_schema.keys()}")
+    resolved = config.resolve_ui_schema()
+    print(f"\nResolved schema keys: {resolved.keys()}")
     
     # Manually trace schema processing
-    schema = config.ui_schema
+    schema = resolved
     
     # Step 1: Unwrap sections
     if 'sections' in schema:

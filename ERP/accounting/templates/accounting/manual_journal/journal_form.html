@@ -6,274 +6,29 @@
 
 {% block content %}
 <div class="main-content">
-    <div class="page-content">
-        <div class="container-fluid">
-            
-            <!-- Page Header -->
-            <div class="row mb-4">
-                <div class="col-12">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h1 class="mb-1">
-                                <i class="fas fa-file-invoice me-2"></i>
-                                {{ page_title }}
-                            </h1>
-                            <p class="text-muted mb-0">
-                                {% trans "Create or edit manual journal voucher entries" %}
-                            </p>
-                        </div>
-                        <a href="{% url 'accounting:manual_journal_list' %}" class="btn btn-outline-secondary">
-                            <i class="fas fa-arrow-left me-2"></i>
-                            {% trans "Back to List" %}
-                        </a>
-                    </div>
-                </div>
+  <div class="page-content">
+    <div class="container-fluid">
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h1 class="mb-1">
+                <i class="fas fa-file-invoice me-2"></i>
+                {{ page_title }}
+              </h1>
+              <p class="text-muted mb-0">
+                {% trans "Create or edit manual journal voucher entries" %}
+              </p>
             </div>
-
-            <form method="post" id="journal-form" novalidate>
-                {% csrf_token %}
-                
-                <div class="row">
-                    <!-- Journal Header -->
-                    <div class="col-lg-12 mb-4">
-                        <div class="card">
-                            <div class="card-header bg-primary text-white">
-                                <h5 class="mb-0">
-                                    <i class="fas fa-info-circle me-2"></i>
-                                    {% trans "Journal Header" %}
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="{{ form.journal_type.id_for_label }}" class="form-label">
-                                            {% trans "Journal Type" %} <span class="text-danger">*</span>
-                                        </label>
-                                        {% render_field form.journal_type class="form-select" %}
-                                        {% if form.journal_type.errors %}
-                                            <div class="invalid-feedback d-block">{{ form.journal_type.errors }}</div>
-                                        {% endif %}
-                                    </div>
-                                    
-                                    <div class="col-md-6 mb-3">
-                                        <label for="{{ form.period.id_for_label }}" class="form-label">
-                                            {% trans "Period" %} <span class="text-danger">*</span>
-                                        </label>
-                                        {% render_field form.period class="form-select" %}
-                                        {% if form.period.errors %}
-                                            <div class="invalid-feedback d-block">{{ form.period.errors }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                
-                                <div class="row">
-                                    <div class="col-md-4 mb-3">
-                                        <label for="{{ form.journal_date.id_for_label }}" class="form-label">
-                                            {% trans "Journal Date" %} <span class="text-danger">*</span>
-                                        </label>
-                                        {{ form.journal_date }}
-                                        {% if form.journal_date.errors %}
-                                            <div class="invalid-feedback d-block">{{ form.journal_date.errors }}</div>
-                                        {% endif %}
-                                    </div>
-                                    
-                                    <div class="col-md-4 mb-3">
-                                        <label for="{{ form.reference.id_for_label }}" class="form-label">
-                                            {% trans "Reference" %}
-                                        </label>
-                                        {% render_field form.reference class="form-control" placeholder="e.g., REF-001" %}
-                                        {% if form.reference.errors %}
-                                            <div class="invalid-feedback d-block">{{ form.reference.errors }}</div>
-                                        {% endif %}
-                                    </div>
-                                    
-                                    <div class="col-md-4 mb-3">
-                                        <label for="{{ form.currency_code.id_for_label }}" class="form-label">
-                                            {% trans "Currency" %}
-                                        </label>
-                                        {% render_field form.currency_code class="form-select" %}
-                                        {% if form.currency_code.errors %}
-                                            <div class="invalid-feedback d-block">{{ form.currency_code.errors }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                
-                                <div class="row">
-                                    <div class="col-md-12 mb-3">
-                                        <label for="{{ form.description.id_for_label }}" class="form-label">
-                                            {% trans "Description" %}
-                                        </label>
-                                        {% render_field form.description class="form-control" rows="3" placeholder="Enter journal description..." %}
-                                        {% if form.description.errors %}
-                                            <div class="invalid-feedback d-block">{{ form.description.errors }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Journal Lines -->
-                    <div class="col-lg-12 mb-4">
-                        <div class="card">
-                            <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0">
-                                    <i class="fas fa-list me-2"></i>
-                                    {% trans "Journal Lines" %}
-                                </h5>
-                                <button type="button" class="btn btn-sm btn-light" id="add-line-btn">
-                                    <i class="fas fa-plus me-1"></i>
-                                    {% trans "Add Line" %}
-                                </button>
-                            </div>
-                            <div class="card-body p-0">
-                                {{ line_formset.management_form }}
-                                
-                                <div class="table-responsive">
-                                    <table class="table table-hover mb-0" id="lines-table">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th style="width: 5%">#</th>
-                                                <th style="width: 20%">{% trans "Account" %} <span class="text-danger">*</span></th>
-                                                <th style="width: 25%">{% trans "Description" %}</th>
-                                                <th style="width: 12%" class="text-end">{% trans "Debit" %}</th>
-                                                <th style="width: 12%" class="text-end">{% trans "Credit" %}</th>
-                                                <th style="width: 10%">{% trans "Department" %}</th>
-                                                <th style="width: 10%">{% trans "Project" %}</th>
-                                                <th style="width: 6%" class="text-center">{% trans "Delete" %}</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for line_form in line_formset %}
-                                                <tr class="journal-line-row">
-                                                    <td>{{ forloop.counter }}</td>
-                                                    <td>
-                                                        {% render_field line_form.account class="form-select form-select-sm" %}
-                                                        {{ line_form.id }}
-                                                    </td>
-                                                    <td>
-                                                        {% render_field line_form.description class="form-control form-control-sm" %}
-                                                    </td>
-                                                    <td>
-                                                        {% render_field line_form.debit_amount class="form-control form-control-sm text-end debit-input" placeholder="0.00" %}
-                                                    </td>
-                                                    <td>
-                                                        {% render_field line_form.credit_amount class="form-control form-control-sm text-end credit-input" placeholder="0.00" %}
-                                                    </td>
-                                                    <td>
-                                                        {% render_field line_form.department class="form-select form-select-sm" %}
-                                                    </td>
-                                                    <td>
-                                                        {% render_field line_form.project class="form-select form-select-sm" %}
-                                                    </td>
-                                                    <td class="text-center">
-                                                        {% if line_form.instance.pk %}
-                                                            {% render_field line_form.DELETE class="form-check-input" %}
-                                                        {% endif %}
-                                                    </td>
-                                                </tr>
-                                                {% if line_form.errors %}
-                                                    <tr>
-                                                        <td colspan="8" class="text-danger">
-                                                            {{ line_form.errors }}
-                                                        </td>
-                                                    </tr>
-                                                {% endif %}
-                                            {% endfor %}
-                                        </tbody>
-                                        <tfoot class="table-light">
-                                            <tr>
-                                                <th colspan="3" class="text-end">{% trans "Totals:" %}</th>
-                                                <th class="text-end">
-                                                    <span id="total-debit" class="fw-bold text-success">0.00</span>
-                                                </th>
-                                                <th class="text-end">
-                                                    <span id="total-credit" class="fw-bold text-danger">0.00</span>
-                                                </th>
-                                                <th colspan="3">
-                                                    <span id="balance-status" class="badge bg-warning">
-                                                        {% trans "Not Balanced" %}
-                                                    </span>
-                                                </th>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Form Actions -->
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between">
-                                    <a href="{% url 'accounting:manual_journal_list' %}" class="btn btn-secondary">
-                                        <i class="fas fa-times me-2"></i>
-                                        {% trans "Cancel" %}
-                                    </a>
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-save me-2"></i>
-                                        {{ submit_button_text }}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </form>
-            
+            <a href="{% url 'accounting:manual_journal_list' %}" class="btn btn-outline-secondary">
+              <i class="fas fa-arrow-left me-2"></i>
+              {% trans "Back to List" %}
+            </a>
+          </div>
         </div>
+      </div>
+      {% include "accounting/manual_journal/partials/journal_form.html" %}
     </div>
+  </div>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Calculate totals
-    function calculateTotals() {
-        let totalDebit = 0;
-        let totalCredit = 0;
-        
-        document.querySelectorAll('.debit-input').forEach(input => {
-            const value = parseFloat(input.value) || 0;
-            totalDebit += value;
-        });
-        
-        document.querySelectorAll('.credit-input').forEach(input => {
-            const value = parseFloat(input.value) || 0;
-            totalCredit += value;
-        });
-        
-        document.getElementById('total-debit').textContent = totalDebit.toFixed(2);
-        document.getElementById('total-credit').textContent = totalCredit.toFixed(2);
-        
-        const difference = Math.abs(totalDebit - totalCredit);
-        const balanceStatus = document.getElementById('balance-status');
-        
-        if (difference < 0.01) {
-            balanceStatus.textContent = '{% trans "Balanced" %}';
-            balanceStatus.className = 'badge bg-success';
-        } else {
-            balanceStatus.textContent = `{% trans "Imbalance:" %} ${difference.toFixed(2)}`;
-            balanceStatus.className = 'badge bg-danger';
-        }
-    }
-    
-    // Attach event listeners
-    document.querySelectorAll('.debit-input, .credit-input').forEach(input => {
-        input.addEventListener('input', calculateTotals);
-    });
-    
-    // Initial calculation
-    calculateTotals();
-    
-    // Add line button functionality (simplified - requires proper Django formset handling)
-    document.getElementById('add-line-btn').addEventListener('click', function() {
-        alert('{% trans "Please save the form and edit again to add more lines." %}');
-    });
-});
-</script>
-
 {% endblock %}

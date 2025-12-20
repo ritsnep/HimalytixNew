@@ -63,7 +63,7 @@ def test_database_configs():
                 'name': config.name,
                 'exists': True,
                 'is_active': config.is_active,
-                'has_ui_schema': bool(config.ui_schema),
+                'has_ui_schema': bool(config.schema_definition),
                 'module': 'accounting'  # VoucherModeConfig is accounting-only
             })
         except VoucherModeConfig.DoesNotExist:
@@ -99,7 +99,7 @@ def test_ui_schema_compliance():
             config = VoucherModeConfig.objects.filter(code=code).first()
             if not config:
                 raise VoucherModeConfig.DoesNotExist
-            ui_schema = config.ui_schema or {}
+            ui_schema = config.resolve_ui_schema() or {}
             
             # Check for __order__ or order_no in header fields
             has_ordering = False

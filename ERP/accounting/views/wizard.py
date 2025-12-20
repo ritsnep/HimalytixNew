@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.http import HttpResponseRedirect
 from collections import OrderedDict
 
-from accounting.forms.form_factory import VoucherFormFactory
+from accounting.forms_factory import VoucherFormFactory
 from accounting.services import create_voucher
 from accounting.models import VoucherModeConfig
 
@@ -56,7 +56,7 @@ class VoucherWizardView(SessionWizardView):
                         config = VoucherModeConfig.objects.get(pk=mode_id, is_active=True)
                         # Get UI schema
                         ui = getattr(config, 'resolve_ui', None)
-                        schema = ui() if callable(ui) else (config.ui_schema or {})
+                        schema = ui() if callable(ui) else (config.resolve_ui_schema() if hasattr(config, 'resolve_ui_schema') else {})
                         # Add header form if schema exists
                         if schema.get('header'):
                             header_form = FormBuilder(schema.get('header')).build_form()

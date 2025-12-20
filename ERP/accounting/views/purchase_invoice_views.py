@@ -18,6 +18,9 @@ PurchaseInvoiceLineFormSet = forms.formset_factory(
     can_delete=True,
 )
 
+def _is_htmx(request) -> bool:
+    return request.headers.get("HX-Request") == "true" or getattr(request, "htmx", False)
+
 
 class VendorBillCreateView(AccountsPayablePermissionMixin, View):
     template_name = "accounting/vendor_bill_form.html"
@@ -38,6 +41,8 @@ class VendorBillCreateView(AccountsPayablePermissionMixin, View):
         line_formset = self._build_line_formset(organization, data=request.POST)
         context = self._build_context(organization, form, line_formset)
         if not (form.is_valid() and line_formset.is_valid()):
+            if _is_htmx(request):
+                return render(request, self.template_name, context, status=422)
             return render(request, self.template_name, context)
 
         lines = []
@@ -66,6 +71,8 @@ class VendorBillCreateView(AccountsPayablePermissionMixin, View):
 
         if not lines:
             form.add_error(None, "At least one line item is required.")
+            if _is_htmx(request):
+                return render(request, self.template_name, context, status=422)
             return render(request, self.template_name, context)
 
         try:
@@ -91,9 +98,15 @@ class VendorBillCreateView(AccountsPayablePermissionMixin, View):
             )
         except ValidationError as exc:
             form.add_error(None, exc)
+            if _is_htmx(request):
+                return render(request, self.template_name, context, status=422)
             return render(request, self.template_name, context)
 
-        messages.success(request, "Vendor bill saved as draft.")
+        context["alert_message"] = "Vendor bill saved as draft."
+        context["alert_level"] = "success"
+        if _is_htmx(request):
+            return render(request, self.template_name, context)
+        messages.success(request, context["alert_message"])
         return redirect(reverse("accounting:vendor_bill_create"))
 
     def _build_line_formset(self, organization, data=None):
@@ -142,3 +155,30 @@ class VendorSummaryHXView(AccountsPayablePermissionMixin, View):
             except Vendor.DoesNotExist:
                 vendor = None
         return render(request, self.template_name, {"vendor": vendor})
+
+
+# ===== DEPRECATION NOTICE =====
+# The VendorBillCreateView below is deprecated.
+# Use purchasing:invoice-create instead for the unified purchasing workflow.
+
+def vendor_bill_create_deprecated(request):
+    """
+    Deprecated: This endpoint is no longer maintained.
+    Redirect users to the new unified purchasing flow in purchasing module.
+    
+    The unified flow at purchasing:invoice-create provides:
+    - Better integration with POs and GRs
+    - Real-time calculations
+    - GL integration
+    - Landed cost allocation
+    """
+    from django.contrib import messages
+    from django.shortcuts import redirect
+    from django.urls import reverse
+    
+    messages.info(
+        request,
+        "Vendor Bill Entry has been moved to the Purchasing module for better workflow integration. "
+        "Redirecting to Purchase Invoice form..."
+    )
+    return redirect(reverse("purchasing:invoice-create"))

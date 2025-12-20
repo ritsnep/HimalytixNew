@@ -1,0 +1,219 @@
+{% extends 'core/base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}Goods Receipt {{ gr.number }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'purchasing:invoice-table' %}">Purchasing</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'purchasing:po_detail' gr.purchase_order.pk %}">{{ gr.purchase_order.number }}</a></li>
+      <li class="breadcrumb-item active">{{ gr.number }}</li>
+    </ol>
+  </nav>
+
+  <!-- Header with Title and Actions -->
+  <div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+      <h1 class="mb-0">{{ gr.number }}</h1>
+      <p class="text-muted">PO: {{ gr.purchase_order.number }} • {{ gr.receipt_date|date:"d M Y" }}</p>
+    </div>
+    <div class="btn-group" role="group">
+      {% if can_edit %}
+        <a href="{% url 'purchasing:gr_unified_edit' gr.pk %}" class="btn btn-sm btn-outline-primary">
+          <i class="mdi mdi-pencil"></i> Edit
+        </a>
+      {% endif %}
+      {% if can_receive %}
+        <form method="post" action="{% url 'purchasing:gr_unified_inspect' gr.pk %}" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-success">
+            <i class="mdi mdi-check"></i> Mark Received
+          </button>
+        </form>
+      {% endif %}
+      {% if can_post %}
+        <form method="post" action="{% url 'purchasing:gr_unified_post' gr.pk %}" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-primary">
+            <i class="mdi mdi-database"></i> Post to Inventory
+          </button>
+        </form>
+      {% endif %}
+      {% if can_cancel %}
+        <form method="post" action="{% url 'purchasing:gr_unified_cancel' gr.pk %}" class="d-inline" onsubmit="return confirm('Cancel this GR?');">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-outline-danger">
+            <i class="mdi mdi-close"></i> Cancel
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Status Badge -->
+  <div class="mb-4">
+    <span class="badge bg-{% if gr.status == 'draft' %}warning{% elif gr.status == 'received' %}info{% elif gr.status == 'inspected' %}success{% elif gr.status == 'posted' %}primary{% else %}secondary{% endif %}">
+      {{ gr.get_status_display }}
+    </span>
+  </div>
+
+  <div class="row g-4">
+    <!-- Main Content -->
+    <div class="col-lg-8">
+      <!-- GR Details Card -->
+      <div class="card mb-4">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">Receipt Details</h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="small text-muted">Purchase Order</div>
+              <div class="fw-bold"><a href="{% url 'purchasing:po_detail' po.pk %}">{{ po.number }}</a></div>
+            </div>
+            <div class="col-md-6">
+              <div class="small text-muted">Supplier</div>
+              <div class="fw-bold">{{ po.vendor.display_name }}</div>
+            </div>
+            <div class="col-md-6">
+              <div class="small text-muted">Receipt Date</div>
+              <div class="fw-bold">{{ gr.receipt_date|date:"d M Y" }}</div>
+            </div>
+            <div class="col-md-6">
+              <div class="small text-muted">Warehouse</div>
+              <div class="fw-bold">{{ gr.warehouse.name }}</div>
+            </div>
+            {% if gr.reference_number %}
+            <div class="col-md-6">
+              <div class="small text-muted">Reference #</div>
+              <div class="fw-bold">{{ gr.reference_number }}</div>
+            </div>
+            {% endif %}
+            {% if gr.notes %}
+            <div class="col-12">
+              <div class="small text-muted">Notes</div>
+              <div>{{ gr.notes }}</div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Line Items Card -->
+      <div class="card mb-4">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">Received Items</h5>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Product</th>
+                <th class="text-end">PO Qty</th>
+                <th class="text-end">Rcvd</th>
+                <th class="text-end">Accepted</th>
+                <th class="text-end">Rejected</th>
+                <th>QC Result</th>
+                <th>Batch</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for line in lines %}
+              <tr>
+                <td>{{ line.po_line.product.name }}</td>
+                <td class="text-end">{{ line.po_line.quantity_ordered }}</td>
+                <td class="text-end fw-bold">{{ line.quantity_received }}</td>
+                <td class="text-end">{{ line.quantity_accepted }}</td>
+                <td class="text-end">{{ line.quantity_rejected }}</td>
+                <td>
+                  <span class="badge bg-{% if line.qc_result == 'pass' %}success{% elif line.qc_result == 'fail' %}danger{% else %}warning{% endif %}">
+                    {{ line.get_qc_result_display }}
+                  </span>
+                </td>
+                <td>{{ line.batch_number|default:"-" }}</td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="7" class="text-center text-muted py-3">No items received yet.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 3-Way Match Status -->
+      <div class="card">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">3-Way Match Status</h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted small mb-0">Compares Purchase Order → Goods Receipt → Invoice quantities</p>
+          <!-- Match summary would go here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+      <!-- Summary Card -->
+      <div class="card sticky-top" style="top: 20px;">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">Summary</h5>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <div class="small text-muted">Total Received</div>
+            <div class="fw-bold">{{ lines|length }} lines</div>
+          </div>
+
+          <div class="mb-3">
+            <div class="small text-muted">Total Qty</div>
+            <div class="fw-bold">
+              {% with total_qty=0 %}
+                {% for line in lines %}
+                  {% with total_qty|add:line.quantity_received as total_qty %}
+                  {% endwith %}
+                {% endfor %}
+                {{ total_qty }}
+              {% endwith %}
+            </div>
+          </div>
+
+          <hr>
+
+          <div class="alert alert-info small">
+            <strong>Workflow:</strong>
+            {% if gr.status == 'draft' %}
+              <p class="mb-0">Edit quantities and QC details, then mark as received.</p>
+            {% elif gr.status == 'received' %}
+              <p class="mb-0">Items received. Post to inventory and GL.</p>
+            {% elif gr.status == 'inspected' %}
+              <p class="mb-0">QC complete. Ready to post to GL.</p>
+            {% elif gr.status == 'posted' %}
+              <p class="mb-0">Posted to inventory. GR is complete.</p>
+            {% endif %}
+          </div>
+
+          {% if gr.purchase_order.receipts.count > 1 %}
+          <hr>
+          <div class="small">
+            <strong>Other Receipts for this PO:</strong>
+            <ul class="ps-3 mb-0">
+              {% for other_gr in gr.purchase_order.receipts.all %}
+                {% if other_gr.pk != gr.pk %}
+                <li><a href="{% url 'purchasing:gr_detail' other_gr.pk %}">{{ other_gr.number }}</a></li>
+                {% endif %}
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

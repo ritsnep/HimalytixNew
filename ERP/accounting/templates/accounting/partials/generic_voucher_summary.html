@@ -1,0 +1,34 @@
+<div class="row text-center gy-2">
+  <div class="col-6 col-lg-3">
+    <div class="small text-uppercase text-muted">Total Lines</div>
+    <div class="h5 mb-0" id="summary-total-lines">{{ summary.total_lines|default:"0" }}</div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="small text-uppercase text-muted">Completed</div>
+    <div class="h5 mb-0" id="summary-completed-lines">{{ summary.completed|default:0 }}</div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="small text-uppercase text-muted">Incomplete</div>
+    <div class="h5 mb-0" id="summary-incomplete-lines">{{ summary.incomplete|default:"0" }}</div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="small text-uppercase text-muted">Qty / Line Total</div>
+    <div class="h6 mb-0">
+      <span id="summary-total-qty">{{ summary.total_qty|default:"0.00" }}</span>
+      <span class="text-muted">/</span>
+      <span id="summary-line-total">{{ summary.line_total|default:"0.00" }}</span>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="small text-uppercase text-muted">Total Debit</div>
+    <div class="h6 mb-0" id="summary-total-debit">{{ summary.total_debit|default:"0.00" }}</div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="small text-uppercase text-muted">Total Credit</div>
+    <div class="h6 mb-0" id="summary-total-credit">{{ summary.total_credit|default:"0.00" }}</div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="small text-uppercase text-muted">Balance Diff</div>
+    <div class="h6 mb-0" id="summary-total-diff">{{ summary.balance_diff|default:"0.00" }}</div>
+  </div>
+</div>

@@ -1,12 +1,11 @@
 """
 Generic Voucher Views - Cross-module voucher creation and editing.
-
-This module provides views for creating and editing vouchers using
-the generic VoucherConfiguration system.
 """
 
 import inspect
+import uuid
 import logging
+import json
 from typing import Dict, Any
 
 from django.contrib import messages
@@ -17,14 +16,168 @@ from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 
-from accounting.forms.form_factory import VoucherFormFactory
+from accounting.forms_factory import VoucherFormFactory
 from accounting.forms_factory import build_form
-from accounting.models import VoucherModeConfig, AuditLog  # Using VoucherModeConfig (existing table)
+from accounting.models import VoucherModeConfig, AuditLog, VoucherProcess
 from accounting.views.base_voucher_view import BaseVoucherView
+from accounting.services.voucher_errors import VoucherProcessError
 from accounting.views.views_mixins import PermissionRequiredMixin
+from usermanagement.utils import PermissionUtils
 
 logger = logging.getLogger(__name__)
 
+
+def _is_htmx(request) -> bool:
+    return request.headers.get("HX-Request") == "true" or getattr(request, "htmx", False)
+
+
+def _render_generic_panel(request, context, *, status=200):
+    if _is_htmx(request):
+        return render(
+            request,
+            "accounting/partials/generic_voucher_form_panel.html",
+            context,
+            status=status,
+        )
+    return render(
+        request,
+        "accounting/generic_dynamic_voucher_entry.html",
+        context,
+        status=status,
+    )
+
+
+def _safe_decimal(value):
+    try:
+        return float(value)
+    except Exception:
+        return 0.0
+
+
+def _compute_summary_from_post(request) -> dict:
+    total_forms = int(request.POST.get("lines-TOTAL_FORMS", 0) or 0)
+    if total_forms == 0:
+        total_forms = int(request.POST.get("form-TOTAL_FORMS", 0) or 0)
+    total_lines = 0
+    completed = 0
+    total_debit = 0.0
+    total_credit = 0.0
+    total_qty = 0.0
+    line_total = 0.0
+
+    for idx in range(total_forms):
+        delete_key = f"lines-{idx}-DELETE" if f"lines-{idx}-DELETE" in request.POST else f"form-{idx}-DELETE"
+        if request.POST.get(delete_key) in ("on", "true", "1"):
+            continue
+        total_lines += 1
+
+        def _field(name):
+            key = f"lines-{idx}-{name}"
+            if key in request.POST:
+                return request.POST.get(key)
+            return request.POST.get(f"form-{idx}-{name}")
+
+        debit = _safe_decimal(_field("debit_amount") or _field("debit"))
+        credit = _safe_decimal(_field("credit_amount") or _field("credit"))
+        qty = _safe_decimal(_field("quantity") or _field("qty"))
+        amount = _safe_decimal(_field("line_total") or _field("amount") or _field("total"))
+
+        total_debit += debit
+        total_credit += credit
+        total_qty += qty
+        line_total += amount
+
+        # mark completed if any non-empty field present
+        row_has_value = False
+        for key, value in request.POST.items():
+            if key.startswith(f"lines-{idx}-") and value not in (None, "", "0", "0.0"):
+                row_has_value = True
+                break
+        if row_has_value:
+            completed += 1
+
+    incomplete = max(0, total_lines - completed)
+    return {
+        "total_lines": total_lines,
+        "completed": completed,
+        "incomplete": incomplete,
+        "total_debit": f"{total_debit:.2f}",
+        "total_credit": f"{total_credit:.2f}",
+        "balance_diff": f"{(total_debit - total_credit):.2f}",
+        "total_qty": f"{total_qty:.2f}",
+        "line_total": f"{line_total:.2f}",
+    }
+
+def _compute_summary_from_formset(line_formset) -> dict:
+    total_lines = 0
+    completed = 0
+    total_debit = 0.0
+    total_credit = 0.0
+    total_qty = 0.0
+    line_total = 0.0
+
+    for form in getattr(line_formset, "forms", []):
+        data = {}
+        if getattr(form, "is_bound", False) and hasattr(form, "cleaned_data") and form.cleaned_data:
+            data = form.cleaned_data
+        else:
+            data = getattr(form, "initial", None) or {}
+        if data.get("DELETE"):
+            continue
+        total_lines += 1
+
+        debit = _safe_decimal(data.get("debit_amount") or data.get("debit"))
+        credit = _safe_decimal(data.get("credit_amount") or data.get("credit"))
+        qty = _safe_decimal(data.get("quantity") or data.get("qty"))
+        amount = _safe_decimal(data.get("line_total") or data.get("amount") or data.get("total"))
+
+        total_debit += debit
+        total_credit += credit
+        total_qty += qty
+        line_total += amount
+
+        row_has_value = False
+        for key, value in data.items():
+            if key == "DELETE":
+                continue
+            if value not in (None, "", "0", "0.0"):
+                row_has_value = True
+                break
+        if row_has_value:
+            completed += 1
+
+    incomplete = max(0, total_lines - completed)
+    return {
+        "total_lines": total_lines,
+        "completed": completed,
+        "incomplete": incomplete,
+        "total_debit": f"{total_debit:.2f}",
+        "total_credit": f"{total_credit:.2f}",
+        "balance_diff": f"{(total_debit - total_credit):.2f}",
+        "total_qty": f"{total_qty:.2f}",
+        "line_total": f"{line_total:.2f}",
+    }
+
+
+def _line_section_title(config) -> str:
+    title = "Line Items"
+    module = getattr(config, "module", "accounting") or "accounting"
+    if module == "accounting" and "journal" in (getattr(config, "name", "") or "").lower():
+        title = "Journal Lines"
+    elif getattr(config, "affects_inventory", False):
+        title = "Inventory Items"
+    elif module in ("sales", "purchasing"):
+        title = "Transaction Items"
+    elif getattr(config, "name", "") and "receipt" in (config.name or "").lower():
+        title = "Receipt Items"
+    return title
+
+
+def _resolve_idempotency_key(request) -> str:
+    header_key = request.headers.get("Idempotency-Key") or request.headers.get("X-Idempotency-Key")
+    if header_key:
+        return header_key
+    return request.POST.get("idempotency_key") or str(uuid.uuid4())
 
 class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
     """
@@ -33,15 +186,15 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
     template_name = 'accounting/generic_dynamic_voucher_entry.html'
     permission_required = ('accounting', 'voucher', 'add')
 
-    def get_voucher_config(self) -> VoucherModeConfig:
-        """Get the voucher configuration by code."""
+    def get_voucher_config(self):
+        """Get the voucher configuration by code (mode config preferred)."""
         code = self.kwargs.get('voucher_code')
         organization = self.get_organization()
         return get_object_or_404(
             VoucherModeConfig,
             code=code,
             organization=organization,
-            is_active=True
+            is_active=True,
         )
 
     def get(self, request, *args, **kwargs) -> HttpResponse:
@@ -49,224 +202,286 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
         config = self.get_voucher_config()
         organization = self.get_organization()
 
-        # Create forms using generic factory
-        header_form_cls = VoucherFormFactory.get_generic_voucher_form(
-            voucher_config=config,
-            organization=organization
-        )
+        try:
+            # Create forms using unified factory entry point
+            header_form_cls, line_formset_cls = VoucherFormFactory.build(
+                voucher_config=config,
+                organization=organization,
+            )
 
-        line_formset_cls = VoucherFormFactory.get_generic_voucher_formset(
-            voucher_config=config,
-            organization=organization
-        )
-
-        header_form = self._instantiate_target(header_form_cls)
-        # VoucherModeConfig doesn't have default_lines attribute, use getattr with fallback
-        default_lines = getattr(config, 'default_lines', None)
-        line_formset = self._instantiate_target(
-            line_formset_cls,
-            initial=default_lines if default_lines else None
-        )
+            header_form = self._instantiate_target(header_form_cls)
+            # VoucherModeConfig doesn't have default_lines attribute, use getattr with fallback
+            default_lines = getattr(config, 'default_lines', None)
+            line_formset = self._instantiate_target(
+                line_formset_cls,
+                initial=default_lines if default_lines else None
+            )
+        except VoucherProcessError as exc:
+            context = self.get_context_data(
+                config=config,
+                header_form=None,
+                line_formset=None,
+                is_create=True,
+                line_section_title=_line_section_title(config),
+                alert_message=f"{exc.code}: {exc.message}",
+                alert_level="danger",
+            )
+            return _render_generic_panel(request, context, status=422)
 
         # Determine line section title based on voucher type
-        line_section_title = "Line Items"
-        if config.code in ['VM08', 'VM-JV', 'VM-GJ']:  # Journal vouchers
-            line_section_title = "Journal Lines"
-        elif 'INV' in config.code.upper() or 'STOCK' in config.code.upper():
-            line_section_title = "Inventory Items"
-        elif config.name and 'receipt' in config.name.lower():
-            line_section_title = "Receipt Items"
-        elif config.name and 'invoice' in config.name.lower():
-            line_section_title = "Invoice Items"
-        elif config.name and ('purchase' in config.name.lower() or 'sales' in config.name.lower()):
-            line_section_title = "Transaction Items"
+        line_section_title = _line_section_title(config)
         
         context = self.get_context_data(
             config=config,
             header_form=header_form,
             line_formset=line_formset,
             is_create=True,
-            line_section_title=line_section_title
+            line_section_title=line_section_title,
+            idempotency_key=_resolve_idempotency_key(request),
         )
+        context["summary"] = _compute_summary_from_formset(line_formset)
 
         logger.debug(f"GenericVoucherCreateView GET - Config: {config.code}")
 
-        return self.render_to_response(context)
+        return _render_generic_panel(request, context)
 
     def post(self, request, *args, **kwargs) -> HttpResponse:
         """Handle form submission."""
         config = self.get_voucher_config()
         organization = self.get_organization()
-
-        header_form_cls = VoucherFormFactory.get_generic_voucher_form(
-            voucher_config=config,
-            organization=organization
-        )
-
-        line_formset_cls = VoucherFormFactory.get_generic_voucher_formset(
-            voucher_config=config,
-            organization=organization
-        )
+        try:
+            header_form_cls, line_formset_cls = VoucherFormFactory.build(
+                voucher_config=config,
+                organization=organization,
+            )
+        except VoucherProcessError as exc:
+            context = self.get_context_data(
+                config=config,
+                header_form=None,
+                line_formset=None,
+                is_create=True,
+                line_section_title=_line_section_title(config),
+                alert_message=f"{exc.code}: {exc.message}",
+                alert_level="danger",
+            )
+            return _render_generic_panel(request, context, status=422)
 
         header_form = self._instantiate_target(
             header_form_cls,
             data=request.POST,
-            files=request.FILES
+            files=request.FILES,
         )
-
         line_formset = self._instantiate_target(
             line_formset_cls,
             data=request.POST,
-            files=request.FILES
+            files=request.FILES,
         )
 
+        idempotency_key = _resolve_idempotency_key(request)
         if header_form.is_valid() and line_formset.is_valid():
             try:
-                with transaction.atomic():
-                    # Save header
-                    voucher = header_form.save(commit=False)
-                    # Attach organization/user fields when present
-                    try:
-                        logger.debug(f"Header form produced instance type={type(voucher)}, attrs={list(getattr(voucher, '__dict__', {}).keys())}")
-                        logger.debug(f"Voucher meta fields: {[f.name for f in voucher._meta.fields]}")
-                        logger.debug(f"hasattr(created_by)={hasattr(voucher, 'created_by')}, hasattr(created_by_id)={hasattr(voucher, 'created_by_id')}")
-                        logger.debug(f"Request user: pk={getattr(request.user, 'pk', None)}, username={getattr(request.user, 'username', None)}")
-                    except Exception:
-                        pass
-                    target_org = organization or getattr(config, 'organization', None)
-                    if target_org is not None and hasattr(voucher, 'organization_id') and not getattr(voucher, 'organization_id', None):
-                        voucher.organization_id = getattr(target_org, 'pk', target_org)
-                    
-                    # Set journal_type from config if voucher is a Journal model
-                    if hasattr(voucher, 'journal_type_id') and hasattr(config, 'journal_type_id'):
-                        if config.journal_type_id and not getattr(voucher, 'journal_type_id', None):
-                            voucher.journal_type_id = config.journal_type_id
-                    
-                    # Set period for Journal models
-                    if hasattr(voucher, 'period_id') and not getattr(voucher, 'period_id', None):
-                        from accounting.models import AccountingPeriod
-                        period = AccountingPeriod.objects.filter(organization=target_org, is_closed=False).first()
-                        if period:
-                            voucher.period_id = period.period_id
-                    
-                    # Ensure created_by/updated_by are set for voucher types that require them.
-                    # Some models may not expose attribute access for the related object until saved,
-                    # so check the model fields explicitly and assign by id where possible.
-                    try:
-                        uid = getattr(request.user, 'pk', None) or getattr(request.user, 'id', None)
-                        field_names = {f.name for f in getattr(voucher, '_meta', {}).fields}
-                        if 'created_by' in field_names or 'created_by_id' in field_names:
-                            voucher.created_by_id = uid
-                            logger.debug(f"Assigned created_by_id on instance (field-based): created_by_id={getattr(voucher, 'created_by_id', None)}")
-                        if 'updated_by' in field_names or 'updated_by_id' in field_names:
-                            voucher.updated_by_id = uid
-                            logger.debug(f"Assigned updated_by_id on instance (field-based): updated_by_id={getattr(voucher, 'updated_by_id', None)}")
-                    except Exception:
-                        # Fall back to object assignment if id assignment fails
-                        try:
-                            voucher.created_by = request.user
-                        except Exception:
-                            pass
-                        try:
-                            voucher.updated_by = request.user
-                        except Exception:
-                            pass
-                    # Debug: log voucher fields before save to aid diagnostics
-                    try:
-                        try:
-                            logger.debug(f"Voucher before save: {type(voucher)} attrs={getattr(voucher, '__dict__', {})}")
-                            logger.debug(f"Voucher pre-save audit attrs: created_by_id={getattr(voucher, 'created_by_id', None)}, updated_by_id={getattr(voucher, 'updated_by_id', None)}")
-                        except Exception:
-                            pass
-                        voucher.save()
-                    except Exception as e:
-                        # If save failed due to missing non-null audit fields, try to set and retry
-                        try:
-                            from django.db import IntegrityError
-                            if isinstance(e, IntegrityError) and hasattr(voucher, 'created_by'):
-                                try:
-                                    voucher.created_by = request.user
-                                    voucher.save()
-                                except Exception:
-                                    logger.exception("Retry save after setting created_by failed")
-                            else:
-                                raise
-                        except Exception:
-                            # Re-raise original exception if handling didn't resolve
-                            logger.exception(f"Error saving voucher: {e}")
-                            raise
+                header_data = header_form.cleaned_data
+                lines_data = line_formset.cleaned_data
 
-                    # Determine how to attach lines to header
-                    line_model = VoucherFormFactory._get_line_model_for_voucher_config(config)
-                    header_model = type(voucher)
-                    parent_fk_name = None
-                    try:
-                        for field in line_model._meta.fields:
-                            if isinstance(field, models.ForeignKey) and field.remote_field and field.remote_field.model is header_model:
-                                parent_fk_name = field.name
-                                break
-                    except Exception:
-                        parent_fk_name = None
-                    
-                    # Save lines
-                    next_line_number = 1
-                    for form in line_formset:
-                        if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
-                            line = form.save(commit=False)
+                action = request.POST.get("action", "save")
+                if action == "submit_voucher":
+                    if not PermissionUtils.has_permission(
+                        request.user, organization, "accounting", "journal", "submit_journal"
+                    ):
+                        messages.error(request, "You do not have permission to submit vouchers.")
+                        action = "save"
+                if action == "post_voucher":
+                    if not PermissionUtils.has_permission(
+                        request.user, organization, "accounting", "journal", "post_journal"
+                    ):
+                        messages.error(request, "You do not have permission to post vouchers.")
+                        action = "save"
+                if action == "post_voucher":
+                    commit_type = "post"
+                elif action == "submit_voucher":
+                    commit_type = "submit"
+                else:
+                    commit_type = "save"
 
-                            if parent_fk_name:
-                                setattr(line, parent_fk_name, voucher)
+                from accounting.services.voucher_orchestrator import VoucherOrchestrator
+                voucher = VoucherOrchestrator(request.user).create_and_process(
+                    config=config,
+                    header_data=header_data,
+                    lines_data=lines_data,
+                    action=action,
+                    idempotency_key=idempotency_key,
+                )
 
-                            # Ensure line numbers exist for line models that require them
-                            if hasattr(line, 'line_number') and not getattr(line, 'line_number', None):
-                                setattr(line, 'line_number', next_line_number)
-                                next_line_number += 1
-                            line.save()
-
-                    # Log audit
-                    from django.contrib.contenttypes.models import ContentType
-                    audit_org = organization or getattr(config, 'organization', None)
-                    AuditLog.objects.create(
-                        user=request.user,
-                        organization=audit_org,
-                        action='create',
-                        content_type=ContentType.objects.get_for_model(voucher.__class__),
-                        object_id=voucher.pk,
-                        changes={'created': True},
-                        details=f"Created {config.name} voucher"
+                voucher_number = (
+                    getattr(voucher, "voucher_number", None)
+                    or getattr(voucher, "journal_number", None)
+                    or voucher.pk
+                )
+                messages.success(request, f"Voucher {voucher_number} saved successfully.")
+                detail_url = reverse("accounting:voucher_detail", args=[voucher.pk])
+                if _is_htmx(request):
+                    payload = {
+                        "voucher:save": "done",
+                        "voucher:journal": "done",
+                        "voucher:post": "done" if commit_type == "post" else "pending",
+                        "voucher:inventory": "done" if commit_type == "post" else "pending",
+                        "voucher:complete": "done",
+                        "voucher:message": "Voucher saved successfully.",
+                    }
+                    if commit_type == "submit":
+                        payload["voucher:post"] = "pending"
+                        payload["voucher:inventory"] = "pending"
+                        payload["voucher:complete"] = "done"
+                        payload["voucher:message"] = "Voucher submitted for approval."
+                        payload["voucher:state"] = "submitted"
+                    elif commit_type == "post":
+                        payload["voucher:state"] = "posted"
+                        payload["voucher:post_success"] = {
+                            "detail_url": detail_url,
+                            "create_url": reverse("accounting:generic_voucher_create", args=[config.code]),
+                        }
+                    else:
+                        payload["voucher:state"] = "draft_saved"
+                    context = self.get_context_data(
+                        config=config,
+                        header_form=header_form,
+                        line_formset=line_formset,
+                        is_create=True,
+                        line_section_title=_line_section_title(config),
+                        idempotency_key=idempotency_key,
                     )
+                    context["summary"] = _compute_summary_from_post(request)
+                    context["draft_saved"] = commit_type == "save"
+                    if commit_type == "post":
+                        context["voucher_id"] = voucher.pk
+                        context["process_attempt"] = getattr(voucher, "process_attempt", None)
+                    context["alert_message"] = payload["voucher:message"]
+                    context["alert_level"] = "success"
+                    response = _render_generic_panel(request, context)
+                    response["HX-Trigger"] = json.dumps(payload)
+                    return response
+                return redirect(detail_url)
 
-                    messages.success(request, f"{config.name} created successfully.")
-                    return redirect(self.get_success_url(voucher))
-
-            except Exception as e:
-                logger.exception(f"Error saving voucher: {e}")
-                messages.error(request, "Error saving voucher.")
+            except VoucherProcessError as exc:
+                error_message = f"{exc.code}: {exc.message}"
+                if _is_htmx(request):
+                    step = "save"
+                    if exc.code.startswith("INV"):
+                        step = "inventory"
+                    elif exc.code.startswith("GL"):
+                        step = "post"
+                    step_label = {
+                        "save": "Voucher Save",
+                        "post": "Posting to GL",
+                        "inventory": "Inventory Update",
+                    }.get(step, "Processing")
+                    journal_state = "done" if step in ("post", "inventory") else "fail"
+                    payload = {
+                        "voucher:save": "done" if step != "save" else "fail",
+                        "voucher:journal": journal_state,
+                        "voucher:post": "fail" if step == "post" else "pending",
+                        "voucher:inventory": "fail" if step == "inventory" else "pending",
+                        "voucher:complete": "fail",
+                        "voucher:error_code": exc.code,
+                        "voucher:message": f"{step_label}: {error_message}",
+                    }
+                    context = self.get_context_data(
+                        config=config,
+                        header_form=header_form,
+                        line_formset=line_formset,
+                        is_create=True,
+                        line_section_title=_line_section_title(config),
+                    )
+                    context["summary"] = _compute_summary_from_post(request)
+                    context["alert_message"] = payload["voucher:message"]
+                    context["alert_level"] = "danger"
+                    response = _render_generic_panel(request, context, status=422)
+                    response["HX-Trigger"] = json.dumps(payload)
+                    return response
+                messages.error(request, f"Validation Error: {error_message}")
+            except ValidationError as exc:
+                if _is_htmx(request):
+                    message = str(exc)
+                    step = "save"
+                    message_lower = message.lower()
+                    if "inventory" in message_lower or "stock" in message_lower:
+                        step = "inventory"
+                    elif "ledger" in message_lower or "gl" in message_lower:
+                        step = "post"
+                    elif commit_type == "post":
+                        step = "post"
+                    step_label = {
+                        "save": "Voucher Save",
+                        "post": "Posting to GL",
+                        "inventory": "Inventory Update",
+                    }.get(step, "Processing")
+                    journal_state = "done" if step in ("post", "inventory") else "fail"
+                    payload = {
+                        "voucher:save": "done" if step != "save" else "fail",
+                        "voucher:journal": journal_state,
+                        "voucher:post": "fail" if step == "post" else "pending",
+                        "voucher:inventory": "fail" if step == "inventory" else "pending",
+                        "voucher:complete": "fail",
+                        "voucher:message": f"{step_label}: {message}",
+                    }
+                    context = self.get_context_data(
+                        config=config,
+                        header_form=header_form,
+                        line_formset=line_formset,
+                        is_create=True,
+                        line_section_title=_line_section_title(config),
+                    )
+                    context["summary"] = _compute_summary_from_post(request)
+                    context["alert_message"] = payload["voucher:message"]
+                    context["alert_level"] = "danger"
+                    response = _render_generic_panel(request, context, status=422)
+                    response["HX-Trigger"] = json.dumps(payload)
+                    return response
+                messages.error(request, f"Validation Error: {exc}")
+            except Exception:
+                logger.exception("Critical Voucher Save Error")
+                if _is_htmx(request):
+                    payload = {
+                        "voucher:save": "fail",
+                        "voucher:journal": "fail",
+                        "voucher:post": "pending",
+                        "voucher:inventory": "pending",
+                        "voucher:complete": "fail",
+                        "voucher:message": "A system error occurred. The transaction has been rolled back.",
+                    }
+                    context = self.get_context_data(
+                        config=config,
+                        header_form=header_form,
+                        line_formset=line_formset,
+                        is_create=True,
+                        line_section_title=_line_section_title(config),
+                    )
+                    context["summary"] = _compute_summary_from_post(request)
+                    context["alert_message"] = payload["voucher:message"]
+                    context["alert_level"] = "danger"
+                    response = _render_generic_panel(request, context, status=500)
+                    response["HX-Trigger"] = json.dumps(payload)
+                    return response
+                messages.error(
+                    request,
+                    "A system error occurred. The transaction has been rolled back.",
+                )
         else:
-            messages.error(request, "Please correct the errors below.")
+            messages.error(request, "Please correct the errors in the form.")
 
-        # Determine line section title based on voucher type (same logic as GET)
-        line_section_title = "Line Items"
-        if config.code in ['VM08', 'VM-JV', 'VM-GJ']:  # Journal vouchers
-            line_section_title = "Journal Lines"
-        elif 'INV' in config.code.upper() or 'STOCK' in config.code.upper():
-            line_section_title = "Inventory Items"
-        elif config.name and 'receipt' in config.name.lower():
-            line_section_title = "Receipt Items"
-        elif config.name and 'invoice' in config.name.lower():
-            line_section_title = "Invoice Items"
-        elif config.name and ('purchase' in config.name.lower() or 'sales' in config.name.lower()):
-            line_section_title = "Transaction Items"
+        line_section_title = _line_section_title(config)
 
         context = self.get_context_data(
             config=config,
             header_form=header_form,
             line_formset=line_formset,
             is_create=True,
-            line_section_title=line_section_title
+            line_section_title=line_section_title,
+            idempotency_key=idempotency_key,
         )
+        context["summary"] = _compute_summary_from_post(request)
 
-        return self.render_to_response(context)
+        return _render_generic_panel(request, context, status=422 if _is_htmx(request) else 200)
 
     def get_success_url(self, voucher):
         """Return URL to redirect after successful creation."""
@@ -276,9 +491,19 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
     def get_context_data(self, **kwargs) -> Dict[str, Any]:
         """Build context for template."""
         context = super().get_context_data(**kwargs)
+        organization = self.get_organization()
+        user = getattr(self, "request", None).user if hasattr(self, "request") else None
+        can_submit = False
+        can_post = False
+        if user and organization:
+            can_submit = PermissionUtils.has_permission(user, organization, "accounting", "journal", "submit_journal")
+            can_post = PermissionUtils.has_permission(user, organization, "accounting", "journal", "post_journal")
         context.update({
             'page_title': f"Create {kwargs.get('config').name}",
             'voucher_type': kwargs.get('config').code,
+            'can_submit': can_submit,
+            'can_post': can_post,
+            'journal_type_name': getattr(getattr(kwargs.get('config'), 'journal_type', None), 'name', None),
         })
         return context
 
@@ -322,7 +547,10 @@ class GenericVoucherLineView(PermissionRequiredMixin, BaseVoucherView):
         except ValueError:
             line_index = 0
 
-        lines_schema = (config.ui_schema or {}).get('lines', {})
+        ui_schema = config.resolve_ui_schema() if hasattr(config, 'resolve_ui_schema') else {}
+        if isinstance(ui_schema, dict) and isinstance(ui_schema.get('sections'), dict):
+            ui_schema = ui_schema['sections']
+        lines_schema = ui_schema.get('lines', {}) if isinstance(ui_schema, dict) else {}
         line_model = VoucherFormFactory._get_line_model_for_voucher_config(config)
         LineFormClass = build_form(
             lines_schema,
@@ -350,13 +578,21 @@ class VoucherTypeSelectionView(PermissionRequiredMixin, BaseVoucherView):
         organization = self.get_organization()
 
         # Get all active voucher configurations
-        configs = VoucherModeConfig.objects.filter(
-            organization=organization,
-            is_active=True
-        ).order_by('code')
+        if organization is None:
+            configs = VoucherModeConfig.objects.none()
+        else:
+            configs = VoucherModeConfig.objects.filter(
+                organization=organization,
+                is_active=True,
+            ).exclude(
+                schema_definition__isnull=True,
+            ).order_by('code')
 
-        # Group configurations by journal type (since VoucherModeConfig doesn't have module field)
-        configs_by_module = {'Accounting': list(configs)}
+        configs_by_module = {}
+        for cfg in configs:
+            module = getattr(cfg, "module", "accounting") or "accounting"
+            label = module.replace("_", " ").title()
+            configs_by_module.setdefault(label, []).append(cfg)
 
         context = self.get_context_data(configs=configs, configs_by_module=configs_by_module)
         return self.render_to_response(context)
@@ -369,3 +605,86 @@ class VoucherTypeSelectionView(PermissionRequiredMixin, BaseVoucherView):
             'configs': kwargs.get('configs', []),
         })
         return context
+
+
+class GenericVoucherRecalcView(PermissionRequiredMixin, BaseVoucherView):
+    """HTMX endpoint to recompute summary totals from posted form data."""
+
+    permission_required = ('accounting', 'voucher', 'add')
+
+    def post(self, request, *args, **kwargs) -> HttpResponse:
+        summary = _compute_summary_from_post(request)
+        return render(
+            request,
+            "accounting/partials/generic_voucher_summary.html",
+            {"summary": summary},
+        )
+
+
+class GenericVoucherValidateView(PermissionRequiredMixin, BaseVoucherView):
+    """HTMX endpoint to validate voucher input without saving."""
+
+    permission_required = ("accounting", "voucher", "add")
+
+    def post(self, request, *args, **kwargs) -> HttpResponse:
+        config = get_object_or_404(
+            VoucherModeConfig,
+            code=kwargs.get("voucher_code"),
+            organization=self.get_organization(),
+            is_active=True,
+        )
+        organization = self.get_organization()
+        try:
+            header_form_cls, line_formset_cls = VoucherFormFactory.build(
+                voucher_config=config,
+                organization=organization,
+            )
+        except VoucherProcessError as exc:
+            context = self.get_context_data(
+                config=config,
+                header_form=None,
+                line_formset=None,
+                is_create=True,
+                line_section_title=_line_section_title(config),
+                alert_message=f"{exc.code}: {exc.message}",
+                alert_level="danger",
+                idempotency_key=_resolve_idempotency_key(request),
+            )
+            return _render_generic_panel(request, context, status=422)
+
+        header_form = self._instantiate_target(header_form_cls, data=request.POST, files=request.FILES)
+        line_formset = self._instantiate_target(line_formset_cls, data=request.POST, files=request.FILES)
+
+        context = self.get_context_data(
+            config=config,
+            header_form=header_form,
+            line_formset=line_formset,
+            is_create=True,
+            line_section_title=_line_section_title(config),
+            idempotency_key=_resolve_idempotency_key(request),
+        )
+        status = 200 if header_form.is_valid() and line_formset.is_valid() else 422
+        if status == 200:
+            context["alert_message"] = "Validation passed."
+            context["alert_level"] = "success"
+        return _render_generic_panel(request, context, status=status)
+
+
+class VoucherProcessStatusView(PermissionRequiredMixin, BaseVoucherView):
+    """HTMX endpoint to poll current voucher process state."""
+
+    permission_required = ("accounting", "voucher", "view")
+
+    def get(self, request, *args, **kwargs) -> HttpResponse:
+        voucher_id = kwargs.get("voucher_id")
+        organization = self.get_organization()
+        process = None
+        if voucher_id and organization:
+            process = (
+                VoucherProcess.objects.filter(organization=organization)
+                .filter(models.Q(journal_id=voucher_id) | models.Q(journal_id_snapshot=voucher_id))
+                .order_by("-started_at")
+                .first()
+            )
+        context = {"process_attempt": process, "voucher_id": voucher_id}
+        return render(request, "accounting/partials/voucher_process_tracker.html", context)

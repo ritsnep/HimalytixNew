@@ -24,6 +24,12 @@ from reporting.utils import sanitize_template_html
 
 
 DEFAULT_DEFINITIONS: Dict[str, Dict[str, Any]] = {
+    "daybook": {
+        "name": "Daybook",
+        "description": "Complete chronological record of all transactions and journal entries.",
+        "base_template_name": "accounting/reports/daybook.html",
+        "query_name": "fn_report_daybook",
+    },
     "journal_report": {
         "name": "Journal Report",
         "description": "Detailed journal lines with totals and grouping.",

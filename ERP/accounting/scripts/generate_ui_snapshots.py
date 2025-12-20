@@ -1,15 +1,15 @@
 import os
 from django.utils.html import escape
-from accounting.models import VoucherConfiguration
+from accounting.models import VoucherModeConfig
 from accounting.forms_factory import VoucherFormFactory
 
 OUT_DIR = os.path.join(os.getcwd(), 'accounting', 'ui_snapshots')
 os.makedirs(OUT_DIR, exist_ok=True)
 
-for cfg in VoucherConfiguration.objects.all():
+for cfg in VoucherModeConfig.objects.all():
     code = cfg.code
     try:
-        factory = VoucherFormFactory(cfg.ui_schema)
+        factory = VoucherFormFactory(cfg.resolve_ui_schema())
         header_cls = factory.build_form()
         header = header_cls()
         header_html = header.as_p()

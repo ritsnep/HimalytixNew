@@ -384,7 +384,7 @@ class VoucherLineViewSet(OrganizationScopedMixin, mixins.CreateModelMixin,
     def _render_html_response(self, instance, action):
         """Render HTML response for HTMX requests."""
         from django.template.loader import render_to_string
-        from accounting.forms.form_factory import VoucherFormFactory
+        from accounting.forms_factory import VoucherFormFactory
         
         organization = self.get_organization()
         # Create a form populated with the instance data

@@ -31,6 +31,13 @@ DATE_FMT = "%Y-%m-%d"
 
 REPORT_DEFINITIONS: List[Dict[str, Any]] = [
     {
+        "id": "daybook",
+        "name": _("Daybook"),
+        "description": _("Complete chronological record of all transactions and journal entries."),
+        "url_name": "report_daybook",
+        "icon": "fas fa-calendar-alt",
+    },
+    {
         "id": "general_ledger",
         "name": _("General Ledger"),
         "description": _("View all transactions by account with running balances."),
@@ -174,6 +181,102 @@ class ReportListView(UserOrganizationMixin, TemplateView):
             context["journal_udf_filters"] = []
             context["journal_line_udf_pivots"] = []
         return context
+
+
+class DaybookView(UserOrganizationMixin, View):
+    """Comprehensive daybook report showing all transactions chronologically."""
+    template_name = "accounting/reports/daybook.html"
+
+    def get(self, request):
+        from reporting.services import ReportDataService
+        
+        start_raw = request.GET.get("start_date")
+        end_raw = request.GET.get("end_date")
+        status = request.GET.get("status", "")
+        journal_type = request.GET.get("journal_type", "")
+        account_id = request.GET.get("account_id", "")
+        voucher_number = request.GET.get("voucher_number", "")
+        export_format = request.GET.get("export")
+
+        start_date, end_date = _default_period()
+        if start := _parse_date(start_raw):
+            start_date = start
+        if end := _parse_date(end_raw):
+            end_date = end
+
+        # Get available journal types for filter
+        journal_types = JournalType.objects.filter(
+            organization=self.organization, is_active=True
+        ).order_by("name")
+
+        # Get available accounts for filter
+        accounts = ChartOfAccount.objects.filter(
+            organization=self.organization, is_active=True
+        ).order_by("account_code")
+
+        report_data = None
+        error = None
+
+        params = {
+            "start_date": start_date,
+            "end_date": end_date,
+            "status": status if status else None,
+            "journal_type": journal_type if journal_type else None,
+            "account_id": account_id if account_id else None,
+            "voucher_number": voucher_number if voucher_number else None,
+        }
+
+        try:
+            service = ReportDataService(self.organization, self.request.user)
+            
+            # Create a mock definition for daybook
+            from reporting.models import ReportDefinition
+            definition = ReportDefinition(
+                code="daybook",
+                name="Daybook Report",
+                query_name="fn_report_daybook"
+            )
+            
+            report_data = service.build_context(definition, params)
+            
+            # Handle export if requested
+            if export_format in ["pdf", "excel", "csv"]:
+                from reporting.services import ReportRenderer
+                renderer = ReportRenderer(enable_custom=False)
+                buffer, filename, content_type = renderer.render_export(
+                    definition, report_data, export_format
+                )
+                response = HttpResponse(buffer.getvalue(), content_type=content_type)
+                response["Content-Disposition"] = f'attachment; filename="{filename}"'
+                return response
+                
+        except Exception as exc:
+            error = str(exc)
+            logger.exception("Daybook generation error: %s", exc)
+
+        context = {
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "status": status,
+            "journal_type": journal_type,
+            "account_id": account_id,
+            "voucher_number": voucher_number,
+            "journal_types": journal_types,
+            "accounts": accounts,
+            "report_data": report_data,
+            "error": error,
+            "show_bulk_actions": True,  # Enable bulk actions UI
+            "status_choices": [
+                ("", "All Statuses"),
+                ("draft", "Draft"),
+                ("awaiting_approval", "Awaiting Approval"),
+                ("approved", "Approved"),
+                ("posted", "Posted"),
+                ("rejected", "Rejected"),
+                ("reversed", "Reversed"),
+            ],
+        }
+        return render(request, self.template_name, context)
 
 
 class GeneralLedgerView(UserOrganizationMixin, View):

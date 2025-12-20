@@ -418,6 +418,14 @@ class PostingService:
             journal.journal_number = journal.journal_type.get_next_journal_number(period=journal.period)
             number_set = True
 
+        inventory_results = []
+        try:
+            inventory_results = journal.post_inventory_transactions(user=self.user)
+        except ValidationError:
+            raise
+        except Exception as exc:
+            raise ValidationError(f"Inventory posting failed: {exc}") from exc
+
         posting_time = timezone.now()
 
         for line in lines:
@@ -451,6 +459,8 @@ class PostingService:
             update_fields.append("posted_by")
         if number_set:
             update_fields.append("journal_number")
+        if inventory_results:
+            update_fields.append("metadata")
         current_rowversion = journal.rowversion or 1
         journal.rowversion = current_rowversion + 1
         update_fields.append("rowversion")
@@ -483,6 +493,7 @@ class PostingService:
                 "journal_id": journal.pk,
                 "user_id": getattr(self.user, "pk", None),
             },
+            raise_on_error=True,
         )
         return journal
 

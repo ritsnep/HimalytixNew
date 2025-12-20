@@ -74,6 +74,7 @@ urlpatterns += [
     path('invoice/create/', invoice_entry_htmx.invoice_create, name='invoice_create'),
     path('invoice/<int:invoice_id>/', invoice_entry_htmx.invoice_detail, name='invoice_detail'),
     path('invoice/save/', invoice_entry_htmx.invoice_save, name='invoice_save'),
+    path('invoice/validate/', invoice_entry_htmx.invoice_validate, name='invoice_validate'),
 
     # HTMX endpoints for dynamic invoice entry
     path('htmx/customer-search/', invoice_entry_htmx.customer_search, name='customer_search'),

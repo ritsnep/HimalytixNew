@@ -986,6 +986,12 @@ class ProductCreateView(PermissionRequiredMixin, UserOrganizationMixin, CreateVi
             initial['code'] = code_gen.generate_code()
         return initial
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        # Pass organization down to the form so it can filter/query defaults
+        kwargs['organization'] = self.get_organization()
+        return kwargs
+
     def form_valid(self, form):
         organization = self.get_organization()
         form.instance.organization = organization
@@ -1462,6 +1468,11 @@ class ProductUpdateView(PermissionRequiredMixin, UserOrganizationMixin, UpdateVi
     template_name = 'inventory/product_form.html'
     permission_required = 'Inventory.change_product'
     success_url = reverse_lazy('inventory:product_list')
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['organization'] = self.get_organization()
+        return kwargs
 
     def form_valid(self, form):
         form.instance.updated_by = self.request.user

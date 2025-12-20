@@ -18,7 +18,7 @@ from django.http import HttpResponse, Http404
 from django.shortcuts import redirect, get_object_or_404
 from django.urls import reverse
 
-from accounting.forms.form_factory import VoucherFormFactory
+from accounting.forms_factory import VoucherFormFactory
 from accounting.models import Journal
 from accounting.services.validation import JournalValidationService
 from accounting.views.base_voucher_view import BaseVoucherView, VoucherDetailMixin

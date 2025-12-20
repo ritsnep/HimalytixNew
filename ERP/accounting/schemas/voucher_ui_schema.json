@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://himalytix.local/schemas/voucher_ui_schema.json",
+  "title": "Voucher UI Schema",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "header": { "$ref": "#/$defs/section" },
+    "lines": { "$ref": "#/$defs/section" },
+    "sections": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "header": { "$ref": "#/$defs/section" },
+        "lines": { "$ref": "#/$defs/section" }
+      }
+    },
+    "settings": { "type": "object" },
+    "__order__": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "section": {
+      "anyOf": [
+        { "$ref": "#/$defs/field_map" },
+        { "$ref": "#/$defs/field_list" },
+        {
+          "type": "object",
+          "properties": {
+            "fields": {
+              "anyOf": [
+                { "$ref": "#/$defs/field_map" },
+                { "$ref": "#/$defs/field_list" }
+              ]
+            },
+            "__order__": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "field_map": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/field_def" }
+    },
+    "field_list": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/field_def_with_name" }
+    },
+    "field_def_with_name": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["name", "type"],
+      "properties": {
+        "name": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": [
+            "char",
+            "text",
+            "textarea",
+            "number",
+            "date",
+            "datetime",
+            "decimal",
+            "integer",
+            "boolean",
+            "checkbox",
+            "select",
+            "account",
+            "party",
+            "customer",
+            "vendor",
+            "product",
+            "warehouse",
+            "cost_center",
+            "department",
+            "project",
+            "journal_type",
+            "period",
+            "currency",
+            "rate",
+            "tax_code",
+            "uom",
+            "lookup",
+            "typeahead",
+            "autocomplete"
+          ]
+        },
+        "label": { "type": "string" },
+        "required": { "type": "boolean" },
+        "help_text": { "type": "string" },
+        "placeholder": { "type": "string" },
+        "read_only": { "type": "boolean" },
+        "disabled": { "type": "boolean" },
+        "hidden": { "type": "boolean" },
+        "autofocus": { "type": "boolean" },
+        "default": {},
+        "pattern": { "type": "string" },
+        "min_value": { "type": "number" },
+        "max_value": { "type": "number" },
+        "step": {
+          "anyOf": [
+            { "type": "string" },
+            { "type": "number" }
+          ]
+        },
+        "lookup_model": { "type": "string" },
+        "lookup_url": { "type": "string" },
+        "lookup_kind": { "type": "string" },
+        "endpoint": { "type": "string" },
+        "choices": {
+          "anyOf": [
+            { "type": "string" },
+            { "type": "array", "items": {} }
+          ]
+        },
+        "kwargs": { "type": "object" }
+      }
+    },
+    "field_def": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "char",
+            "text",
+            "textarea",
+            "number",
+            "date",
+            "datetime",
+            "decimal",
+            "integer",
+            "boolean",
+            "checkbox",
+            "select",
+            "account",
+            "party",
+            "customer",
+            "vendor",
+            "product",
+            "warehouse",
+            "cost_center",
+            "department",
+            "project",
+            "journal_type",
+            "period",
+            "currency",
+            "rate",
+            "tax_code",
+            "uom",
+            "lookup",
+            "typeahead",
+            "autocomplete"
+          ]
+        },
+        "label": { "type": "string" },
+        "required": { "type": "boolean" },
+        "help_text": { "type": "string" },
+        "placeholder": { "type": "string" },
+        "read_only": { "type": "boolean" },
+        "disabled": { "type": "boolean" },
+        "hidden": { "type": "boolean" },
+        "autofocus": { "type": "boolean" },
+        "default": {},
+        "pattern": { "type": "string" },
+        "min_value": { "type": "number" },
+        "max_value": { "type": "number" },
+        "step": {
+          "anyOf": [
+            { "type": "string" },
+            { "type": "number" }
+          ]
+        },
+        "lookup_model": { "type": "string" },
+        "lookup_url": { "type": "string" },
+        "lookup_kind": { "type": "string" },
+        "endpoint": { "type": "string" },
+        "choices": {
+          "anyOf": [
+            { "type": "string" },
+            { "type": "array", "items": {} }
+          ]
+        },
+        "kwargs": { "type": "object" }
+      }
+    }
+  }
+}

@@ -8,7 +8,7 @@ from decimal import Decimal
 
 from accounting.models import GeneralLedger, Journal, JournalLine, ChartOfAccount
 from accounting.forms import JournalLineForm, JournalForm, JournalLineFormSet
-from accounting.forms.form_factory import get_voucher_ui_header
+from accounting.forms_factory import get_voucher_ui_header
 from accounting.models import VoucherModeConfig
 
 class AddJournalRowView(View):

@@ -220,13 +220,6 @@
                                 <span>Voucher Configurations</span>
                             </a>
                         </li>
-                        <!-- Voucher Field Configuration -->
-                        <li>
-                            <a href="{% url 'accounting:voucher_field_config' %}">
-                                <i class="fas fa-cogs"></i>
-                                <span>Voucher Field Configuration</span>
-                            </a>
-                        </li>
                         <!-- Voucher Settings -->
                         <li>
                             <a href="{% url 'accounting:voucher_settings' %}">
@@ -241,14 +234,6 @@
                                 <span>Accounts Payable</span>
                             </a>
                             <ul class="sub-menu" aria-expanded="false">
-                                {% if user|has_permission:'accounting_purchaseinvoice_add' %}
-                                <li>
-                                    <a href="{% url 'accounting:vendor_bill_create' %}">
-                                        <i class="fas fa-pen-square"></i>
-                                        <span>Vendor Bill Entry</span>
-                                    </a>
-                                </li>
-                                {% endif %}
                                 {% if user|has_permission:'accounting_appayment_change' %}
                                 <li>
                                     <a href="{% url 'accounting:payment_scheduler' %}">
@@ -375,6 +360,12 @@
                                     </a>
                                 </li>
                                 <li>
+                                    <a href="{% url 'accounting:report_daybook' %}">
+                                        <i class="fas fa-calendar-alt me-1"></i>
+                                        <span>Daybook</span>
+                                    </a>
+                                </li>
+                                <li>
                                     <a href="{% url 'accounting:report_ledger' %}">
                                         <span>General Ledger</span>
                                     </a>
@@ -476,29 +467,68 @@
                         <span>Purchasing</span>
                     </a>
                     <ul class="sub-menu" aria-expanded="false">
+                        {% if user|has_permission:'purchasing_purchaseorder_view' %}
                         <li>
-                            <a href="{% url 'purchasing:invoice-table' %}">
-                                <span>Purchase Invoices</span>
+                            <a href="{% url 'purchasing:po_unified_create' %}">
+                                <i class="fas fa-file-plus"></i>
+                                <span>New Purchase Order</span>
                             </a>
                         </li>
+                        {% endif %}
+                        {% if user|has_permission:'purchasing_goodsreceipt_view' %}
+                        <li>
+                            <a href="{% url 'purchasing:gr_unified_create' %}">
+                                <i class="fas fa-inbox"></i>
+                                <span>New Goods Receipt</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if user|has_permission:'purchasing_purchaseinvoice_view' %}
+                        <li>
+                            <a href="{% url 'purchasing:invoice-create' %}">
+                                <i class="fas fa-receipt"></i>
+                                <span>New Purchase Invoice</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        <li class="menu-divider"></li>
+                        {% if user|has_permission:'purchasing_purchaseorder_view' %}
                         <li>
                             <a href="{% url 'purchasing:po_table' %}">
-                                <span>Purchase Orders</span>
+                                <i class="fas fa-list"></i>
+                                <span>View Purchase Orders</span>
                             </a>
                         </li>
+                        {% endif %}
+                        {% if user|has_permission:'purchasing_goodsreceipt_view' %}
                         <li>
                             <a href="{% url 'purchasing:gr_table' %}">
-                                <span>Goods Receipts</span>
+                                <i class="fas fa-boxes"></i>
+                                <span>View Goods Receipts</span>
                             </a>
                         </li>
+                        {% endif %}
+                        {% if user|has_permission:'purchasing_purchaseinvoice_view' %}
+                        <li>
+                            <a href="{% url 'purchasing:invoice-table' %}">
+                                <i class="fas fa-file-invoice-dollar"></i>
+                                <span>View Purchase Invoices</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        <li class="menu-divider"></li>
+                        {% if user|has_permission:'purchasing_purchaseinvoice_view' %}
                         <li>
                             <a href="{% url 'purchasing:landed-cost-table' %}">
-                                <span>Landed Cost</span>
+                                <i class="fas fa-coins"></i>
+                                <span>Landed Costs</span>
                             </a>
                         </li>
+                        {% endif %}
                         <li>
                             <a href="{% url 'purchasing:reports' %}">
-                                <span>Purchasing Reports</span>
+                                <i class="fas fa-chart-bar"></i>
+                                <span>Reports</span>
                             </a>
                         </li>
                     </ul>

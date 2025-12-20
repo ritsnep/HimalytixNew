@@ -13,10 +13,10 @@ config = VoucherModeConfig.objects.get(code='VM-SI')
 org = Organization.objects.first()
 
 print("BEFORE augmentation:")
-print(json.dumps(config.ui_schema['sections']['header']['fields']['voucher_date'], indent=2))
+print(json.dumps(config.resolve_ui_schema()['sections']['header']['fields']['voucher_date'], indent=2))
 
 # Simulate augmentation
-schema_copy = copy.deepcopy(config.ui_schema)
+schema_copy = copy.deepcopy(config.resolve_ui_schema())
 sections = schema_copy['sections']
 header = sections['header']
 header_fields = header['fields']

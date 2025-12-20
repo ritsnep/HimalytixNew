@@ -365,7 +365,12 @@ class JournalPostView(LoginRequiredMixin, View):
                 format_journal_exception,
             )
 
-            post_journal(journal, user=request.user)
+            from accounting.utils.idempotency import resolve_idempotency_key
+            post_journal(
+                journal,
+                user=request.user,
+                idempotency_key=resolve_idempotency_key(request),
+            )
             messages.success(request, 'Journal posted and saved successfully.')
         except (JournalPostingError, JournalValidationError) as exc:
             messages.error(request, format_journal_exception(exc))

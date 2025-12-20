@@ -192,23 +192,11 @@ for audited_model in AUDITED_MODELS:
 
 @receiver(post_save, sender=JournalType)
 def create_default_voucher_config(sender, instance, created, **kwargs):
-    """Automatically create a VoucherModeConfig for new journal types"""
+    """Seed voucher definitions for the organization when new journal types are added."""
     if not created:
         return
-
-    VoucherModeConfig.objects.get_or_create(
-        organization=instance.organization,
-        journal_type=instance,
-        is_default=True,
-        defaults={
-            "name": f"Default Config for {instance.name}",
-            "layout_style": "standard",
-            "show_account_balances": True,
-            "show_tax_details": True,
-            "show_dimensions": True,
-            "allow_multiple_currencies": False,
-            "require_line_description": True,
-            # Ensure a 3-letter code string is used here; fallback to USD if not set.
-            "default_currency": getattr(instance.organization, 'base_currency_code_id', None) or 'USD',
-        },
-    )
+    try:
+        from accounting.services.voucher_seeding import seed_voucher_configs
+        seed_voucher_configs(instance.organization, reset=False)
+    except Exception:
+        pass

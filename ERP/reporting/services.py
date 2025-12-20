@@ -40,6 +40,19 @@ class ReportDataService:
         self.organization = organization
         self.user = user
 
+    @staticmethod
+    def _get_status_display(status: str) -> str:
+        """Convert status code to display label."""
+        status_map = {
+            "draft": "Draft",
+            "awaiting_approval": "Awaiting Approval",
+            "approved": "Approved",
+            "posted": "Posted",
+            "reversed": "Reversed",
+            "rejected": "Rejected",
+        }
+        return status_map.get(status, status.title())
+
     def build_context(self, definition: ReportDefinition, params: Dict[str, Any]) -> Dict[str, Any]:
         """Return context payload for the requested report definition."""
         code = (definition.code or "").lower()
@@ -47,6 +60,8 @@ class ReportDataService:
 
         if definition.template_json and definition.template_json.get("query_builder"):
             context = self._query_builder_context(definition.template_json.get("query_builder"), params)
+        elif code in {"daybook", "day_book"} or definition.query_name == "fn_report_daybook":
+            context = self._daybook_report_context(params)
         elif code in {"journal_report", "journal"} or definition.query_name == "fn_report_journal":
             context = self._journal_report_context(params)
         elif code in {"general_ledger", "ledger"} or definition.query_name == "fn_report_general_ledger":
@@ -76,6 +91,143 @@ class ReportDataService:
 
     # ------------------------------------------------------------------
     # Journal report (pilot)
+
+    def _daybook_report_context(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Builds a comprehensive daybook report context with all transactions."""
+        today = timezone.localdate()
+        default_start = today - timedelta(days=30)
+        start_date = _parse_date(params.get("start_date"), default_start)
+        end_date = _parse_date(params.get("end_date"), today)
+        status = params.get("status")
+        journal_type_param = params.get("journal_type")
+        account_param = params.get("account_id")
+        voucher_number = params.get("voucher_number")
+        limit = params.get("limit")
+
+        qs = (
+            Journal.objects.filter(
+                organization=self.organization,
+                journal_date__range=(start_date, end_date),
+                is_archived=False,
+            )
+            .select_related("journal_type", "period", "created_by")
+            .prefetch_related(
+                Prefetch(
+                    "lines",
+                    queryset=JournalLine.objects.select_related(
+                        "account", "department", "project", "cost_center"
+                    ).order_by("line_number"),
+                )
+            )
+            .order_by("journal_date", "journal_number")
+        )
+
+        if status:
+            qs = qs.filter(status=status)
+        if journal_type_param:
+            if journal_type_param.isdigit():
+                qs = qs.filter(journal_type_id=int(journal_type_param))
+            else:
+                qs = qs.filter(journal_type__code=journal_type_param)
+        if voucher_number:
+            qs = qs.filter(journal_number__icontains=voucher_number)
+
+        if limit:
+            try:
+                qs = qs[: int(limit)]
+            except (TypeError, ValueError):
+                pass
+
+        rows: List[Dict[str, Any]] = []
+        flat_rows: List[List[Any]] = []
+        total_debit = Decimal("0.00")
+        total_credit = Decimal("0.00")
+        transaction_count = 0
+
+        for journal in qs:
+            transaction_count += 1
+            for line in journal.lines.all():
+                debit = line.debit_amount or Decimal("0.00")
+                credit = line.credit_amount or Decimal("0.00")
+                total_debit += debit
+                total_credit += credit
+
+                # Filter by account if specified
+                if account_param:
+                    try:
+                        if line.account_id != int(account_param):
+                            continue
+                    except (TypeError, ValueError):
+                        continue
+
+                row_data = {
+                    "journal_id": journal.pk,
+                    "journal_date": journal.journal_date,
+                    "journal_number": journal.journal_number,
+                    "journal_type": getattr(journal.journal_type, "name", ""),
+                    "journal_type_name": getattr(journal.journal_type, "name", ""),
+                    "journal_type_code": getattr(journal.journal_type, "code", ""),
+                    "reference": journal.reference or "",
+                    "line_number": line.line_number,
+                    "account_code": getattr(line.account, "account_code", ""),
+                    "account_name": getattr(line.account, "account_name", ""),
+                    "description": line.description or journal.description or "",
+                    "debit": debit,
+                    "credit": credit,
+                    "department": getattr(line.department, "name", ""),
+                    "project": getattr(line.project, "name", ""),
+                    "cost_center": getattr(line.cost_center, "name", ""),
+                    "status": journal.status,
+                    "status_display": self._get_status_display(journal.status),
+                    "created_by": getattr(journal.created_by, "get_full_name", lambda: "")() or getattr(journal.created_by, "username", ""),
+                    "created_at": journal.created_at,
+                }
+                rows.append(row_data)
+                flat_rows.append(
+                    [
+                        journal.journal_date,
+                        journal.journal_number,
+                        journal.journal_type.name if journal.journal_type else "",
+                        line.account.account_code if line.account else "",
+                        line.account.account_name if line.account else "",
+                        line.description or journal.description or "",
+                        debit,
+                        credit,
+                        journal.status,
+                    ]
+                )
+
+        columns = [
+            "Date",
+            "Voucher #",
+            "Type",
+            "Account Code",
+            "Account Name",
+            "Description",
+            "Debit",
+            "Credit",
+            "Status",
+        ]
+
+        return {
+            "rows": rows,
+            "columns": columns,
+            "flat_rows": flat_rows,
+            "totals": {
+                "debit": total_debit,
+                "credit": total_credit,
+                "balance": total_debit - total_credit,
+                "transaction_count": transaction_count,
+            },
+            "filters": {
+                "start_date": start_date,
+                "end_date": end_date,
+                "status": status,
+                "journal_type": journal_type_param,
+                "account_id": account_param,
+                "voucher_number": voucher_number,
+            },
+        }
 
     def _journal_report_context(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Builds a rich context for the journal report."""

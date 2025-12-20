@@ -44,29 +44,35 @@ class Migration(migrations.Migration):
             old_name='reference',
             new_name='reference_number',
         ),
-        migrations.RemoveField(
+        migrations.RenameField(
             model_name='purchaseordervoucher',
-            name='id',
+            old_name='id',
+            new_name='voucher_id',
         ),
-        migrations.RemoveField(
+        migrations.RenameField(
             model_name='purchaseordervoucherline',
-            name='id',
+            old_name='id',
+            new_name='line_id',
         ),
-        migrations.RemoveField(
+        migrations.RenameField(
             model_name='purchasereturnvoucher',
-            name='id',
+            old_name='id',
+            new_name='voucher_id',
         ),
-        migrations.RemoveField(
+        migrations.RenameField(
             model_name='purchasereturnvoucherline',
-            name='id',
+            old_name='id',
+            new_name='line_id',
         ),
-        migrations.RemoveField(
+        migrations.RenameField(
             model_name='salesordervoucher',
-            name='id',
+            old_name='id',
+            new_name='voucher_id',
         ),
-        migrations.RemoveField(
+        migrations.RenameField(
             model_name='salesordervoucherline',
-            name='id',
+            old_name='id',
+            new_name='line_id',
         ),
         migrations.AddField(
             model_name='purchaseordervoucher',
@@ -79,21 +85,9 @@ class Migration(migrations.Migration):
             field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='updated_%(class)s', to=settings.AUTH_USER_MODEL),
         ),
         migrations.AddField(
-            model_name='purchaseordervoucher',
-            name='voucher_id',
-            field=models.BigAutoField(default=django.utils.timezone.now, primary_key=True, serialize=False),
-            preserve_default=False,
-        ),
-        migrations.AddField(
             model_name='purchaseordervoucherline',
             name='created_at',
             field=models.DateTimeField(auto_now_add=True, default=django.utils.timezone.now),
-            preserve_default=False,
-        ),
-        migrations.AddField(
-            model_name='purchaseordervoucherline',
-            name='line_id',
-            field=models.BigAutoField(default=django.utils.timezone.now, primary_key=True, serialize=False),
             preserve_default=False,
         ),
         migrations.AddField(
@@ -127,21 +121,9 @@ class Migration(migrations.Migration):
             field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='updated_%(class)s', to=settings.AUTH_USER_MODEL),
         ),
         migrations.AddField(
-            model_name='purchasereturnvoucher',
-            name='voucher_id',
-            field=models.BigAutoField(default=django.utils.timezone.now, primary_key=True, serialize=False),
-            preserve_default=False,
-        ),
-        migrations.AddField(
             model_name='purchasereturnvoucherline',
             name='created_at',
             field=models.DateTimeField(auto_now_add=True, default=django.utils.timezone.now),
-            preserve_default=False,
-        ),
-        migrations.AddField(
-            model_name='purchasereturnvoucherline',
-            name='line_id',
-            field=models.BigAutoField(default=django.utils.timezone.now, primary_key=True, serialize=False),
             preserve_default=False,
         ),
         migrations.AddField(
@@ -175,21 +157,9 @@ class Migration(migrations.Migration):
             field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='updated_%(class)s', to=settings.AUTH_USER_MODEL),
         ),
         migrations.AddField(
-            model_name='salesordervoucher',
-            name='voucher_id',
-            field=models.BigAutoField(default=django.utils.timezone.now, primary_key=True, serialize=False),
-            preserve_default=False,
-        ),
-        migrations.AddField(
             model_name='salesordervoucherline',
             name='created_at',
             field=models.DateTimeField(auto_now_add=True, default=django.utils.timezone.now),
-            preserve_default=False,
-        ),
-        migrations.AddField(
-            model_name='salesordervoucherline',
-            name='line_id',
-            field=models.BigAutoField(default=django.utils.timezone.now, primary_key=True, serialize=False),
             preserve_default=False,
         ),
         migrations.AddField(

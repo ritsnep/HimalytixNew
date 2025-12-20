@@ -1,4 +1,5 @@
-from accounting.models import VoucherModeConfig,default_ui_schema
+from accounting.models import VoucherModeConfig, default_ui_schema
+from accounting.voucher_schema import ui_schema_to_definition
 from .models import VoucherSchema, VoucherSchemaStatus
 from django.db import transaction
 
@@ -9,7 +10,7 @@ def get_active_schema(voucher_mode_config):
     1) Active version (is_active=True)
     2) Latest published/approved version
     3) Latest version (any status)
-    4) VoucherModeConfig.ui_schema
+    4) VoucherModeConfig.schema_definition
     5) default_ui_schema()
     """
     qs = VoucherSchema.objects.filter(voucher_mode_config=voucher_mode_config)
@@ -28,20 +29,20 @@ def get_active_schema(voucher_mode_config):
     latest = qs.order_by('-version').first()
     if latest:
         return latest.schema
-    # Try ui_schema from config
-    if voucher_mode_config.ui_schema:
-        return voucher_mode_config.ui_schema
+    # Try schema_definition from config
+    if getattr(voucher_mode_config, "schema_definition", None):
+        return voucher_mode_config.resolve_ui_schema()
     # Fallback to default
     return default_ui_schema()
 
 @transaction.atomic
 def save_schema(voucher_mode_config, schema, user=None):
     """
-    Saves the schema to VoucherModeConfig.ui_schema and creates a new VoucherSchema version.
+    Saves the schema to VoucherModeConfig.schema_definition and creates a new VoucherSchema version.
     """
-    # Update ui_schema on config
-    voucher_mode_config.ui_schema = schema
-    voucher_mode_config.save(update_fields=['ui_schema'])
+    # Update schema_definition on config
+    voucher_mode_config.schema_definition = ui_schema_to_definition(schema)
+    voucher_mode_config.save(update_fields=['schema_definition'])
     # Determine next version
     last = VoucherSchema.objects.filter(voucher_mode_config=voucher_mode_config).order_by('-version').first()
     next_version = (last.version + 1) if last else 1

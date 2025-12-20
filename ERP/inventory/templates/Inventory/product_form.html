@@ -58,7 +58,7 @@
             </div>
 
             <h5 class="mt-4 mb-3">Costing Method</h5>
-            <div class="row">
+            <div class="row" id="costing-method-section">
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Costing Method</label>
                     {{ form.costing_method }}
@@ -163,4 +163,60 @@
         </form>
     </div>
 </div>
-{% endblock %}
+                <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Robust toggle for costing-method visibility when Inventory Item checkbox is changed
+                    // Try finding checkbox by name or id
+                    let inventoryCheckbox = document.querySelector('input[name="is_inventory_item"]');
+                    if (!inventoryCheckbox) inventoryCheckbox = document.getElementById('id_is_inventory_item');
+
+                    // Costing section and field
+                    const costingSection = document.getElementById('costing-method-section');
+                    let costingField = document.querySelector('select[name="costing_method"], input[name="costing_method"]');
+                    if (!costingField && document.getElementById('id_costing_method')) costingField = document.getElementById('id_costing_method');
+
+                    function setPristineRequired(el, msg) {
+                        if (!el) return;
+                        try { el.setAttribute('data-pristine-required-message', msg); } catch(e) {}
+                        try { el.required = true; } catch(e) {}
+                    }
+
+                    function clearPristineRequired(el) {
+                        if (!el) return;
+                        try { el.removeAttribute('data-pristine-required-message'); } catch(e) {}
+                        try { el.required = false; } catch(e) {}
+                    }
+
+                    function showSection() {
+                        if (!costingSection) return;
+                        costingSection.style.display = 'block';
+                        if (costingField) {
+                            // remove disabled if present
+                            costingField.disabled = false;
+                            setPristineRequired(costingField, 'Costing method is required.');
+                        }
+                    }
+
+                    function hideSection() {
+                        if (!costingSection) return;
+                        costingSection.style.display = 'none';
+                        if (costingField) {
+                            // clear value and disable to avoid validation
+                            try { costingField.value = ''; } catch(e) {}
+                            costingField.disabled = true;
+                            clearPristineRequired(costingField);
+                        }
+                    }
+
+                    function toggleCosting() {
+                        if (!costingSection) return;
+                        if (inventoryCheckbox && inventoryCheckbox.checked) showSection(); else hideSection();
+                    }
+
+                    if (inventoryCheckbox) inventoryCheckbox.addEventListener('change', toggleCosting);
+
+                    // Run initial toggle (use a short timeout to allow form widgets to render)
+                    setTimeout(toggleCosting, 10);
+                });
+                </script>
+    {% endblock %}

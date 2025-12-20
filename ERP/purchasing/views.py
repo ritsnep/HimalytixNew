@@ -5,11 +5,13 @@ from typing import Optional
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.core.exceptions import PermissionDenied
+from django.utils import timezone
 from django.db.models import Q, Sum, Count
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
 from django.views.decorators.http import require_POST
+from decimal import Decimal, InvalidOperation
 
 from usermanagement.utils import PermissionUtils, permission_required
 
@@ -63,6 +65,45 @@ def _render_invoice_detail(
         "alert_level": alert_level,
     }
     return render(request, "purchasing/partials/invoice_detail.html", context)
+
+
+def _render_invoice_form(request, context, *, status=200):
+    if getattr(request, "htmx", False):
+        return render(request, "purchasing/partials/invoice_form.html", context, status=status)
+    return render(request, "purchasing/invoice_form_page.html", context, status=status)
+
+
+def _safe_decimal(value) -> Decimal:
+    if value in (None, ""):
+        return Decimal("0")
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        return Decimal("0")
+
+
+def _calc_invoice_totals_from_post(request) -> dict:
+    total_qty = Decimal("0")
+    subtotal = Decimal("0")
+    tax_total = Decimal("0")
+    total_forms = int(request.POST.get("lines-TOTAL_FORMS", 0) or 0)
+    for idx in range(total_forms):
+        if request.POST.get(f"lines-{idx}-DELETE") in ("on", "true", "1"):
+            continue
+        qty = _safe_decimal(request.POST.get(f"lines-{idx}-quantity"))
+        unit_cost = _safe_decimal(request.POST.get(f"lines-{idx}-unit_price"))
+        vat_rate = _safe_decimal(request.POST.get(f"lines-{idx}-vat_rate"))
+        line_total = qty * unit_cost
+        total_qty += qty
+        subtotal += line_total
+        tax_total += (line_total * vat_rate / Decimal("100"))
+    grand_total = subtotal + tax_total
+    return {
+        "total_qty": f"{total_qty:.2f}",
+        "subtotal": f"{subtotal:.2f}",
+        "tax_total": f"{tax_total:.2f}",
+        "grand_total": f"{grand_total:.2f}",
+    }
 
 
 @login_required
@@ -175,7 +216,28 @@ def invoice_form(request, pk: Optional[int] = None):
                 formset.save()
                 invoice.recalc_totals()
                 invoice.save(skip_recalc=True)
+            if getattr(request, "htmx", False):
+                response = _render_invoice_detail(
+                    request,
+                    invoice,
+                    alert="Invoice saved successfully.",
+                )
+                response["HX-Trigger"] = "purchaseInvoiceChanged"
+                return response
             return redirect("purchasing:invoice-table")
+        if getattr(request, "htmx", False):
+            context = {
+                "form": form,
+                "line_formset": formset,
+                "form_action": request.path,
+                "is_edit": bool(pk),
+                "page_title": "Purchase Invoice" if pk else "New Purchase Invoice",
+                "form_title": "Purchase Invoice",
+                "breadcrumbs": [("Purchasing", reverse("purchasing:invoice-table")), ("Invoice", None)],
+                "alert_message": "Please correct the errors below.",
+                "alert_level": "danger",
+            }
+            return _render_invoice_form(request, context, status=422)
     form_action = (
         reverse("purchasing:invoice-edit", kwargs={"pk": pk})
         if pk
@@ -190,7 +252,7 @@ def invoice_form(request, pk: Optional[int] = None):
         "form_title": "Purchase Invoice",
         "breadcrumbs": [("Purchasing", reverse("purchasing:invoice-table")), ("Invoice", None)],
     }
-    return render(request, "purchasing/invoice_form_page.html", context)
+    return _render_invoice_form(request, context)
 
 
 @login_required
@@ -268,6 +330,51 @@ def invoice_reverse(request, pk: int):
     )
     response["HX-Trigger"] = "purchaseInvoiceChanged"
     return response
+
+
+@login_required
+@permission_required(("purchasing", "purchaseinvoice", "view"))
+@require_POST
+def invoice_recalc(request):
+    totals = _calc_invoice_totals_from_post(request)
+    return render(request, "purchasing/partials/invoice_totals.html", totals)
+
+
+@login_required
+@permission_required(("purchasing", "purchaseinvoice", "change"))
+@require_POST
+def invoice_validate(request, pk: Optional[int] = None):
+    organization = _organization(request)
+    invoice = None
+    if pk:
+        invoice = get_object_or_404(PurchaseInvoice, pk=pk, organization=organization)
+    form = PurchaseInvoiceForm(
+        request.POST or None,
+        instance=invoice,
+        organization=organization,
+    )
+    formset = PurchaseInvoiceLineFormSet(
+        request.POST or None,
+        instance=invoice,
+        prefix="lines",
+        organization=organization,
+    )
+    context = {
+        "form": form,
+        "line_formset": formset,
+        "form_action": request.path,
+        "is_edit": bool(pk),
+        "page_title": "Purchase Invoice" if pk else "New Purchase Invoice",
+        "form_title": "Purchase Invoice",
+        "breadcrumbs": [("Purchasing", reverse("purchasing:invoice-table")), ("Invoice", None)],
+    }
+    if form.is_valid() and formset.is_valid():
+        context["alert_message"] = "Validation passed."
+        context["alert_level"] = "success"
+        return _render_invoice_form(request, context, status=200)
+    context["alert_message"] = "Please correct the errors below."
+    context["alert_level"] = "danger"
+    return _render_invoice_form(request, context, status=422)
 
 
 @login_required
@@ -436,3 +543,30 @@ def landed_cost_list_page(request):
         "documents": docs[:300],
     }
     return render(request, "purchasing/landed_cost_list_page.html", context)
+
+
+# ===== LEGACY WRAPPER FUNCTIONS (for backward compatibility) =====
+# These delegate to the legacy class-based views but can be referenced by path()
+
+@login_required
+@permission_required("purchasing.view_purchaseorder")
+def po_list_page_legacy(request):
+    """
+    Legacy wrapper for PO list page.
+    Imports and delegates to POListPageView from views_po.
+    """
+    from purchasing.views_po import POListPageView
+    view = POListPageView.as_view()
+    return view(request)
+
+
+@login_required
+@permission_required("purchasing.view_goodsreceipt")
+def gr_list_page_legacy(request):
+    """
+    Legacy wrapper for GR list page.
+    Imports and delegates to GRListPageView from views_gr.
+    """
+    from purchasing.views_gr import GRListPageView
+    view = GRListPageView.as_view()
+    return view(request)

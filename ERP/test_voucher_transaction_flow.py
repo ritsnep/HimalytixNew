@@ -97,7 +97,7 @@ def test_voucher_save_flow(voucher_code='VM-SI'):
     }
     
     # Add schema-specific fields
-    schema = config.ui_schema
+    schema = config.resolve_ui_schema()
     if 'sections' in schema:
         schema = schema['sections']
     if 'header' in schema:
@@ -151,7 +151,7 @@ def test_voucher_save_flow(voucher_code='VM-SI'):
     try:
         # Test save without atomic transaction to see actual errors
         # Get the model that will be saved
-            from accounting.forms.form_factory import VoucherFormFactory as LegacyFactory
+            from accounting.forms_factory import VoucherFormFactory as LegacyFactory
             header_model = LegacyFactory._get_model_for_voucher_config(config)
             
             print(f"Target model: {header_model.__name__}")

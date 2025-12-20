@@ -1,10 +1,10 @@
-from accounting.models import VoucherConfiguration
+from accounting.models import VoucherModeConfig
 from accounting.forms_factory import VoucherFormFactory
 
 
 def inspect_config(cfg):
-    report = {'code': cfg.code, 'name': cfg.name, 'module': cfg.module, 'issues': [], 'header': {}, 'lines': {}}
-    ui = cfg.ui_schema or {}
+    report = {'code': cfg.code, 'name': cfg.name, 'module': getattr(cfg, 'module', None), 'issues': [], 'header': {}, 'lines': {}}
+    ui = cfg.resolve_ui_schema() or {}
 
     # Normalize sections
     for section in ('header', 'lines'):
@@ -30,12 +30,12 @@ def inspect_config(cfg):
 
     # Build header form and lines formset and check fields
     try:
-        factory = VoucherFormFactory(cfg.ui_schema) if not hasattr(cfg, 'resolve_ui_schema') else VoucherFormFactory(cfg.resolve_ui_schema())
+        factory = VoucherFormFactory(cfg.resolve_ui_schema())
         header_form_cls = factory.build_form()
         header_form = header_form_cls()
         # Ensure header fields reflect ui schema header
         # (Check that fields in header section appear in the form unless hidden)
-        header_ui = (cfg.ui_schema or {}).get('header')
+        header_ui = (cfg.resolve_ui_schema() or {}).get('header')
         if header_ui:
             names = []
             if isinstance(header_ui, dict):
@@ -64,11 +64,11 @@ def inspect_config(cfg):
 
     # Lines formset
     try:
-        factory = VoucherFormFactory(cfg.ui_schema) if not hasattr(cfg, 'resolve_ui_schema') else VoucherFormFactory(cfg.resolve_ui_schema())
+        factory = VoucherFormFactory(cfg.resolve_ui_schema())
         FormSet = factory.build_formset(extra=0)
         fs = FormSet()
         first = fs.forms[0] if fs.forms else None
-        lines_ui = (cfg.ui_schema or {}).get('lines')
+        lines_ui = (cfg.resolve_ui_schema() or {}).get('lines')
         if lines_ui and first is None:
             # When lines exist, we expect at least one form (extra=0 might produce zero). Rebuild with extra=1 to inspect fields
             FormSet = factory.build_formset(extra=1)
@@ -106,7 +106,7 @@ def inspect_config(cfg):
 
 if __name__ == '__main__':
     reports = []
-    for cfg in VoucherConfiguration.objects.all():
+    for cfg in VoucherModeConfig.objects.all():
         r = inspect_config(cfg)
         reports.append(r)
     # Print summary

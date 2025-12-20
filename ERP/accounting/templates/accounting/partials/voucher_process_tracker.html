@@ -1,0 +1,19 @@
+{% load generic_voucher_tags %}
+{% with proc=process_attempt %}
+<div class="process-tracker d-flex flex-wrap gap-2" id="process-tracker"
+     {% if proc and proc.status == 'processing' and voucher_id %}hx-get="{% url 'accounting:voucher_process_status' voucher_id %}" hx-trigger="load, every 2s" hx-swap="outerHTML"{% endif %}>
+  {% if proc %}
+    <span class="badge rounded-pill bg-{{ proc.saved_status|status_badge_class }}" data-step="save">Step 1: Saving Voucher</span>
+    <span class="badge rounded-pill bg-{{ proc.journal_status|status_badge_class }}" data-step="journal">Step 2: Journal Created</span>
+    <span class="badge rounded-pill bg-{{ proc.gl_status|status_badge_class }}" data-step="post">Step 3: GL Posted</span>
+    <span class="badge rounded-pill bg-{{ proc.inventory_status|status_badge_class }}" data-step="inventory">Step 4: Inventory Posted</span>
+    <span class="badge rounded-pill bg-{{ proc.status|status_badge_class }}" data-step="complete">Step 5: Completed</span>
+  {% else %}
+    <span class="badge rounded-pill bg-secondary" data-step="save">Step 1: Saving Voucher</span>
+    <span class="badge rounded-pill bg-secondary" data-step="journal">Step 2: Journal Created</span>
+    <span class="badge rounded-pill bg-secondary" data-step="post">Step 3: GL Posted</span>
+    <span class="badge rounded-pill bg-secondary" data-step="inventory">Step 4: Inventory Posted</span>
+    <span class="badge rounded-pill bg-secondary" data-step="complete">Step 5: Completed</span>
+  {% endif %}
+</div>
+{% endwith %}

@@ -30,8 +30,9 @@
 }
 
 .generic-lines-table {
-    table-layout: fixed;
-    width: 100%;
+    table-layout: auto;
+    width: max-content;
+    min-width: 100%;
 }
 
 .generic-lines-table thead th {
@@ -64,6 +65,11 @@
 .generic-lines-table td {
     padding: 0.35rem;
     vertical-align: middle;
+}
+
+.generic-lines-table th.generic-col-header,
+.generic-lines-table td.generic-grid-cell {
+    min-width: 160px;
 }
 
 .generic-lines-table tbody tr:hover {

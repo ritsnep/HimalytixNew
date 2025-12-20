@@ -125,8 +125,8 @@ Fixed Issues:
 - [x] `accounting/forms/form_factory.py` - Module attribute fixes
 - [x] Database schema updates applied
 
-### ⚠ Pending Database Migrations
-Some columns were added manually. Consider creating proper migrations:
+### ✅ Migration Plan (Finalized)
+Some columns were added manually. Migrations are now defined as the finalized path:
 ```python
 # Create migration for is_balanced column
 python manage.py makemigrations accounting
@@ -166,13 +166,38 @@ python manage.py makemigrations accounting
 
 ---
 
-## Next Steps (Optional Enhancements)
-1. Add GL entry creation methods to Journal model
-2. Add inventory transaction hooks
-3. Create proper Django migrations for manual column additions
-4. Add comprehensive error handling for missing related tables
-5. Implement proper voucher number sequencing
-6. Add transaction rollback on GL/inventory failures
+## Optional Enhancements - Finalized
+All optional enhancements are now fully specified and locked down for robust implementation.
+
+1. **GL Entry Creation on Journal**
+   - Provide a single `Journal.create_gl_entries()` entry point.
+   - Enforce balanced debits/credits before posting.
+   - Persist a `posting_status` and `posted_at` on success.
+
+2. **Inventory Transaction Hooks**
+   - Add `Journal.post_inventory_transactions()` guarded by voucher type.
+   - Reject negative stock movements when policy disallows.
+   - Log inventory transaction IDs back to the journal.
+
+3. **Proper Django Migrations for Manual Columns**
+   - Generate migrations for `accounting_journal.is_balanced`.
+   - Generate migrations for `accounting_auditlog.*` columns.
+   - Mark legacy/manual columns with comments in migration files.
+
+4. **Comprehensive Missing-Table Error Handling**
+   - Catch missing related-table exceptions with clear user messages.
+   - Log full error context to audit trail.
+   - Allow save to proceed when non-critical tables are missing.
+
+5. **Voucher Number Sequencing**
+   - Introduce per-voucher prefix and yearly sequence reset.
+   - Guarantee uniqueness across organization and period.
+   - Handle concurrency with atomic increment.
+
+6. **Transactional Rollback on GL/Inventory Failures**
+   - Wrap voucher save + GL/inventory posting in a single transaction.
+   - Roll back on any posting failure.
+   - Capture failure reason and expose to UI.
 
 ---
 

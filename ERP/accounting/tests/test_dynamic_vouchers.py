@@ -13,13 +13,12 @@ from django.contrib.auth import get_user_model
 from django.apps import apps
 
 from accounting.models import (
-    VoucherConfiguration, Journal, JournalLine,
-    PurchaseOrderVoucher, PurchaseReturnVoucher,
-    SalesOrderVoucher, PurchaseOrderVoucherLine,
-    PurchaseReturnVoucherLine, SalesOrderVoucherLine,
+    VoucherModeConfig, Journal, JournalLine,
     Currency
 )
-from accounting.forms.form_factory import VoucherFormFactory
+from accounting.forms_factory import VoucherFormFactory
+from accounting.voucher_schema import ui_schema_to_definition
+from accounting.services.voucher_errors import VoucherProcessError
 from usermanagement.models import Organization
 
 
@@ -53,13 +52,13 @@ class DynamicVoucherTestCase(TestCase):
         )
 
         # Create voucher configurations
-        self.vm01_config = VoucherConfiguration.objects.create(
+        self.vm01_config = VoucherModeConfig.objects.create(
             code="VM01",
             name="General Journal",
             description="General journal voucher configuration",
             module="accounting",
             organization=self.organization,
-            ui_schema={
+            schema_definition=ui_schema_to_definition({
                 "header": {
                     "date": {"type": "date", "required": True},
                     "reference": {"type": "text", "required": True},
@@ -71,7 +70,7 @@ class DynamicVoucherTestCase(TestCase):
                     "credit": {"type": "decimal", "required": False},
                     "description": {"type": "text", "required": False}
                 }
-            },
+            }),
             layout_style="standard",
             show_account_balances=True,
             show_tax_details=False,
@@ -81,16 +80,15 @@ class DynamicVoucherTestCase(TestCase):
             default_currency="USD",
             is_default=True,
             is_active=True,
-            version=1
         )
 
-        self.vm08_config = VoucherConfiguration.objects.create(
+        self.vm08_config = VoucherModeConfig.objects.create(
             code="VM08",
             name="Cash Receipt",
             description="Cash receipt voucher configuration",
             module="accounting",
             organization=self.organization,
-            ui_schema={
+            schema_definition=ui_schema_to_definition({
                 "header": {
                     "date": {"type": "date", "required": True},
                     "reference": {"type": "text", "required": True},
@@ -102,7 +100,7 @@ class DynamicVoucherTestCase(TestCase):
                     "credit": {"type": "decimal", "required": False},
                     "description": {"type": "text", "required": False}
                 }
-            },
+            }),
             layout_style="standard",
             show_account_balances=True,
             show_tax_details=False,
@@ -112,16 +110,15 @@ class DynamicVoucherTestCase(TestCase):
             default_currency="USD",
             is_default=False,
             is_active=True,
-            version=1
         )
 
-        self.po01_config = VoucherConfiguration.objects.create(
+        self.po01_config = VoucherModeConfig.objects.create(
             code="PO01",
             name="Purchase Order",
             description="Purchase order voucher configuration",
             module="purchasing",
             organization=self.organization,
-            ui_schema={
+            schema_definition=ui_schema_to_definition({
                 "header": {
                     "date": {"type": "date", "required": True},
                     "supplier": {"type": "select", "required": True},
@@ -133,7 +130,7 @@ class DynamicVoucherTestCase(TestCase):
                     "price": {"type": "decimal", "required": True},
                     "description": {"type": "text", "required": False}
                 }
-            },
+            }),
             layout_style="standard",
             show_account_balances=False,
             show_tax_details=True,
@@ -143,16 +140,15 @@ class DynamicVoucherTestCase(TestCase):
             default_currency="USD",
             is_default=True,
             is_active=True,
-            version=1
         )
 
-        self.so01_config = VoucherConfiguration.objects.create(
+        self.so01_config = VoucherModeConfig.objects.create(
             code="SO01",
             name="Sales Order",
             description="Sales order voucher configuration",
             module="sales",
             organization=self.organization,
-            ui_schema={
+            schema_definition=ui_schema_to_definition({
                 "header": {
                     "date": {"type": "date", "required": True},
                     "customer": {"type": "select", "required": True},
@@ -164,7 +160,7 @@ class DynamicVoucherTestCase(TestCase):
                     "price": {"type": "decimal", "required": True},
                     "description": {"type": "text", "required": False}
                 }
-            },
+            }),
             layout_style="standard",
             show_account_balances=False,
             show_tax_details=True,
@@ -174,12 +170,11 @@ class DynamicVoucherTestCase(TestCase):
             default_currency="USD",
             is_default=True,
             is_active=True,
-            version=1
         )
 
     def test_voucher_configuration_exists(self):
         """Test that voucher configurations exist in the database."""
-        configs = VoucherConfiguration.objects.all()
+        configs = VoucherModeConfig.objects.all()
         self.assertGreater(configs.count(), 0, "Should have voucher configurations")
 
         # Check for required modules
@@ -190,7 +185,7 @@ class DynamicVoucherTestCase(TestCase):
 
     def test_model_mappings_accounting(self):
         """Test model mappings for accounting module configurations."""
-        accounting_configs = VoucherConfiguration.objects.filter(module='accounting')
+        accounting_configs = VoucherModeConfig.objects.filter(module='accounting')
 
         for config in accounting_configs[:3]:  # Test first 3
             with self.subTest(config=config.name):
@@ -202,43 +197,33 @@ class DynamicVoucherTestCase(TestCase):
 
     def test_model_mappings_purchasing(self):
         """Test model mappings for purchasing module configurations."""
-        purchase_order_config = VoucherConfiguration.objects.filter(
-            module='purchasing', code='purchase_order'
-        ).first()
-        purchase_return_config = VoucherConfiguration.objects.filter(
-            module='purchasing', code='purchase_return'
+        purchase_config = VoucherModeConfig.objects.filter(
+            module='purchasing'
         ).first()
 
-        if purchase_order_config:
-            header_model = VoucherFormFactory._get_model_for_voucher_config(purchase_order_config)
-            line_model = VoucherFormFactory._get_line_model_for_voucher_config(purchase_order_config)
+        if purchase_config:
+            header_model = VoucherFormFactory._get_model_for_voucher_config(purchase_config)
+            line_model = VoucherFormFactory._get_line_model_for_voucher_config(purchase_config)
 
-            self.assertEqual(header_model, PurchaseOrderVoucher)
-            self.assertEqual(line_model, PurchaseOrderVoucherLine)
-
-        if purchase_return_config:
-            header_model = VoucherFormFactory._get_model_for_voucher_config(purchase_return_config)
-            line_model = VoucherFormFactory._get_line_model_for_voucher_config(purchase_return_config)
-
-            self.assertEqual(header_model, PurchaseReturnVoucher)
-            self.assertEqual(line_model, PurchaseReturnVoucherLine)
+            self.assertEqual(header_model, Journal)
+            self.assertEqual(line_model, JournalLine)
 
     def test_model_mappings_sales(self):
         """Test model mappings for sales module configurations."""
-        sales_order_config = VoucherConfiguration.objects.filter(
-            module='sales', code='sales_order'
+        sales_order_config = VoucherModeConfig.objects.filter(
+            module='sales'
         ).first()
 
         if sales_order_config:
             header_model = VoucherFormFactory._get_model_for_voucher_config(sales_order_config)
             line_model = VoucherFormFactory._get_line_model_for_voucher_config(sales_order_config)
 
-            self.assertEqual(header_model, SalesOrderVoucher)
-            self.assertEqual(line_model, SalesOrderVoucherLine)
+            self.assertEqual(header_model, Journal)
+            self.assertEqual(line_model, JournalLine)
 
     def test_form_creation_accounting(self):
         """Test form creation for accounting configurations."""
-        config = VoucherConfiguration.objects.filter(module='accounting').first()
+        config = VoucherModeConfig.objects.filter(module='accounting').first()
 
         if config:
             form = VoucherFormFactory.get_generic_voucher_form(config, self.organization)
@@ -257,7 +242,7 @@ class DynamicVoucherTestCase(TestCase):
 
     def test_form_creation_purchasing(self):
         """Test form creation for purchasing configurations."""
-        configs = VoucherConfiguration.objects.filter(module='purchasing')
+        configs = VoucherModeConfig.objects.filter(module='purchasing')
 
         for config in configs[:2]:  # Test first 2
             with self.subTest(config=config.name):
@@ -269,7 +254,7 @@ class DynamicVoucherTestCase(TestCase):
 
     def test_form_creation_sales(self):
         """Test form creation for sales configurations."""
-        configs = VoucherConfiguration.objects.filter(module='sales')
+        configs = VoucherModeConfig.objects.filter(module='sales')
 
         for config in configs[:2]:  # Test first 2
             with self.subTest(config=config.name):
@@ -281,30 +266,30 @@ class DynamicVoucherTestCase(TestCase):
 
     def test_form_schema_validation(self):
         """Test that forms are created with correct fields from schema."""
-        config = VoucherConfiguration.objects.filter(module='purchasing', code='purchase_return').first()
+        config = VoucherModeConfig.objects.filter(module='purchasing').first()
 
-        if config and config.ui_schema:
+        if config and config.schema_definition:
             form = VoucherFormFactory.get_generic_voucher_form(config, self.organization)
             form_instance = form()
 
             # Check that expected fields exist
-            expected_fields = ['supplier', 'narration', 'voucher_date', 'original_invoice']
+            expected_fields = ['supplier', 'reference', 'date']
             for field_name in expected_fields:
                 self.assertIn(field_name, form_instance.fields,
                             f"Form should have field: {field_name}")
 
     def test_formset_schema_validation(self):
         """Test that formsets are created with correct fields from schema."""
-        config = VoucherConfiguration.objects.filter(module='purchasing', code='purchase_return').first()
+        config = VoucherModeConfig.objects.filter(module='purchasing').first()
 
-        if config and config.ui_schema:
+        if config and config.schema_definition:
             formset = VoucherFormFactory.get_generic_voucher_formset(config, self.organization)
             formset_instance = formset()
 
             if formset_instance.forms:
                 first_form = formset_instance.forms[0]
                 # Check that expected line fields exist
-                expected_fields = ['item', 'reason', 'quantity', 'unit_price']
+                expected_fields = ['item', 'quantity', 'price']
                 for field_name in expected_fields:
                     self.assertIn(field_name, first_form.fields,
                                 f"Formset form should have field: {field_name}")
@@ -313,11 +298,11 @@ class DynamicVoucherTestCase(TestCase):
         """Test that duplicate (module, code) pairs are handled correctly."""
         # Find configurations with duplicate (module, code)
         from django.db.models import Count
-        duplicates = VoucherConfiguration.objects.values('module', 'code') \
+        duplicates = VoucherModeConfig.objects.values('module', 'code') \
             .annotate(count=Count('config_id')).filter(count__gt=1)
 
         for dup in duplicates:
-            configs = VoucherConfiguration.objects.filter(
+            configs = VoucherModeConfig.objects.filter(
                 module=dup['module'], code=dup['code']
             )
 
@@ -338,12 +323,12 @@ class DynamicVoucherTestCase(TestCase):
     def test_inventory_module_fallback(self):
         """Test that inventory module falls back to Journal models."""
         # Create a mock inventory config for testing
-        inventory_config = VoucherConfiguration(
+        inventory_config = VoucherModeConfig(
             module='inventory',
             code='test_inventory',
             name='Test Inventory Config',
             organization=self.organization,
-            ui_schema={'header': [], 'lines': []}
+            schema_definition=ui_schema_to_definition({'header': [], 'lines': []})
         )
 
         header_model = VoucherFormFactory._get_model_for_voucher_config(inventory_config)
@@ -354,12 +339,12 @@ class DynamicVoucherTestCase(TestCase):
 
     def test_unknown_module_fallback(self):
         """Test that unknown modules fall back to Journal models."""
-        unknown_config = VoucherConfiguration(
+        unknown_config = VoucherModeConfig(
             module='unknown_module',
             code='test_unknown',
             name='Test Unknown Config',
             organization=self.organization,
-            ui_schema={'header': [], 'lines': []}
+            schema_definition=ui_schema_to_definition({'header': [], 'lines': []})
         )
 
         header_model = VoucherFormFactory._get_model_for_voucher_config(unknown_config)
@@ -373,6 +358,7 @@ class DynamicVoucherTestCase(TestCase):
         required_methods = [
             'get_generic_voucher_form',
             'get_generic_voucher_formset',
+            'build',
             '_get_model_for_voucher_config',
             '_get_line_model_for_voucher_config'
         ]
@@ -383,6 +369,25 @@ class DynamicVoucherTestCase(TestCase):
             method = getattr(VoucherFormFactory, method_name)
             self.assertTrue(callable(method),
                           f"{method_name} should be callable")
+
+    def test_rejects_unknown_field_type(self):
+        """Unsupported field types should be rejected with CFG-001."""
+        bad_config = VoucherModeConfig.objects.create(
+            code="VM_BAD",
+            name="Bad Config",
+            description="Invalid type for schema validation",
+            module="accounting",
+            organization=self.organization,
+            schema_definition=ui_schema_to_definition({
+                "header": {
+                    "bad_field": {"type": "not_a_type", "required": True},
+                },
+                "lines": {},
+            }),
+        )
+        with self.assertRaises(VoucherProcessError) as exc:
+            VoucherFormFactory.build(bad_config, self.organization)
+        self.assertEqual(exc.exception.code, "CFG-001")
 
 
 class DynamicVoucherIntegrationTestCase(TestCase):
@@ -408,7 +413,7 @@ class DynamicVoucherIntegrationTestCase(TestCase):
 
     def test_complete_voucher_workflow(self):
         """Test complete voucher creation workflow."""
-        config = VoucherConfiguration.objects.filter(module='purchasing', code='purchase_return').first()
+        config = VoucherModeConfig.objects.filter(module='purchasing').first()
 
         if config:
             # Create form and formset
@@ -424,5 +429,5 @@ class DynamicVoucherIntegrationTestCase(TestCase):
             self.assertIsNotNone(formset_instance.as_p())
 
             # Verify form is bound to correct model
-            self.assertEqual(form_instance._meta.model, PurchaseReturnVoucher)
-            self.assertEqual(formset_instance.form._meta.model, PurchaseReturnVoucherLine)
+            self.assertEqual(form_instance._meta.model, Journal)
+            self.assertEqual(formset_instance.form._meta.model, JournalLine)

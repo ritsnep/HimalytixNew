@@ -42,6 +42,9 @@ SalesInvoiceLineFormSet = inlineformset_factory(
     can_delete=True,
 )
 
+def _is_htmx(request) -> bool:
+    return request.headers.get("HX-Request") == "true" or getattr(request, "htmx", False)
+
 
 def _get_sales_journal_type(organization):
     """Best-effort lookup for the sales journal type used when posting invoices."""
@@ -102,7 +105,7 @@ class SalesInvoiceCreateView(PermissionRequiredMixin, View):
         )
         formset = SalesInvoiceLineFormSet(prefix="lines", form_kwargs={"organization": organization})
         context = self._build_context(form, formset, organization)
-        return render(request, self.template_name, context)
+        return self._render_response(request, context)
 
     @transaction.atomic
     def post(self, request):
@@ -111,7 +114,7 @@ class SalesInvoiceCreateView(PermissionRequiredMixin, View):
         formset = SalesInvoiceLineFormSet(request.POST, prefix="lines", form_kwargs={"organization": organization})
         context = self._build_context(form, formset, organization)
         if not (form.is_valid() and formset.is_valid()):
-            return render(request, self.template_name, context)
+            return self._render_response(request, context, status=422)
 
         line_payload = []
         invoice_date = form.cleaned_data.get("invoice_date") or timezone.now().date()
@@ -154,7 +157,7 @@ class SalesInvoiceCreateView(PermissionRequiredMixin, View):
 
         if not line_payload:
             form.add_error(None, "At least one line item is required.")
-            return render(request, self.template_name, context)
+            return self._render_response(request, context, status=422)
 
         try:
             service = SalesInvoiceService(request.user)
@@ -181,19 +184,29 @@ class SalesInvoiceCreateView(PermissionRequiredMixin, View):
                 journal_type = _get_sales_journal_type(organization)
                 if journal_type is None:
                     raise ValidationError("Please configure a Sales journal type for this organization.")
+                from accounting.utils.idempotency import resolve_idempotency_key
                 service.post_invoice(
                     invoice,
                     journal_type,
                     warehouse=invoice.warehouse,
+                    idempotency_key=resolve_idempotency_key(request),
                 )
-                messages.success(request, f"Invoice {invoice.invoice_number} posted and ready to print.")
+                context["alert_message"] = f"Invoice {invoice.invoice_number} posted and ready to print."
+                context["alert_level"] = "success"
+                if not _is_htmx(request):
+                    messages.success(request, context["alert_message"])
             else:
-                messages.success(request, "Sales invoice saved as draft.")
+                context["alert_message"] = "Sales invoice saved as draft."
+                context["alert_level"] = "success"
+                if not _is_htmx(request):
+                    messages.success(request, context["alert_message"])
         except ValidationError as exc:
             transaction.set_rollback(True)
             form.add_error(None, exc)
-            return render(request, self.template_name, context)
+            return self._render_response(request, context, status=422)
 
+        if _is_htmx(request):
+            return self._render_response(request, context)
         return redirect(reverse("accounting:sales_invoice_list"))
 
     def _calculate_taxes(self, *, organization, invoice_date, base_amount: Decimal, selected_tax_codes):
@@ -223,6 +236,14 @@ class SalesInvoiceCreateView(PermissionRequiredMixin, View):
             "customer_data_json": json.dumps(self._serialize_customers(form), default=str),
             "payment_term_data_json": json.dumps(self._serialize_payment_terms(organization), default=str),
         }
+
+    def _render_response(self, request, context, status=200):
+        template = (
+            "accounting/partials/sales_invoice_form_panel.html"
+            if _is_htmx(request)
+            else self.template_name
+        )
+        return render(request, template, context, status=status)
 
     def _serialize_products(self, organization):
         products = Product.objects.filter(organization=organization).select_related("income_account")
@@ -306,7 +327,13 @@ class SalesInvoicePostView(PermissionRequiredMixin, View):
             journal_type = _get_sales_journal_type(organization)
             if journal_type is None:
                 raise ValidationError("Please configure a Sales journal type for this organization.")
-            service.post_invoice(invoice, journal_type, warehouse=warehouse)
+            from accounting.utils.idempotency import resolve_idempotency_key
+            service.post_invoice(
+                invoice,
+                journal_type,
+                warehouse=warehouse,
+                idempotency_key=resolve_idempotency_key(request),
+            )
             messages.success(request, f"Invoice {invoice.invoice_number} posted successfully.")
         except ValidationError as exc:
             messages.error(request, f"Unable to post invoice: {exc}")

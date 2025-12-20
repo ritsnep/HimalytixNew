@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.db.models.signals import pre_save, post_save
 from notification_center import signals as notify_signals
 
-from accounting.forms.form_factory import VoucherFormFactory
+from accounting.forms_factory import VoucherFormFactory
 from accounting.forms.journal_form import JournalForm
 from accounting.forms.journal_line_form import JournalLineForm
 from accounting.forms.currency_exchange_rate_form import CurrencyExchangeRateForm

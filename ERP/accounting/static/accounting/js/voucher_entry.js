@@ -1615,7 +1615,7 @@ const App = {
 
   applyConfig(config) {
     if (!config || typeof config !== 'object') return;
-    const ui = config.uiSchema || config.ui_schema || {};
+    const ui = config.uiSchema || {};
     const headerSchema = ui.header || {};
     const lineSchema = ui.lines || {};
     const metadata = config.metadata || {};

@@ -18,10 +18,21 @@
               </div>
             {% endif %}
             <div class="mb-3">
+              <label for="id_code" class="form-label">Code <span class="text-danger">*</span></label>
+              {{ form.code }}
+              <div class="form-text">Stable identifier for this voucher type.</div>
+              {% if form.code.errors %}<div class="invalid-feedback d-block">{{ form.code.errors }}</div>{% endif %}
+            </div>
+            <div class="mb-3">
               <label for="id_name" class="form-label">Name <span class="text-danger">*</span></label>
               {{ form.name }}
               <div class="form-text">A descriptive name for this voucher configuration.</div>
               {% if form.name.errors %}<div class="invalid-feedback d-block">{{ form.name.errors }}</div>{% endif %}
+            </div>
+            <div class="mb-3">
+              <label for="id_module" class="form-label">Module</label>
+              {{ form.module }}
+              {% if form.module.errors %}<div class="invalid-feedback d-block">{{ form.module.errors }}</div>{% endif %}
             </div>
             <div class="mb-3">
               <label for="id_description" class="form-label">Description</label>
@@ -50,6 +61,21 @@
               {% if form.is_default.errors %}<div class="invalid-feedback d-block">{{ form.is_default.errors }}</div>{% endif %}
             </div>
             <div class="form-check mb-2">
+              {{ form.affects_gl }}
+              <label class="form-check-label" for="id_affects_gl">Affects GL</label>
+              {% if form.affects_gl.errors %}<div class="invalid-feedback d-block">{{ form.affects_gl.errors }}</div>{% endif %}
+            </div>
+            <div class="form-check mb-2">
+              {{ form.affects_inventory }}
+              <label class="form-check-label" for="id_affects_inventory">Affects Inventory</label>
+              {% if form.affects_inventory.errors %}<div class="invalid-feedback d-block">{{ form.affects_inventory.errors }}</div>{% endif %}
+            </div>
+            <div class="form-check mb-2">
+              {{ form.requires_approval }}
+              <label class="form-check-label" for="id_requires_approval">Requires Approval</label>
+              {% if form.requires_approval.errors %}<div class="invalid-feedback d-block">{{ form.requires_approval.errors }}</div>{% endif %}
+            </div>
+            <div class="form-check mb-2">
               {{ form.show_account_balances }}
               <label class="form-check-label" for="id_show_account_balances">Show Account Balances</label>
               {% if form.show_account_balances.errors %}<div class="invalid-feedback d-block">{{ form.show_account_balances.errors }}</div>{% endif %}
@@ -74,17 +100,9 @@
               <label class="form-check-label" for="id_require_line_description">Require Line Description</label>
               {% if form.require_line_description.errors %}<div class="invalid-feedback d-block">{{ form.require_line_description.errors }}</div>{% endif %}
             </div>
-            <div class="mb-3">
-              <label for="id_ui_schema" class="form-label">Form Schema (JSON)</label>
-              {{ form.ui_schema }}
-              <div class="form-text">JSON configuration for the voucher form layout.</div>
-              {% if form.ui_schema.errors %}<div class="invalid-feedback d-block">{{ form.ui_schema.errors }}</div>{% endif %}
-            </div>
-
             <div class="d-flex justify-content-between mt-4">
               <a href="{% url 'accounting:voucher_config_list' %}" class="btn btn-secondary">Cancel</a>
               <div>
-                <button type="submit" name="reset_to_default" class="btn btn-warning" onclick="return confirm('Are you sure you want to reset the schema to default? This cannot be undone.');">Reset to Default</button>
                 <button type="submit" class="btn btn-primary">Save</button>
               </div>
             </div>

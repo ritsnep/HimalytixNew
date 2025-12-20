@@ -113,6 +113,14 @@ def ensure_company_config(sender, instance: Organization, created, **kwargs):
         # Seed core vendor + AP setup
         with transaction.atomic():
             _seed_noc_vendor(instance)
+            try:
+                from accounting.services.voucher_seeding import seed_voucher_configs
+                seed_voucher_configs(instance, reset=False, repair=True)
+            except Exception:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.exception("Voucher definition seeding failed for org %s", instance.id)
+                raise
 
 
 # ============================================================================
@@ -230,4 +238,3 @@ def on_user_login_failed(sender, credentials, request, **kwargs):
                 import logging
                 logger = logging.getLogger(__name__)
                 logger.error(f"Failed to log failed login attempt: {str(e)}")
-

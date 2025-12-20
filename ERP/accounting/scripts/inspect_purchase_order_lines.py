@@ -1,16 +1,16 @@
 import json
 import pprint
 
-from accounting.models import VoucherConfiguration
+from accounting.models import VoucherModeConfig
 from accounting.forms_factory import VoucherFormFactory
 
 code = 'purchase_order'
-cfg = VoucherConfiguration.objects.filter(code=code).first()
+cfg = VoucherModeConfig.objects.filter(code=code).first()
 if not cfg:
-    print('No VoucherConfiguration found for code:', code)
+    print('No VoucherModeConfig found for code:', code)
 else:
     print('=== UI_SCHEMA (lines section) ===')
-    ui = cfg.ui_schema or {}
+    ui = cfg.resolve_ui_schema() or {}
     lines_schema = ui.get('lines')
     pprint.pprint(lines_schema)
 

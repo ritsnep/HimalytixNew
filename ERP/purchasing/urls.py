@@ -1,58 +1,44 @@
 from django.urls import path
 
-from purchasing import views
-from purchasing.views_po import (
-    POWorkspaceView,
-    POListView,
-    POListPageView,
-    PODetailView,
-    POCreateView,
-    POUpdateView,
-    POApproveView,
-    POSendView,
-    POCancelView,
-    POLineAddView,
-)
-from purchasing.views_gr import (
-    GRWorkspaceView,
-    GRListView,
-    GRListPageView,
-    GRDetailView,
-    GRCreateView,
-    GRUpdateView,
-    GRPostView,
-    GRCancelView,
-    GRLineUpdateView,
-)
+from purchasing import views, unified_views
 from purchasing.views import reports
 
 app_name = "purchasing"
 
 urlpatterns = [
-    # Purchase Orders
-    path("pos/", POWorkspaceView.as_view(), name="po_workspace"),
-    path("pos/list/", POListView.as_view(), name="po_list"),
-    path("pos/table/", POListPageView.as_view(), name="po_table"),
-    path("pos/create/", POCreateView.as_view(), name="po_create"),
-    path("pos/<int:pk>/", PODetailView.as_view(), name="po_detail"),
-    path("pos/<int:pk>/edit/", POUpdateView.as_view(), name="po_edit"),
-    path("pos/<int:pk>/approve/", POApproveView.as_view(), name="po_approve"),
-    path("pos/<int:pk>/send/", POSendView.as_view(), name="po_send"),
-    path("pos/<int:pk>/cancel/", POCancelView.as_view(), name="po_cancel"),
-    path("pos/<int:pk>/line/add/", POLineAddView.as_view(), name="po_line_add"),
+    # ===== UNIFIED WORKFLOW ROUTES (PRODUCTION) =====
     
-    # Goods Receipts
-    path("grs/", GRWorkspaceView.as_view(), name="gr_workspace"),
-    path("grs/list/", GRListView.as_view(), name="gr_list"),
-    path("grs/table/", GRListPageView.as_view(), name="gr_table"),
-    path("grs/create/", GRCreateView.as_view(), name="gr_create"),
-    path("grs/<int:pk>/", GRDetailView.as_view(), name="gr_detail"),
-    path("grs/<int:pk>/edit/", GRUpdateView.as_view(), name="gr_edit"),
-    path("grs/<int:pk>/post/", GRPostView.as_view(), name="gr_post"),
-    path("grs/<int:pk>/cancel/", GRCancelView.as_view(), name="gr_cancel"),
-    path("grs/line/<int:pk>/update/", GRLineUpdateView.as_view(), name="gr_line_update"),
+    # Purchase Orders - Unified Form
+    path("orders/new/", unified_views.po_unified_form, name="po_unified_create"),
+    path("orders/<int:pk>/edit/", unified_views.po_unified_form, name="po_unified_edit"),
+    path("orders/<int:pk>/", unified_views.po_detail, name="po_detail"),
+    path("orders/<int:pk>/approve/", unified_views.po_approve, name="po_unified_approve"),
+    path("orders/<int:pk>/send/", unified_views.po_send, name="po_unified_send"),
+    path("orders/<int:pk>/cancel/", unified_views.po_cancel, name="po_unified_cancel"),
     
-    # Invoices (existing)
+    # Goods Receipts - Unified Form
+    path("receipts/new/", unified_views.gr_unified_form, name="gr_unified_create"),
+    path("receipts/<int:pk>/edit/", unified_views.gr_unified_form, name="gr_unified_edit"),
+    path("receipts/<int:pk>/", unified_views.gr_detail, name="gr_detail"),
+    path("receipts/<int:pk>/inspect/", unified_views.gr_inspect, name="gr_unified_inspect"),
+    path("receipts/<int:pk>/post/", unified_views.gr_post, name="gr_unified_post"),
+    path("receipts/<int:pk>/cancel/", unified_views.gr_cancel, name="gr_unified_cancel"),
+    
+    # Purchase Returns - Unified Form
+    path("returns/new/", unified_views.pr_unified_form, name="pr_unified_create"),
+    path("returns/<int:pk>/", unified_views.pr_unified_form, name="pr_unified_edit"),
+    path("invoices/<int:from_invoice_id>/return/", unified_views.pr_unified_form, name="pr_from_invoice"),
+    
+    # Landed Cost - Unified Form
+    path("invoices/<int:invoice_id>/landed-cost/new/", unified_views.landed_cost_unified_form, name="landed_cost_unified_create"),
+    path("invoices/<int:invoice_id>/landed-cost/<int:doc_id>/edit/", unified_views.landed_cost_unified_form, name="landed_cost_unified_edit"),
+    path("landed-cost/<int:doc_id>/allocate/", unified_views.landed_cost_allocate, name="landed-cost-allocate"),
+    path("landed-cost/<int:doc_id>/delete/", unified_views.landed_cost_delete, name="landed-cost-delete"),
+    
+    # ===== LEGACY DISPLAY ROUTES (kept for backward compatibility, will be deprecated) =====
+    # These list/table views redirect to the unified forms above
+    
+    # Purchase Invoices (Legacy - main workspace)
     path("", views.workspace, name="workspace"),
     path("invoices/", views.invoice_list, name="invoice-list"),
     path("invoices/new/", views.invoice_form, name="invoice-create"),
@@ -62,6 +48,11 @@ urlpatterns = [
     path("invoices/<int:pk>/delete/", views.invoice_delete, name="invoice-delete"),
     path("invoices/<int:pk>/reverse/", views.invoice_reverse, name="invoice-reverse"),
     path("invoices/<int:pk>/return/", views.invoice_return, name="invoice-return"),
+    path("invoices/table/", views.invoice_list_page, name="invoice-table"),
+    path("invoices/recalc/", views.invoice_recalc, name="invoice-recalc"),
+    path("invoices/validate/", views.invoice_validate, name="invoice-validate"),
+    
+    # Landed Cost (Legacy)
     path(
         "landed-cost/<int:invoice_id>/new/",
         views.landed_cost_form,
@@ -77,7 +68,12 @@ urlpatterns = [
         views.landed_cost_apply,
         name="landed-cost-apply",
     ),
-    path("reports/", reports, name="reports"),
-    path("invoices/table/", views.invoice_list_page, name="invoice-table"),
     path("landed-cost/table/", views.landed_cost_list_page, name="landed-cost-table"),
+    
+    # PO and GR Legacy Views (kept as fallback)
+    path("pos/table/", views.po_list_page_legacy, name="po_table"),
+    path("grs/table/", views.gr_list_page_legacy, name="gr_table"),
+    
+    # Reports
+    path("reports/", reports, name="reports"),
 ]

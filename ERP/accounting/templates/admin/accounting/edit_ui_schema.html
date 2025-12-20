@@ -42,6 +42,7 @@
   {% endfor %}
 
   <h3>Raw JSON (alternative)</h3>
+  <p class="text-danger">Legacy UI schema is ignored at runtime; edits here are not applied to voucher entry.</p>
   <p>You can edit the raw `ui_schema` JSON directly here as a fallback. Changes here will replace the UI schema completely.</p>
   <textarea name="ui_schema_json" rows="12" style="width:100%;">{{ ui_json }}</textarea>
 

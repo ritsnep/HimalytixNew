@@ -14,6 +14,7 @@ from accounting.models import (
     TransactionTypeConfig,
     VoucherModeConfig,
 )
+from accounting.voucher_schema import ui_schema_to_definition
 
 
 def build_item_schema(party_key, party_label, extra_header=None):
@@ -193,23 +194,23 @@ class Command(BaseCommand):
                 "name": "Journal Entry",
                 "journal_type_code": "JE",
                 "journal_type_name": "Journal Entry",
-                "ui_schema": journal_ui_schema,
+                "schema_definition": ui_schema_to_definition(journal_ui_schema),
                 "is_default": True,
             },
-            {"config_code": "VM-PO", "name": "Purchase Order", "journal_type_code": "PO", "journal_type_name": "Purchase Order", "ui_schema": purchase_item_schema},
-            {"config_code": "VM-GR", "name": "Goods Receipt", "journal_type_code": "GR", "journal_type_name": "Goods Receipt", "ui_schema": goods_receipt_schema},
-            {"config_code": "VM-PI", "name": "Purchase Invoice", "journal_type_code": "PI", "journal_type_name": "Purchase Invoice", "ui_schema": purchase_item_schema},
-            {"config_code": "VM-PR", "name": "Purchase Return", "journal_type_code": "PR", "journal_type_name": "Purchase Return", "ui_schema": purchase_item_schema},
-            {"config_code": "VM-PDN", "name": "Purchase Debit Note", "journal_type_code": "PDN", "journal_type_name": "Purchase Debit Note", "ui_schema": purchase_item_schema},
-            {"config_code": "VM-PCN", "name": "Purchase Credit Note", "journal_type_code": "PCN", "journal_type_name": "Purchase Credit Note", "ui_schema": purchase_item_schema},
-            {"config_code": "VM-LC", "name": "Landed Cost", "journal_type_code": "LC", "journal_type_name": "Landed Cost", "ui_schema": landed_cost_schema},
-            {"config_code": "VM-SQ", "name": "Sales Quote", "journal_type_code": "SQ", "journal_type_name": "Sales Quote", "ui_schema": sales_item_schema},
-            {"config_code": "VM-SO", "name": "Sales Order", "journal_type_code": "SO", "journal_type_name": "Sales Order", "ui_schema": sales_item_schema},
-            {"config_code": "VM-SD", "name": "Sales Delivery", "journal_type_code": "SD", "journal_type_name": "Sales Delivery", "ui_schema": sales_delivery_schema},
-            {"config_code": "VM-SI", "name": "Sales Invoice", "journal_type_code": "SI", "journal_type_name": "Sales Invoice", "ui_schema": sales_item_schema},
-            {"config_code": "VM-SR", "name": "Sales Return", "journal_type_code": "SR", "journal_type_name": "Sales Return", "ui_schema": sales_item_schema},
-            {"config_code": "VM-SDN", "name": "Sales Debit Note", "journal_type_code": "SDN", "journal_type_name": "Sales Debit Note", "ui_schema": sales_item_schema},
-            {"config_code": "VM-SCN", "name": "Sales Credit Note", "journal_type_code": "SCN", "journal_type_name": "Sales Credit Note", "ui_schema": sales_item_schema},
+            {"config_code": "VM-PO", "name": "Purchase Order", "journal_type_code": "PO", "journal_type_name": "Purchase Order", "schema_definition": ui_schema_to_definition(purchase_item_schema)},
+            {"config_code": "VM-GR", "name": "Goods Receipt", "journal_type_code": "GR", "journal_type_name": "Goods Receipt", "schema_definition": ui_schema_to_definition(goods_receipt_schema)},
+            {"config_code": "VM-PI", "name": "Purchase Invoice", "journal_type_code": "PI", "journal_type_name": "Purchase Invoice", "schema_definition": ui_schema_to_definition(purchase_item_schema)},
+            {"config_code": "VM-PR", "name": "Purchase Return", "journal_type_code": "PR", "journal_type_name": "Purchase Return", "schema_definition": ui_schema_to_definition(purchase_item_schema)},
+            {"config_code": "VM-PDN", "name": "Purchase Debit Note", "journal_type_code": "PDN", "journal_type_name": "Purchase Debit Note", "schema_definition": ui_schema_to_definition(purchase_item_schema)},
+            {"config_code": "VM-PCN", "name": "Purchase Credit Note", "journal_type_code": "PCN", "journal_type_name": "Purchase Credit Note", "schema_definition": ui_schema_to_definition(purchase_item_schema)},
+            {"config_code": "VM-LC", "name": "Landed Cost", "journal_type_code": "LC", "journal_type_name": "Landed Cost", "schema_definition": ui_schema_to_definition(landed_cost_schema)},
+            {"config_code": "VM-SQ", "name": "Sales Quote", "journal_type_code": "SQ", "journal_type_name": "Sales Quote", "schema_definition": ui_schema_to_definition(sales_item_schema)},
+            {"config_code": "VM-SO", "name": "Sales Order", "journal_type_code": "SO", "journal_type_name": "Sales Order", "schema_definition": ui_schema_to_definition(sales_item_schema)},
+            {"config_code": "VM-SD", "name": "Sales Delivery", "journal_type_code": "SD", "journal_type_name": "Sales Delivery", "schema_definition": ui_schema_to_definition(sales_delivery_schema)},
+            {"config_code": "VM-SI", "name": "Sales Invoice", "journal_type_code": "SI", "journal_type_name": "Sales Invoice", "schema_definition": ui_schema_to_definition(sales_item_schema)},
+            {"config_code": "VM-SR", "name": "Sales Return", "journal_type_code": "SR", "journal_type_name": "Sales Return", "schema_definition": ui_schema_to_definition(sales_item_schema)},
+            {"config_code": "VM-SDN", "name": "Sales Debit Note", "journal_type_code": "SDN", "journal_type_name": "Sales Debit Note", "schema_definition": ui_schema_to_definition(sales_item_schema)},
+            {"config_code": "VM-SCN", "name": "Sales Credit Note", "journal_type_code": "SCN", "journal_type_name": "Sales Credit Note", "schema_definition": ui_schema_to_definition(sales_item_schema)},
         ]
 
         org_currency_code = org.base_currency_code.currency_code if hasattr(org.base_currency_code, "currency_code") else (org.base_currency_code or "USD")
@@ -226,7 +227,7 @@ class Command(BaseCommand):
                 "is_default": spec.get("is_default", False),
                 "is_active": True,
                 "journal_type": jt,
-                "ui_schema": spec["ui_schema"],
+                "schema_definition": spec["schema_definition"],
                 "default_currency": org_currency_code,
             }
             config, created = VoucherModeConfig.objects.get_or_create(

@@ -5,7 +5,7 @@ from decimal import Decimal
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "dashboard.settings")
 django.setup()
 
-from accounting.models import VoucherConfiguration, SalesInvoice, SalesInvoiceLine
+from accounting.models import VoucherModeConfig, SalesInvoice, SalesInvoiceLine
 from django.db import models
 
 def get_model_fields(model):
@@ -13,12 +13,12 @@ def get_model_fields(model):
 
 def compare_schema_with_model(config_code, header_model, line_model):
     try:
-        config = VoucherConfiguration.objects.get(code=config_code)
-    except VoucherConfiguration.DoesNotExist:
+        config = VoucherModeConfig.objects.get(code=config_code)
+    except VoucherModeConfig.DoesNotExist:
         print(f"Config {config_code} not found")
         return
 
-    ui_schema = config.ui_schema
+    ui_schema = config.resolve_ui_schema()
     header_schema = ui_schema.get("header", {})
     lines_schema = ui_schema.get("lines", {})
 

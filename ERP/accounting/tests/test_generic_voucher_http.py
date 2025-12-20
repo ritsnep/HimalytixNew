@@ -6,8 +6,9 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from accounting.forms.form_factory import VoucherFormFactory as LegacyVoucherFactory
-from accounting.models import AuditLog, VoucherConfiguration, Vendor, Customer
+from accounting.forms_factory import VoucherFormFactory as LegacyVoucherFactory
+from accounting.models import AuditLog, VoucherModeConfig, Vendor, Customer
+from accounting.voucher_schema import ui_schema_to_definition
 from accounting.tests.factories import (
     create_account_type,
     create_accounting_period,
@@ -166,22 +167,24 @@ class GenericVoucherHTTPCreationTests(TestCase):
         configs = []
         for module, schema in schemas.items():
             code = f'http_{module}'
-            cfg, _ = VoucherConfiguration.objects.get_or_create(
+            cfg, _ = VoucherModeConfig.objects.get_or_create(
                 organization=self.organization,
                 code=code,
                 defaults={
                     'name': f'HTTP {module.title()}',
                     'module': module,
-                    'ui_schema': schema,
+                    'journal_type': self.journal_type,
+                    'schema_definition': ui_schema_to_definition(schema),
                     'is_active': True,
                 },
             )
             # Ensure schema/module are updated if the config already existed
-            if cfg.ui_schema != schema or cfg.module != module or not cfg.is_active:
-                cfg.ui_schema = schema
+            if cfg.schema_definition != ui_schema_to_definition(schema) or cfg.module != module or not cfg.is_active:
+                cfg.schema_definition = ui_schema_to_definition(schema)
                 cfg.module = module
                 cfg.is_active = True
-                cfg.save(update_fields=['ui_schema', 'module', 'is_active'])
+                cfg.journal_type = self.journal_type
+                cfg.save(update_fields=['schema_definition', 'module', 'is_active', 'journal_type'])
             configs.append(cfg)
         return configs
 

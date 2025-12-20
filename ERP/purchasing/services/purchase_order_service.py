@@ -241,3 +241,27 @@ class PurchaseOrderService:
         po.save(skip_recalc=True)
         
         return po
+
+
+# Module-level convenience functions
+def post_purchase_order(po: PurchaseOrder, user=None) -> PurchaseOrder:
+    """
+    Convenience function to post a purchase order.
+    
+    Args:
+        po: PurchaseOrder instance
+        user: User initiating action (optional)
+    
+    Returns:
+        Updated PurchaseOrder instance
+    """
+    from django.contrib.auth import get_user_model
+    
+    if user is None:
+        User = get_user_model()
+        user = User.objects.first()
+    
+    service = PurchaseOrderService(user)
+    # PO status transitions are handled by approve, mark_sent, etc.
+    # This is a placeholder for future GL posting if needed
+    return po

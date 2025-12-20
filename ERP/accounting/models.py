@@ -1,5 +1,6 @@
 
 from datetime import timedelta
+import uuid
 from decimal import Decimal
 
 from django.core.validators import MinValueValidator, MaxValueValidator, RegexValidator
@@ -367,6 +368,22 @@ class AccountingPeriod(models.Model):
     archived_at = models.DateTimeField(null=True, blank=True)
     is_current = models.BooleanField(default=False)
     rowversion = models.BinaryField(editable=False, null=True, blank=True, help_text="For MSSQL: ROWVERSION for optimistic concurrency.")
+
+    @classmethod
+    def get_for_date(cls, organization, target_date):
+        """Return the accounting period covering the given date for an organization."""
+        if organization is None:
+            return None
+        filters = {"organization": organization}
+        if target_date is not None:
+            filters["start_date__lte"] = target_date
+            filters["end_date__gte"] = target_date
+        return (
+            cls.objects.filter(**filters)
+            .exclude(status="closed")
+            .order_by("-is_current", "-start_date")
+            .first()
+        )
     
     class Meta:
         unique_together = ('fiscal_year', 'period_number')
@@ -4370,6 +4387,8 @@ class JournalType(models.Model):
             # Collision detection: ensure the generated number doesn't already exist
             # This handles cases where sequence_next is out of sync with actual data
             max_attempts = 1000  # Safety limit to prevent infinite loop
+            found_unique = False
+            candidate_number = None
             for _ in range(max_attempts):
                 formatted_num = str(next_num).zfill(padding)
                 candidate_number = f"{prefix}{formatted_num}{suffix}"
@@ -4379,8 +4398,14 @@ class JournalType(models.Model):
                     organization=jt.organization,
                     journal_number=candidate_number
                 ).exists():
+                    found_unique = True
                     break  # Found a unique number
                 next_num += 1
+
+            if not found_unique:
+                raise ValidationError(
+                    "Unable to generate a unique journal number. Please review sequence settings."
+                )
             
             jt.sequence_next = next_num + 1
 
@@ -4634,6 +4659,179 @@ class Journal(models.Model):
         # Update balanced flag
         self.is_balanced = (self.total_debit == self.total_credit)
 
+    def _resolve_posting_user(self, user=None):
+        if user is not None:
+            return user
+        if getattr(self, "updated_by", None):
+            return self.updated_by
+        if getattr(self, "created_by", None):
+            return self.created_by
+        return None
+
+    def create_gl_entries(self, user=None):
+        """
+        Post this journal to the general ledger using the standard posting flow.
+        """
+        from accounting.services.posting_service import PostingService
+
+        service = PostingService(self._resolve_posting_user(user))
+        return service.post(self)
+
+    def post_inventory_transactions(self, user=None, allow_negative_stock=None):
+        """
+        Post inventory movements described in metadata.inventory_transactions.
+
+        Expected transaction shape:
+            {
+              "txn_type": "receipt" | "issue",
+              "product_id": 123,
+              "warehouse_id": 456,
+              "quantity": "2.5",
+              "unit_cost": "10.00",           # receipt only
+              "grir_account_id": 789,         # receipt only
+              "cogs_account_id": 321,         # issue optional
+              "location_id": null,
+              "batch_id": null,
+              "txn_date": "2025-01-15"
+            }
+        """
+        from decimal import Decimal
+        from django.core.exceptions import ValidationError
+        from django.utils import timezone
+        from accounting.services.inventory_posting_service import InventoryPostingService
+        from inventory.models import Product, Warehouse, Location, Batch
+
+        metadata = dict(self.metadata or {})
+        transactions = list(metadata.get("inventory_transactions") or [])
+        if not transactions:
+            return []
+
+        policy = metadata.get("inventory_policy") or {}
+        if allow_negative_stock is None and isinstance(policy, dict):
+            allow_negative_stock = bool(policy.get("allow_negative_stock", False))
+        if allow_negative_stock is None:
+            allow_negative_stock = False
+
+        inventory_service = InventoryPostingService(organization=self.organization)
+        results = []
+
+        for idx, txn in enumerate(transactions, start=1):
+            txn_type = (txn.get("txn_type") or txn.get("type") or "").lower()
+            if txn_type not in {"receipt", "issue"}:
+                raise ValidationError(f"Inventory transaction {idx} has invalid txn_type.")
+
+            product = None
+            if txn.get("product_id"):
+                product = Product.objects.filter(pk=txn["product_id"]).first()
+            elif txn.get("product_code"):
+                product = Product.objects.filter(
+                    organization=self.organization,
+                    code=txn["product_code"],
+                ).first()
+            if not product:
+                raise ValidationError(f"Inventory transaction {idx} has invalid product.")
+            if product.organization_id != self.organization_id:
+                raise ValidationError("Inventory product must belong to the same organization.")
+
+            warehouse = None
+            if txn.get("warehouse_id"):
+                warehouse = Warehouse.objects.filter(pk=txn["warehouse_id"]).first()
+            elif txn.get("warehouse_code"):
+                warehouse = Warehouse.objects.filter(
+                    organization=self.organization,
+                    code=txn["warehouse_code"],
+                ).first()
+            if not warehouse:
+                raise ValidationError(f"Inventory transaction {idx} has invalid warehouse.")
+            if warehouse.organization_id != self.organization_id:
+                raise ValidationError("Warehouse must belong to the same organization.")
+
+            location = None
+            if txn.get("location_id"):
+                location = Location.objects.filter(pk=txn["location_id"]).first()
+            batch = None
+            if txn.get("batch_id"):
+                batch = Batch.objects.filter(pk=txn["batch_id"]).first()
+
+            try:
+                quantity = Decimal(str(txn.get("quantity", "0")))
+            except Exception as exc:
+                raise ValidationError(f"Inventory transaction {idx} has invalid quantity.") from exc
+            if quantity <= 0:
+                raise ValidationError(f"Inventory transaction {idx} quantity must be greater than zero.")
+
+            txn_date = txn.get("txn_date")
+            if isinstance(txn_date, str):
+                try:
+                    txn_date = timezone.datetime.fromisoformat(txn_date)
+                except ValueError:
+                    txn_date = None
+
+            if txn_type == "receipt":
+                try:
+                    unit_cost = Decimal(str(txn.get("unit_cost", "0")))
+                except Exception as exc:
+                    raise ValidationError(f"Inventory transaction {idx} has invalid unit_cost.") from exc
+                if unit_cost <= 0:
+                    raise ValidationError(f"Inventory transaction {idx} unit_cost must be greater than zero.")
+
+                grir_account_id = txn.get("grir_account_id") or txn.get("credit_account_id")
+                if not grir_account_id:
+                    raise ValidationError(f"Inventory transaction {idx} requires grir_account_id.")
+                grir_account = ChartOfAccount.objects.filter(pk=grir_account_id).first()
+                if not grir_account:
+                    raise ValidationError(f"Inventory transaction {idx} has invalid grir_account_id.")
+
+                result = inventory_service.record_receipt(
+                    product=product,
+                    warehouse=warehouse,
+                    quantity=quantity,
+                    unit_cost=unit_cost,
+                    grir_account=grir_account,
+                    reference_id=self.journal_number or str(self.pk),
+                    location=location,
+                    batch=batch,
+                    txn_date=txn_date,
+                )
+            else:
+                cogs_account_id = txn.get("cogs_account_id") or txn.get("debit_account_id")
+                cogs_account = None
+                if cogs_account_id:
+                    cogs_account = ChartOfAccount.objects.filter(pk=cogs_account_id).first()
+                    if not cogs_account:
+                        raise ValidationError(f"Inventory transaction {idx} has invalid cogs_account_id.")
+
+                result = inventory_service.record_issue(
+                    product=product,
+                    warehouse=warehouse,
+                    quantity=quantity,
+                    reference_id=self.journal_number or str(self.pk),
+                    cogs_account=cogs_account,
+                    location=location,
+                    batch=batch,
+                    txn_date=txn_date,
+                    allow_negative=allow_negative_stock,
+                )
+
+            results.append(
+                {
+                    "txn_type": txn_type,
+                    "product_id": product.pk,
+                    "warehouse_id": warehouse.pk,
+                    "quantity": str(result.quantity),
+                    "unit_cost": str(result.unit_cost),
+                    "total_cost": str(result.total_cost),
+                    "ledger_entry_id": result.ledger_entry.pk,
+                }
+            )
+
+        metadata["inventory_posting"] = {
+            "posted_at": timezone.now().isoformat(),
+            "entries": results,
+        }
+        self.metadata = metadata
+        return results
+
     def save(self, *args, **kwargs):
         from accounting.utils.audit import log_audit_event, get_changed_data
         
@@ -4670,6 +4868,67 @@ class Journal(models.Model):
             changed_data = get_changed_data(old_instance, model_to_dict(self))
             if changed_data:
                 log_audit_event(self.updated_by, self, 'updated', changes=changed_data)
+
+
+class VoucherProcess(models.Model):
+    STATUS_CHOICES = [
+        ("processing", "Processing"),
+        ("succeeded", "Succeeded"),
+        ("failed", "Failed"),
+    ]
+    STEP_CHOICES = [
+        ("pending", "Pending"),
+        ("in_progress", "In Progress"),
+        ("done", "Done"),
+        ("failed", "Failed"),
+    ]
+
+    attempt_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    journal = models.ForeignKey(
+        Journal,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="process_attempts",
+    )
+    journal_id_snapshot = models.BigIntegerField(null=True, blank=True)
+    organization = models.ForeignKey("usermanagement.Organization", on_delete=models.CASCADE)
+    actor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="voucher_attempts")
+    commit_type = models.CharField(max_length=20, default="post")
+    idempotency_key = models.CharField(max_length=255, null=True, blank=True)
+    correlation_id = models.UUIDField(default=uuid.uuid4, editable=False)
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="processing")
+    saved_status = models.CharField(max_length=20, choices=STEP_CHOICES, default="pending")
+    journal_status = models.CharField(max_length=20, choices=STEP_CHOICES, default="pending")
+    gl_status = models.CharField(max_length=20, choices=STEP_CHOICES, default="pending")
+    inventory_status = models.CharField(max_length=20, choices=STEP_CHOICES, default="pending")
+
+    error_code = models.CharField(max_length=32, null=True, blank=True)
+    error_details = models.JSONField(default=dict, blank=True)
+    retriable = models.BooleanField(default=False)
+
+    started_at = models.DateTimeField(auto_now_add=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+    duration_ms = models.PositiveIntegerField(null=True, blank=True)
+
+    class Meta:
+        db_table = "voucher_process"
+        indexes = [
+            models.Index(fields=["journal", "status"]),
+            models.Index(fields=["journal_id_snapshot", "status"], name="vproc_journal_snap_status_idx"),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["journal", "idempotency_key"],
+                condition=Q(idempotency_key__isnull=False),
+                name="uniq_voucher_process_idempotency",
+            )
+        ]
+
+    def __str__(self):
+        identifier = self.journal_id_snapshot or self.journal_id
+        return f"{identifier}::{self.status}"
 
 class JournalLine(models.Model):
     journal_line_id = models.BigAutoField(primary_key=True)
@@ -5458,11 +5717,31 @@ class VoucherModeConfig(models.Model):
     ]
     
     config_id = models.BigAutoField(primary_key=True)
+    MODULE_CHOICES = [
+        ('accounting', 'Accounting'),
+        ('banking', 'Banking'),
+        ('cash', 'Cash'),
+        ('sales', 'Sales'),
+        ('purchasing', 'Purchasing'),
+        ('inventory', 'Inventory'),
+        ('billing', 'Billing'),
+        ('pos', 'Point of Sale'),
+        ('manufacturing', 'Manufacturing'),
+        ('hr', 'Human Resources'),
+        ('other', 'Other'),
+    ]
+
     organization = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name='voucher_mode_configs', db_column='organization_id')
-    code = models.CharField(max_length=20)
+    code = models.CharField(max_length=50)
     name = models.CharField(max_length=100)
     description = models.TextField(null=True, blank=True)
+    module = models.CharField(max_length=20, choices=MODULE_CHOICES, default='accounting')
     journal_type = models.ForeignKey('JournalType', on_delete=models.CASCADE, null=True, blank=True, db_column='journal_type_id')
+    affects_gl = models.BooleanField(default=True)
+    affects_inventory = models.BooleanField(default=False)
+    requires_approval = models.BooleanField(default=False)
+    schema_definition = models.JSONField(default=dict, blank=True)
+    workflow_definition = models.JSONField(default=dict, blank=True)
     is_default = models.BooleanField(default=False)
     layout_style = models.CharField(max_length=20, choices=LAYOUT_CHOICES, default='standard')
     show_account_balances = models.BooleanField(default=True)
@@ -5487,19 +5766,17 @@ class VoucherModeConfig(models.Model):
     archived_at = models.DateTimeField(null=True, blank=True)
     rowversion = models.BinaryField(editable=False, null=True, blank=True, help_text="For MSSQL: ROWVERSION for optimistic concurrency.")
     archived_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='archived_voucher_configs')
-    ui_schema = models.JSONField(
-        default=default_ui_schema,
-        blank=True
-    )
     rowversion = models.PositiveIntegerField(default=1)
     validation_rules = models.JSONField(default=dict, blank=True)
 
     def resolve_ui(self):
-        """Return cleaned schema merged with system defaults."""
-        default = {"header": {}, "lines": {}}
-        merged = {**default, **(self.ui_schema or {})}
-        # Add any implicit fields your engine always needs here if required
-        return merged
+        """Return schema converted to legacy UI format for form rendering."""
+        from accounting.voucher_schema import definition_to_ui_schema
+        return definition_to_ui_schema(self.schema_definition or {})
+
+    def resolve_ui_schema(self):
+        """Compatibility alias for schema resolution."""
+        return self.resolve_ui()
     
     class Meta:
         db_table = 'voucher_mode_config'
@@ -5552,87 +5829,6 @@ class VoucherModeDefault(models.Model):
         return f"{self.config.name} - {self.account.account_name if self.account else self.account_type.name if self.account_type else 'Default'}"
 
 
-class VoucherConfiguration(models.Model):
-    """
-    Generic voucher configuration for cross-module voucher types.
-    Replaces VoucherModeConfig for non-accounting vouchers.
-    """
-    MODULE_CHOICES = [
-        ('accounting', 'Accounting'),
-        ('inventory', 'Inventory'),
-        ('purchasing', 'Purchasing'),
-        ('sales', 'Sales'),
-        ('billing', 'Billing'),
-        ('pos', 'Point of Sale'),
-        ('manufacturing', 'Manufacturing'),
-        ('hr', 'Human Resources'),
-        ('other', 'Other'),
-    ]
-    
-    LAYOUT_CHOICES = [
-        ('standard', 'Standard'),
-        ('compact', 'Compact'),
-        ('detailed', 'Detailed'),
-    ]
-    
-    config_id = models.BigAutoField(primary_key=True)
-    organization = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name='voucher_configurations', db_column='organization_id')
-    code = models.SlugField(max_length=50, help_text="Unique identifier for the voucher type (e.g., journal, sales_order)")
-    name = models.CharField(max_length=100, help_text="Human-readable name shown in selection dialogs")
-    module = models.CharField(max_length=20, choices=MODULE_CHOICES, default='accounting', help_text="Module this voucher belongs to")
-    description = models.TextField(null=True, blank=True)
-    
-    # UI Configuration
-    ui_schema = models.JSONField(default=dict, blank=True, help_text="JSON defining header and line fields, data types, validation rules")
-    layout_style = models.CharField(max_length=20, choices=LAYOUT_CHOICES, default='standard')
-    
-    # Layout toggles
-    show_account_balances = models.BooleanField(default=True)
-    show_tax_details = models.BooleanField(default=True)
-    show_dimensions = models.BooleanField(default=True)
-    allow_multiple_currencies = models.BooleanField(default=False)
-    require_line_description = models.BooleanField(default=True)
-    default_currency = models.CharField(max_length=3, default='USD')
-    
-    # Default Values
-    default_header = models.JSONField(default=dict, blank=True, help_text="JSON of default header values")
-    default_lines = models.JSONField(default=list, blank=True, help_text="List of default line dictionaries")
-    
-    # Validation and Versioning
-    validation_rules = models.JSONField(default=dict, blank=True, help_text="Optional custom validation logic")
-    version = models.CharField(max_length=32, default="1.0", help_text="Configuration version")
-    is_default = models.BooleanField(default=False, help_text="Is this the default config for this code?")
-    is_active = models.BooleanField(default=True)
-    
-    # Metadata
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_voucher_configurations')
-    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='updated_voucher_configurations')
-    archived_at = models.DateTimeField(null=True, blank=True)
-    archived_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='archived_voucher_configurations')
-
-    class Meta:
-        db_table = 'voucher_configuration'
-        unique_together = ('organization', 'code')
-        ordering = ['module', 'name']
-        indexes = [
-            models.Index(fields=['organization', 'module']),
-            models.Index(fields=['code', 'is_active']),
-        ]
-
-    def __str__(self):
-        return f"{self.module} - {self.name} ({self.code})"
-
-    def resolve_ui(self):
-        """Return cleaned schema merged with system defaults."""
-        default = {"header": {}, "lines": {}}
-        merged = {**default, **(self.ui_schema or {})}
-        return merged
-
-    def resolve_ui_schema(self):
-        """Alias for resolve_ui for compatibility."""
-        return self.resolve_ui()
 
 TRANSACTION_MODULE_CHOICES = [
     ('accounting', 'Accounting'),
@@ -5762,6 +5958,12 @@ class TransactionTypeConfig(models.Model):
     def __str__(self):
         return f"{self.organization.code}::{self.code}"
 
+    def save(self, *args, **kwargs):
+        # ui_schema is legacy-only; keep it empty to enforce single schema source.
+        if self.ui_schema:
+            self.ui_schema = {}
+        super().save(*args, **kwargs)
+
     def resolved_layout_flags(self) -> dict:
         flags = DEFAULT_LAYOUT_FLAGS.copy()
         flags.update(self.layout_flags or {})
@@ -5839,7 +6041,7 @@ class BaseVoucher(models.Model):
     reference_number = models.CharField(max_length=100, blank=True, null=True)
     narration = models.TextField(blank=True, null=True)
     configuration = models.ForeignKey(
-        'VoucherConfiguration',
+        'VoucherModeConfig',
         on_delete=models.PROTECT,
         related_name='%(class)s_vouchers',
         null=True,

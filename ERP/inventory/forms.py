@@ -29,6 +29,50 @@ class ProductCategoryForm(BootstrapFormMixin, forms.ModelForm):
 
 
 class ProductForm(BootstrapFormMixin, forms.ModelForm):
+    def __init__(self, *args, organization=None, **kwargs):
+        # Allow caller (views) to pass organization so we can filter/query defaults
+        if organization is not None and not getattr(self, 'organization', None):
+            self.organization = organization
+        super().__init__(*args, organization=organization, **kwargs)
+
+        # Filter GL account fields to this organization when available
+        org = getattr(self, 'organization', None)
+        if org:
+            try:
+                coa_qs = ChartOfAccount.objects.filter(organization=org, is_active=True)
+                # Narrow the account choices for each field where it makes sense
+                if 'income_account' in self.fields:
+                    self.fields['income_account'].queryset = coa_qs.filter(account_type__nature='income')
+                if 'expense_account' in self.fields:
+                    self.fields['expense_account'].queryset = coa_qs.filter(account_type__nature='expense')
+                if 'inventory_account' in self.fields:
+                    # Prefer accounts marked as control 'inventory' if present, else asset nature
+                    inv_control = coa_qs.filter(is_control_account=True, control_account_type='inventory')
+                    if inv_control.exists():
+                        self.fields['inventory_account'].queryset = inv_control
+                    else:
+                        self.fields['inventory_account'].queryset = coa_qs.filter(account_type__nature='asset')
+
+                # Apply sensible initial defaults if not provided by caller
+                if not self.initial.get('costing_method') and 'costing_method' in self.fields:
+                    self.initial['costing_method'] = self.fields['costing_method'].initial or self.fields['costing_method'].choices[0][0]
+
+                # Default GL picks: pick first available for each
+                if 'income_account' in self.fields and not self.initial.get('income_account'):
+                    first = self.fields['income_account'].queryset.first()
+                    if first:
+                        self.initial['income_account'] = first.pk
+                if 'expense_account' in self.fields and not self.initial.get('expense_account'):
+                    first = self.fields['expense_account'].queryset.first()
+                    if first:
+                        self.initial['expense_account'] = first.pk
+                if 'inventory_account' in self.fields and not self.initial.get('inventory_account'):
+                    first = self.fields['inventory_account'].queryset.first()
+                    if first:
+                        self.initial['inventory_account'] = first.pk
+            except Exception:
+                # Fail gracefully if accounting app isn't fully migrated or queries fail
+                pass
     class Meta:
         model = Product
         fields = (
@@ -64,6 +108,58 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
             'barcode': forms.TextInput(attrs={'class': 'form-control'}),
             'sku': forms.TextInput(attrs={'class': 'form-control'}),
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        is_inventory_item = cleaned_data.get('is_inventory_item')
+        costing_method = cleaned_data.get('costing_method')
+        
+        if is_inventory_item and not costing_method:
+            raise forms.ValidationError("Costing method is required for inventory items.")
+        
+        return cleaned_data
+
+
+    def __init__(self, *args, organization=None, **kwargs):
+        # Allow passing organization from views (UserOrganizationMixin does not do this
+        # by default for CreateView, so callers may need to pass it explicitly).
+        self.organization = organization or kwargs.pop('organization', None)
+        super().__init__(*args, **kwargs)
+
+        # Limit GL account querysets to the current organization and active accounts
+        try:
+            org = self.organization
+            if org:
+                coa_qs = ChartOfAccount.objects.filter(organization=org, is_active=True)
+            else:
+                coa_qs = ChartOfAccount.objects.filter(is_active=True)
+        except Exception:
+            coa_qs = ChartOfAccount.objects.none()
+
+        if 'income_account' in self.fields:
+            self.fields['income_account'].queryset = coa_qs.filter(account_type__nature='income')
+            # set sensible default if none provided
+            if not self.initial.get('income_account') and self.fields['income_account'].queryset.exists():
+                self.initial.setdefault('income_account', self.fields['income_account'].queryset.order_by('account_code').first().pk)
+
+        if 'expense_account' in self.fields:
+            self.fields['expense_account'].queryset = coa_qs.filter(account_type__nature='expense')
+            if not self.initial.get('expense_account') and self.fields['expense_account'].queryset.exists():
+                self.initial.setdefault('expense_account', self.fields['expense_account'].queryset.order_by('account_code').first().pk)
+
+        if 'inventory_account' in self.fields:
+            # Prefer control account of type 'inventory' if available, otherwise fall back to asset accounts
+            inv_qs = coa_qs.filter(control_account_type='inventory')
+            if not inv_qs.exists():
+                inv_qs = coa_qs.filter(account_type__nature='asset')
+            self.fields['inventory_account'].queryset = inv_qs
+            if not self.initial.get('inventory_account') and inv_qs.exists():
+                self.initial.setdefault('inventory_account', inv_qs.order_by('account_code').first().pk)
+
+        # Ensure costing method has a default initial shown in the form
+        if 'costing_method' in self.fields and not self.initial.get('costing_method'):
+            from .models import CostingMethod
+            self.initial.setdefault('costing_method', CostingMethod.WEIGHTED_AVERAGE)
 
 
 class UnitForm(BootstrapFormMixin, forms.ModelForm):

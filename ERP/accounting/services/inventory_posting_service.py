@@ -208,6 +208,7 @@ class InventoryPostingService:
         location=None,
         batch=None,
         txn_date=None,
+        allow_negative: bool = False,
     ) -> InventoryPostingResult:
         """
         Issue: Dr COGS, Cr Inventory at weighted-average cost.
@@ -217,14 +218,30 @@ class InventoryPostingService:
 
         txn_date = txn_date or timezone.now()
         item = self._get_or_create_item(product, warehouse)
+        calculator = self._build_calculator(
+            product=product, warehouse=warehouse, location=location, batch=batch
+        )
+        method = product.costing_method
 
-        if item.quantity_on_hand < quantity:
+        if not allow_negative and item.quantity_on_hand < quantity:
             raise ValueError("Insufficient quantity on hand for issue.")
 
         if method == CostingMethod.FIFO:
-            total_cost, ledger_unit_cost = calculator.consume_layers(quantity, CostingMethod.FIFO)
+            try:
+                total_cost, ledger_unit_cost = calculator.consume_layers(quantity, CostingMethod.FIFO)
+            except ValueError:
+                if not allow_negative:
+                    raise
+                ledger_unit_cost = product.standard_cost or item.unit_cost
+                total_cost = (ledger_unit_cost or Decimal("0")) * quantity
         elif method == CostingMethod.LIFO:
-            total_cost, ledger_unit_cost = calculator.consume_layers(quantity, CostingMethod.LIFO)
+            try:
+                total_cost, ledger_unit_cost = calculator.consume_layers(quantity, CostingMethod.LIFO)
+            except ValueError:
+                if not allow_negative:
+                    raise
+                ledger_unit_cost = product.standard_cost or item.unit_cost
+                total_cost = (ledger_unit_cost or Decimal("0")) * quantity
         elif method == CostingMethod.STANDARD:
             ledger_unit_cost = product.standard_cost or item.unit_cost
             total_cost = ledger_unit_cost * quantity

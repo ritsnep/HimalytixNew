@@ -49,6 +49,10 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+def _is_htmx(request) -> bool:
+    return request.headers.get("HX-Request") == "true" or getattr(request, "htmx", False)
+
+
 def _get_active_org(request):
     """Prefer the active organization helper and fall back to the direct FK."""
     getter = getattr(request.user, "get_active_organization", None)
@@ -88,6 +92,50 @@ def _preview_invoice_number(organization, invoice_date):
     suffix = sequence.suffix or ""
 
     return f"{prefix}{str(next_value).zfill(sequence.sequence_padding or 1)}{suffix}"
+
+
+def _build_invoice_entry_context(organization, invoice_date):
+    revenue_accounts = ChartOfAccount.objects.filter(
+        organization=organization,
+        account_type__nature="income",
+        is_active=True,
+    ).order_by("account_name")
+
+    tax_rates = TaxCode.objects.filter(
+        organization=organization,
+        is_active=True,
+    ).order_by("rate")
+
+    currencies = Currency.objects.filter(is_active=True).order_by("currency_code")
+    default_currency = getattr(organization, "base_currency_code", None) or currencies.first()
+
+    payment_terms = PaymentTerm.objects.filter(
+        organization=organization,
+        is_active=True,
+        term_type__in=["ar", "both"],
+    ).order_by("name")
+
+    journal_types = JournalType.objects.filter(
+        organization=organization, is_active=True
+    ).order_by("name")
+
+    warehouses = Warehouse.objects.filter(
+        organization=organization, is_active=True
+    ).order_by("name")
+
+    return {
+        "revenue_accounts": revenue_accounts,
+        "tax_rates": tax_rates,
+        "tax_codes": tax_rates,
+        "currencies": currencies,
+        "default_currency": default_currency,
+        "currency_code": default_currency.currency_code if default_currency else "NPR",
+        "payment_terms": payment_terms,
+        "journal_types": journal_types,
+        "warehouses": warehouses,
+        "today": invoice_date,
+        "next_invoice_number": _preview_invoice_number(organization, invoice_date),
+    }
 
 
 def _gather_tax_breakdown(base_amount, tax_code_ids, organization, invoice_date):
@@ -153,49 +201,7 @@ def invoice_create(request):
     """Main invoice creation page"""
     organization = _get_active_org(request)
     invoice_date = date.today()
-
-    revenue_accounts = ChartOfAccount.objects.filter(
-        organization=organization,
-        account_type__nature="income",
-        is_active=True,
-    ).order_by("account_name")
-
-    tax_rates = TaxCode.objects.filter(
-        organization=organization,
-        is_active=True,
-    ).order_by("rate")
-
-    currencies = Currency.objects.filter(is_active=True).order_by("currency_code")
-    default_currency = getattr(organization, "base_currency_code", None) or currencies.first()
-
-    payment_terms = PaymentTerm.objects.filter(
-        organization=organization,
-        is_active=True,
-        term_type__in=["ar", "both"],
-    ).order_by("name")
-
-    journal_types = JournalType.objects.filter(
-        organization=organization, is_active=True
-    ).order_by("name")
-
-    warehouses = Warehouse.objects.filter(
-        organization=organization, is_active=True
-    ).order_by("name")
-
-    context = {
-        "revenue_accounts": revenue_accounts,
-        "tax_rates": tax_rates,
-        "tax_codes": tax_rates,
-        "currencies": currencies,
-        "default_currency": default_currency,
-        "currency_code": default_currency.currency_code if default_currency else "NPR",
-        "payment_terms": payment_terms,
-        "journal_types": journal_types,
-        "warehouses": warehouses,
-        "today": invoice_date,
-        "next_invoice_number": _preview_invoice_number(organization, invoice_date),
-    }
-
+    context = _build_invoice_entry_context(organization, invoice_date)
     return render(request, "billing/invoice_create.html", context)
 
 
@@ -371,23 +377,93 @@ def invoice_save(request):
 
     organization = _get_active_org(request)
     action = request.POST.get("action", "save_draft")
+    invoice_date_context = date.today()
+
+    def _render_entry_error(message, level="danger", status=422):
+        response = render(
+            request,
+            "billing/partials/invoice_error_banner.html",
+            {"alert_message": message, "alert_level": level},
+            status=status,
+        )
+        response["HX-Retarget"] = "#sales-invoice-errors"
+        response["HX-Reswap"] = "innerHTML"
+        return response
 
     customer_id = request.POST.get("customer_id")
     if not customer_id:
+        if _is_htmx(request):
+            return _render_entry_error("Select a customer before saving the invoice.")
         messages.error(request, "Select a customer before saving the invoice.")
-        return redirect("billing:invoice_create")
+    return redirect("billing:invoice_create")
+
+
+@login_required
+@require_POST
+def invoice_validate(request):
+    """Validate invoice entry via HTMX without saving."""
+    organization = _get_active_org(request)
+
+    def _render_banner(message, level="danger", status=422):
+        response = render(
+            request,
+            "billing/partials/invoice_error_banner.html",
+            {"alert_message": message, "alert_level": level},
+            status=status,
+        )
+        response["HX-Retarget"] = "#sales-invoice-errors"
+        response["HX-Reswap"] = "innerHTML"
+        return response
+
+    customer_id = request.POST.get("customer_id")
+    if not customer_id:
+        return _render_banner("Select a customer before validating the invoice.")
+
+    try:
+        Customer.objects.get(pk=customer_id, organization=organization)
+    except Customer.DoesNotExist:
+        return _render_banner("Invalid customer selected.")
+
+    try:
+        datetime.fromisoformat(request.POST.get("invoice_date")).date()
+    except Exception:
+        return _render_banner("Invoice date is required.")
+
+    line_indices = [int(idx) for idx in request.POST.getlist("line_index[]") if idx]
+    line_indices.sort()
+    has_valid_line = False
+    for idx in line_indices:
+        description = (request.POST.get(f"description_{idx}", "") or "").strip()
+        if not description:
+            continue
+        quantity = Decimal(request.POST.get(f"quantity_{idx}", 0) or 0)
+        if quantity <= 0:
+            continue
+        has_valid_line = True
+        break
+
+    if not has_valid_line:
+        return _render_banner("Add at least one line item with quantity.")
+
+    return _render_banner("Validation passed.", level="success", status=200)
 
     try:
         customer = Customer.objects.get(pk=customer_id, organization=organization)
     except Customer.DoesNotExist:
+        if _is_htmx(request):
+            return _render_entry_error("Invalid customer selected.")
         messages.error(request, "Invalid customer selected.")
         return redirect("billing:invoice_create")
 
     try:
         invoice_date = datetime.fromisoformat(request.POST.get("invoice_date")).date()
     except Exception:
+        if _is_htmx(request):
+            return _render_entry_error("Invoice date is required.")
         messages.error(request, "Invoice date is required.")
         return redirect("billing:invoice_create")
+
+    invoice_date_context = invoice_date
 
     due_date_input = request.POST.get("due_date") or None
     due_date = None
@@ -402,6 +478,10 @@ def invoice_save(request):
     )
     currency = Currency.objects.filter(currency_code=currency_code).first()
     if not currency:
+        if _is_htmx(request):
+            return _render_entry_error(
+                "Please configure at least one currency before creating invoices."
+            )
         messages.error(request, "Please configure at least one currency before creating invoices.")
         return redirect("billing:invoice_create")
 
@@ -467,6 +547,8 @@ def invoice_save(request):
                 revenue_account = product.income_account
 
         if not revenue_account:
+            if _is_htmx(request):
+                return _render_entry_error("Each line needs a revenue account.")
             messages.error(request, "Each line needs a revenue account.")
             return redirect("billing:invoice_create")
 
@@ -485,6 +567,8 @@ def invoice_save(request):
         )
 
     if not lines:
+        if _is_htmx(request):
+            return _render_entry_error("Add at least one invoice line.")
         messages.error(request, "Add at least one invoice line.")
         return redirect("billing:invoice_create")
 
@@ -529,22 +613,45 @@ def invoice_save(request):
                 ).order_by("journal_type_id").first()
 
                 if not journal_type:
+                    if _is_htmx(request):
+                        return _render_entry_error(
+                            "No journal type is configured for posting sales invoices."
+                        )
                     messages.error(
                         request, "No journal type is configured for posting sales invoices."
                     )
                     return redirect("billing:invoice_detail", invoice_id=invoice.invoice_id)
 
-                service.post_invoice(invoice, journal_type, submit_to_ird=True, warehouse=warehouse)
-                messages.success(
-                    request,
-                    "Invoice posted. IRD submission has been queued.",
+                from accounting.utils.idempotency import resolve_idempotency_key
+                service.post_invoice(
+                    invoice,
+                    journal_type,
+                    submit_to_ird=True,
+                    warehouse=warehouse,
+                    idempotency_key=resolve_idempotency_key(request),
                 )
+                success_message = "Invoice posted. IRD submission has been queued."
             else:
-                messages.success(request, "Draft invoice saved.")
+                success_message = "Draft invoice saved."
     except Exception as exc:  # noqa: BLE001
+        if _is_htmx(request):
+            return _render_entry_error(f"Error creating invoice: {exc}", status=500)
         messages.error(request, f"Error creating invoice: {exc}")
         return redirect("billing:invoice_create")
 
+    if _is_htmx(request):
+        context = _build_invoice_entry_context(organization, date.today())
+        context["alert_message"] = success_message
+        context["alert_level"] = "success"
+        response = render(
+            request,
+            "billing/partials/invoice_form_panel.html",
+            context,
+        )
+        response["HX-Trigger"] = "salesInvoice:saved" if action != "post" else "salesInvoice:posted"
+        return response
+
+    messages.success(request, success_message)
     return redirect("billing:invoice_detail", invoice_id=invoice.invoice_id)
 
 
@@ -801,11 +908,13 @@ def post_invoice(request, invoice_id):
         if invoice.status == "draft":
             service.validate_invoice(invoice)
 
+        from accounting.utils.idempotency import resolve_idempotency_key
         journal = service.post_invoice(
             invoice,
             journal_type,
             submit_to_ird=submit_to_ird,
             warehouse=warehouse,
+            idempotency_key=resolve_idempotency_key(request),
         )
 
         messages.success(

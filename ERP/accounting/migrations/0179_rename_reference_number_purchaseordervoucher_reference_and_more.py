@@ -41,17 +41,19 @@ class Migration(migrations.Migration):
             model_name='purchaseordervoucher',
             name='updated_by',
         ),
-        migrations.RemoveField(
+        migrations.RenameField(
             model_name='purchaseordervoucher',
-            name='voucher_id',
+            old_name='voucher_id',
+            new_name='id',
         ),
         migrations.RemoveField(
             model_name='purchaseordervoucherline',
             name='created_at',
         ),
-        migrations.RemoveField(
+        migrations.RenameField(
             model_name='purchaseordervoucherline',
-            name='line_id',
+            old_name='line_id',
+            new_name='id',
         ),
         migrations.RemoveField(
             model_name='purchaseordervoucherline',
@@ -81,17 +83,19 @@ class Migration(migrations.Migration):
             model_name='purchasereturnvoucher',
             name='updated_by',
         ),
-        migrations.RemoveField(
+        migrations.RenameField(
             model_name='purchasereturnvoucher',
-            name='voucher_id',
+            old_name='voucher_id',
+            new_name='id',
         ),
         migrations.RemoveField(
             model_name='purchasereturnvoucherline',
             name='created_at',
         ),
-        migrations.RemoveField(
+        migrations.RenameField(
             model_name='purchasereturnvoucherline',
-            name='line_id',
+            old_name='line_id',
+            new_name='id',
         ),
         migrations.RemoveField(
             model_name='purchasereturnvoucherline',
@@ -121,17 +125,19 @@ class Migration(migrations.Migration):
             model_name='salesordervoucher',
             name='updated_by',
         ),
-        migrations.RemoveField(
+        migrations.RenameField(
             model_name='salesordervoucher',
-            name='voucher_id',
+            old_name='voucher_id',
+            new_name='id',
         ),
         migrations.RemoveField(
             model_name='salesordervoucherline',
             name='created_at',
         ),
-        migrations.RemoveField(
+        migrations.RenameField(
             model_name='salesordervoucherline',
-            name='line_id',
+            old_name='line_id',
+            new_name='id',
         ),
         migrations.RemoveField(
             model_name='salesordervoucherline',
@@ -156,12 +162,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='purchaseordervoucher',
-            name='id',
-            field=models.BigAutoField(auto_created=True, default=django.utils.timezone.now, primary_key=True, serialize=False, verbose_name='ID'),
-            preserve_default=False,
-        ),
-        migrations.AddField(
-            model_name='purchaseordervoucher',
             name='total_credit',
             field=models.DecimalField(decimal_places=4, default=0, max_digits=19),
         ),
@@ -171,21 +171,9 @@ class Migration(migrations.Migration):
             field=models.DecimalField(decimal_places=4, default=0, max_digits=19),
         ),
         migrations.AddField(
-            model_name='purchaseordervoucherline',
-            name='id',
-            field=models.BigAutoField(auto_created=True, default=django.utils.timezone.now, primary_key=True, serialize=False, verbose_name='ID'),
-            preserve_default=False,
-        ),
-        migrations.AddField(
             model_name='purchasereturnvoucher',
             name='description',
             field=models.TextField(blank=True, null=True),
-        ),
-        migrations.AddField(
-            model_name='purchasereturnvoucher',
-            name='id',
-            field=models.BigAutoField(auto_created=True, default=django.utils.timezone.now, primary_key=True, serialize=False, verbose_name='ID'),
-            preserve_default=False,
         ),
         migrations.AddField(
             model_name='purchasereturnvoucher',
@@ -198,21 +186,9 @@ class Migration(migrations.Migration):
             field=models.DecimalField(decimal_places=4, default=0, max_digits=19),
         ),
         migrations.AddField(
-            model_name='purchasereturnvoucherline',
-            name='id',
-            field=models.BigAutoField(auto_created=True, default=django.utils.timezone.now, primary_key=True, serialize=False, verbose_name='ID'),
-            preserve_default=False,
-        ),
-        migrations.AddField(
             model_name='salesordervoucher',
             name='description',
             field=models.TextField(blank=True, null=True),
-        ),
-        migrations.AddField(
-            model_name='salesordervoucher',
-            name='id',
-            field=models.BigAutoField(auto_created=True, default=django.utils.timezone.now, primary_key=True, serialize=False, verbose_name='ID'),
-            preserve_default=False,
         ),
         migrations.AddField(
             model_name='salesordervoucher',
@@ -223,18 +199,11 @@ class Migration(migrations.Migration):
             model_name='salesordervoucher',
             name='total_debit',
             field=models.DecimalField(decimal_places=4, default=0, max_digits=19),
-        ),
-        migrations.AddField(
-            model_name='salesordervoucherline',
-            name='id',
-            field=models.BigAutoField(auto_created=True, default=django.utils.timezone.now, primary_key=True, serialize=False, verbose_name='ID'),
-            preserve_default=False,
         ),
         migrations.AlterField(
             model_name='purchaseordervoucher',
             name='created_by',
-            field=models.ForeignKey(default=django.utils.timezone.now, on_delete=django.db.models.deletion.PROTECT, related_name='created_%(class)s', to=settings.AUTH_USER_MODEL),
-            preserve_default=False,
+            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='created_%(class)s', to=settings.AUTH_USER_MODEL),
         ),
         migrations.AlterField(
             model_name='purchaseordervoucher',
@@ -269,8 +238,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='purchasereturnvoucher',
             name='created_by',
-            field=models.ForeignKey(default=django.utils.timezone.now, on_delete=django.db.models.deletion.PROTECT, related_name='created_%(class)s', to=settings.AUTH_USER_MODEL),
-            preserve_default=False,
+            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='created_%(class)s', to=settings.AUTH_USER_MODEL),
         ),
         migrations.AlterField(
             model_name='purchasereturnvoucher',
@@ -310,8 +278,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='salesordervoucher',
             name='created_by',
-            field=models.ForeignKey(default=django.utils.timezone.now, on_delete=django.db.models.deletion.PROTECT, related_name='created_%(class)s', to=settings.AUTH_USER_MODEL),
-            preserve_default=False,
+            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='created_%(class)s', to=settings.AUTH_USER_MODEL),
         ),
         migrations.AlterField(
             model_name='salesordervoucher',

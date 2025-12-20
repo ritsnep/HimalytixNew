@@ -1,18 +1,18 @@
 import json
 import pprint
 
-from accounting.models import VoucherConfiguration
+from accounting.models import VoucherModeConfig
 from accounting.forms_factory import VoucherFormFactory
 
 code = 'purchase_order'
-cfg = VoucherConfiguration.objects.filter(code=code).first()
+cfg = VoucherModeConfig.objects.filter(code=code).first()
 if not cfg:
-    print('No VoucherConfiguration found for code:', code)
+    print('No VoucherModeConfig found for code:', code)
 else:
     print('=== UI_SCHEMA ===')
-    pprint.pprint(cfg.ui_schema or {})
+    pprint.pprint(cfg.resolve_ui_schema() or {})
     # Diagnostic: print types of header entries
-    header = (cfg.ui_schema or {}).get('header')
+    header = (cfg.resolve_ui_schema() or {}).get('header')
     if isinstance(header, dict):
         print('\n--- Header entry types ---')
         for k, v in header.items():

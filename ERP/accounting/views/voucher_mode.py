@@ -47,7 +47,6 @@ class VoucherModeConfigUpdateView(PermissionRequiredMixin, UpdateView):
 
     def form_valid(self, form):
         form.instance.updated_by = self.request.user
-        form.instance.ui_schema = form.cleaned_data.get('ui_schema')
         messages.success(self.request, "Voucher configuration updated successfully.")
         return super().form_valid(form)
 
@@ -65,4 +64,3 @@ class VoucherModeConfigUpdateView(PermissionRequiredMixin, UpdateView):
             ]
         })
         return context
-

@@ -1,13 +1,254 @@
+import logging
 from django import forms
-from datetime import date
 import copy
 from django.forms import modelform_factory, modelformset_factory
 
 from utils.calendars import CalendarMode, get_calendar_mode
 from utils.widgets import DualCalendarWidget
 from .forms_mixin import BootstrapFormMixin
-from .models import VoucherConfiguration  # Updated import
 from .widgets import DatePicker, AccountChoiceWidget
+from .forms.journal_form import JournalForm
+from .forms.journal_line_form import JournalLineForm, JournalLineFormSet
+from .models import Journal, JournalLine
+from accounting.schema_validation import validate_ui_schema
+from accounting.services.voucher_errors import VoucherProcessError
+
+logger = logging.getLogger(__name__)
+
+
+def configure_widget_for_schema(field_name, field_schema, widget):
+    """
+    Inject HTML data attributes for dynamic UI behavior (typeahead, date, etc.).
+    """
+    field_type = (field_schema or {}).get('type')
+    lookup_aliases = {
+        'account': 'account',
+        'party': 'party',
+        'customer': 'customer',
+        'vendor': 'vendor',
+        'product': 'product',
+        'warehouse': 'warehouse',
+        'cost_center': 'cost_center',
+        'department': 'department',
+        'project': 'project',
+        'journal_type': 'journal_type',
+        'period': 'period',
+        'currency': 'currency',
+        'rate': 'rate',
+        'tax_code': 'tax_code',
+        'uom': 'uom',
+    }
+    lookup_types = set(lookup_aliases) | {'lookup', 'typeahead', 'autocomplete'}
+    if field_type in lookup_types:
+        lookup_kind = (
+            field_schema.get('lookup_model')
+            or field_schema.get('lookup_kind')
+            or field_schema.get('lookup')
+            or field_schema.get('choices')
+            or lookup_aliases.get(field_type)
+            or 'account'
+        )
+        lookup_url = field_schema.get('lookup_url')
+        endpoint = None
+        if lookup_url:
+            endpoint = lookup_url
+        elif field_type in ('lookup', 'typeahead', 'autocomplete'):
+            endpoint = f"/accounting/api/{lookup_kind}/search/"
+        base_classes = widget.attrs.get('class', '').strip()
+        for cls in ('generic-typeahead', 've-suggest-input', 'typeahead-input'):
+            if cls not in base_classes:
+                base_classes = f"{base_classes} {cls}".strip()
+        widget.attrs.update({
+            'class': base_classes,
+            'data-lookup-kind': str(lookup_kind),
+            'autocomplete': 'off',
+        })
+        if endpoint:
+            widget.attrs.setdefault('data-endpoint', endpoint)
+        if field_name:
+            widget.attrs.setdefault('data-hidden-name', field_name)
+    elif field_type == 'date':
+        widget.attrs.setdefault('type', 'date')
+        base_classes = widget.attrs.get('class', '').strip()
+        if 'date-picker' not in base_classes:
+            widget.attrs['class'] = f"{base_classes} date-picker".strip()
+    elif field_type == 'datetime':
+        widget.attrs.setdefault('type', 'datetime-local')
+        base_classes = widget.attrs.get('class', '').strip()
+        if 'datetime-picker' not in base_classes:
+            widget.attrs['class'] = f"{base_classes} datetime-picker".strip()
+    elif field_type in ('number', 'decimal', 'integer'):
+        step_val = field_schema.get('step')
+        if step_val is None:
+            step_val = '1' if field_type == 'integer' else '0.01'
+        widget.attrs.setdefault('step', str(step_val))
+
+    return widget
+
+
+def normalize_ui_schema(ui_schema, *, header_model=None, line_model=None, organization=None):
+    """
+    Normalize UI schema so UI fields align with what the form builder renders.
+    Adds common defaults and ensures typeahead display fields exist.
+    """
+    schema_copy = copy.deepcopy(ui_schema or {})
+    if not isinstance(schema_copy, dict):
+        return schema_copy
+
+    schema_root = schema_copy.get('sections') if isinstance(schema_copy.get('sections'), dict) else schema_copy
+    if not isinstance(schema_root, dict):
+        return schema_copy
+
+    def _get_section_fields(key):
+        section = schema_root.get(key)
+        if section is None:
+            section = {}
+            schema_root[key] = section
+        if isinstance(section, dict) and isinstance(section.get('fields'), (dict, list)):
+            return section['fields'], section
+        return section, None
+
+    def _ensure_field(section, name, cfg, wrapper=None):
+        if isinstance(section, list):
+            if not any(isinstance(it, dict) and it.get('name') == name for it in section):
+                section.append({'name': name, **cfg})
+            return
+        if isinstance(section, dict):
+            if name not in section:
+                section[name] = cfg
+            order_holder = wrapper if isinstance(wrapper, dict) else section
+            order = order_holder.setdefault('__order__', [])
+            if name not in order:
+                order.append(name)
+
+    def _rename_field(section, old_name, new_name, wrapper=None):
+        if old_name == new_name:
+            return
+        if isinstance(section, list):
+            for item in section:
+                if isinstance(item, dict) and item.get('name') == old_name:
+                    item['name'] = new_name
+                    return
+            return
+        if isinstance(section, dict):
+            if old_name in section:
+                section[new_name] = section.pop(old_name)
+            order_holder = wrapper if isinstance(wrapper, dict) else section
+            order = order_holder.get('__order__', [])
+            if order:
+                order_holder['__order__'] = [new_name if x == old_name else x for x in order]
+
+    def _iter_fields(section):
+        if isinstance(section, dict):
+            for name, cfg in section.items():
+                if name == '__order__':
+                    continue
+                if isinstance(cfg, dict):
+                    yield name, cfg
+        elif isinstance(section, list):
+            for item in section:
+                if isinstance(item, dict):
+                    yield item.get('name') or '', item
+
+    def _is_fk(model, field_name):
+        if not model or not field_name:
+            return False
+        try:
+            from django.db import models as dj_models
+            model_field = model._meta.get_field(field_name)
+            return isinstance(model_field, dj_models.ForeignKey)
+        except Exception:
+            return False
+
+    header_fields, header_wrapper = _get_section_fields('header')
+    lines_fields, lines_wrapper = _get_section_fields('lines')
+
+    if isinstance(header_fields, dict):
+        order_holder = header_wrapper if isinstance(header_wrapper, dict) else header_fields
+        if '__order__' not in order_holder:
+            order_holder['__order__'] = [k for k in header_fields.keys() if k != '__order__']
+    if isinstance(lines_fields, dict):
+        order_holder = lines_wrapper if isinstance(lines_wrapper, dict) else lines_fields
+        if '__order__' not in order_holder:
+            order_holder['__order__'] = [k for k in lines_fields.keys() if k != '__order__']
+
+    header_model_fields = set()
+    line_model_fields = set()
+    try:
+        if header_model:
+            header_model_fields = {f.name for f in header_model._meta.fields}
+    except Exception:
+        header_model_fields = set()
+    try:
+        if line_model:
+            line_model_fields = {f.name for f in line_model._meta.fields}
+    except Exception:
+        line_model_fields = set()
+
+    # Map common aliases to canonical field names without injecting defaults.
+    if header_model_fields:
+        if 'vendor' in header_model_fields:
+            for alias in ('vendor_name', 'supplier'):
+                for name, _ in _iter_fields(header_fields):
+                    if name == alias:
+                        _rename_field(header_fields, alias, 'vendor', header_wrapper)
+                        break
+        if 'customer' in header_model_fields:
+            for alias in ('customer_name', 'client_name'):
+                for name, _ in _iter_fields(header_fields):
+                    if name == alias:
+                        _rename_field(header_fields, alias, 'customer', header_wrapper)
+                        break
+
+    # Add display fields for lookup/typeahead or FK-backed fields.
+    def _ensure_display_fields(section_fields, wrapper, model):
+        if not isinstance(section_fields, (dict, list)):
+            return
+        for name, cfg in list(_iter_fields(section_fields)):
+            if not name or name.endswith('_display'):
+                continue
+            field_type = (cfg or {}).get('type')
+            needs_display = field_type in ('lookup', 'typeahead', 'autocomplete') or _is_fk(model, name)
+            if not needs_display:
+                continue
+            display_name = f"{name}_display"
+            _ensure_field(
+                section_fields,
+                display_name,
+                {
+                    'label': cfg.get('label') or name.replace('_', ' ').title(),
+                    'type': 'char',
+                    'required': False,
+                    'placeholder': cfg.get('placeholder'),
+                },
+                wrapper,
+            )
+
+    def _ensure_numeric_steps(section_fields):
+        if not isinstance(section_fields, (dict, list)):
+            return
+        for _, cfg in list(_iter_fields(section_fields)):
+            if not isinstance(cfg, dict):
+                continue
+            field_type = (cfg or {}).get('type')
+            if field_type in ('number', 'decimal', 'integer') and cfg.get('step') is None:
+                cfg['step'] = '1' if field_type == 'integer' else '0.01'
+
+    _ensure_display_fields(header_fields, header_wrapper, header_model)
+    _ensure_display_fields(lines_fields, lines_wrapper, line_model)
+    _ensure_numeric_steps(header_fields)
+    _ensure_numeric_steps(lines_fields)
+
+    return schema_copy
+
+
+def validate_ui_schema_or_raise(ui_schema: dict) -> None:
+    errors = validate_ui_schema(ui_schema or {}, strict_types=True)
+    if errors:
+        summary = "; ".join(errors[:3])
+        if len(errors) > 3:
+            summary = f"{summary} (+{len(errors) - 3} more)"
+        raise VoucherProcessError("CFG-001", f"Invalid voucher schema: {summary}")
 
 # Minimal dynamic form builder for schema-driven forms
 
@@ -16,10 +257,145 @@ class VoucherFormFactory:
     Generic form factory for voucher configurations.
     Supports UDF injection and default value injection.
     """
+    @staticmethod
+    def get_journal_form(organization, journal_type=None, instance=None, data=None, files=None, **kwargs):
+        form_kwargs = {
+            'organization': organization,
+            'journal_type': journal_type,
+            **kwargs,
+        }
+        if instance:
+            form_kwargs['instance'] = instance
+        if data is not None:
+            form_kwargs['data'] = data
+        if files is not None:
+            form_kwargs['files'] = files
+
+        try:
+            if organization and journal_type:
+                from accounting.models import VoucherModeConfig
+                cfg = VoucherModeConfig.objects.filter(
+                    organization=organization,
+                    journal_type__code=journal_type,
+                    is_active=True,
+                ).first()
+                if cfg:
+                    ui = cfg.resolve_ui()
+                    if isinstance(ui, dict) and 'header' in ui:
+                        form_kwargs['ui_schema'] = ui['header']
+        except Exception:
+            logger.exception("Failed to load voucher schema for journal form.")
+
+        return JournalForm(**form_kwargs)
+
+    @staticmethod
+    def get_journal_line_form(organization, instance=None, data=None, prefix=None, **kwargs):
+        form_kwargs = {
+            'organization': organization,
+            **kwargs,
+        }
+        if instance:
+            form_kwargs['instance'] = instance
+        if data is not None:
+            form_kwargs['data'] = data
+        if prefix:
+            form_kwargs['prefix'] = prefix
+
+        try:
+            from accounting.models import VoucherModeConfig
+            cfg = None
+            journal_type = kwargs.get('journal_type')
+            if organization and journal_type:
+                cfg = VoucherModeConfig.objects.filter(
+                    organization=organization,
+                    journal_type__code=journal_type,
+                    is_active=True,
+                ).first()
+            elif organization and instance and getattr(instance, 'journal', None):
+                cfg = VoucherModeConfig.objects.filter(
+                    organization=organization,
+                    journal_type=getattr(instance.journal, 'journal_type', None),
+                    is_active=True,
+                ).first()
+            if cfg:
+                ui = cfg.resolve_ui()
+                if isinstance(ui, dict) and 'lines' in ui:
+                    form_kwargs['ui_schema'] = ui['lines']
+        except Exception:
+            logger.exception("Failed to load voucher schema for journal line form.")
+
+        return JournalLineForm(**form_kwargs)
+
+    @staticmethod
+    def get_journal_line_formset(organization, journal=None, data=None, prefix=None, **kwargs):
+        form_kwargs = {
+            'organization': organization,
+            **kwargs,
+        }
+        if data is not None:
+            form_kwargs['data'] = data
+        if prefix:
+            form_kwargs['prefix'] = prefix
+        if journal is not None:
+            form_kwargs['instance'] = journal
+
+        try:
+            journal_type = getattr(journal, 'journal_type', None) if journal else kwargs.get('journal_type')
+            if organization and journal_type:
+                from accounting.models import VoucherModeConfig
+                cfg = VoucherModeConfig.objects.filter(
+                    organization=organization,
+                    journal_type=journal_type,
+                    is_active=True,
+                ).first()
+                if cfg:
+                    ui = cfg.resolve_ui()
+                    if isinstance(ui, dict) and 'lines' in ui:
+                        form_kwargs['ui_schema'] = ui['lines']
+        except Exception:
+            logger.exception("Failed to load voucher schema for journal line formset.")
+
+        return JournalLineFormSet(**form_kwargs)
+
+    @staticmethod
+    def create_blank_line_form(organization, form_index=0, journal_type=None):
+        prefix = f'lines-{form_index}'
+        return VoucherFormFactory.get_journal_line_form(
+            organization=organization,
+            prefix=prefix,
+            journal_type=journal_type,
+        )
+
+    @staticmethod
+    def validate_forms(header_form, line_formset):
+        header_valid = header_form.is_valid()
+        lines_valid = line_formset.is_valid()
+        errors = {}
+        if not header_valid:
+            errors['header'] = header_form.errors
+        if not lines_valid:
+            errors['lines'] = line_formset.errors
+        return header_valid and lines_valid, errors
+
+    @staticmethod
+    def _get_model_for_voucher_config(voucher_config):
+        """Resolve the header model for a voucher config. Defaults to Journal."""
+        return Journal
+
+    @staticmethod
+    def _get_line_model_for_voucher_config(voucher_config):
+        """Resolve the line model for a voucher config. Defaults to JournalLine."""
+        return JournalLine
+
     def __init__(self, configuration, model=None, organization=None, user_perms=None, prefix=None,
-                 phase=None, initial=None, disabled_fields=None, **kwargs):
+                 phase=None, initial=None, disabled_fields=None, normalized=False, **kwargs):
         self.configuration = configuration
-        self.schema = configuration.ui_schema if hasattr(configuration, 'ui_schema') else configuration  # Handle both config object and direct schema
+        if hasattr(configuration, 'resolve_ui_schema'):
+            self.schema = configuration.resolve_ui_schema()
+        elif isinstance(configuration, dict):
+            self.schema = configuration  # Handle direct schema dicts.
+        else:
+            self.schema = {}
         self.model = model
         self.organization = organization
         self.user_perms = user_perms
@@ -29,15 +405,51 @@ class VoucherFormFactory:
         # Inject default values from configuration
         if hasattr(configuration, 'default_header') and configuration.default_header:
             self.initial.update(configuration.default_header)
-        # Default dynamic form 'currency' initial to organization's base currency
+        # Default dynamic form 'currency' initial to organization's base currency.
         try:
-            if not self.initial and self.organization is not None:
+            if self.organization is not None:
                 base_cur = getattr(self.organization, 'base_currency_code_id', None) or getattr(self.organization, 'base_currency_code', None)
                 if base_cur:
-                    self.initial = {'currency': base_cur}
+                    if self.model:
+                        try:
+                            from django.db import models as dj_models
+                            field = None
+                            try:
+                                field = self.model._meta.get_field('currency')
+                            except Exception:
+                                field = None
+                            if field is not None and isinstance(field, dj_models.ForeignKey):
+                                currency_id = None
+                                if hasattr(base_cur, 'pk'):
+                                    currency_id = base_cur.pk
+                                elif isinstance(base_cur, int):
+                                    currency_id = base_cur
+                                elif isinstance(base_cur, str):
+                                    try:
+                                        from accounting.models import Currency
+                                        currency_id = Currency.objects.filter(currency_code=base_cur).values_list('pk', flat=True).first()
+                                    except Exception:
+                                        currency_id = None
+                                if currency_id is not None:
+                                    self.initial.setdefault('currency', currency_id)
+                            elif field is not None:
+                                self.initial.setdefault('currency', base_cur)
+                            else:
+                                try:
+                                    self.model._meta.get_field('currency_code')
+                                    code_val = getattr(base_cur, 'currency_code', None) or getattr(base_cur, 'pk', None) or base_cur
+                                    if code_val is not None:
+                                        self.initial.setdefault('currency_code', code_val)
+                                except Exception:
+                                    self.initial.setdefault('currency', base_cur)
+                        except Exception:
+                            self.initial.setdefault('currency', base_cur)
+                    else:
+                        self.initial.setdefault('currency', base_cur)
         except Exception:
             pass
         self.disabled_fields = disabled_fields or []
+        self.normalized = normalized
         self.kwargs = kwargs
 
     def _create_field_from_schema(self, config, field_name=None):
@@ -52,6 +464,22 @@ class VoucherFormFactory:
             'min_length': config.get('min_length'),
             'max_length': config.get('max_length'),
         }
+        validators = []
+        pattern = config.get('pattern') or config.get('regex')
+        if pattern:
+            try:
+                from django.core.validators import RegexValidator
+                validators.append(RegexValidator(pattern))
+            except Exception:
+                pass
+        if validators:
+            field_kwargs['validators'] = validators
+
+        if field_type in ('number', 'decimal', 'integer'):
+            if 'min_value' in config:
+                field_kwargs['min_value'] = config.get('min_value')
+            if 'max_value' in config:
+                field_kwargs['max_value'] = config.get('max_value')
         
         # Handle default value
         if 'default' in config:
@@ -89,14 +517,17 @@ class VoucherFormFactory:
                 default_view = get_calendar_mode(
                     self.organization, default=CalendarMode.DUAL
                 )
-                field_kwargs['widget'] = widget_class(
+                widget = widget_class(
                     default_view=default_view,
                     attrs=attrs,
                 )
+                field_kwargs['widget'] = configure_widget_for_schema(field_name, config, widget)
             else:
-                field_kwargs['widget'] = widget_class(attrs=attrs)
+                widget = widget_class(attrs=attrs)
+                field_kwargs['widget'] = configure_widget_for_schema(field_name, config, widget)
         elif attrs:  # Fallback for fields without specific widget mapping but with attrs
-            field_kwargs['widget'] = forms.TextInput(attrs=attrs)  # Default to TextInput if no specific widget
+            widget = forms.TextInput(attrs=attrs)
+            field_kwargs['widget'] = configure_widget_for_schema(field_name, config, widget)
 
         if field_type == 'select':
             choices = config.get('choices', [])
@@ -105,14 +536,33 @@ class VoucherFormFactory:
                 # Treat as a model reference, use ModelChoiceField with queryset
                 try:
                     model = apps.get_model('accounting', choices)
-                    field_class = forms.ModelChoiceField
+                    model_field = None
+                    if self.model is not None and field_name:
+                        try:
+                            model_field = self.model._meta.get_field(field_name)
+                        except Exception:
+                            model_field = None
                     queryset = model.objects.all()
                     # Only filter by is_active if the model has this field
                     if hasattr(model, 'is_active'):
                         queryset = queryset.filter(is_active=True)
-                    field_kwargs['queryset'] = queryset
-                    # Keep a simple to_field_name if present
-                    field_kwargs['to_field_name'] = getattr(model._meta.pk, 'name', 'id')
+                    if model_field is not None:
+                        try:
+                            from django.db import models as dj_models
+                            if isinstance(model_field, dj_models.ForeignKey):
+                                field_class = forms.ModelChoiceField
+                                field_kwargs['queryset'] = queryset
+                                field_kwargs['to_field_name'] = getattr(model._meta.pk, 'name', 'id')
+                            else:
+                                field_class = forms.ChoiceField
+                                field_kwargs['choices'] = [(obj.pk, str(obj)) for obj in queryset]
+                        except Exception:
+                            field_class = forms.ChoiceField
+                            field_kwargs['choices'] = [(obj.pk, str(obj)) for obj in queryset]
+                    else:
+                        field_class = forms.ModelChoiceField
+                        field_kwargs['queryset'] = queryset
+                        field_kwargs['to_field_name'] = getattr(model._meta.pk, 'name', 'id')
                 except LookupError:
                     # Fall back to an empty choice set
                     field_kwargs['choices'] = []
@@ -175,12 +625,23 @@ class VoucherFormFactory:
             'department': '/accounting/journal-entry/lookup/departments/',
             'project': '/accounting/journal-entry/lookup/projects/',
         }
+        lookup_override = config.get('lookup_url')
 
         canonical_kind = _canonical_lookup_kind(field_name or '')
         if canonical_kind in lookup_endpoints and not isinstance(field_kwargs.get('widget'), forms.HiddenInput):
             attrs.setdefault('autocomplete', 'off')
-            attrs.setdefault('data-endpoint', lookup_endpoints[canonical_kind])
-            attrs.setdefault('data-hidden-name', field_name)
+            endpoint = lookup_endpoints[canonical_kind]
+            if lookup_override:
+                try:
+                    from django.urls import reverse
+                    endpoint = reverse(lookup_override)
+                except Exception:
+                    endpoint = lookup_override
+            attrs.setdefault('data-endpoint', endpoint)
+            hidden_name = field_name
+            if field_name and field_name.endswith('_display'):
+                hidden_name = field_name[:-8]
+            attrs.setdefault('data-hidden-name', hidden_name)
             attrs.setdefault('data-lookup-kind', canonical_kind.replace('_', ''))
             base_classes = attrs.get('class', '').strip()
             if 've-suggest-input' not in base_classes:
@@ -269,11 +730,19 @@ class VoucherFormFactory:
             'Service': '/accounting/journal-entry/lookup/products/',
             'InventoryItem': '/accounting/journal-entry/lookup/products/',
         }
+        endpoint_override = config.get('lookup_url')
+        endpoint = endpoint_map.get(related_name, '')
+        if endpoint_override:
+            try:
+                from django.urls import reverse
+                endpoint = reverse(endpoint_override)
+            except Exception:
+                endpoint = endpoint_override
         base_classes = 'form-control generic-typeahead ve-suggest-input'
         display_attrs = {
             'class': base_classes,
             'autocomplete': 'off',
-            'data-endpoint': endpoint_map.get(related_name, ''),
+            'data-endpoint': endpoint,
             'data-hidden-name': field_name,
             'data-lookup-kind': lookup_kind_map.get(related_name, related_name.lower()),
             'data-add-url': {
@@ -313,12 +782,33 @@ class VoucherFormFactory:
         type_map = {
             'char': forms.CharField,
             'text': forms.CharField,
+            'textarea': forms.CharField,
             'date': forms.DateField,
+            'datetime': forms.DateTimeField,
             'decimal': forms.DecimalField,
+            'number': forms.DecimalField,
             'integer': forms.IntegerField,
             'boolean': forms.BooleanField,
+            'checkbox': forms.BooleanField,
             'select': forms.ChoiceField,
             'account': forms.ModelChoiceField,
+            'party': forms.CharField,
+            'customer': forms.CharField,
+            'vendor': forms.CharField,
+            'product': forms.CharField,
+            'warehouse': forms.CharField,
+            'cost_center': forms.CharField,
+            'department': forms.CharField,
+            'project': forms.CharField,
+            'journal_type': forms.CharField,
+            'period': forms.CharField,
+            'currency': forms.CharField,
+            'rate': forms.CharField,
+            'tax_code': forms.CharField,
+            'uom': forms.CharField,
+            'lookup': forms.CharField,
+            'typeahead': forms.CharField,
+            'autocomplete': forms.CharField,
         }
         return type_map.get(field_type, forms.CharField)
 
@@ -326,9 +816,18 @@ class VoucherFormFactory:
         """Map schema field type to a Django Form Widget."""
         widget_map = {
             'text': forms.Textarea,
+            'textarea': forms.Textarea,
             'date': DualCalendarWidget,
+            'datetime': forms.DateTimeInput,
             'account': AccountChoiceWidget,
             'select': forms.Select,
+            'lookup': forms.TextInput,
+            'typeahead': forms.TextInput,
+            'autocomplete': forms.TextInput,
+            'number': forms.NumberInput,
+            'decimal': forms.NumberInput,
+            'integer': forms.NumberInput,
+            'checkbox': forms.CheckboxInput,
         }
         return widget_map.get(field_type)
 
@@ -336,6 +835,7 @@ class VoucherFormFactory:
         """Dynamically build and return a Form class based on the configuration's ui_schema."""
         form_fields = {}
         schema = self.configuration.resolve_ui_schema() if hasattr(self.configuration, 'resolve_ui_schema') else self.schema
+        skip_fields = set()
 
         # Unwrap "sections" if present (e.g., {"sections": {"header": {...}}})
         if isinstance(schema, dict) and 'sections' in schema:
@@ -408,6 +908,9 @@ class VoucherFormFactory:
         if isinstance(schema, list):
             # Schema provided as ordered list -> preserve order, but prefer explicit 'order_no' if present
             list_items = list(schema)
+            display_configs = {
+                it.get('name'): it for it in list_items if isinstance(it, dict) and it.get('name')
+            }
             if any(isinstance(it, dict) and 'order_no' in it for it in list_items):
                 try:
                     list_items = sorted(list_items, key=lambda it: it.get('order_no', 9999) if isinstance(it, dict) else 9999)
@@ -417,16 +920,27 @@ class VoucherFormFactory:
                 field_name = field_config.get('name')
                 if not field_name:
                     continue
+                if field_name in skip_fields:
+                    continue
                 fk_pair = self._maybe_build_fk_typeahead_fields(field_name, field_config)
                 if fk_pair:
                     base_field, display_field = fk_pair
                     form_fields[field_name] = base_field
-                    form_fields[f"{field_name}_display"] = display_field
+                    display_name = f"{field_name}_display"
+                    display_config = display_configs.get(display_name)
+                    if display_config:
+                        form_fields[display_name] = self._create_field_from_schema(display_config, field_name=display_name)
+                        skip_fields.add(display_name)
+                    else:
+                        form_fields[display_name] = display_field
                 else:
                     form_fields[field_name] = self._create_field_from_schema(field_config, field_name=field_name)
         elif isinstance(schema, dict):
             if 'fields' in schema and isinstance(schema['fields'], list):
                 field_list = list(schema['fields'])
+                display_configs = {
+                    it.get('name'): it for it in field_list if isinstance(it, dict) and it.get('name')
+                }
                 if any(isinstance(it, dict) and 'order_no' in it for it in field_list):
                     try:
                         field_list = sorted(field_list, key=lambda it: it.get('order_no', 9999) if isinstance(it, dict) else 9999)
@@ -435,20 +949,36 @@ class VoucherFormFactory:
                 for field_config in field_list:
                     field_name = field_config.get('name')
                     if field_name:
+                        if field_name in skip_fields:
+                            continue
                         fk_pair = self._maybe_build_fk_typeahead_fields(field_name, field_config)
                         if fk_pair:
                             base_field, display_field = fk_pair
                             form_fields[field_name] = base_field
-                            form_fields[f"{field_name}_display"] = display_field
+                            display_name = f"{field_name}_display"
+                            display_config = display_configs.get(display_name)
+                            if display_config:
+                                form_fields[display_name] = self._create_field_from_schema(display_config, field_name=display_name)
+                                skip_fields.add(display_name)
+                            else:
+                                form_fields[display_name] = display_field
                         else:
                             form_fields[field_name] = self._create_field_from_schema(field_config, field_name=field_name)
             else:  # Assume schema is a direct dictionary of field_name: field_config
                 for field_name, field_config in _ordered_schema_items(schema):
+                    if field_name in skip_fields:
+                        continue
                     fk_pair = self._maybe_build_fk_typeahead_fields(field_name, field_config)
                     if fk_pair:
                         base_field, display_field = fk_pair
                         form_fields[field_name] = base_field
-                        form_fields[f"{field_name}_display"] = display_field
+                        display_name = f"{field_name}_display"
+                        display_config = schema.get(display_name) if isinstance(schema.get(display_name), dict) else None
+                        if display_config:
+                            form_fields[display_name] = self._create_field_from_schema(display_config, field_name=display_name)
+                            skip_fields.add(display_name)
+                        else:
+                            form_fields[display_name] = display_field
                     else:
                         form_fields[field_name] = self._create_field_from_schema(field_config, field_name=field_name)
 
@@ -493,24 +1023,121 @@ class VoucherFormFactory:
             
             def save(self, commit=True):
                 if self.form_factory.model:
-                    # This is a ModelForm, save normally
-                    instance = super().save(commit=commit)
+                    # This is a ModelForm, save with alias mapping for common header dates.
+                    instance = super().save(commit=False)
+
+                    try:
+                        voucher_date = self.cleaned_data.get('voucher_date')
+                        if voucher_date:
+                            if hasattr(instance, 'order_date') and not getattr(instance, 'order_date', None):
+                                instance.order_date = voucher_date
+                            if hasattr(instance, 'invoice_date') and not getattr(instance, 'invoice_date', None):
+                                instance.invoice_date = voucher_date
+                        order_date = self.cleaned_data.get('order_date')
+                        if order_date and hasattr(instance, 'voucher_date') and not getattr(instance, 'voucher_date', None):
+                            instance.voucher_date = order_date
+                        invoice_date = self.cleaned_data.get('invoice_date')
+                        if invoice_date and hasattr(instance, 'voucher_date') and not getattr(instance, 'voucher_date', None):
+                            instance.voucher_date = invoice_date
+                        journal_date = self.cleaned_data.get('journal_date')
+                        if journal_date and hasattr(instance, 'voucher_date') and not getattr(instance, 'voucher_date', None):
+                            instance.voucher_date = journal_date
+                        receipt_date = self.cleaned_data.get('receipt_date')
+                        if receipt_date and hasattr(instance, 'voucher_date') and not getattr(instance, 'voucher_date', None):
+                            instance.voucher_date = receipt_date
+                    except Exception:
+                        pass
+
+                    # Apply base currency when the model expects currency data but the form omitted it.
+                    try:
+                        organization = getattr(self.form_factory, 'organization', None)
+                        base_cur = None
+                        if organization is not None:
+                            base_cur = getattr(organization, 'base_currency_code', None) or getattr(organization, 'base_currency_code_id', None)
+                        if base_cur:
+                            try:
+                                from django.db import models as dj_models
+                                field = None
+                                try:
+                                    field = instance._meta.get_field('currency')
+                                except Exception:
+                                    field = None
+                                if field is not None and isinstance(field, dj_models.ForeignKey):
+                                    if not getattr(instance, 'currency_id', None):
+                                        currency_id = None
+                                        if hasattr(base_cur, 'pk'):
+                                            currency_id = base_cur.pk
+                                        elif isinstance(base_cur, int):
+                                            currency_id = base_cur
+                                        elif isinstance(base_cur, str):
+                                            currency_id = base_cur
+                                        if currency_id is not None:
+                                            instance.currency_id = currency_id
+                                elif field is not None:
+                                    if not getattr(instance, 'currency', None):
+                                        instance.currency = base_cur
+                            except Exception:
+                                pass
+                            if hasattr(instance, 'currency_code') and not getattr(instance, 'currency_code', None):
+                                code_val = getattr(base_cur, 'currency_code', None) or getattr(base_cur, 'pk', None) or base_cur
+                                if code_val is not None:
+                                    instance.currency_code = code_val
+                    except Exception:
+                        pass
 
                     # Persist extra schema fields into udf_data if available
                     try:
+                        def _udf_serialize(value):
+                            if value is None:
+                                return None
+                            try:
+                                from django.db import models as dj_models
+                                if isinstance(value, dj_models.Model):
+                                    return value.pk
+                            except Exception:
+                                pass
+                            try:
+                                from decimal import Decimal
+                                if isinstance(value, Decimal):
+                                    return str(value)
+                            except Exception:
+                                pass
+                            try:
+                                import datetime
+                                if isinstance(value, (datetime.date, datetime.datetime)):
+                                    return value.isoformat()
+                            except Exception:
+                                pass
+                            if isinstance(value, dict):
+                                return {k: _udf_serialize(v) for k, v in value.items()}
+                            if isinstance(value, (list, tuple)):
+                                return [_udf_serialize(v) for v in value]
+                            return value
+
                         if hasattr(instance, 'udf_data') and isinstance(instance.udf_data, dict):
                             extra = {
-                                k: self.cleaned_data.get(k)
+                                k: _udf_serialize(self.cleaned_data.get(k))
                                 for k in self.cleaned_data.keys()
                                 if k not in model_field_names and not k.endswith('_display')
                             }
                             if extra:
                                 instance.udf_data.update(extra)
-                                if commit:
-                                    instance.save(update_fields=['udf_data'])
                     except Exception:
                         pass
 
+                    # Map common item aliases onto voucher line models.
+                    try:
+                        if hasattr(instance, 'quantity_ordered') and self.cleaned_data.get('quantity') is not None:
+                            if not getattr(instance, 'quantity_ordered', None):
+                                instance.quantity_ordered = self.cleaned_data.get('quantity')
+                        if hasattr(instance, 'product_name') and self.cleaned_data.get('item'):
+                            if not getattr(instance, 'product_name', None):
+                                instance.product_name = self.cleaned_data.get('item')
+                    except Exception:
+                        pass
+
+                    if commit:
+                        instance.save()
                     return instance
                 else:
                     # This form is not a ModelForm, so we return cleaned_data
@@ -523,89 +1150,90 @@ class VoucherFormFactory:
     def build_formset(self, extra=1):
         """Dynamically build and return a FormSet class for line items."""
         # For formsets, prefer building the form using the 'lines' schema
-        # If this factory was constructed with a VoucherConfiguration (self.schema is the UI dict),
+        # If this factory was constructed with a config (self.schema is the UI dict),
         # we must avoid build_form() picking the header section. Build a temporary factory using
         # only the 'lines' schema so the line form fields are correct.
         LineForm = None
         if isinstance(self.schema, dict) and 'lines' in self.schema:
             lines_schema = copy.deepcopy(self.schema.get('lines') or {})
 
-            # Augment lines schema with required model fields when missing (to avoid validation/DB errors)
-            line_model_fields = set()
-            try:
-                if self.model:
-                    line_model_fields = {f.name for f in self.model._meta.fields}
-            except Exception:
+            if not self.normalized:
+                # Augment lines schema with required model fields when missing (to avoid validation/DB errors)
                 line_model_fields = set()
+                try:
+                    if self.model:
+                        line_model_fields = {f.name for f in self.model._meta.fields}
+                except Exception:
+                    line_model_fields = set()
 
-            def ensure_line_field(name, cfg):
-                if isinstance(lines_schema, list):
-                    if not any(isinstance(it, dict) and it.get('name') == name for it in lines_schema):
-                        lines_schema.append({'name': name, **cfg})
-                elif isinstance(lines_schema, dict):
-                    if name not in lines_schema:
-                        lines_schema[name] = cfg
+                def ensure_line_field(name, cfg):
+                    if isinstance(lines_schema, list):
+                        if not any(isinstance(it, dict) and it.get('name') == name for it in lines_schema):
+                            lines_schema.append({'name': name, **cfg})
+                    elif isinstance(lines_schema, dict):
+                        if name not in lines_schema:
+                            lines_schema[name] = cfg
 
-            numeric_cfg = lambda default_val='0': {'label': '', 'type': 'decimal', 'required': False, 'order_no': 9999, 'kwargs': {'widget': {'attrs': {'value': default_val}}}}
+                numeric_cfg = lambda default_val='0': {'label': '', 'type': 'decimal', 'required': False, 'order_no': 9999, 'kwargs': {'widget': {'attrs': {'value': default_val}}}}
 
-            if 'line_number' in line_model_fields:
-                ensure_line_field(
+                if 'line_number' in line_model_fields:
+                    ensure_line_field(
+                        'line_number',
+                        {
+                            'label': 'Line #',
+                            'type': 'integer',
+                            'required': False,
+                            'order_no': 0,
+                            'hidden': True,
+                        },
+                    )
+                if 'account' in line_model_fields:
+                    ensure_line_field('account', {'label': 'Account', 'type': 'char', 'required': False, 'order_no': 1})
+                for amt_field in ['debit', 'credit', 'amount', 'tax_amount', 'debit_amount', 'credit_amount', 'amount_txn', 'amount_base', 'functional_debit_amount', 'functional_credit_amount']:
+                    if amt_field in line_model_fields:
+                        ensure_line_field(amt_field, numeric_cfg())
+
+                # Enforce a sensible visual column order for lines: S.No, Account, Description,
+                # Debit/Credit/Amount, Cost Center (if present). This ensures UI consistency
+                # regardless of how the schema was authored.
+                desired_seq = [
                     'line_number',
-                    {
-                        'label': 'Line #',
-                        'type': 'integer',
-                        'required': False,
-                        'order_no': 0,
-                        'kwargs': {'widget': {'attrs': {'value': '1'}}},
-                    },
-                )
-            if 'account' in line_model_fields:
-                ensure_line_field('account', {'label': 'Account', 'type': 'char', 'required': False, 'order_no': 1})
-            for amt_field in ['debit', 'credit', 'amount', 'tax_amount', 'debit_amount', 'credit_amount', 'amount_txn', 'amount_base', 'functional_debit_amount', 'functional_credit_amount']:
-                if amt_field in line_model_fields:
-                    ensure_line_field(amt_field, numeric_cfg())
+                    'account',
+                    'description',
+                    'debit', 'debit_amount',
+                    'credit', 'credit_amount',
+                    'amount',
+                    'cost_center',
+                ]
 
-            # Enforce a sensible visual column order for lines: S.No, Account, Description,
-            # Debit/Credit/Amount, Cost Center (if present). This ensures UI consistency
-            # regardless of how the schema was authored.
-            desired_seq = [
-                'line_number',
-                'account',
-                'description',
-                'debit', 'debit_amount',
-                'credit', 'credit_amount',
-                'amount',
-                'cost_center',
-            ]
+                # If lines_schema is a dict, set explicit __order__ to prefer desired_seq
+                if isinstance(lines_schema, dict):
+                    order = []
+                    existing_keys = [k for k in lines_schema.keys() if k != '__order__']
+                    # Add fields in desired order if they exist in the schema or model
+                    for name in desired_seq:
+                        if name in lines_schema and name not in order:
+                            order.append(name)
+                    # Append remaining fields preserving their original order
+                    for name in existing_keys:
+                        if name not in order:
+                            order.append(name)
+                    if order:
+                        lines_schema['__order__'] = order
 
-            # If lines_schema is a dict, set explicit __order__ to prefer desired_seq
-            if isinstance(lines_schema, dict):
-                order = []
-                existing_keys = [k for k in lines_schema.keys() if k != '__order__']
-                # Add fields in desired order if they exist in the schema or model
-                for name in desired_seq:
-                    if name in lines_schema and name not in order:
-                        order.append(name)
-                # Append remaining fields preserving their original order
-                for name in existing_keys:
-                    if name not in order:
-                        order.append(name)
-                if order:
-                    lines_schema['__order__'] = order
-
-            # If lines_schema is a list, reorder the list entries according to desired_seq
-            elif isinstance(lines_schema, list):
-                # Build a map name->item for quick lookup
-                item_map = { (it.get('name') if isinstance(it, dict) else None): it for it in lines_schema }
-                reordered = []
-                for name in desired_seq:
-                    if name in item_map and item_map[name] not in reordered:
-                        reordered.append(item_map[name])
-                # Append any remaining items preserving original relative order
-                for it in lines_schema:
-                    if it not in reordered:
-                        reordered.append(it)
-                lines_schema[:] = reordered
+                # If lines_schema is a list, reorder the list entries according to desired_seq
+                elif isinstance(lines_schema, list):
+                    # Build a map name->item for quick lookup
+                    item_map = { (it.get('name') if isinstance(it, dict) else None): it for it in lines_schema }
+                    reordered = []
+                    for name in desired_seq:
+                        if name in item_map and item_map[name] not in reordered:
+                            reordered.append(item_map[name])
+                    # Append any remaining items preserving original relative order
+                    for it in lines_schema:
+                        if it not in reordered:
+                            reordered.append(it)
+                    lines_schema[:] = reordered
 
             temp_factory = VoucherFormFactory(
                 lines_schema,
@@ -659,134 +1287,48 @@ class VoucherFormFactory:
         if files is not None:
             form_kwargs['files'] = files
         # Provide the header model so FK fields (vendor, etc) are detected properly.
-        # The authoritative mapping lives in `accounting.forms.form_factory`.
+        # The authoritative mapping lives in `accounting.forms_factory`.
         try:
-            from accounting.forms.form_factory import VoucherFormFactory as FormsFactoryLegacy
-            header_model = FormsFactoryLegacy._get_model_for_voucher_config(voucher_config)
+            header_model = VoucherFormFactory._get_model_for_voucher_config(voucher_config)
             form_kwargs['model'] = header_model
         except Exception:
             pass
+        resolved_schema = voucher_config.resolve_ui_schema() if hasattr(voucher_config, 'resolve_ui_schema') else {}
+        validate_ui_schema_or_raise(resolved_schema)
+        normalized_schema = normalize_ui_schema(
+            resolved_schema,
+            header_model=form_kwargs.get('model'),
+            line_model=None,
+            organization=organization,
+        )
+        form_kwargs['configuration'] = normalized_schema
 
-        # Build an augmented schema so required model fields exist even if missing in ui_schema.
-        try:
-            header_model_fields = {f.name for f in form_kwargs.get('model')._meta.fields} if form_kwargs.get('model') else set()
-        except Exception:
-            header_model_fields = set()
-
-        def _augment_header_schema(config_obj):
-            schema_copy = copy.deepcopy(getattr(config_obj, 'ui_schema', {}) or {})
-            
-            # Handle "sections" wrapper (e.g., {"sections": {"header": {...}}})
-            has_sections_wrapper = isinstance(schema_copy, dict) and 'sections' in schema_copy
-            if has_sections_wrapper:
-                sections = schema_copy['sections']
-            else:
-                sections = schema_copy
-            
-            header = sections.setdefault('header', {}) if isinstance(sections, dict) else {}
-            
-            # Handle "fields" wrapper inside header (e.g., {"header": {"fields": {...}}})
-            has_fields_wrapper = isinstance(header, dict) and 'fields' in header and isinstance(header.get('fields'), dict)
-            if has_fields_wrapper:
-                # Work with the fields dict directly
-                header_fields = header['fields']
-            else:
-                # Header directly contains fields
-                header_fields = header
-
-            def ensure_field(name, cfg):
-                if name not in header_fields:
-                    header_fields[name] = cfg
-                # Handle __order__ which might be at header or header.fields level
-                if has_fields_wrapper:
-                    order = header.setdefault('__order__', [])
-                else:
-                    order = header_fields.setdefault('__order__', [])
-                if name not in order:
-                    order.append(name)
-
-            # Alias supplier -> vendor
-            if 'vendor' not in header_fields and 'supplier' in header_fields and 'vendor' in header_model_fields:
-                header_fields['vendor'] = header_fields['supplier']
-                try:
-                    if has_fields_wrapper:
-                        order = header.get('__order__', [])
-                        header['__order__'] = [ ('vendor' if x == 'supplier' else x) for x in order ]
-                    else:
-                        order = header_fields.get('__order__', [])
-                        header_fields['__order__'] = [ ('vendor' if x == 'supplier' else x) for x in order ]
-                except Exception:
-                    pass
-
-            # Add vendor/customer if model requires but schema missing
-            if 'vendor' in header_model_fields and 'vendor' not in header_fields:
-                ensure_field('vendor', {'label': 'Vendor', 'type': 'char', 'required': False})
-            if 'customer' in header_model_fields and 'customer' not in header_fields:
-                ensure_field('customer', {'label': 'Customer', 'type': 'char', 'required': False})
-
-            # Alias customer if needed (common in sales schemas)
-            if 'customer' not in header_fields and 'customer' in header_model_fields and 'customer' in header_fields:
-                # already there, no action
-                pass
-
-            # Voucher date
-            if 'voucher_date' in header_model_fields:
-                ensure_field('voucher_date', {
-                    'label': 'Date',
-                    'type': 'date',
-                    'required': False,
-                    'order_no': 0,
-                    'kwargs': {'widget': {'attrs': {'value': date.today().isoformat()}}}
-                })
-
-            # Currency / currency_code
-            currency_field = 'currency_code' if 'currency_code' in header_model_fields else ('currency' if 'currency' in header_model_fields else None)
-            if currency_field:
-                try:
-                    default_currency = getattr(organization, 'base_currency_code', None) or getattr(organization, 'base_currency_code_id', None) or ''
-                except Exception:
-                    default_currency = ''
-                ensure_field(currency_field, {
-                    'label': 'Currency',
-                    'type': 'char',
-                    'required': False,
-                    'order_no': 1,
-                    'kwargs': {'widget': {'attrs': {'value': default_currency}}}
-                })
-
-            # Exchange rate
-            if 'exchange_rate' in header_model_fields:
-                ensure_field('exchange_rate', {
-                    'label': 'Exchange Rate',
-                    'type': 'decimal',
-                    'required': False,
-                    'order_no': 2,
-                    'kwargs': {'widget': {'attrs': {'value': '1.0'}}}
-                })
-
-            # Status (hidden, default draft)
-            if 'status' in header_model_fields:
-                ensure_field('status', {
-                    'label': 'Status',
-                    'type': 'char',
-                    'required': False,
-                    'hidden': True,
-                    'kwargs': {'widget': {'attrs': {'value': 'draft'}}}
-                })
-
-            return schema_copy
-
-        augmented_schema = _augment_header_schema(voucher_config)
-        # Temporarily inject the augmented schema without touching the DB-stored object
-        try:
-            voucher_config = copy.copy(voucher_config)
-            voucher_config.ui_schema = augmented_schema
-            form_kwargs['configuration'] = voucher_config
-        except Exception:
-            pass
-
-        factory = VoucherFormFactory(**form_kwargs)
+        factory = VoucherFormFactory(normalized=True, **form_kwargs)
         return factory.build_form()
+
+    @staticmethod
+    def build(voucher_config, organization, *, instance=None, data=None, files=None, **kwargs):
+        """
+        Unified public entry point for voucher form generation.
+        Returns (header_form_class, line_formset_class).
+        """
+        header_form_cls = VoucherFormFactory.get_generic_voucher_form(
+            voucher_config=voucher_config,
+            organization=organization,
+            instance=instance,
+            data=data,
+            files=files,
+            **kwargs,
+        )
+        line_formset_cls = VoucherFormFactory.get_generic_voucher_formset(
+            voucher_config=voucher_config,
+            organization=organization,
+            instance=instance,
+            data=data,
+            files=files,
+            **kwargs,
+        )
+        return header_form_cls, line_formset_cls
 
     @staticmethod
     def get_generic_voucher_formset(voucher_config, organization, instance=None, data=None, files=None, **kwargs):
@@ -796,14 +1338,14 @@ class VoucherFormFactory:
         form_kwargs = {
             'configuration': voucher_config,
             'organization': organization,
+            'prefix': 'lines',
             **kwargs
         }
 
         # Provide the line model to the factory so line-specific fields (FKs/typeaheads)
         # can be constructed correctly when building the line forms.
         try:
-            from accounting.forms.form_factory import VoucherFormFactory as FormsFactoryLegacy
-            line_model = FormsFactoryLegacy._get_line_model_for_voucher_config(voucher_config)
+            line_model = VoucherFormFactory._get_line_model_for_voucher_config(voucher_config)
             form_kwargs['model'] = line_model
         except Exception:
             pass
@@ -813,7 +1355,17 @@ class VoucherFormFactory:
         if files is not None:
             form_kwargs['files'] = files
         
-        factory = VoucherFormFactory(**form_kwargs)
+        resolved_schema = voucher_config.resolve_ui_schema() if hasattr(voucher_config, 'resolve_ui_schema') else {}
+        validate_ui_schema_or_raise(resolved_schema)
+        normalized_schema = normalize_ui_schema(
+            resolved_schema,
+            header_model=None,
+            line_model=form_kwargs.get('model'),
+            organization=organization,
+        )
+        form_kwargs['configuration'] = normalized_schema
+
+        factory = VoucherFormFactory(normalized=True, **form_kwargs)
         return factory.build_formset()
 
 def build_form(schema, **kwargs):
@@ -824,6 +1376,31 @@ def build_formset(schema, **kwargs):
     """Build a formset."""
     return VoucherFormFactory(schema, **kwargs).build_formset()
 
+
+def get_voucher_ui_header(organization, journal_type=None):
+    """Return the header portion of a VoucherModeConfig schema if it exists."""
+    try:
+        from accounting.models import VoucherModeConfig
+        cfg = None
+        if organization and journal_type:
+            cfg = VoucherModeConfig.objects.filter(
+                organization=organization,
+                journal_type__code=journal_type,
+                is_active=True,
+            ).first()
+        if not cfg and organization:
+            cfg = VoucherModeConfig.objects.filter(
+                organization=organization,
+                is_default=True,
+                is_active=True,
+            ).first()
+        if cfg:
+            ui = cfg.resolve_ui()
+            return ui.get('header') if isinstance(ui, dict) else None
+    except Exception:
+        pass
+    return None
+
 from django.utils.functional import LazyObject
 
 # Backward-compatible alias
@@ -833,7 +1410,7 @@ class LazyVoucherForms(LazyObject):
     def _setup(self):
         from .models import VoucherModeConfig
         self._wrapped = {
-            config.code: FormBuilder(config.ui_schema).build_form()
+            config.code: FormBuilder(config.resolve_ui_schema()).build_form()
             for config in VoucherModeConfig.objects.all()
         }
 

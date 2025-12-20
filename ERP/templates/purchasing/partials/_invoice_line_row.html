@@ -35,6 +35,10 @@
       <div class="text-danger small">{{ error }}</div>
     {% endfor %}
   </td>
+  <td class="text-end" style="min-width: 140px;">
+    <label class="form-label small text-uppercase text-muted">Line Total</label>
+    <input type="text" class="form-control form-control-sm text-end" data-line-total readonly>
+  </td>
   <td class="text-end" style="min-width: 120px;">
     <label class="form-label small text-uppercase text-muted" for="{{ form.vat_rate.id_for_label }}">VAT %</label>
     {% render_field form.vat_rate class+="form-control form-control-sm text-end" %}

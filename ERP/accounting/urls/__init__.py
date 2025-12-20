@@ -14,6 +14,7 @@ from ..views import generic_voucher_views
 from ..views import generic_voucher_lookups
 from ..views.report_views import (
     ReportListView,
+    DaybookView,
     GeneralLedgerView,
     TrialBalanceView as TrialBalanceReportView,
     ProfitLossView,
@@ -42,7 +43,7 @@ from ..views.views import (
     ReportsListView, TrialBalanceView, IncomeStatementView, BalanceSheetView,
     GeneralLedgerDetailView, VoucherTypeConfigurationView, VoucherEntryView,
     ChartOfAccountFormFieldsView, AccountingPeriodDetailView,  FiscalYearDetailView, AccountingPeriodCloseView, FiscalYearCloseView,JournalTypeDetailView,
-    get_next_account_code, JournalEntryView, JournalDetailView, VoucherConfigurationView,
+    get_next_account_code, JournalEntryView, JournalDetailView,
     JournalTypeListView, VoucherModeConfigListView, VoucherModeConfigDetailView,
     VoucherUDFConfigListView,
     CurrencyListView, CurrencyExchangeRateListView, TaxAuthorityListView,
@@ -99,6 +100,14 @@ from ..views import wizard
 from ..views import purchase_invoice_views, payment_scheduler_views, vendor_statement_views, customer_statement_views, sales_invoice_views, ar_receipt_views, commerce_views, sales_order_views, expense_views
 from ..views import sales_invoice_views, ar_receipt_views, commerce_views, sales_order_views
 from ..views import delivery_note_views
+from ..views.manual_journal_view import (
+    ManualJournalListView,
+    ManualJournalCreateView,
+    ManualJournalDetailView,
+    ManualJournalUpdateView,
+    ManualJournalPostView,
+    ManualJournalValidateView,
+)
 from ..views.voucher_create_view import (
     VoucherCreateView,
     VoucherCreateHtmxView,
@@ -191,6 +200,14 @@ urlpatterns = [
     path('journal/import/validate/', views_import.JournalImportValidateView.as_view(), name='journal_import_validate'),
     path('journal/import/process/', views_import.JournalImportProcessView.as_view(), name='journal_import_process'),
     path('journals/<int:journal_id>/save-as-recurring/', recurring_journal_views.RecurringJournalCreateView.as_view(), name='save_as_recurring'),
+
+    # Manual Journal URLs
+    path('manual-journals/', ManualJournalListView.as_view(), name='manual_journal_list'),
+    path('manual-journals/create/', ManualJournalCreateView.as_view(), name='manual_journal_create'),
+    path('manual-journals/<int:pk>/', ManualJournalDetailView.as_view(), name='manual_journal_detail'),
+    path('manual-journals/<int:pk>/edit/', ManualJournalUpdateView.as_view(), name='manual_journal_update'),
+    path('manual-journals/<int:pk>/post/', ManualJournalPostView.as_view(), name='manual_journal_post'),
+    path('manual-journals/validate/', ManualJournalValidateView.as_view(), name='manual_journal_validate'),
     
     # Recurring Journal URLs
     path('recurring-journals/', recurring_journal_views.RecurringJournalListView.as_view(), name='recurring-journal-list'),
@@ -225,7 +242,6 @@ urlpatterns = [
     path('voucher-udfs/<int:pk>/delete/', VoucherUDFConfigDeleteView.as_view(), name='voucher_udf_delete'),
     
     # New Voucher Configuration System
-    path('voucher-configuration/', VoucherConfigurationView.as_view(), name='voucher_field_config'),
     
     path('voucher-entry/', VoucherEntryView.as_view(), name='voucher_entry'),
     path('voucher-entry/list/', voucher_crud_views.VoucherListView.as_view(), name='voucher_entry_list'),
@@ -256,6 +272,9 @@ urlpatterns = [
     path('generic-voucher/select/', generic_voucher_views.VoucherTypeSelectionView.as_view(), name='generic_voucher_select'),
     path('generic-voucher/<slug:voucher_code>/create/', generic_voucher_views.GenericVoucherCreateView.as_view(), name='generic_voucher_create'),
     path('generic-voucher/line/', generic_voucher_views.GenericVoucherLineView.as_view(), name='generic_voucher_line'),
+    path('generic-voucher/recalc/', generic_voucher_views.GenericVoucherRecalcView.as_view(), name='generic_voucher_recalc'),
+    path('generic-voucher/<slug:voucher_code>/validate/', generic_voucher_views.GenericVoucherValidateView.as_view(), name='generic_voucher_validate'),
+    path('generic-voucher/<int:voucher_id>/status/', generic_voucher_views.VoucherProcessStatusView.as_view(), name='voucher_process_status'),
         path('generic-voucher/htmx/vendor-lookup/', generic_voucher_lookups.GenericVoucherVendorLookupJsonView.as_view(), name='generic_voucher_vendor_lookup_hx'),
         path('generic-voucher/htmx/customer-lookup/', generic_voucher_lookups.GenericVoucherCustomerLookupJsonView.as_view(), name='generic_voucher_customer_lookup_hx'),
         path('generic-voucher/htmx/product-lookup/', generic_voucher_lookups.GenericVoucherProductLookupJsonView.as_view(), name='generic_voucher_product_lookup_hx'),
@@ -364,6 +383,7 @@ urlpatterns = [
     
     # Advanced Reports URLs (Phase 3 Task 2)
     path('advanced-reports/', ReportListView.as_view(), name='report_list'),
+    path('advanced-reports/daybook/', DaybookView.as_view(), name='report_daybook'),
     path('advanced-reports/general-ledger/', GeneralLedgerView.as_view(), name='report_ledger'),
     path('advanced-reports/trial-balance/', TrialBalanceReportView.as_view(), name='report_trial_balance'),
     path('advanced-reports/profit-loss/', ProfitLossView.as_view(), name='report_pl'),
@@ -380,8 +400,9 @@ urlpatterns = [
     path('receivable-dashboard/', ReceivableDashboardView.as_view(), name='receivable_dashboard'),
     path('payable-dashboard/', PayableDashboardView.as_view(), name='payable_dashboard'),
 
-    # Vendor Billing / Accounts Payable
-    path('vendor-bills/new/', purchase_invoice_views.VendorBillCreateView.as_view(), name='vendor_bill_create'),
+    # Vendor Billing / Accounts Payable - DEPRECATED: Use purchasing:invoice-create instead
+    # Kept for backward compatibility - redirects to purchasing module
+    path('vendor-bills/new/', purchase_invoice_views.vendor_bill_create_deprecated, name='vendor_bill_create'),
     path('vendor-bills/line-row/', purchase_invoice_views.VendorBillLineRowView.as_view(), name='vendor_bill_line_row'),
     path('vendor-bills/vendor-summary/', purchase_invoice_views.VendorSummaryHXView.as_view(), name='vendor_summary_hx'),
     path('vendor-payments/scheduler/', payment_scheduler_views.PaymentSchedulerView.as_view(), name='payment_scheduler'),

@@ -1,0 +1,204 @@
+{% extends 'accounting/_form_base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}Landed Cost for Invoice {{ invoice.number }}{% endblock %}
+
+{% block form_content %}
+<div class="row g-3">
+  <!-- Left: Invoice Summary -->
+  <div class="col-lg-8">
+    <form method="post" novalidate id="landed-cost-form">
+      {% csrf_token %}
+      
+      {% if form.non_field_errors %}
+      <div class="alert alert-danger">
+        {% for error in form.non_field_errors %}{{ error }}<br>{% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Landed Cost Header -->
+      <div class="card mb-3">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">Landed Cost Details</h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small text-uppercase text-muted" for="{{ form.document_date.id_for_label }}">Document Date</label>
+              {% render_field form.document_date class+="form-control form-control-sm" %}
+              {% for error in form.document_date.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small text-uppercase text-muted" for="{{ form.basis.id_for_label }}">Allocation Basis</label>
+              {% render_field form.basis class+="form-select form-select-sm" %}
+              {% if form.basis.help_text %}<small class="form-text text-muted">{{ form.basis.help_text|safe }}</small>{% endif %}
+              {% for error in form.basis.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-12">
+              <label class="form-label small text-uppercase text-muted" for="{{ form.note.id_for_label }}">Notes</label>
+              {% render_field form.note class+="form-control form-control-sm" %}
+              {% for error in form.note.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cost Lines -->
+      <div class="card mb-3">
+        <div class="card-header bg-light">
+          <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Cost Components</h5>
+            <button class="btn btn-outline-primary btn-sm" type="button" data-cost-line-add>
+              <i class="mdi mdi-plus"></i> Add cost
+            </button>
+          </div>
+        </div>
+        <div class="card-body">
+          {% if cost_formset.non_form_errors %}
+          <div class="alert alert-danger">
+            {% for error in cost_formset.non_form_errors %}{{ error }}<br>{% endfor %}
+          </div>
+          {% endif %}
+
+          <div class="table-responsive">
+            {{ cost_formset.management_form }}
+            <table class="table table-sm align-middle mb-0">
+              <thead class="table-light text-muted">
+                <tr>
+                  <th>Description</th>
+                  <th>GL Account</th>
+                  <th class="text-end">Amount</th>
+                  <th class="text-center" style="width: 60px;"></th>
+                </tr>
+              </thead>
+              <tbody id="cost-lines-body">
+                {% for cost_form in cost_formset %}
+                  {% include "purchasing/partials/_landed_cost_line_row.html" with form=cost_form row_index=forloop.counter0 %}
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="mt-3 d-flex justify-content-end">
+            <div style="width: 300px;">
+              <div class="border-top pt-2">
+                <div class="row g-2">
+                  <div class="col-6 text-end"><strong>Total Landed Costs:</strong></div>
+                  <div class="col-6 text-end text-primary"><strong id="total-landed-cost">0.00</strong></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Form Actions -->
+      <div class="d-flex justify-content-between gap-2">
+        <a href="{% url 'purchasing:invoice-detail' invoice.pk %}" class="btn btn-outline-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save Costs & Allocate</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Right: Invoice Line Items Summary -->
+  <div class="col-lg-4">
+    <div class="card sticky-top" style="top: 20px;">
+      <div class="card-header bg-light">
+        <h5 class="mb-0">Invoice Summary</h5>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <div class="small text-muted">Invoice #</div>
+          <div class="fw-bold">{{ invoice.number }}</div>
+        </div>
+
+        <div class="mb-3">
+          <div class="small text-muted">Supplier</div>
+          <div class="fw-bold">{{ invoice.supplier.display_name }}</div>
+        </div>
+
+        <div class="mb-3">
+          <div class="small text-muted">Invoice Total</div>
+          <div class="fw-bold">{{ invoice.total_amount|floatformat:2 }} {{ invoice.currency.currency_code }}</div>
+        </div>
+
+        <hr>
+
+        <div class="mb-3">
+          <div class="small text-muted mb-2">Line Items (Allocation basis)</div>
+          <div class="table-responsive">
+            <table class="table table-sm mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th class="small">Product</th>
+                  <th class="small text-end">Qty</th>
+                  <th class="small text-end">Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for line_item in line_data %}
+                <tr>
+                  <td class="small">{{ line_item.line.product.name }}</td>
+                  <td class="small text-end">{{ line_item.qty }}</td>
+                  <td class="small text-end">{{ line_item.value|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+                <tr class="table-light fw-bold">
+                  <td class="small">Total</td>
+                  <td class="small text-end">{{ total_qty }}</td>
+                  <td class="small text-end">{{ total_value|floatformat:2 }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <hr>
+
+        <div class="alert alert-info small">
+          <strong>How It Works:</strong>
+          <ul class="mb-0 ps-3">
+            <li>Add landed costs (freight, insurance, duty, etc.)</li>
+            <li>Select allocation basis: <strong>By Value</strong> or <strong>By Quantity</strong></li>
+            <li>Submit to automatically allocate costs to line items</li>
+            <li>Updated unit costs are used for future GR posting</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Template for empty cost line -->
+<script type="text/template" id="cost-line-empty-form">
+  {% include "purchasing/partials/_landed_cost_line_row.html" with form=cost_formset.empty_form row_index="__prefix__" %}
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Add cost line button
+  document.querySelector('[data-cost-line-add]').addEventListener('click', function() {
+    const formsetData = document.querySelector('#id_costs-TOTAL_FORMS');
+    const currentForms = parseInt(formsetData.value);
+    const template = document.querySelector('#cost-line-empty-form').innerHTML;
+    const newForm = template.replace(/__prefix__/g, currentForms);
+    
+    document.querySelector('#cost-lines-body').insertAdjacentHTML('beforeend', newForm);
+    formsetData.value = currentForms + 1;
+  });
+
+  // Calculate total landed costs
+  function calculateTotalCost() {
+    let total = 0;
+    document.querySelectorAll('input[name*="amount"]').forEach(input => {
+      const val = parseFloat(input.value) || 0;
+      total += val;
+    });
+    document.querySelector('#total-landed-cost').textContent = total.toFixed(2);
+  }
+
+  calculateTotalCost();
+  document.querySelector('#landed-cost-form').addEventListener('input', calculateTotalCost);
+});
+</script>
+{% endblock %}

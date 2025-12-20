@@ -354,9 +354,10 @@ class VoucherSchemaViewSet(OrganizationScopedViewMixin, viewsets.ModelViewSet):
             schema.is_active = True
             schema.save()
             
-            # Update the voucher mode config's ui_schema
-            schema.voucher_mode_config.ui_schema = schema.schema
-            schema.voucher_mode_config.save(update_fields=['ui_schema'])
+            # Update the voucher mode config's schema_definition
+            from accounting.voucher_schema import ui_schema_to_definition
+            schema.voucher_mode_config.schema_definition = ui_schema_to_definition(schema.schema)
+            schema.voucher_mode_config.save(update_fields=['schema_definition'])
         
         serializer = self.get_serializer(schema)
         return Response(serializer.data)

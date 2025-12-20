@@ -15,7 +15,7 @@
           </ol>
           <a
             class="btn btn-success btn-sm"
-            hx-get="{% url 'purchasing:po_create' %}"
+            hx-get="{% url 'purchasing:po_unified_create' %}"
             hx-target="#po-detail-panel"
             hx-swap="innerHTML">
             <i class="mdi mdi-plus me-1"></i>
@@ -50,7 +50,7 @@
                 <p class="mb-3">Use the list on the left to open a PO, or start a new one below.</p>
                 <a
                   class="btn btn-outline-primary"
-                  hx-get="{% url 'purchasing:po_create' %}"
+                  hx-get="{% url 'purchasing:po_unified_create' %}"
                   hx-target="#po-detail-panel"
                   hx-swap="innerHTML">
                   Launch PO Form

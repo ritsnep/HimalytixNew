@@ -1,13 +1,20 @@
 {% load widget_tweaks %}
+<div id="purchase-form-panel">
 <form
   id="purchase-invoice-form"
   method="post"
   hx-post="{{ form_action }}"
-  hx-target="#purchasing-detail-panel"
+  hx-target="#purchase-form-panel"
   hx-swap="innerHTML"
+  hx-indicator="#purchase-invoice-loading"
   novalidate
 >
   {% csrf_token %}
+  {% if alert_message %}
+  <div class="alert alert-{{ alert_level|default:'info' }}">
+    {{ alert_message }}
+  </div>
+  {% endif %}
   {% if form.non_field_errors %}
   <div class="alert alert-danger">
     {% for error in form.non_field_errors %}{{ error }}<br>{% endfor %}
@@ -96,6 +103,7 @@
               <th>Description</th>
               <th class="text-end">Qty</th>
               <th class="text-end">Unit Cost</th>
+              <th class="text-end">Line Total</th>
               <th class="text-end">VAT %</th>
               <th>Expense Account</th>
               <th>Input VAT Account</th>
@@ -108,6 +116,20 @@
             {% endfor %}
           </tbody>
         </table>
+      </div>
+      <div class="row g-3 mt-3">
+        <div class="col-md-5">
+          <div
+            id="purchase-totals-panel"
+            hx-post="{% url 'purchasing:invoice-recalc' %}"
+            hx-trigger="input changed delay:350ms from:#purchase-invoice-form"
+            hx-include="#purchase-invoice-form"
+            hx-target="#purchase-totals-panel"
+            hx-swap="innerHTML"
+          >
+            {% include "purchasing/partials/invoice_totals.html" %}
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -125,9 +147,13 @@
     {% else %}
     <button type="button" class="btn btn-outline-secondary" data-clear-panel>Cancel</button>
     {% endif %}
-        {% include 'partials/_form_actions.html' with save_text='Save Invoice' %}
+        <div class="d-flex align-items-center gap-2">
+          <div id="purchase-invoice-loading" class="htmx-indicator text-muted small">Saving...</div>
+          {% include 'partials/_form_actions.html' with save_text='Save Invoice' %}
+        </div>
   </div>
 </form>
+</div>
 <script type="text/template" id="purchase-line-empty-form">
 {% with line_form=line_formset.empty_form %}
 {% include "purchasing/partials/_invoice_line_row.html" with form=line_form row_index="__prefix__" %}
@@ -142,11 +168,31 @@
   if (!formEl || !body || !template || !totalInput) {
     return;
   }
+  const parseNumber = (value) => {
+    const num = parseFloat(value);
+    return Number.isNaN(num) ? 0 : num;
+  };
+  const formatNumber = (value) => Number(value || 0).toFixed(2);
+  const updateTotals = () => {
+    body.querySelectorAll("tr").forEach((row) => {
+      if (row.classList.contains("d-none")) {
+        return;
+      }
+      const qty = parseNumber(row.querySelector('input[name$="-quantity"]')?.value);
+      const unitCost = parseNumber(row.querySelector('input[name$="-unit_price"]')?.value);
+      const lineTotal = qty * unitCost;
+      const lineTotalEl = row.querySelector("[data-line-total]");
+      if (lineTotalEl) {
+        lineTotalEl.value = formatNumber(lineTotal);
+      }
+    });
+  };
   const addLine = () => {
     const nextIndex = parseInt(totalInput.value, 10);
     const html = template.innerHTML.replace(/__prefix__/g, nextIndex);
     body.insertAdjacentHTML("beforeend", html);
     totalInput.value = nextIndex + 1;
+    updateTotals();
   };
   const removeLine = (button) => {
     const row = button.closest("tr");
@@ -159,6 +205,7 @@
     }
     row.classList.add("d-none");
     row.setAttribute("aria-hidden", "true");
+    updateTotals();
   };
   formEl.addEventListener("click", function (event) {
     if (event.target.closest("[data-line-add]")) {
@@ -171,6 +218,25 @@
       removeLine(removeBtn);
     }
   });
+  formEl.addEventListener("input", function (event) {
+    if (
+      event.target.matches('input[name$="-quantity"]') ||
+      event.target.matches('input[name$="-unit_price"]') ||
+      event.target.matches('input[name$="-vat_rate"]')
+    ) {
+      updateTotals();
+    }
+  });
+  formEl.addEventListener("submit", function () {
+    formEl.querySelectorAll("button[type='submit']").forEach((btn) => {
+      btn.disabled = true;
+    });
+  });
+  formEl.addEventListener("htmx:afterRequest", function () {
+    formEl.querySelectorAll("button[type='submit']").forEach((btn) => {
+      btn.disabled = false;
+    });
+  });
   formEl.querySelectorAll('[data-clear-panel]').forEach((button) => {
     button.addEventListener('click', function (event) {
       event.preventDefault();
@@ -180,5 +246,6 @@
       }
     });
   });
+  updateTotals();
 })();
 </script>

@@ -534,7 +534,8 @@ def post_journal(request, journal_id):
             format_journal_exception,
         )
 
-        service_post_journal(journal, user=request.user)
+        from accounting.utils.idempotency import resolve_idempotency_key
+        service_post_journal(journal, user=request.user, idempotency_key=resolve_idempotency_key(request))
         return HttpResponse(
             '<button class="btn btn-sm btn-success d-flex align-items-center gap-1" disabled>'
             '<i class="fas fa-check-circle"></i><span>Posted</span></button>'

@@ -33,7 +33,15 @@
                                 </a>
                             {% endif %}
                             {% if can_post %}
-                                <form method="post" action="{% url 'accounting:manual_journal_post' journal.pk %}" class="d-inline" onsubmit="return confirm('{% trans 'Are you sure you want to post this journal? This action cannot be undone.' %}');">
+                                <form
+                                    method="post"
+                                    action="{% url 'accounting:manual_journal_post' journal.pk %}"
+                                    class="d-inline"
+                                    hx-post="{% url 'accounting:manual_journal_post' journal.pk %}"
+                                    hx-target="#manual-journal-alert"
+                                    hx-swap="innerHTML"
+                                    hx-confirm="{% trans 'Are you sure you want to post this journal? This action cannot be undone.' %}"
+                                >
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-success">
                                         <i class="fas fa-check me-2"></i>
@@ -49,6 +57,9 @@
             <!-- Status and Balance Alert -->
             <div class="row mb-3">
                 <div class="col-12">
+                    <div id="manual-journal-alert">
+                        {% include "accounting/manual_journal/partials/journal_alert.html" %}
+                    </div>
                     {% if not is_balanced %}
                         <div class="alert alert-danger">
                             <i class="fas fa-exclamation-triangle me-2"></i>

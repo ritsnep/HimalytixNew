@@ -413,7 +413,7 @@ class VoucherDuplicateView(VoucherDetailActionView):
             HttpResponse: Redirect to new journal edit view
         """
         from django.db import transaction
-        from accounting.forms.form_factory import VoucherFormFactory
+        from accounting.forms_factory import VoucherFormFactory
 
         journal = self.get_object()
         organization = self.get_organization()

@@ -17,7 +17,7 @@ print(f"\nTotal vouchers configured: {configs.count()}/17\n")
 issues = []
 for i, config in enumerate(configs, 1):
     # Check critical fields
-    has_ui_schema = bool(config.ui_schema and config.ui_schema != {})
+    has_ui_schema = bool(config.schema_definition)
     has_journal_type = bool(config.journal_type_id)
     
     status_icon = "OK" if (has_ui_schema and has_journal_type) else "!!"
@@ -25,7 +25,7 @@ for i, config in enumerate(configs, 1):
     print(f"{i:2}. {status_icon} {config.code:20} | {config.name[:40]:40} | Schema: {'YES' if has_ui_schema else 'NO ':3} | JType: {config.journal_type_id or 'N/A'}")
     
     if not has_ui_schema:
-        issues.append(f"{config.code}: Missing ui_schema")
+        issues.append(f"{config.code}: Missing schema_definition")
     if not has_journal_type:
         issues.append(f"{config.code}: Missing journal_type_id")
 

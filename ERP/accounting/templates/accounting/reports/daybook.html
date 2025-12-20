@@ -1,0 +1,1127 @@
+{% extends "accounting/reports/report_base.html" %}
+{% load i18n %}
+{% load static %}
+
+{% block title %}{% trans "Daybook Report" %}{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'libs/admin-resources/rwd-table/rwd-table.min.css'%}" rel="stylesheet" type="text/css" />
+<style>
+    .daybook-container {
+        min-height: 100vh;
+        background: #f8f9fa;
+        padding-bottom: 1rem;
+    }
+    
+    .header-bar {
+        background: #0d6efd;
+        color: white;
+        padding: 0.5rem 0;
+        margin-bottom: 0.4rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+    }
+    
+    .breadcrumb {
+        margin: 0;
+        font-size: 0.75rem;
+        display: flex;
+        align-items: center;
+        flex: 1;
+    }
+    
+    .breadcrumb-item {
+        display: inline-flex;
+        align-items: center;
+    }
+    
+    .breadcrumb-item + .breadcrumb-item::before {
+        content: '/';
+        padding: 0 0.35rem;
+        color: rgba(255,255,255,0.7);
+    }
+    
+    .breadcrumb-item a {
+        color: #ffffff;
+        text-decoration: none;
+        transition: color 0.2s;
+    }
+    
+    .breadcrumb-item a:hover {
+        color: #f0f0f0;
+        text-decoration: underline;
+    }
+    
+    .breadcrumb-item.active {
+        color: #ffffff;
+        font-weight: 500;
+    }
+    
+    .page-title {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 1rem;
+        font-weight: 600;
+        margin: 0;
+        white-space: nowrap;
+    }
+    
+    .header-actions {
+        display: flex;
+        gap: 0.4rem;
+    }
+    
+    .container-fluid {
+        max-width: 100%;
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    
+    .filter-section {
+        background: white;
+        border-radius: 6px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        margin-bottom: 0.4rem;
+        overflow: visible;
+    }
+    
+    .filter-header {
+        background: #f7fafc;
+        padding: 0.45rem 0.75rem;
+        border-bottom: 1px solid #e2e8f0;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .filter-header h3 {
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin: 0;
+        color: #0d6efd;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    
+    .filter-toggle {
+        font-size: 0.75rem;
+        color: #718096;
+    }
+    
+    .filter-content {
+        padding: 0.4rem;
+    }
+    
+    .form-label.small {
+        font-size: 0.6rem;
+        margin-bottom: 0.1rem;
+        font-weight: 500;
+        color: #0d6efd;
+    }
+    
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 0.3rem;
+        align-items: flex-end;
+        width: 100%;
+        overflow: visible;
+    }
+    
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        gap: 0.05rem;
+    }
+    
+    .form-control-sm, .form-select-sm {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.3rem;
+        height: auto;
+        min-height: 24px;
+        width: 100%;
+    }
+    
+    .filter-actions {
+        display: flex;
+        gap: 0.2rem;
+        grid-column: 1 / -1;
+        padding-top: 0.3rem;
+        border-top: 1px solid #e2e8f0;
+        margin-top: 0.1rem;
+    }
+    
+    .filter-actions .btn {
+        padding: 0.2rem 0.35rem;
+        font-size: 0.65rem;
+        border-radius: 3px;
+    }
+    
+    .btn-sm, .btn-primary.btn-sm, .btn-outline-secondary.btn-sm {
+        padding: 0.2rem 0.35rem;
+        font-size: 0.65rem;
+        border-radius: 3px;
+        border: 1px solid;
+        height: auto;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.3rem;
+        margin-bottom: 0.4rem;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 6px;
+        padding: 0.35rem 0.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        transition: transform 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-1px);
+    }
+    
+    .stat-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+        flex-shrink: 0;
+    }
+    
+    .stat-card.debit .stat-icon {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+    }
+    
+    .stat-card.credit .stat-icon {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+    }
+    
+    .stat-card.balance .stat-icon {
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        color: white;
+    }
+    
+    .stat-card.transactions .stat-icon {
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        color: white;
+    }
+    
+    .stat-content {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .stat-label {
+        font-size: 0.6rem;
+        color: #718096;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.15px;
+        margin-bottom: 0.1rem;
+    }
+    
+    .stat-value {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #2d3748;
+        line-height: 1.1;
+        font-family: 'Courier New', monospace;
+    }
+    
+    .table-section {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+    
+    .table-toolbar {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0.45rem 0.75rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+    }
+    
+    .table-toolbar h3 {
+        margin: 0;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 0.35rem;
+        flex-wrap: wrap;
+    }
+    
+    .action-buttons .btn {
+        padding: 0.2rem 0.4rem;
+        border: 1px solid rgba(255,255,255,0.3);
+        background: rgba(255,255,255,0.1);
+        color: white;
+        border-radius: 4px;
+        transition: all 0.2s;
+        font-size: 0.65rem;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    
+    .action-buttons .btn:hover {
+        background: rgba(255,255,255,0.2);
+        border-color: rgba(255,255,255,0.5);
+    }
+    
+    .bulk-actions-bar {
+        background: #ebf4ff;
+        padding: 0.4rem 0.75rem;
+        border-bottom: 1px solid #bee3f8;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.75rem;
+    }
+    
+    .bulk-selection-info {
+        color: #2c5282;
+        font-weight: 500;
+    }
+    
+    .bulk-selection-actions {
+        display: flex;
+        gap: 0.4rem;
+    }
+    
+    .bulk-selection-actions .btn {
+        padding: 0.2rem 0.4rem;
+        font-size: 0.65rem;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+    }
+    
+    .table-section {
+        width: 100%;
+    }
+    
+    /* Sticky header that sits below top bar when scrolling */
+    .sticky-thead-wrapper {
+        position: fixed;
+        z-index: 100;
+        background: white;
+        display: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        max-width: 100%;
+        overflow: hidden;
+    }
+    
+    .sticky-thead-wrapper.active {
+        display: block;
+    }
+    
+    .sticky-thead-wrapper table {
+        margin: 0;
+        border-collapse: collapse;
+    }
+    
+    .sticky-thead-wrapper thead th {
+        padding: 0.35rem 0.5rem;
+        font-weight: 600;
+        color: #2d3748;
+        border-bottom: 2px solid #e2e8f0;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.15px;
+        background: #f7fafc;
+        text-align: left;
+    }
+    
+    .daybook-table {
+        width: 100%;
+        margin: 0;
+        font-size: 0.75rem;
+    }
+    
+    .daybook-table thead {
+        background: #f7fafc;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    
+    .daybook-table thead th {
+        padding: 0.35rem 0.5rem;
+        font-weight: 600;
+        color: #2d3748;
+        border-bottom: 2px solid #e2e8f0;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.15px;
+        background: #f7fafc;
+        text-align: left;
+    }
+    
+    .daybook-table thead th {
+        padding: 0.35rem 0.5rem;
+        font-weight: 600;
+        color: #2d3748;
+        border-bottom: 2px solid #e2e8f0;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.15px;
+        background: #f7fafc;
+    }
+    
+    .daybook-table tbody tr {
+        transition: background-color 0.2s;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .daybook-table tbody tr:hover {
+        background-color: #f7fafc;
+    }
+    
+    .daybook-table tbody td {
+        padding: 0.35rem 0.5rem;
+        color: #4a5568;
+        vertical-align: middle;
+    }
+    
+    .col-checkbox {
+        width: 35px;
+    }
+    
+    .col-date {
+        width: 80px;
+    }
+    
+    .col-voucher {
+        width: 100px;
+    }
+    
+    .col-type {
+        width: 90px;
+    }
+    
+    .col-account {
+        width: 130px;
+        max-width: 130px;
+    }
+    
+    .col-description {
+        min-width: 140px;
+    }
+    
+    .col-amount {
+        width: 90px;
+        text-align: right;
+    }
+    
+    .col-status {
+        width: 85px;
+        text-align: center;
+    }
+    
+    .col-actions {
+        width: 60px;
+        text-align: center;
+    }
+    
+    .voucher-link {
+        color: #667eea;
+        font-weight: 600;
+        text-decoration: none;
+        transition: color 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    
+    .voucher-link:hover {
+        color: #764ba2;
+        text-decoration: underline;
+    }
+    
+    .account-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.08rem;
+    }
+    
+    .account-code {
+        font-family: 'Courier New', monospace;
+        font-weight: 600;
+        color: #2d3748;
+        font-size: 0.7rem;
+    }
+    
+    .account-name {
+        color: #718096;
+        font-size: 0.65rem;
+    }
+    
+    .amount {
+        font-weight: 600;
+        font-family: 'Courier New', monospace;
+    }
+    
+    .amount.debit {
+        color: #e53e3e;
+    }
+    
+    .amount.credit {
+        color: #38a169;
+    }
+    
+    .amount.dash {
+        color: #a0aec0;
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 0.15rem 0.35rem;
+        border-radius: 3px;
+        font-size: 0.65rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    
+    .status-badge.draft {
+        background: #fed7d7;
+        color: #742a2a;
+    }
+    
+    .status-badge.awaiting_approval {
+        background: #feebc8;
+        color: #7c2d12;
+    }
+    
+    .status-badge.approved {
+        background: #c6f6d5;
+        color: #22543d;
+    }
+    
+    .status-badge.posted {
+        background: #bee3f8;
+        color: #2c5282;
+    }
+    
+    .status-badge.reversed {
+        background: #e9d8fd;
+        color: #44337a;
+    }
+    
+    .status-badge.rejected {
+        background: #feb2b2;
+        color: #742a2a;
+    }
+    
+    .row-actions {
+        display: flex;
+        gap: 0.25rem;
+        justify-content: center;
+    }
+    
+    .row-actions a, .row-actions button {
+        padding: 0.15rem 0.35rem;
+        font-size: 0.6rem;
+        border: none;
+        background: transparent;
+        color: #667eea;
+        cursor: pointer;
+        text-decoration: none;
+        transition: color 0.2s;
+    }
+    
+    .row-actions a:hover, .row-actions button:hover {
+        color: #764ba2;
+    }
+    
+    .table-footer {
+        background: #f7fafc;
+        padding: 0.5rem 0.75rem;
+        border-top: 2px solid #e2e8f0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 1.2rem;
+    }
+    
+    .total-item {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+    }
+    
+    .total-label {
+        font-size: 0.65rem;
+        color: #718096;
+        font-weight: 500;
+        margin-bottom: 0.1rem;
+    }
+    
+    .total-value {
+        font-size: 0.95rem;
+        font-weight: 700;
+        font-family: 'Courier New', monospace;
+    }
+    
+    .total-value.debit {
+        color: #e53e3e;
+    }
+    
+    .total-value.credit {
+        color: #38a169;
+    }
+    
+    .total-value.balanced {
+        color: #2d3748;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 1.5rem 1rem;
+        color: #718096;
+    }
+    
+    .empty-state i {
+        font-size: 2rem;
+        margin-bottom: 0.4rem;
+        opacity: 0.5;
+    }
+    
+    @media (max-width: 1200px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .form-row {
+            grid-template-columns: repeat(6, 1fr);
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        .page-title-bar {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .form-row {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+    
+    @media print {
+        .filter-section, .breadcrumb-header, .page-title-bar, .table-toolbar, .bulk-actions-bar, .row-actions, 
+        .action-buttons {
+            display: none !important;
+        }
+        .daybook-table {
+            font-size: 0.8rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block report_body %}
+<div class="daybook-container">
+    <!-- Combined Breadcrumb & Title Bar -->
+    <div class="header-bar">
+        <div class="container-fluid">
+            <div class="header-content">
+                <!-- Breadcrumb Navigation -->
+                <nav aria-label="breadcrumb" style="flex: 1;">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'accounting:dashboard' %}"><i class="fas fa-home"></i></a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'accounting:report_list' %}">Reports</a></li>
+                        <li class="breadcrumb-item active">Daybook</li>
+                    </ol>
+                </nav>
+                
+                <!-- Title -->
+                <h1 class="page-title">
+                    <i class="fas fa-calendar-alt"></i>
+                    {% trans "Daybook Report" %}
+                </h1>
+                
+                <!-- Header Actions -->
+                <div class="header-actions">
+                    <a href="{% url 'accounting:report_list' %}" class="btn btn-light btn-sm" style="padding: 0.2rem 0.35rem; font-size: 0.65rem; color: #0d6efd; background: white; border: 1px solid #0d6efd;">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <!-- Filter Section -->
+        <div class="filter-section">
+            <div class="filter-header" onclick="toggleFilters(this)">
+                <h3>
+                    <i class="fas fa-filter"></i>
+                    {% trans "Filters & Options" %}
+                </h3>
+                <span class="filter-toggle">
+                    <i class="fas fa-chevron-up"></i>
+                </span>
+            </div>
+            <div class="filter-content" id="filter-content">
+                <form method="get">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="start_date" class="form-label small">{% trans "Start Date" %}</label>
+                            <input type="date" id="start_date" name="start_date" value="{{ start_date }}" 
+                                   class="form-control form-control-sm" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="end_date" class="form-label small">{% trans "End Date" %}</label>
+                            <input type="date" id="end_date" name="end_date" value="{{ end_date }}" 
+                                   class="form-control form-control-sm" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="status" class="form-label small">{% trans "Status" %}</label>
+                            <select name="status" id="status" class="form-select form-select-sm">
+                                {% for value, label in status_choices %}
+                                    <option value="{{ value }}" {% if value == status %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="journal_type" class="form-label small">{% trans "Journal Type" %}</label>
+                            <select name="journal_type" id="journal_type" class="form-select form-select-sm">
+                                <option value="">{% trans "All Types" %}</option>
+                                {% for jtype in journal_types %}
+                                    <option value="{{ jtype.code }}" {% if jtype.code == journal_type %}selected{% endif %}>
+                                        {{ jtype.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="account_id" class="form-label small">{% trans "Account" %}</label>
+                            <select name="account_id" id="account_id" class="form-select form-select-sm">
+                                <option value="">{% trans "All Accounts" %}</option>
+                                {% for account in accounts %}
+                                    <option value="{{ account.id }}" {% if account.id|stringformat:"s" == account_id %}selected{% endif %}>
+                                        {{ account.account_code }} - {{ account.account_name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="voucher_number" class="form-label small">{% trans "Voucher #" %}</label>
+                            <input type="text" id="voucher_number" name="voucher_number" value="{{ voucher_number }}" 
+                                   class="form-control form-control-sm" placeholder="Search">
+                        </div>
+                    </div>
+                    <div class="filter-actions">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="fas fa-sync"></i> {% trans "Apply" %}
+                        </button>
+                        <a href="{% url 'accounting:report_daybook' %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-times"></i> {% trans "Clear" %}
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% if error %}
+            <div class="alert alert-danger alert-sm py-2" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>{{ error }}
+            </div>
+        {% endif %}
+
+        {% if report_data %}
+            <!-- Statistics Grid -->
+            <div class="stats-grid">
+                <div class="stat-card debit">
+                    <div class="stat-icon">
+                        <i class="fas fa-arrow-up"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">{% trans "Debits" %}</div>
+                        <div class="stat-value">{{ report_data.totals.debit|floatformat:2 }}</div>
+                    </div>
+                </div>
+                <div class="stat-card credit">
+                    <div class="stat-icon">
+                        <i class="fas fa-arrow-down"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">{% trans "Credits" %}</div>
+                        <div class="stat-value">{{ report_data.totals.credit|floatformat:2 }}</div>
+                    </div>
+                </div>
+                <div class="stat-card balance">
+                    <div class="stat-icon">
+                        <i class="fas fa-balance-scale"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">{% trans "Balance" %}</div>
+                        <div class="stat-value">{{ report_data.totals.balance|floatformat:2 }}</div>
+                    </div>
+                </div>
+                <div class="stat-card transactions">
+                    <div class="stat-icon">
+                        <i class="fas fa-file-invoice"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">{% trans "Trx" %}</div>
+                        <div class="stat-value">{{ report_data.totals.transaction_count }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Daybook Table -->
+            <div class="table-section">
+                <div class="table-toolbar">
+                    <h3>
+                        <i class="fas fa-list-ul"></i>
+                        {% trans "Transaction Details" %}
+                    </h3>
+                    <div class="action-buttons">
+                        <a href="?{{ request.GET.urlencode }}&export=csv" class="btn" title="Export to CSV">
+                            <i class="fas fa-file-csv"></i> CSV
+                        </a>
+                        <a href="?{{ request.GET.urlencode }}&export=excel" class="btn" title="Export to Excel">
+                            <i class="fas fa-file-excel"></i> Excel
+                        </a>
+                        <a href="?{{ request.GET.urlencode }}&export=pdf" class="btn" title="Export to PDF">
+                            <i class="fas fa-file-pdf"></i> PDF
+                        </a>
+                        <button onclick="window.print()" class="btn" title="Print">
+                            <i class="fas fa-print"></i> Print
+                        </button>
+                    </div>
+                </div>
+
+                {% if report_data.rows %}
+                    {% if show_bulk_actions %}
+                    <div class="bulk-actions-bar">
+                        <span class="bulk-selection-info">
+                            <i class="fas fa-info-circle"></i>
+                            <span id="selected-count">0</span> {% trans "selected" %}
+                        </span>
+                        <div class="bulk-selection-actions">
+                            <button class="btn btn-warning btn-sm" onclick="bulkPost()" title="Post selected journals">
+                                <i class="fas fa-check"></i> {% trans "Post" %}
+                            </button>
+                            <button class="btn btn-info btn-sm" onclick="bulkApprove()" title="Approve selected journals">
+                                <i class="fas fa-thumbs-up"></i> {% trans "Approve" %}
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="bulkReverse()" title="Reverse selected journals">
+                                <i class="fas fa-undo"></i> {% trans "Reverse" %}
+                            </button>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="table-responsive" data-pattern="priority-columns">
+                        <table class="daybook-table">
+                            <thead>
+                                <tr>
+                                    {% if show_bulk_actions %}
+                                    <th class="col-checkbox">
+                                        <input type="checkbox" id="select-all" onchange="toggleSelectAll(this)">
+                                    </th>
+                                    {% endif %}
+                                    <th class="col-date" data-priority="1">{% trans "Date" %}</th>
+                                    <th class="col-voucher" data-priority="1">{% trans "Voucher" %}</th>
+                                    <th class="col-type" data-priority="2">{% trans "Type" %}</th>
+                                    <th class="col-account" data-priority="3">{% trans "Account" %}</th>
+                                    <th class="col-description" data-priority="4">{% trans "Description" %}</th>
+                                    <th class="col-amount" data-priority="1">{% trans "Debit" %}</th>
+                                    <th class="col-amount" data-priority="1">{% trans "Credit" %}</th>
+                                    <th class="col-status" data-priority="2">{% trans "Status" %}</th>
+                                    <th class="col-actions" data-priority="5">{% trans "Actions" %}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in report_data.rows %}
+                                    <tr class="data-row" data-journal-id="{{ row.journal_id }}">
+                                        {% if show_bulk_actions %}
+                                        <td class="col-checkbox">
+                                            <input type="checkbox" class="row-checkbox" value="{{ row.journal_id }}" onchange="updateSelectedCount()">
+                                        </td>
+                                        {% endif %}
+                                        <td class="col-date">{{ row.journal_date|date:"Y-m-d" }}</td>
+                                        <td class="col-voucher">
+                                            <a href="{% url 'accounting:journal_detail' row.journal_id %}" 
+                                               class="voucher-link" target="_blank" title="View voucher details">
+                                                {{ row.journal_number }}
+                                                <i class="fas fa-external-link-alt"></i>
+                                            </a>
+                                        </td>
+                                        <td class="col-type">
+                                            <span class="badge bg-light text-dark" style="font-size: 0.65rem; padding: 0.2rem 0.35rem;">
+                                                {{ row.journal_type_name }}
+                                            </span>
+                                        </td>
+                                        <td class="col-account">
+                                            <div class="account-info">
+                                                <div class="account-code">{{ row.account_code }}</div>
+                                                <div class="account-name">{{ row.account_name }}</div>
+                                            </div>
+                                        </td>
+                                        <td class="col-description">
+                                            {{ row.description|truncatechars:50 }}
+                                        </td>
+                                        <td class="col-amount">
+                                            {% if row.debit %}
+                                                <span class="amount debit">{{ row.debit|floatformat:2 }}</span>
+                                            {% else %}
+                                                <span class="amount dash">—</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="col-amount">
+                                            {% if row.credit %}
+                                                <span class="amount credit">{{ row.credit|floatformat:2 }}</span>
+                                            {% else %}
+                                                <span class="amount dash">—</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="col-status">
+                                            <span class="status-badge {{ row.status }}">
+                                                {{ row.status_display }}
+                                            </span>
+                                        </td>
+                                        <td class="col-actions">
+                                            <div class="row-actions">
+                                                <a href="{% url 'accounting:journal_detail' row.journal_id %}" 
+                                                   title="View"><i class="fas fa-eye"></i></a>
+                                                {% if row.status == 'draft' %}
+                                                <a href="{% url 'accounting:journal_update' row.journal_id %}" 
+                                                   title="Edit"><i class="fas fa-edit"></i></a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Table Footer with Totals -->
+                    <div class="table-footer">
+                        <div class="total-item">
+                            <div class="total-label">{% trans "Total Debits" %}</div>
+                            <div class="total-value debit">{{ report_data.totals.debit|floatformat:2 }}</div>
+                        </div>
+                        <div class="total-item">
+                            <div class="total-label">{% trans "Total Credits" %}</div>
+                            <div class="total-value credit">{{ report_data.totals.credit|floatformat:2 }}</div>
+                        </div>
+                        <div class="total-item">
+                            <div class="total-label">{% trans "Difference" %}</div>
+                            <div class="total-value {% if report_data.totals.balance == 0 %}balanced{% else %}debit{% endif %}">
+                                {{ report_data.totals.balance|floatformat:2 }}
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>{% trans "No transactions found for the selected criteria." %}</p>
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    function toggleFilters(header) {
+        const content = document.getElementById('filter-content');
+        const toggle = header.querySelector('.filter-toggle i');
+        content.style.display = content.style.display === 'none' ? 'block' : 'none';
+        toggle.classList.toggle('fa-chevron-up');
+        toggle.classList.toggle('fa-chevron-down');
+    }
+    
+    function toggleSelectAll(checkbox) {
+        const checkboxes = document.querySelectorAll('.row-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = checkbox.checked;
+        });
+        updateSelectedCount();
+    }
+    
+    function updateSelectedCount() {
+        const checkboxes = document.querySelectorAll('.row-checkbox:checked');
+        document.getElementById('selected-count').textContent = checkboxes.length;
+    }
+    
+    function getSelectedJournalIds() {
+        const checkboxes = document.querySelectorAll('.row-checkbox:checked');
+        return Array.from(checkboxes).map(cb => cb.value);
+    }
+    
+    function bulkPost() {
+        const ids = getSelectedJournalIds();
+        if (ids.length === 0) {
+            alert('Please select at least one journal');
+            return;
+        }
+        if (confirm(`Post ${ids.length} journal(s)?`)) {
+            // Implement bulk post action
+            console.log('Posting journals:', ids);
+        }
+    }
+    
+    function bulkApprove() {
+        const ids = getSelectedJournalIds();
+        if (ids.length === 0) {
+            alert('Please select at least one journal');
+            return;
+        }
+        if (confirm(`Approve ${ids.length} journal(s)?`)) {
+            // Implement bulk approve action
+            console.log('Approving journals:', ids);
+        }
+    }
+    
+    function bulkReverse() {
+        const ids = getSelectedJournalIds();
+        if (ids.length === 0) {
+            alert('Please select at least one journal');
+            return;
+        }
+        if (confirm(`Reverse ${ids.length} journal(s)?`)) {
+            // Implement bulk reverse action
+            console.log('Reversing journals:', ids);
+        }
+    }
+</script>
+
+<!-- Initialize Table Functions -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Create and manage sticky table header
+        var tableSection = document.querySelector('.table-section');
+        var tableResponsive = document.querySelector('.table-responsive');
+        var table = document.querySelector('.daybook-table');
+        var tableHead = table ? table.querySelector('thead') : null;
+        var topbar = document.getElementById('page-topbar');
+        
+        if (tableSection && table && tableHead && tableResponsive) {
+            // Create sticky header wrapper
+            var stickyWrapper = document.createElement('div');
+            stickyWrapper.className = 'sticky-thead-wrapper';
+            stickyWrapper.innerHTML = '<table><thead>' + tableHead.innerHTML + '</thead></table>';
+            document.body.insertBefore(stickyWrapper, document.body.firstChild);
+            
+            // Get topbar height
+            var getTopbarHeight = function() {
+                return topbar ? topbar.offsetHeight : 0;
+            };
+            
+            // Monitor scroll and show/hide sticky header
+            window.addEventListener('scroll', function() {
+                var tableRect = tableSection.getBoundingClientRect();
+                var topbarHeight = getTopbarHeight();
+                var headerBar = document.querySelector('.header-bar');
+                var headerBarHeight = headerBar ? headerBar.offsetHeight : 0;
+                
+                // Calculate when to show sticky header (when table scrolls past header bar)
+                var triggerPoint = topbarHeight + headerBarHeight;
+                
+                // Show sticky header when table header scrolls out of view
+                if (tableRect.top < triggerPoint) {
+                    stickyWrapper.classList.add('active');
+                    // Position below topbar
+                    stickyWrapper.style.top = topbarHeight + 'px';
+                    
+                    // Get table container position and width
+                    var responsiveRect = tableResponsive.getBoundingClientRect();
+                    stickyWrapper.style.left = responsiveRect.left + 'px';
+                    stickyWrapper.style.width = responsiveRect.width + 'px';
+                } else {
+                    stickyWrapper.classList.remove('active');
+                }
+                
+                // Hide if we've scrolled past the table
+                if (tableRect.bottom < (topbarHeight + 60)) {
+                    stickyWrapper.classList.remove('active');
+                }
+            });
+            
+            // Sync column widths when page loads and window resizes
+            var syncColumnWidths = function() {
+                var originalThs = table.querySelectorAll('thead th');
+                var stickyThs = stickyWrapper.querySelectorAll('thead th');
+                
+                for (var i = 0; i < originalThs.length; i++) {
+                    if (stickyThs[i]) {
+                        stickyThs[i].style.width = originalThs[i].offsetWidth + 'px';
+                        stickyThs[i].style.minWidth = originalThs[i].offsetWidth + 'px';
+                    }
+                }
+                
+                // Set table width to actual computed width
+                var stickyTable = stickyWrapper.querySelector('table');
+                var computedWidth = 0;
+                for (var i = 0; i < originalThs.length; i++) {
+                    computedWidth += originalThs[i].offsetWidth;
+                }
+                if (stickyTable) {
+                    stickyTable.style.width = computedWidth + 'px';
+                }
+            };
+            
+            window.addEventListener('resize', syncColumnWidths);
+            
+            // Sync on load
+            setTimeout(syncColumnWidths, 100);
+            
+            // Re-trigger scroll to position correctly
+            setTimeout(function() {
+                window.dispatchEvent(new Event('scroll'));
+            }, 150);
+        }
+        
+        // Try to initialize responsive table if jQuery and plugin are available
+        if (typeof $ !== 'undefined' && typeof jQuery !== 'undefined') {
+            setTimeout(function() {
+                if ($.fn && $.fn.responsiveTable) {
+                    $(".table-responsive").responsiveTable({addDisplayAllBtn:"btn btn-secondary"});
+                    $(".btn-toolbar [data-toggle=dropdown]").attr("data-bs-toggle","dropdown");
+                }
+            }, 100);
+        }
+    });
+</script>
+{% endblock %}

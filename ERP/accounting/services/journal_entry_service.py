@@ -313,7 +313,7 @@ class JournalEntryService:
         journal.save(update_fields=['status', 'is_locked', 'updated_by', 'updated_at'])
         log_audit_event(self.user, journal, 'reject')
 
-    def post(self, journal: Journal) -> Journal:
+    def post(self, journal: Journal, *, idempotency_key: str | None = None) -> Journal:
         """Posts a journal to the general ledger."""
         if not self._has_permission('post_journal'):
             raise PermissionError("You do not have permission to post journal entries.")
@@ -328,9 +328,9 @@ class JournalEntryService:
             if journal.status not in ('approved', 'draft'):
                 raise ValueError("Only approved or draft journals can be posted.")
 
-        posting_service = PostingService(self.user)
         try:
-            posted_journal = posting_service.post(journal)
+            from accounting.services.post_journal import post_journal
+            posted_journal = post_journal(journal, user=self.user, idempotency_key=idempotency_key)
         except ValidationError as exc:
             message = "; ".join(exc.messages)
             raise ValueError(message) from exc

@@ -1,0 +1,298 @@
+{% load i18n %}
+{% load widget_tweaks %}
+<div id="manual-journal-form-panel">
+  {% if alert_message %}
+  <div class="alert alert-{{ alert_level|default:'info' }} mb-3" role="alert">
+    {{ alert_message }}
+  </div>
+  {% endif %}
+  {% if form.non_field_errors %}
+  <div class="alert alert-danger">
+    {% for error in form.non_field_errors %}{{ error }}<br>{% endfor %}
+  </div>
+  {% endif %}
+  <form
+    method="post"
+    id="manual-journal-form"
+    hx-post="{{ form_action }}"
+    hx-target="#manual-journal-form-panel"
+    hx-swap="innerHTML"
+    hx-indicator="#manual-journal-loading"
+    novalidate
+  >
+    {% csrf_token %}
+    <div class="row">
+      <div class="col-lg-12 mb-4">
+        <div class="card">
+          <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+              <i class="fas fa-info-circle me-2"></i>
+              {% trans "Journal Header" %}
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="{{ form.journal_type.id_for_label }}" class="form-label">
+                  {% trans "Journal Type" %} <span class="text-danger">*</span>
+                </label>
+                {% render_field form.journal_type class="form-select" %}
+                {% if form.journal_type.errors %}
+                <div class="invalid-feedback d-block">{{ form.journal_type.errors }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="{{ form.period.id_for_label }}" class="form-label">
+                  {% trans "Period" %} <span class="text-danger">*</span>
+                </label>
+                {% render_field form.period class="form-select" %}
+                {% if form.period.errors %}
+                <div class="invalid-feedback d-block">{{ form.period.errors }}</div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label for="{{ form.journal_date.id_for_label }}" class="form-label">
+                  {% trans "Journal Date" %} <span class="text-danger">*</span>
+                </label>
+                {{ form.journal_date }}
+                {% if form.journal_date.errors %}
+                <div class="invalid-feedback d-block">{{ form.journal_date.errors }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="{{ form.reference.id_for_label }}" class="form-label">
+                  {% trans "Reference" %}
+                </label>
+                {% render_field form.reference class="form-control" placeholder="e.g., REF-001" %}
+                {% if form.reference.errors %}
+                <div class="invalid-feedback d-block">{{ form.reference.errors }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="{{ form.currency_code.id_for_label }}" class="form-label">
+                  {% trans "Currency" %}
+                </label>
+                {% render_field form.currency_code class="form-select" %}
+                {% if form.currency_code.errors %}
+                <div class="invalid-feedback d-block">{{ form.currency_code.errors }}</div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <label for="{{ form.description.id_for_label }}" class="form-label">
+                  {% trans "Description" %}
+                </label>
+                {% render_field form.description class="form-control" rows="3" placeholder="Enter journal description..." %}
+                {% if form.description.errors %}
+                <div class="invalid-feedback d-block">{{ form.description.errors }}</div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-12 mb-4">
+        <div class="card">
+          <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+              <i class="fas fa-list me-2"></i>
+              {% trans "Journal Lines" %}
+            </h5>
+            <button type="button" class="btn btn-sm btn-light" data-line-add>
+              <i class="fas fa-plus me-1"></i>
+              {% trans "Add Line" %}
+            </button>
+          </div>
+          <div class="card-body p-0">
+            {{ line_formset.management_form }}
+            {% if line_formset.non_form_errors %}
+            <div class="alert alert-danger m-3">
+              {% for error in line_formset.non_form_errors %}{{ error }}<br>{% endfor %}
+            </div>
+            {% endif %}
+            <div class="table-responsive">
+              <table class="table table-hover mb-0" id="manual-lines-table">
+                <thead class="table-light">
+                  <tr>
+                    <th style="width: 5%">#</th>
+                    <th style="width: 20%">{% trans "Account" %} <span class="text-danger">*</span></th>
+                    <th style="width: 25%">{% trans "Description" %}</th>
+                    <th style="width: 12%" class="text-end">{% trans "Debit" %}</th>
+                    <th style="width: 12%" class="text-end">{% trans "Credit" %}</th>
+                    <th style="width: 10%">{% trans "Department" %}</th>
+                    <th style="width: 10%">{% trans "Project" %}</th>
+                    <th style="width: 6%" class="text-center">{% trans "Delete" %}</th>
+                  </tr>
+                </thead>
+                <tbody id="manual-lines-body">
+                  {% for line_form in line_formset %}
+                  <tr class="journal-line-row">
+                    <td class="line-number">{{ forloop.counter }}</td>
+                    <td>
+                      {% render_field line_form.account class="form-select form-select-sm" %}
+                      {{ line_form.id }}
+                    </td>
+                    <td>
+                      {% render_field line_form.description class="form-control form-control-sm" %}
+                    </td>
+                    <td>
+                      {% render_field line_form.debit_amount class="form-control form-control-sm text-end debit-input" placeholder="0.00" %}
+                    </td>
+                    <td>
+                      {% render_field line_form.credit_amount class="form-control form-control-sm text-end credit-input" placeholder="0.00" %}
+                    </td>
+                    <td>
+                      {% render_field line_form.department class="form-select form-select-sm" %}
+                    </td>
+                    <td>
+                      {% render_field line_form.project class="form-select form-select-sm" %}
+                    </td>
+                    <td class="text-center">
+                      {% render_field line_form.DELETE class="form-check-input" %}
+                    </td>
+                  </tr>
+                  {% if line_form.errors %}
+                  <tr>
+                    <td colspan="8" class="text-danger">
+                      {{ line_form.errors }}
+                    </td>
+                  </tr>
+                  {% endif %}
+                  {% endfor %}
+                </tbody>
+                <tfoot class="table-light">
+                  <tr>
+                    <th colspan="3" class="text-end">{% trans "Totals:" %}</th>
+                    <th class="text-end">
+                      <span id="manual-total-debit" class="fw-bold text-success">0.00</span>
+                    </th>
+                    <th class="text-end">
+                      <span id="manual-total-credit" class="fw-bold text-danger">0.00</span>
+                    </th>
+                    <th colspan="3">
+                      <span id="manual-balance-status" class="badge bg-warning">
+                        {% trans "Not Balanced" %}
+                      </span>
+                    </th>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body d-flex justify-content-between">
+            <a href="{% url 'accounting:manual_journal_list' %}" class="btn btn-secondary">
+              <i class="fas fa-times me-2"></i>
+              {% trans "Cancel" %}
+            </a>
+            <div class="d-flex align-items-center gap-2">
+              <div id="manual-journal-loading" class="htmx-indicator text-muted small">
+                {% trans "Saving..." %}
+              </div>
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-2"></i>
+                {{ submit_button_text }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script type="text/template" id="manual-line-empty-form">
+{% with line_form=line_formset.empty_form %}
+<tr class="journal-line-row">
+  <td class="line-number"></td>
+  <td>{% render_field line_form.account class="form-select form-select-sm" %}{{ line_form.id }}</td>
+  <td>{% render_field line_form.description class="form-control form-control-sm" %}</td>
+  <td>{% render_field line_form.debit_amount class="form-control form-control-sm text-end debit-input" placeholder="0.00" %}</td>
+  <td>{% render_field line_form.credit_amount class="form-control form-control-sm text-end credit-input" placeholder="0.00" %}</td>
+  <td>{% render_field line_form.department class="form-select form-select-sm" %}</td>
+  <td>{% render_field line_form.project class="form-select form-select-sm" %}</td>
+  <td class="text-center">{% render_field line_form.DELETE class="form-check-input" %}</td>
+</tr>
+{% endwith %}
+</script>
+<script>
+(function () {
+  const form = document.getElementById("manual-journal-form");
+  const body = document.getElementById("manual-lines-body");
+  const template = document.getElementById("manual-line-empty-form");
+  const totalInput = document.getElementById("id_lines-TOTAL_FORMS");
+  if (!form || !body || !template || !totalInput) return;
+
+  const parseNumber = (value) => {
+    const num = parseFloat(value);
+    return Number.isNaN(num) ? 0 : num;
+  };
+
+  const updateTotals = () => {
+    let totalDebit = 0;
+    let totalCredit = 0;
+    body.querySelectorAll(".debit-input").forEach(input => { totalDebit += parseNumber(input.value); });
+    body.querySelectorAll(".credit-input").forEach(input => { totalCredit += parseNumber(input.value); });
+    const debitEl = document.getElementById("manual-total-debit");
+    const creditEl = document.getElementById("manual-total-credit");
+    const statusEl = document.getElementById("manual-balance-status");
+    if (debitEl) debitEl.textContent = totalDebit.toFixed(2);
+    if (creditEl) creditEl.textContent = totalCredit.toFixed(2);
+    const diff = Math.abs(totalDebit - totalCredit);
+    if (statusEl) {
+      if (diff < 0.01) {
+        statusEl.textContent = "Balanced";
+        statusEl.className = "badge bg-success";
+      } else {
+        statusEl.textContent = `Imbalance: ${diff.toFixed(2)}`;
+        statusEl.className = "badge bg-danger";
+      }
+    }
+  };
+
+  const reindexRows = () => {
+    body.querySelectorAll(".journal-line-row").forEach((row, index) => {
+      const numberCell = row.querySelector(".line-number");
+      if (numberCell) numberCell.textContent = index + 1;
+      row.querySelectorAll("input, select, textarea").forEach((el) => {
+        if (el.name) el.name = el.name.replace(/lines-\d+-/g, `lines-${index}-`);
+        if (el.id) el.id = el.id.replace(/lines-\d+-/g, `lines-${index}-`);
+      });
+    });
+  };
+
+  const addLine = () => {
+    const nextIndex = parseInt(totalInput.value, 10);
+    const html = template.innerHTML.replace(/__prefix__/g, nextIndex);
+    body.insertAdjacentHTML("beforeend", html);
+    totalInput.value = nextIndex + 1;
+    reindexRows();
+    updateTotals();
+  };
+
+  form.addEventListener("click", (event) => {
+    if (event.target.closest("[data-line-add]")) {
+      event.preventDefault();
+      addLine();
+    }
+  });
+
+  form.addEventListener("input", (event) => {
+    if (event.target.matches(".debit-input, .credit-input")) {
+      updateTotals();
+    }
+  });
+
+  updateTotals();
+})();
+</script>

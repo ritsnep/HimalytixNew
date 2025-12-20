@@ -127,7 +127,7 @@ class APPaymentService:
     # Execution
     # ------------------------------------------------------------------
     @transaction.atomic
-    def execute_payment(self, payment: APPayment, journal_type) -> APPayment:
+    def execute_payment(self, payment: APPayment, journal_type, *, idempotency_key: str | None = None) -> APPayment:
         if payment.status not in {'approved', 'draft'}:
             raise ValidationError("Only draft or approved payments can be executed.")
         vendor_account = payment.vendor.accounts_payable_account
@@ -168,7 +168,8 @@ class APPaymentService:
             created_by=self.user,
         )
 
-        posted = self.posting_service.post(journal)
+        from accounting.services.post_journal import post_journal
+        posted = post_journal(journal, user=self.user, idempotency_key=idempotency_key)
         payment.status = 'executed'
         payment.journal = posted
         payment.updated_by = self.user

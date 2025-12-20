@@ -176,7 +176,7 @@
     DualCalendar.initAll();
   });
 
-  document.body.addEventListener("htmx:afterSwap", function (evt) {
+  document.addEventListener("htmx:afterSwap", function (evt) {
     DualCalendar.initAll(evt.target);
   });
 })(window, document);

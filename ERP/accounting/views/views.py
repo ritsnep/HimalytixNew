@@ -13,7 +13,7 @@ from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
 from accounting.models import AccountType, Currency, CurrencyExchangeRate, FiscalYear, TaxAuthority, TaxType
 from accounting.forms import AccountTypeForm, ChartOfAccountForm, CostCenterForm, CurrencyExchangeRateForm, CurrencyForm, DepartmentForm, FiscalYearForm, ProjectForm, TaxAuthorityForm, TaxTypeForm
-from accounting.forms.form_factory import VoucherFormFactory, get_voucher_ui_header
+from accounting.forms_factory import VoucherFormFactory, get_voucher_ui_header
 from django.contrib import messages
 from django.db.models import F
 from django.http import JsonResponse
@@ -1735,7 +1735,7 @@ def journal_save_ajax(request):
     if not PermissionUtils.has_permission(request.user, organization, 'accounting', 'journal', 'add'):
         return JsonResponse({'error': 'Permission denied'}, status=403)
 
-    from accounting.forms.form_factory import get_voucher_ui_header
+    from accounting.forms_factory import get_voucher_ui_header
     # Determine UI schema (default to organization's default voucher config)
     header_ui = get_voucher_ui_header(organization)
     form = JournalForm(request.POST, organization=organization, ui_schema=header_ui)
@@ -1874,7 +1874,12 @@ def journal_post_ajax(request):
             organization_id=organization.id
         )
  
-        post_journal(journal, request.user)
+        from accounting.utils.idempotency import resolve_idempotency_key
+        post_journal(
+            journal,
+            request.user,
+            idempotency_key=resolve_idempotency_key(request),
+        )
  
         return JsonResponse({
             'success': True,
@@ -1979,7 +1984,6 @@ class VoucherModeConfigCreateView(PermissionRequiredMixin, LoginRequiredMixin, C
     def form_valid(self, form):
         form.instance.created_by = self.request.user
         form.instance.updated_by = self.request.user
-        form.instance.ui_schema = form.cleaned_data.get('ui_schema')
         messages.success(self.request, "Voucher configuration created successfully.")
         return super().form_valid(form)
 
@@ -2040,7 +2044,12 @@ class JournalPostView(LoginRequiredMixin, View):
 
        try:
            # Use centralized posting service
-           journal = post_journal(journal, user=request.user)
+           from accounting.utils.idempotency import resolve_idempotency_key
+           journal = post_journal(
+               journal,
+               user=request.user,
+               idempotency_key=resolve_idempotency_key(request),
+           )
            messages.success(request, "Journal posted successfully.")
            return redirect('accounting:journal_detail', pk=pk)
        except (JournalPostingError, JournalValidationError) as e:
@@ -2061,40 +2070,3 @@ class JournalPostView(LoginRequiredMixin, View):
            return redirect('accounting:journal_detail', pk=pk)
 
 
-class VoucherConfigurationView(LoginRequiredMixin, TemplateView):
-    """View for managing voucher type configurations and field customizations"""
-    template_name = 'accounting/voucher_configuration.html'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        organization = self.request.user.get_active_organization()
-
-        # Get all voucher types
-        voucher_types = VoucherType.objects.all()
-
-        # Get configuration for each voucher type
-        voucher_configs = []
-        for voucher_type in voucher_types:
-            resolver = VoucherConfigResolver(organization, voucher_type)
-            fields_config = resolver.get_fields_config()
-
-            voucher_configs.append({
-                'voucher_type': voucher_type,
-                'fields': fields_config
-            })
-
-        context.update({
-            'voucher_configs': voucher_configs,
-            'organization': organization,
-        })
-
-        # Add breadcrumbs
-        context.update({
-            'breadcrumbs': [
-                ('Home', reverse('dashboard')),
-                ('Accounting', None),
-                ('Voucher Configuration', reverse('accounting:voucher_field_config'))
-            ]
-        })
-
-        return context

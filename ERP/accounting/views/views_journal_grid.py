@@ -12,7 +12,7 @@ from django.db import transaction
 from accounting.journal_grid_forms import JournalGridLineForm, JournalGridLineFormSet
 from accounting.models import ChartOfAccount
 from accounting.forms import JournalForm
-from accounting.forms.form_factory import get_voucher_ui_header
+from accounting.forms_factory import get_voucher_ui_header
 from ..models import JournalLine, Journal
 
 @require_GET

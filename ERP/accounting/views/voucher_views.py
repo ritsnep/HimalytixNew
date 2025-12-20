@@ -220,7 +220,12 @@ class VoucherPostView(PermissionRequiredMixin, UserOrganizationMixin, DetailView
                 JournalValidationError,
                 format_journal_exception,
             )
-            post_journal(voucher, request.user)
+            from accounting.utils.idempotency import resolve_idempotency_key
+            post_journal(
+                voucher,
+                request.user,
+                idempotency_key=resolve_idempotency_key(request),
+            )
             messages.success(request, f"Voucher {voucher.journal_number} has been posted successfully.")
         except (JournalPostingError, JournalValidationError) as e:
             messages.error(request, f"Error posting voucher: {format_journal_exception(e)}")

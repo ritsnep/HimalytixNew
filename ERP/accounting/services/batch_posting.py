@@ -6,7 +6,7 @@ from typing import Iterable, List, Optional, Sequence
 from django.core.exceptions import ValidationError
 
 from accounting.models import Journal
-from accounting.services.posting_service import PostingService
+from accounting.services.post_journal import post_journal
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,6 @@ class BatchPostingService:
             organization
             or getattr(user, "get_active_organization", lambda: getattr(user, "organization", None))()
         )
-        self.posting_service = PostingService(user)
 
     # ------------------------------------------------------------------
     # Query helpers
@@ -71,7 +70,7 @@ class BatchPostingService:
         queryset = self._ready_queryset(journal_ids=journal_ids, limit=limit)
         for journal in queryset.iterator(chunk_size=chunk_size):
             try:
-                self.posting_service.post(journal)
+                post_journal(journal, user=self.user)
             except ValidationError as exc:
                 logger.warning(
                     "batch_posting.failed",

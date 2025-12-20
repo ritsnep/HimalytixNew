@@ -6,6 +6,8 @@ from django.db import IntegrityError, DatabaseError
 
 from accounting.models import Journal
 from accounting.services.posting_service import PostingService
+from accounting.services.voucher_orchestrator import VoucherOrchestrator
+from accounting.services.voucher_errors import VoucherProcessError
 
 logger = logging.getLogger(__name__)
 
@@ -65,16 +67,24 @@ def _resolve_user(journal: Journal, user: Optional[object]):
     return None
 
 
-def post_journal(journal: Journal, user=None) -> Journal:
+def post_journal(journal: Journal, user=None, *, idempotency_key: Optional[str] = None) -> Journal:
     """
     Legacy helper that delegates to the PostingService while preserving
     historical exception types for callers that still depend on them.
     """
-    logger.info("Delegating journal %s posting to PostingService", journal.pk)
-    service = PostingService(_resolve_user(journal, user))
+    logger.info("Delegating journal %s posting to VoucherOrchestrator", journal.pk)
+    actor = _resolve_user(journal, user)
     try:
-        posted = service.post(journal)
-        return posted
+        orchestrator = VoucherOrchestrator(actor)
+        return orchestrator.process(
+            voucher_id=journal.pk,
+            commit_type="post",
+            actor=actor,
+            idempotency_key=idempotency_key,
+        )
+    except VoucherProcessError as exc:
+        logger.error("VoucherProcessError while posting journal %s: %s", journal.pk, exc)
+        raise JournalValidationError([f"{exc.code}: {exc.message}"]) from exc
     except ValidationError as exc:
         logger.error("Validation error while posting journal %s: %s", journal.pk, exc)
         raise JournalValidationError(exc.messages) from exc

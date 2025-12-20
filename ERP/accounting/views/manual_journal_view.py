@@ -29,6 +29,21 @@ from usermanagement.mixins import UserOrganizationMixin
 logger = logging.getLogger(__name__)
 
 
+def _is_htmx(request) -> bool:
+    return request.headers.get("HX-Request") == "true" or getattr(request, "htmx", False)
+
+
+def _render_manual_journal_form(request, context, *, status=200):
+    if _is_htmx(request):
+        return render(
+            request,
+            "accounting/manual_journal/partials/journal_form.html",
+            context,
+            status=status,
+        )
+    return render(request, "accounting/manual_journal/journal_form.html", context, status=status)
+
+
 class ManualJournalListView(PermissionRequiredMixin, UserOrganizationMixin, ListView):
     """List view for manual journal entries."""
     
@@ -105,6 +120,7 @@ class ManualJournalCreateView(PermissionRequiredMixin, UserOrganizationMixin, Cr
         
         context['page_title'] = 'Create Manual Journal Entry'
         context['submit_button_text'] = 'Create Journal'
+        context['form_action'] = self.request.path
         return context
     
     def form_valid(self, form):
@@ -120,7 +136,7 @@ class ManualJournalCreateView(PermissionRequiredMixin, UserOrganizationMixin, Cr
             
             # Save journal header
             self.object = form.save()
-            
+
             # Validate and save lines
             if line_formset.is_valid():
                 line_formset.instance = self.object
@@ -141,28 +157,37 @@ class ManualJournalCreateView(PermissionRequiredMixin, UserOrganizationMixin, Cr
                 
                 # Check if balanced
                 if self.object.imbalance != Decimal('0'):
-                    messages.warning(
-                        self.request,
+                    context["alert_message"] = (
                         f"Journal created but not balanced. Imbalance: {self.object.imbalance}"
                     )
+                    context["alert_level"] = "warning"
                 else:
-                    messages.success(
-                        self.request,
+                    context["alert_message"] = (
                         f"Journal {self.object.journal_number} created successfully."
                     )
-                
+                    context["alert_level"] = "success"
+
+                if _is_htmx(self.request):
+                    response = _render_manual_journal_form(self.request, context)
+                    response["HX-Trigger"] = "manualJournal:saved"
+                    return response
+
+                messages.success(
+                    self.request,
+                    context.get("alert_message", "Journal saved."),
+                )
                 return redirect(self.success_url)
             else:
-                messages.error(
-                    self.request,
-                    "Please correct the errors in journal lines."
-                )
-                return self.form_invalid(form)
+                context["alert_message"] = "Please correct the errors in journal lines."
+                context["alert_level"] = "danger"
+                return _render_manual_journal_form(self.request, context, status=422)
     
     def form_invalid(self, form):
         """Handle invalid form."""
-        messages.error(self.request, "Please correct the errors below.")
-        return super().form_invalid(form)
+        context = self.get_context_data(form=form)
+        context["alert_message"] = "Please correct the errors below."
+        context["alert_level"] = "danger"
+        return _render_manual_journal_form(self.request, context, status=422)
 
 
 class ManualJournalUpdateView(PermissionRequiredMixin, UserOrganizationMixin, UpdateView):
@@ -205,6 +230,7 @@ class ManualJournalUpdateView(PermissionRequiredMixin, UserOrganizationMixin, Up
         
         context['page_title'] = f'Edit Journal {self.object.journal_number}'
         context['submit_button_text'] = 'Update Journal'
+        context['form_action'] = self.request.path
         return context
     
     def form_valid(self, form):
@@ -238,19 +264,61 @@ class ManualJournalUpdateView(PermissionRequiredMixin, UserOrganizationMixin, Up
                 # Update journal totals
                 self.object.update_totals()
                 self.object.save(update_fields=['total_debit', 'total_credit'])
-                
-                messages.success(
-                    self.request,
+
+                context["alert_message"] = (
                     f"Journal {self.object.journal_number} updated successfully."
                 )
-                
+                context["alert_level"] = "success"
+
+                if _is_htmx(self.request):
+                    response = _render_manual_journal_form(self.request, context)
+                    response["HX-Trigger"] = "manualJournal:updated"
+                    return response
+
+                messages.success(self.request, context["alert_message"])
                 return redirect(self.success_url)
             else:
-                messages.error(
-                    self.request,
-                    "Please correct the errors in journal lines."
-                )
-                return self.form_invalid(form)
+                context["alert_message"] = "Please correct the errors in journal lines."
+                context["alert_level"] = "danger"
+                return _render_manual_journal_form(self.request, context, status=422)
+
+    def form_invalid(self, form):
+        context = self.get_context_data(form=form)
+        context["alert_message"] = "Please correct the errors below."
+        context["alert_level"] = "danger"
+        return _render_manual_journal_form(self.request, context, status=422)
+
+
+class ManualJournalValidateView(PermissionRequiredMixin, UserOrganizationMixin, CreateView):
+    """HTMX endpoint to validate manual journal without saving."""
+
+    model = Journal
+    form_class = JournalForm
+    permission_required = ("accounting.add_voucher_entry",)
+
+    def post(self, request, *args, **kwargs):
+        form = JournalForm(request.POST or None, organization=self.organization)
+        line_formset = JournalLineFormSet(
+            request.POST or None,
+            instance=None,
+            form_kwargs={"organization": self.organization},
+        )
+
+        context = {
+            "form": form,
+            "line_formset": line_formset,
+            "page_title": "Create Manual Journal Entry",
+            "submit_button_text": "Create Journal",
+            "form_action": request.path,
+        }
+        if form.is_valid() and line_formset.is_valid():
+            context["alert_message"] = "Validation passed."
+            context["alert_level"] = "success"
+            return _render_manual_journal_form(request, context, status=200)
+
+        context["alert_message"] = "Please correct the errors below."
+        context["alert_level"] = "danger"
+        return _render_manual_journal_form(request, context, status=422)
 
 
 class ManualJournalDetailView(PermissionRequiredMixin, UserOrganizationMixin, DetailView):
@@ -317,12 +385,23 @@ class ManualJournalPostView(PermissionRequiredMixin, UserOrganizationMixin, Deta
         
         try:
             # Use the posting service
-            posted_journal = post_journal(journal, user=request.user)
-
-            messages.success(
-                request,
-                f"Journal {posted_journal.journal_number} posted successfully."
+            from accounting.utils.idempotency import resolve_idempotency_key
+            posted_journal = post_journal(
+                journal,
+                user=request.user,
+                idempotency_key=resolve_idempotency_key(request),
             )
+
+            alert_message = f"Journal {posted_journal.journal_number} posted successfully."
+            if _is_htmx(request):
+                response = render(
+                    request,
+                    "accounting/manual_journal/partials/journal_alert.html",
+                    {"alert_message": alert_message, "alert_level": "success"},
+                )
+                response["HX-Trigger"] = "manualJournal:posted"
+                return response
+            messages.success(request, alert_message)
             return redirect('accounting:manual_journal_detail', pk=posted_journal.pk)
 
         except (JournalValidationError, JournalPostingError) as e:
@@ -332,10 +411,24 @@ class ManualJournalPostView(PermissionRequiredMixin, UserOrganizationMixin, Deta
                 user_msg = format_journal_exception(e)
             except Exception:
                 user_msg = str(e)
+            if _is_htmx(request):
+                return render(
+                    request,
+                    "accounting/manual_journal/partials/journal_alert.html",
+                    {"alert_message": user_msg, "alert_level": "danger"},
+                    status=422,
+                )
             messages.error(request, user_msg)
             logger.error("Journal post failed: %s", user_msg, exc_info=True)
 
         except Exception as e:
+            if _is_htmx(request):
+                return render(
+                    request,
+                    "accounting/manual_journal/partials/journal_alert.html",
+                    {"alert_message": f"Unexpected error: {str(e)}", "alert_level": "danger"},
+                    status=500,
+                )
             messages.error(request, f"Unexpected error: {str(e)}")
             logger.exception(f"Unexpected error posting journal: {e}")
         

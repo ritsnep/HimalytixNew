@@ -357,3 +357,28 @@ class GoodsReceiptService:
         ).count() + 1
         
         return f"GR-{year}-{count:06d}"
+
+
+# Module-level convenience function
+def post_goods_receipt(gr: GoodsReceipt, user=None) -> GoodsReceipt:
+    """
+    Convenience function to post a goods receipt to inventory and GL.
+    
+    Args:
+        gr: GoodsReceipt instance to post
+        user: User initiating the post (optional)
+    
+    Returns:
+        Posted GoodsReceipt instance
+    
+    Raises:
+        ValidationError: If posting fails
+    """
+    from django.contrib.auth import get_user_model
+    
+    if user is None:
+        User = get_user_model()
+        user = User.objects.first()  # Fallback to first user
+    
+    service = GoodsReceiptService(user)
+    return service.post_goods_receipt(gr)

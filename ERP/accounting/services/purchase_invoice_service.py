@@ -244,7 +244,19 @@ class PurchaseInvoiceService:
         use_grir: bool = False,
         warehouse: Optional[Warehouse] = None,
         grir_account: Optional[ChartOfAccount] = None,
+        idempotency_key: Optional[str] = None,
     ) -> Journal:
+        invoice = PurchaseInvoice.objects.select_for_update().get(pk=invoice.pk)
+        if invoice.status == "posted" and invoice.journal_id:
+            return invoice.journal
+        if idempotency_key:
+            metadata = dict(invoice.metadata or {})
+            existing_key = metadata.get("idempotency_key")
+            if existing_key and existing_key != idempotency_key:
+                raise ValidationError("Idempotency key mismatch for this invoice.")
+            metadata["idempotency_key"] = idempotency_key
+            invoice.metadata = metadata
+            invoice.save(update_fields=["metadata"])
         if invoice.status not in {'validated', 'matched', 'ready_for_posting'}:
             raise ValidationError("Invoice must be validated before posting.")
         if invoice.vendor.accounts_payable_account is None:

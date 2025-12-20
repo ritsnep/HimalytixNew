@@ -158,7 +158,7 @@ class GRListPageView(GRListView):
         context.update(
             {
                 "page_title": "Goods Receipts",
-                "create_url": reverse("purchasing:gr_create"),
+                "create_url": reverse("purchasing:gr_unified_create"),
                 "create_button_text": "New Goods Receipt",
             }
         )

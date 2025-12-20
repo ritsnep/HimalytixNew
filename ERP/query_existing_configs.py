@@ -19,7 +19,7 @@ print(f"EXISTING VOUCHERMODECONFIG RECORDS: {configs.count()}")
 print(f"{'='*80}\n")
 
 for config in configs:
-    ui_schema = config.ui_schema or {}
+    ui_schema = config.resolve_ui_schema() or {}
     header_fields = ui_schema.get('sections', {}).get('header', {}).get('fields', {})
     
     print(f"Code: {config.code}")

@@ -200,24 +200,47 @@
         return { open, close, move, selectActive, isOpenFor };
     })();
 
+    const normalizeHiddenName = (displayInput) => {
+        if (!displayInput) return null;
+        const fromName = displayInput.name ? displayInput.name.replace(/_display$/, '') : null;
+        const raw = displayInput.dataset.hiddenName;
+        if (raw && fromName && raw !== fromName && !raw.includes('-') && fromName.includes('-')) {
+            return fromName;
+        }
+        return raw || fromName;
+    };
+
     const resolveTypeaheadHidden = async (displayInput, raw) => {
         if (!displayInput) return;
         const endpoint = displayInput.dataset.endpoint;
         if (!endpoint) return;
-        const hiddenName = displayInput.dataset.hiddenName || (displayInput.name ? displayInput.name.replace(/_display$/, '') : null);
-        if (!hiddenName || !voucherForm) return;
-        const hidden = voucherForm.querySelector(`[name="${CSS.escape(hiddenName)}"]`);
+        if (shouldBackoff(endpoint)) return;
+        const hidden = getHiddenInput(displayInput);
         if (!hidden) return;
 
         const q = (raw || '').toString().trim();
         if (!q) return;
         try {
-            const resp = await fetch(`${endpoint}?q=${encodeURIComponent(q)}&limit=10`, { credentials: 'same-origin' });
-            const payload = await resp.json();
+            const token = q.split(' - ')[0].trim();
+            const search = token || q;
+            const resp = await fetch(
+                `${endpoint}?q=${encodeURIComponent(search)}&limit=10`,
+                {
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                },
+            );
+            const payload = await parseJsonResponse(resp, endpoint);
+            if (!payload) return;
             const results = (payload && payload.results) ? payload.results : [];
             const qLower = q.toLowerCase();
+            const tokenLower = (token || '').toLowerCase();
             const found =
                 results.find(r => (r.code || '').toString().toLowerCase() === qLower) ||
+                (tokenLower ? results.find(r => (r.code || '').toString().toLowerCase() === tokenLower) : null) ||
                 results.find(r => displayText(r).toLowerCase() === qLower) ||
                 null;
             if (found) {
@@ -232,9 +255,26 @@
     };
 
     const getHiddenInput = (displayInput) => {
-        const hiddenName = displayInput?.dataset?.hiddenName || (displayInput?.name ? displayInput.name.replace(/_display$/, '') : null);
+        const hiddenName = normalizeHiddenName(displayInput);
         if (!hiddenName || !voucherForm) return null;
-        return voucherForm.querySelector(`[name="${CSS.escape(hiddenName)}"]`);
+        let hidden = null;
+        try {
+            hidden = voucherForm.querySelector(`[name="${CSS.escape(hiddenName)}"]`);
+        } catch (err) {
+            hidden = null;
+        }
+        if (hidden) return hidden;
+
+        const raw = displayInput?.dataset?.hiddenName;
+        if (!raw) return null;
+        const row = displayInput.closest('.generic-line-row') || displayInput.closest('tr') || displayInput.closest('.grid-cell');
+        if (row) {
+            hidden = row.querySelector(`input[type="hidden"][name$="-${raw}"]`);
+            if (hidden) return hidden;
+            hidden = row.querySelector(`input[type="hidden"][name$="${raw}"]`);
+            if (hidden) return hidden;
+        }
+        return null;
     };
 
     const selectLookupResult = (inputEl, choice) => {
@@ -249,12 +289,75 @@
         focusNextInput(inputEl);
     };
 
+    const rateLimitUntil = new Map();
+
+    const shouldBackoff = (endpoint) => {
+        const until = rateLimitUntil.get(endpoint);
+        return until && until > Date.now();
+    };
+
+    const recordRateLimit = (endpoint, resp) => {
+        if (!endpoint) return;
+        let retryAfter = 2;
+        const header = resp.headers.get('Retry-After');
+        if (header) {
+            const parsed = Number.parseFloat(header);
+            if (!Number.isNaN(parsed)) {
+                retryAfter = parsed;
+            }
+        }
+        rateLimitUntil.set(endpoint, Date.now() + Math.max(1, retryAfter) * 1000);
+    };
+
+    const parseJsonResponse = async (resp, endpoint) => {
+        if (!resp) return null;
+        const ct = (resp.headers.get('content-type') || '').toLowerCase();
+        if (resp.status === 429) {
+            recordRateLimit(endpoint, resp);
+            console.warn('Typeahead lookup rate limited', endpoint);
+            return null;
+        }
+        if (resp.status === 401 || resp.status === 403) {
+            console.warn('Typeahead lookup unauthorized', endpoint);
+            return null;
+        }
+        if (resp.redirected && resp.url && resp.url.includes('/accounts/login')) {
+            console.warn('Typeahead lookup redirected to login', endpoint);
+            return null;
+        }
+        if (!ct.includes('application/json')) {
+            try {
+                const txt = await resp.text();
+                console.warn('Typeahead lookup non-JSON response', resp.status, endpoint, txt.slice(0, 120));
+            } catch (err) {
+                console.warn('Typeahead lookup non-JSON response', resp.status, endpoint);
+            }
+            return null;
+        }
+        try {
+            return await resp.json();
+        } catch (err) {
+            console.warn('Typeahead lookup JSON parse failed', err, endpoint);
+            return null;
+        }
+    };
+
     const fetchSuggestions = async (term, endpoint) => {
         if (!endpoint || !term) return [];
+        if (shouldBackoff(endpoint)) return [];
         try {
-            const resp = await fetch(`${endpoint}?q=${encodeURIComponent(term)}&limit=10`, { credentials: 'same-origin' });
-            if (!resp.ok) return [];
-            const data = await resp.json();
+            const resp = await fetch(
+                `${endpoint}?q=${encodeURIComponent(term)}&limit=10`,
+                {
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                },
+            );
+            if (!resp.ok && resp.status !== 429) return [];
+            const data = await parseJsonResponse(resp, endpoint);
             if (Array.isArray(data?.results)) return data.results;
             return [];
         } catch (err) {
@@ -334,6 +437,10 @@
         });
 
         inputEl.addEventListener('blur', () => {
+            const hidden = getHiddenInput(inputEl);
+            if (hidden && !hidden.value && (inputEl.value || '').trim()) {
+                resolveTypeaheadHidden(inputEl, inputEl.value);
+            }
             setTimeout(() => {
                 if (!AccountSuggest.isOpenFor(inputEl)) return;
                 AccountSuggest.close();
@@ -350,6 +457,10 @@
         const rows = Array.from(linesContainer.querySelectorAll('.generic-line-row'));
         const total = rows.length;
         let completed = 0;
+        let totalDebit = 0;
+        let totalCredit = 0;
+        let totalQty = 0;
+        let totalLine = 0;
 
         const placeholder = document.getElementById('no-lines-placeholder');
         if (placeholder) {
@@ -362,6 +473,15 @@
             if (hasValue) {
                 completed += 1;
             }
+
+            const debit = row.querySelector('input[name$="-debit_amount"], input[name$="-debit"]');
+            const credit = row.querySelector('input[name$="-credit_amount"], input[name$="-credit"]');
+            const qty = row.querySelector('input[name$="-quantity"], input[name$="-qty"]');
+            const lineTotal = row.querySelector('input[name$="-line_total"], input[name$="-amount"], input[name$="-total"]');
+            totalDebit += parseNumber(debit?.value);
+            totalCredit += parseNumber(credit?.value);
+            totalQty += parseNumber(qty?.value);
+            totalLine += parseNumber(lineTotal?.value);
         });
 
         const incomplete = Math.max(0, total - completed);
@@ -378,6 +498,17 @@
         if (totalFormsInput) {
             totalFormsInput.value = total;
         }
+
+        const debitEl = document.getElementById('summary-total-debit');
+        const creditEl = document.getElementById('summary-total-credit');
+        const diffEl = document.getElementById('summary-total-diff');
+        const qtyEl = document.getElementById('summary-total-qty');
+        const lineEl = document.getElementById('summary-line-total');
+        if (debitEl) debitEl.textContent = formatNumber(totalDebit, 2);
+        if (creditEl) creditEl.textContent = formatNumber(totalCredit, 2);
+        if (diffEl) diffEl.textContent = formatNumber(totalDebit - totalCredit, 2);
+        if (qtyEl) qtyEl.textContent = formatNumber(totalQty, 2);
+        if (lineEl) lineEl.textContent = formatNumber(totalLine, 2);
     };
 
     const reindexRows = () => {
@@ -666,6 +797,11 @@
         if (val === null || val === undefined) return 0;
         const n = parseFloat(String(val).replace(/,/g, ''));
         return Number.isFinite(n) ? n : 0;
+    };
+
+    const formatNumber = (val, places = 2) => {
+        const num = Number.isFinite(val) ? val : 0;
+        return num.toFixed(places);
     };
 
     const autoBalance = () => {

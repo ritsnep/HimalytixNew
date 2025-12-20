@@ -1,0 +1,206 @@
+{% extends 'core/base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}Purchase Order {{ po.number }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'purchasing:invoice-table' %}">Purchasing</a></li>
+      <li class="breadcrumb-item active">{{ po.number }}</li>
+    </ol>
+  </nav>
+
+  <!-- Header with Title and Actions -->
+  <div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+      <h1 class="mb-0">{{ po.number }}</h1>
+      <p class="text-muted">{{ po.vendor.display_name }} • {{ po.order_date|date:"d M Y" }}</p>
+    </div>
+    <div class="btn-group" role="group">
+      {% if can_edit %}
+        <a href="{% url 'purchasing:po_unified_edit' po.pk %}" class="btn btn-sm btn-outline-primary">
+          <i class="mdi mdi-pencil"></i> Edit
+        </a>
+      {% endif %}
+      {% if can_approve %}
+        <form method="post" action="{% url 'purchasing:po_unified_approve' po.pk %}" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-success">
+            <i class="mdi mdi-check"></i> Approve
+          </button>
+        </form>
+      {% endif %}
+      {% if can_send %}
+        <form method="post" action="{% url 'purchasing:po_unified_send' po.pk %}" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-primary">
+            <i class="mdi mdi-send"></i> Send
+          </button>
+        </form>
+      {% endif %}
+      {% if can_cancel %}
+        <form method="post" action="{% url 'purchasing:po_unified_cancel' po.pk %}" class="d-inline" onsubmit="return confirm('Cancel this PO?');">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-outline-danger">
+            <i class="mdi mdi-close"></i> Cancel
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Status Badge -->
+  <div class="mb-4">
+    <span class="badge bg-{% if po.status == 'draft' %}warning{% elif po.status == 'approved' %}info{% elif po.status == 'sent' %}primary{% elif po.status == 'received' %}success{% else %}secondary{% endif %}">
+      {{ po.get_status_display }}
+    </span>
+  </div>
+
+  <div class="row g-4">
+    <!-- Main Content -->
+    <div class="col-lg-8">
+      <!-- PO Details Card -->
+      <div class="card mb-4">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">Order Details</h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="small text-muted">Vendor</div>
+              <div class="fw-bold">{{ po.vendor.display_name }}</div>
+            </div>
+            <div class="col-md-6">
+              <div class="small text-muted">Currency</div>
+              <div class="fw-bold">{{ po.currency.currency_code }}</div>
+            </div>
+            <div class="col-md-6">
+              <div class="small text-muted">Order Date</div>
+              <div class="fw-bold">{{ po.order_date|date:"d M Y" }}</div>
+            </div>
+            <div class="col-md-6">
+              <div class="small text-muted">Due Date</div>
+              <div class="fw-bold">{{ po.due_date|date:"d M Y"|default:"-" }}</div>
+            </div>
+            {% if po.notes %}
+            <div class="col-12">
+              <div class="small text-muted">Notes</div>
+              <div>{{ po.notes }}</div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Line Items Card -->
+      <div class="card mb-4">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">Line Items</h5>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Product</th>
+                <th class="text-end">Qty</th>
+                <th class="text-end">Unit Cost</th>
+                <th class="text-end">VAT %</th>
+                <th class="text-end">Total</th>
+                <th class="text-end">Received</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for line in lines %}
+              <tr>
+                <td>{{ line.product.name }}</td>
+                <td class="text-end">{{ line.quantity_ordered }}</td>
+                <td class="text-end">{{ line.unit_price|floatformat:4 }}</td>
+                <td class="text-end">{{ line.vat_rate|floatformat:2 }}</td>
+                <td class="text-end fw-bold">{{ line.line_total|floatformat:2 }}</td>
+                <td class="text-end">{{ line.quantity_received }}</td>
+                <td>
+                  {% if line.variance > 0 %}
+                    <span class="badge bg-warning">{{ line.variance }} pending</span>
+                  {% elif line.variance == 0 %}
+                    <span class="badge bg-success">Complete</span>
+                  {% else %}
+                    <span class="badge bg-info">Over</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+              <tr class="table-light fw-bold">
+                <td colspan="4" class="text-end">Total:</td>
+                <td class="text-end">{{ po.total_amount|floatformat:2 }}</td>
+                <td colspan="2"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+      <!-- Summary Card -->
+      <div class="card sticky-top" style="top: 20px;">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">Summary</h5>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <div class="small text-muted">Subtotal</div>
+            <div class="fw-bold">{{ po.subtotal|floatformat:2 }}</div>
+          </div>
+
+          <div class="mb-3">
+            <div class="small text-muted">Tax</div>
+            <div class="fw-bold">{{ po.tax_amount|floatformat:2 }}</div>
+          </div>
+
+          <div class="border-top pt-3">
+            <div class="small text-muted">Total</div>
+            <div class="fw-bold h5 text-primary">{{ po.total_amount|floatformat:2 }}</div>
+          </div>
+
+          <hr>
+
+          <div class="mb-3">
+            <div class="small text-muted">Lines</div>
+            <div class="fw-bold">{{ lines|length }}</div>
+          </div>
+
+          <div class="mb-3">
+            <div class="small text-muted">Total Qty</div>
+            <div class="fw-bold">{{ po.lines.aggregate_sum__quantity_ordered|default:0 }}</div>
+          </div>
+
+          <div class="mb-3">
+            <div class="small text-muted">Total Received</div>
+            <div class="fw-bold">{{ total_received }}</div>
+          </div>
+
+          <hr>
+
+          <div class="alert alert-info small">
+            <strong>Next Steps:</strong>
+            {% if po.status == 'draft' %}
+              <p class="mb-0">Review the PO details and approve it to send to vendor.</p>
+            {% elif po.status == 'approved' %}
+              <p class="mb-0">Send to vendor to initiate delivery.</p>
+            {% elif po.status == 'sent' %}
+              <p class="mb-0">Waiting for goods receipt. Create a GR when items arrive.</p>
+            {% elif po.status == 'received' %}
+              <p class="mb-0">All items received. Close PO when fully satisfied.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

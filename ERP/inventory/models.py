@@ -68,6 +68,7 @@ class Product(models.Model):
         max_length=24,
         choices=CostingMethod.choices,
         default=CostingMethod.WEIGHTED_AVERAGE,
+        blank=True,
         help_text="Choose how this product is valued during inventory movements.",
     )
     standard_cost      = models.DecimalField(

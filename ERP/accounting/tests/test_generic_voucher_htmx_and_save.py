@@ -3,7 +3,8 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from accounting.models import VoucherConfiguration, Vendor, Customer
+from accounting.models import VoucherModeConfig, Vendor, Customer
+from accounting.voucher_schema import ui_schema_to_definition
 from accounting.tests.factories import (
     create_accounting_period,
     create_chart_of_account,
@@ -123,27 +124,30 @@ class GenericVoucherLookupsAndSaveTests(TestCase):
         )
 
     def test_generic_voucher_create_sets_parent_fk_and_line_number(self):
-        config = VoucherConfiguration.objects.create(
+        ui_schema = {
+            'header': {
+                'journal_type': {'type': 'select', 'label': 'Journal Type', 'required': True, 'choices': 'JournalType'},
+                'period': {'type': 'select', 'label': 'Period', 'required': True, 'choices': 'AccountingPeriod'},
+                'journal_date': {'type': 'date', 'label': 'Date', 'required': True},
+                'reference': {'type': 'char', 'label': 'Reference', 'required': False},
+                'description': {'type': 'char', 'label': 'Description', 'required': False},
+                'currency_code': {'type': 'char', 'label': 'Currency', 'required': True},
+            },
+            'lines': {
+                'account': {'type': 'select', 'label': 'Account', 'required': True, 'choices': 'ChartOfAccount'},
+                'debit_amount': {'type': 'decimal', 'label': 'Debit', 'required': False},
+                'credit_amount': {'type': 'decimal', 'label': 'Credit', 'required': False},
+                'description': {'type': 'char', 'label': 'Line Desc', 'required': False},
+            },
+        }
+
+        config = VoucherModeConfig.objects.create(
             code='je-test',
             name='JE Test',
-            module='accounting',
             organization=self.organization,
-            ui_schema={
-                'header': {
-                    'journal_type': {'type': 'select', 'label': 'Journal Type', 'required': True, 'choices': 'JournalType'},
-                    'period': {'type': 'select', 'label': 'Period', 'required': True, 'choices': 'AccountingPeriod'},
-                    'journal_date': {'type': 'date', 'label': 'Date', 'required': True},
-                    'reference': {'type': 'char', 'label': 'Reference', 'required': False},
-                    'description': {'type': 'char', 'label': 'Description', 'required': False},
-                    'currency_code': {'type': 'char', 'label': 'Currency', 'required': True},
-                },
-                'lines': {
-                    'account': {'type': 'select', 'label': 'Account', 'required': True, 'choices': 'ChartOfAccount'},
-                    'debit_amount': {'type': 'decimal', 'label': 'Debit', 'required': False},
-                    'credit_amount': {'type': 'decimal', 'label': 'Credit', 'required': False},
-                    'description': {'type': 'char', 'label': 'Line Desc', 'required': False},
-                },
-            },
+            module='accounting',
+            journal_type=self.journal_type,
+            schema_definition=ui_schema_to_definition(ui_schema),
             is_active=True,
         )
 
@@ -172,3 +176,29 @@ class GenericVoucherLookupsAndSaveTests(TestCase):
         line = JournalLine.objects.filter(journal=journal).first()
         self.assertIsNotNone(line)
         self.assertEqual(line.line_number, 1)
+
+    def test_generic_voucher_validate_returns_422(self):
+        ui_schema = {
+            'header': {
+                'journal_date': {'type': 'date', 'label': 'Date', 'required': True},
+                'currency_code': {'type': 'char', 'label': 'Currency', 'required': True},
+            },
+            'lines': {
+                'account': {'type': 'select', 'label': 'Account', 'required': True, 'choices': 'ChartOfAccount'},
+                'debit_amount': {'type': 'decimal', 'label': 'Debit', 'required': False},
+            },
+        }
+
+        config = VoucherModeConfig.objects.create(
+            code='val-test',
+            name='Validation Test',
+            organization=self.organization,
+            module='accounting',
+            journal_type=self.journal_type,
+            schema_definition=ui_schema_to_definition(ui_schema),
+            is_active=True,
+        )
+
+        url = reverse('accounting:generic_voucher_validate', kwargs={'voucher_code': config.code})
+        resp = self.client.post(url, data={'header-currency_code': 'USD'}, HTTP_HX_REQUEST='true')
+        self.assertEqual(resp.status_code, 422)

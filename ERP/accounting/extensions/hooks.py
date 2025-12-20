@@ -30,7 +30,13 @@ class HookRunner:
             return []
         return hooks
 
-    def run(self, event: str, payload: Optional[Dict[str, Any]] = None) -> None:
+    def run(
+        self,
+        event: str,
+        payload: Optional[Dict[str, Any]] = None,
+        *,
+        raise_on_error: bool = False,
+    ) -> None:
         payload = payload or {}
         hooks = [
             definition
@@ -58,3 +64,5 @@ class HookRunner:
                 callback(context)
             except Exception as exc:
                 logger.exception("Hook %s failed for event %s: %s", path, event, exc)
+                if raise_on_error:
+                    raise

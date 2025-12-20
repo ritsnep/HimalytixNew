@@ -1,0 +1,77 @@
+{% load widget_tweaks %}
+<tr class="align-top" data-form-index="{{ row_index|default:form.prefix|default_if_none:"" }}">
+  <!-- Product (readonly, from PO) -->
+  <td style="min-width: 180px;">
+    <label class="form-label small text-uppercase text-muted">Product</label>
+    <div class="form-control form-control-sm bg-light" readonly>
+      {% if form.po_line.value %}
+        {{ form.po_line.instance.product.name }}
+      {% else %}
+        <span class="text-muted">-</span>
+      {% endif %}
+    </div>
+    {% render_field form.po_line class+="d-none" %}
+    {% for error in form.po_line.errors %}
+      <div class="text-danger small">{{ error }}</div>
+    {% endfor %}
+  </td>
+
+  <!-- Qty Ordered (readonly) -->
+  <td class="text-end" style="min-width: 100px;">
+    <label class="form-label small text-uppercase text-muted">Qty Ordered</label>
+    <div class="form-control form-control-sm bg-light text-end" readonly>
+      {% if form.po_line.value %}
+        {{ form.po_line.instance.quantity_ordered }}
+      {% else %}
+        <span class="text-muted">-</span>
+      {% endif %}
+    </div>
+  </td>
+
+  <!-- Qty Received -->
+  <td class="text-end" style="min-width: 110px;">
+    <label class="form-label small text-uppercase text-muted" for="{{ form.quantity_received.id_for_label }}">Qty Received</label>
+    {% render_field form.quantity_received class+="form-control form-control-sm text-end" %}
+    {% for error in form.quantity_received.errors %}
+      <div class="text-danger small">{{ error }}</div>
+    {% endfor %}
+  </td>
+
+  <!-- Qty Accepted -->
+  <td class="text-end" style="min-width: 110px;">
+    <label class="form-label small text-uppercase text-muted" for="{{ form.quantity_accepted.id_for_label }}">Qty Accepted</label>
+    {% render_field form.quantity_accepted class+="form-control form-control-sm text-end" %}
+    {% for error in form.quantity_accepted.errors %}
+      <div class="text-danger small">{{ error }}</div>
+    {% endfor %}
+  </td>
+
+  <!-- QC Result -->
+  <td style="min-width: 110px;">
+    <label class="form-label small text-uppercase text-muted" for="{{ form.qc_result.id_for_label }}">QC Result</label>
+    {% render_field form.qc_result class+="form-select form-select-sm" %}
+    {% for error in form.qc_result.errors %}
+      <div class="text-danger small">{{ error }}</div>
+    {% endfor %}
+  </td>
+
+  <!-- Batch Number -->
+  <td style="min-width: 100px;">
+    <label class="form-label small text-uppercase text-muted" for="{{ form.batch_number.id_for_label }}">Batch #</label>
+    {% render_field form.batch_number class+="form-control form-control-sm" placeholder="Optional" %}
+    {% for error in form.batch_number.errors %}
+      <div class="text-danger small">{{ error }}</div>
+    {% endfor %}
+  </td>
+
+  <!-- Actions (no delete) -->
+  <td class="text-center">
+    {% if form.instance.pk %}
+      <span class="badge bg-success">Saved</span>
+    {% endif %}
+  </td>
+
+  {% if form.id %}
+    {{ form.id }}
+  {% endif %}
+</tr>

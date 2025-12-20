@@ -179,7 +179,8 @@ class YearEndClosingService:
         )
         journal.save(update_fields=["metadata", "exchange_rate"])
 
-        posted = self._posting_service.post(journal)
+        from accounting.services.post_journal import post_journal
+        posted = post_journal(journal, user=self.user)
         log_audit_event(
             self.user,
             posted,
@@ -326,7 +327,8 @@ class YearEndClosingService:
                 created_by=self.user,
             )
 
-        posted = self._posting_service.post(journal)
+        from accounting.services.post_journal import post_journal
+        posted = post_journal(journal, user=self.user)
         log_audit_event(
             self.user,
             posted,

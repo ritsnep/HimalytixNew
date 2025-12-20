@@ -43,7 +43,7 @@ class DepreciationService:
                 yield DepreciationEntry(asset=asset, amount=amount)
 
     @transaction.atomic
-    def post_period(self, period_date, expense_account, accumulated_account):
+    def post_period(self, period_date, expense_account, accumulated_account, *, idempotency_key: str | None = None):
         journal = Journal.objects.create(
             organization=self.journal_type.organization,
             journal_type=self.journal_type,
@@ -77,5 +77,5 @@ class DepreciationService:
             line_number += 1
             entry.asset.accumulated_depreciation += entry.amount
             entry.asset.save(update_fields=['accumulated_depreciation', 'updated_at'])
-        posted = self.posting_service.post(journal)
-        return posted
+        from accounting.services.post_journal import post_journal
+        return post_journal(journal, user=self.user, idempotency_key=idempotency_key)

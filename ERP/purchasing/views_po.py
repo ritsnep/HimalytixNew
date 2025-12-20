@@ -124,7 +124,7 @@ class POListPageView(POListView):
         context.update(
             {
                 "page_title": "Purchase Orders",
-                "create_url": reverse("purchasing:po_create"),
+                "create_url": reverse("purchasing:po_unified_create"),
                 "create_button_text": "New Purchase Order",
             }
         )

@@ -388,7 +388,6 @@ class VoucherModeConfigCreateView(PermissionRequiredMixin, LoginRequiredMixin, C
     def form_valid(self, form):
         form.instance.organization = self.request.user.get_active_organization()
         form.instance.created_by = self.request.user
-        form.instance.ui_schema = form.cleaned_data.get('ui_schema')
         messages.success(self.request, "Voucher configuration created successfully.")
         return super().form_valid(form)
     

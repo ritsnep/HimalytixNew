@@ -21,7 +21,7 @@ from accounting.models import (
     Journal,
 )
 from accounting.services import post_journal, close_period
-from accounting.services.posting_service import PostingService
+from accounting.utils.idempotency import resolve_idempotency_key
 from accounting.services.workflow_service import WorkflowService
 from accounting.services.document_lifecycle import DocumentLifecycleService
 from utils.file_uploads import MAX_IMPORT_UPLOAD_BYTES, iter_validated_files
@@ -59,7 +59,7 @@ class JournalViewSet(BaseOrgViewSet):
 
     def perform_create(self, serializer):
         journal = serializer.save(organization=self.request.user.organization)
-        post_journal(journal)
+        post_journal(journal, user=self.request.user, idempotency_key=resolve_idempotency_key(self.request))
 
     def _pending_task(self, journal: Journal) -> ApprovalTask | None:
         content_type = ContentType.objects.get_for_model(Journal)
@@ -140,7 +140,7 @@ class JournalViewSet(BaseOrgViewSet):
         journal = self.get_object()
 
         def _work():
-            PostingService(request.user).post(journal)
+            post_journal(journal, user=request.user, idempotency_key=resolve_idempotency_key(request))
             return self._serialized_response(journal)
 
         return self._handle_transition_response(journal, _work)
@@ -197,7 +197,7 @@ class JournalImportView(APIView):
             serializer = JournalSerializer(data=row)
             if serializer.is_valid():
                 journal = serializer.save(organization=request.user.organization)
-                post_journal(journal)
+                post_journal(journal, user=request.user, idempotency_key=resolve_idempotency_key(request))
                 created.append(journal.journal_id)
             else:
                 logger.debug("Invalid row: %s", serializer.errors)

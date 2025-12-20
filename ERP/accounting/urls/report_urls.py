@@ -3,13 +3,14 @@ Report URLs - Phase 3 Task 2
 
 URL patterns for financial reporting:
 - Report list
-- 6 Report generators
+- 7 Report generators (including Daybook)
 - Export handler
 """
 
 from django.urls import path
 from accounting.views.report_views import (
     ReportListView,
+    DaybookView,
     GeneralLedgerView,
     TrialBalanceView,
     ProfitLossView,
@@ -27,6 +28,7 @@ urlpatterns = [
     path('', ReportListView.as_view(), name='report_list'),
     
     # Individual reports
+    path('daybook/', DaybookView.as_view(), name='report_daybook'),
     path('general-ledger/', GeneralLedgerView.as_view(), name='report_ledger'),
     path('trial-balance/', TrialBalanceView.as_view(), name='report_trial_balance'),
     path('profit-loss/', ProfitLossView.as_view(), name='report_pl'),

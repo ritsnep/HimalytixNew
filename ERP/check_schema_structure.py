@@ -11,7 +11,7 @@ from accounting.models import VoucherModeConfig
 config = VoucherModeConfig.objects.filter(code='VM-SI').first()
 if config:
     print(f"Voucher: {config.code} - {config.name}")
-    print("\nui_schema structure:")
-    print(json.dumps(config.ui_schema, indent=2))
+    print("\nresolved schema structure:")
+    print(json.dumps(config.resolve_ui_schema(), indent=2))
 else:
     print("VM-SI not found")

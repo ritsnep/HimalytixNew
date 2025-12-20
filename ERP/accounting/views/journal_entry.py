@@ -36,7 +36,6 @@ from accounting.models import (
     VoucherModeConfig,
     VoucherUDFConfig,
     VoucherUIPreference,
-    default_ui_schema,
 )
 try:  # Optional customer/product modules
     from accounting.models import Customer  # type: ignore
@@ -57,6 +56,7 @@ if Customer is None:
         except Exception:
             Customer = None  # noqa: N816
 from accounting.services.journal_entry_service import JournalEntryService
+from accounting.utils.idempotency import resolve_idempotency_key
 from usermanagement.utils import PermissionUtils
 from utils.calendars import DateSeedStrategy
 from utils.file_uploads import (
@@ -152,12 +152,10 @@ def _voucher_ui_preferences_for_user(user, organization, scope="voucher_entry"):
 
 def _ui_settings_from_config(config):
     if not config:
-        return default_ui_schema().get("settings", {})
+        return {}
     ui = config.resolve_ui() if hasattr(config, "resolve_ui") else {}
     settings = ui.get("settings") if isinstance(ui, dict) else None
-    if settings:
-        return settings
-    return default_ui_schema().get("settings", {})
+    return settings or {}
 
 
 def _resolve_prefill_value(definition, config):
@@ -414,7 +412,9 @@ def _journal_type_param_from_request(request) -> Optional[str]:
 
 def _line_schema_context(organization, journal_type_param):
     config = _resolve_voucher_config(organization, journal_type_param)
-    schema_source = config.resolve_ui() if config else default_ui_schema()
+    if not config:
+        raise ValueError("CFG-001: Missing voucher configuration for journal entry.")
+    schema_source = config.resolve_ui()
     settings = _ui_settings_from_config(config)
     raw_line_schema = schema_source.get("lines", {})
     (
@@ -433,7 +433,9 @@ def _line_schema_context(organization, journal_type_param):
 
 def _header_schema_context(organization, journal_type_param):
     config = _resolve_voucher_config(organization, journal_type_param)
-    schema_source = config.resolve_ui() if config else default_ui_schema()
+    if not config:
+        raise ValueError("CFG-001: Missing voucher configuration for journal entry.")
+    schema_source = config.resolve_ui()
     settings = _ui_settings_from_config(config)
     raw_header_schema = schema_source.get("header", {})
     (
@@ -716,7 +718,9 @@ def _build_config_payload(organization, config=None, journal_type_param=None, co
     if not resolved_config:
         resolved_config = _resolve_voucher_config(organization, journal_type_param)
 
-    schema_source = resolved_config.resolve_ui() if resolved_config else default_ui_schema()
+    if not resolved_config:
+        raise ValueError("CFG-001: Missing voucher configuration for journal entry.")
+    schema_source = resolved_config.resolve_ui()
     raw_header_schema = schema_source.get("header") or {}
     raw_line_schema = schema_source.get("lines") or {}
 
@@ -840,7 +844,21 @@ def _resolve_voucher_config(organization, journal_type_param: Optional[str]) -> 
     config = qs.filter(is_default=True).first()
     if config:
         return config
-    return qs.first()
+    fallback = qs.first()
+    if fallback:
+        return fallback
+    try:
+        from accounting.services.voucher_seeding import seed_voucher_configs
+        seed_voucher_configs(organization, reset=False, repair=True)
+    except Exception:
+        logger.exception("Failed to seed voucher configs for organization %s", getattr(organization, "pk", None))
+        return None
+    return (
+        VoucherModeConfig.objects.filter(organization=organization, is_active=True)
+        .select_related("journal_type")
+        .order_by("-is_default", "name")
+        .first()
+    )
 
 
 def _journal_lookup_urls():
@@ -1312,7 +1330,9 @@ def _prepare_journal_components(user, payload: Dict[str, Any]) -> Tuple[Any, Dic
     if not journal_date:
         raise ValueError("Journal date is required.")
 
-    schema_source = config.resolve_ui() if config else default_ui_schema()
+    if not config:
+        raise ValueError("CFG-001: Missing voucher configuration for journal entry.")
+    schema_source = config.resolve_ui()
     raw_header_schema = schema_source.get("header") or {}
     raw_line_schema = schema_source.get("lines") or {}
     (
@@ -2548,7 +2568,12 @@ def journal_post(request):
             return _json_error("You do not have permission to post journals.", status=403, debug_token=debug_token)
         journal = _get_user_journal(request.user, int(journal_id))
         service = JournalEntryService(request.user, organization)
-        service.post(journal)
+        idempotency_key = (
+            payload.get("idempotency_key")
+            or payload.get("idempotencyKey")
+            or resolve_idempotency_key(request)
+        )
+        service.post(journal, idempotency_key=idempotency_key)
         journal.refresh_from_db()
         response = {
             "ok": True,

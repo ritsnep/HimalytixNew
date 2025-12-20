@@ -18,7 +18,7 @@ from django.utils.decorators import method_decorator
 from accounting.services.journal_entry_service import JournalEntryService
 from accounting.validation import JournalValidationService
 from utils.htmx import require_htmx
-from accounting.forms.form_factory import VoucherFormFactory, get_voucher_ui_header
+from accounting.forms_factory import VoucherFormFactory, get_voucher_ui_header
 from accounting.services.post_journal import JournalError
 from accounting.config.settings import journal_entry_settings
 from accounting.models import AuditLog

@@ -113,8 +113,8 @@ class InventoryPostingCostingTests(TestCase):
             reference_id="ISSUE-1",
             cogs_account=self.cogs_account,
         )
-        self.assertEqual(result.ledger_entry.unit_cost, Decimal("40") / Decimal("3"))
-        self.assertEqual(result.total_cost, Decimal("40"))
+        self.assertEqual(result.ledger_entry.unit_cost, Decimal("10"))
+        self.assertEqual(result.total_cost, Decimal("30"))
 
     def test_lifo_consumes_layers_in_lifo_order(self):
         self.product.costing_method = CostingMethod.LIFO

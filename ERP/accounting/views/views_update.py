@@ -150,18 +150,8 @@ class VoucherModeConfigUpdateView(PermissionRequiredMixin, LoginRequiredMixin, U
 
     def form_valid(self, form):
         form.instance.updated_by = self.request.user
-        form.instance.ui_schema = form.cleaned_data.get('ui_schema')
         messages.success(self.request, "Voucher configuration updated successfully.")
         return super().form_valid(form)
-
-    def post(self, request, *args, **kwargs):
-        if 'reset_to_default' in request.POST:
-            self.object = self.get_object()
-            self.object.ui_schema = default_ui_schema()
-            self.object.save()
-            messages.success(request, "Voucher configuration has been reset to default.")
-            return redirect(self.get_success_url())
-        return super().post(request, *args, **kwargs)
 
     def get_success_url(self):
         return reverse_lazy('accounting:voucher_config_detail', kwargs={'pk': self.object.pk})

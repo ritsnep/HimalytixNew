@@ -830,6 +830,7 @@ def seed_payment_terms(org, superuser):
 def seed_voucher_mode_config(org, superuser, journal_type, currency_code='NPR'):
     """Seed default voucher mode config."""
     from accounting.models import VoucherModeConfig
+    from accounting.voucher_schema import ui_schema_to_definition
     
     default_ui_schema = {
         "header": {
@@ -859,7 +860,7 @@ def seed_voucher_mode_config(org, superuser, journal_type, currency_code='NPR'):
             'allow_multiple_currencies': True,
             'require_line_description': True,
             'default_currency': currency_code,
-            'ui_schema': default_ui_schema,
+            'schema_definition': ui_schema_to_definition(default_ui_schema),
             'created_by': superuser,
         }
     )
@@ -892,6 +893,7 @@ def _build_party_schema(party_key, party_label, extra_header=None):
 
 def get_transaction_voucher_blueprints():
     """Return the shared blueprint list for transaction-driven voucher configs."""
+    from accounting.voucher_schema import ui_schema_to_definition
 
     ledger_schema = {
         "header": {
@@ -950,7 +952,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Journal Entry",
             "module": "accounting",
             "description": "Ledger journal entries for core accounting operations.",
-            "ui_schema": ledger_schema,
+            "schema_definition": ui_schema_to_definition(ledger_schema),
             "layout_flags": {"allow_multiple_products": False},
             "prefix_template": "JE-",
             "numbering": {"start_number": 1000, "zero_padding": 5},
@@ -964,7 +966,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Purchase Order",
             "module": "purchasing",
             "description": "Purchase order to request goods or services.",
-            "ui_schema": purchase_schema,
+            "schema_definition": ui_schema_to_definition(purchase_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "PO-",
             "numbering": {"start_number": 5000},
@@ -977,7 +979,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Goods Receipt",
             "module": "inventory",
             "description": "Receipt of goods from vendors.",
-            "ui_schema": goods_receipt_schema,
+            "schema_definition": ui_schema_to_definition(goods_receipt_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "GR-",
             "numbering": {"start_number": 6000},
@@ -990,7 +992,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Purchase Invoice",
             "module": "purchasing",
             "description": "Invoice issued by vendors.",
-            "ui_schema": purchase_schema,
+            "schema_definition": ui_schema_to_definition(purchase_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "PI-",
             "numbering": {"start_number": 2000},
@@ -1003,7 +1005,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Purchase Return",
             "module": "purchasing",
             "description": "Return goods to vendors.",
-            "ui_schema": purchase_schema,
+            "schema_definition": ui_schema_to_definition(purchase_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "PR-",
             "numbering": {"start_number": 2100},
@@ -1016,7 +1018,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Purchase Debit Note",
             "module": "purchasing",
             "description": "Debit notes sent to vendors.",
-            "ui_schema": purchase_schema,
+            "schema_definition": ui_schema_to_definition(purchase_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "PDN-",
             "numbering": {"start_number": 2200},
@@ -1029,7 +1031,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Purchase Credit Note",
             "module": "purchasing",
             "description": "Credit notes from vendors.",
-            "ui_schema": purchase_schema,
+            "schema_definition": ui_schema_to_definition(purchase_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "PCN-",
             "numbering": {"start_number": 2300},
@@ -1042,7 +1044,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Landed Cost",
             "module": "inventory",
             "description": "Landed cost adjustments for received goods.",
-            "ui_schema": landed_cost_schema,
+            "schema_definition": ui_schema_to_definition(landed_cost_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "LC-",
             "numbering": {"start_number": 2400},
@@ -1055,7 +1057,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Sales Quote",
             "module": "sales",
             "description": "Sales quotation.",
-            "ui_schema": sales_item_schema,
+            "schema_definition": ui_schema_to_definition(sales_item_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "SQ-",
             "numbering": {"start_number": 3000},
@@ -1068,7 +1070,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Sales Order",
             "module": "sales",
             "description": "Sales order for goods/services.",
-            "ui_schema": sales_item_schema,
+            "schema_definition": ui_schema_to_definition(sales_item_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "SO-",
             "numbering": {"start_number": 3100},
@@ -1081,7 +1083,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Sales Delivery",
             "module": "sales",
             "description": "Delivery note for shipped goods.",
-            "ui_schema": sales_delivery_schema,
+            "schema_definition": ui_schema_to_definition(sales_delivery_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "SD-",
             "numbering": {"start_number": 3200},
@@ -1094,7 +1096,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Sales Invoice",
             "module": "sales",
             "description": "Invoice issued to customers.",
-            "ui_schema": sales_item_schema,
+            "schema_definition": ui_schema_to_definition(sales_item_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "SI-",
             "numbering": {"start_number": 3300},
@@ -1107,7 +1109,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Sales Return",
             "module": "sales",
             "description": "Return of goods from customers.",
-            "ui_schema": sales_item_schema,
+            "schema_definition": ui_schema_to_definition(sales_item_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "SR-",
             "numbering": {"start_number": 3400},
@@ -1120,7 +1122,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Sales Debit Note",
             "module": "sales",
             "description": "Debit note to customer.",
-            "ui_schema": sales_item_schema,
+            "schema_definition": ui_schema_to_definition(sales_item_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "SDN-",
             "numbering": {"start_number": 3500},
@@ -1133,7 +1135,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Sales Credit Note",
             "module": "sales",
             "description": "Credit note to customer.",
-            "ui_schema": sales_item_schema,
+            "schema_definition": ui_schema_to_definition(sales_item_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "SCN-",
             "numbering": {"start_number": 3600},
@@ -1182,7 +1184,7 @@ def seed_transaction_type_configs(org, superuser, currency_code):
                 "allow_multiple_currencies": spec.get("allow_multiple_currencies", True),
                 "require_line_description": True,
                 "default_currency": currency_code,
-                "ui_schema": spec["ui_schema"],
+                "schema_definition": spec["schema_definition"],
                 "created_by": superuser,
             },
         )
@@ -1214,7 +1216,6 @@ def seed_transaction_type_configs(org, superuser, currency_code):
             "use_effective_date": True,
             "entry_date_default": spec.get("entry_date_default", "transaction"),
             "layout_flags": spec.get("layout_flags", {}),
-            "ui_schema": spec["ui_schema"],
             "header_defaults": header_defaults,
             "line_defaults": spec.get("line_defaults", []),
             "validation_rules": spec.get("validation_rules", {}),
@@ -1242,44 +1243,10 @@ def seed_transaction_type_configs(org, superuser, currency_code):
 
 
 def seed_voucher_configurations(org, superuser, currency_code):
-    """Seed VoucherConfiguration rows so the generic entry UI sees the configs."""
-    from accounting.models import VoucherConfiguration
+    """Seed VoucherModeConfig rows for the generic voucher entry UI."""
+    from accounting.services.voucher_seeding import seed_voucher_configs
 
-    blueprints = get_transaction_voucher_blueprints()
-
-    for spec in blueprints:
-        base_slug = slugify(spec.get("name", "")) or spec.get("config_code", "")
-        code = f"{base_slug}-{spec['config_code'].lower()}"
-        header_defaults = {"currency": currency_code}
-        header_defaults.update(spec.get("header_defaults", {}))
-
-        defaults = {
-            "name": spec["name"],
-            "module": spec["module"],
-            "description": spec.get("description"),
-            "layout_style": spec.get("layout_style", "standard"),
-            "show_account_balances": spec.get("layout_flags", {}).get("show_account_balances", True),
-            "show_tax_details": True,
-            "show_dimensions": True,
-            "allow_multiple_currencies": spec.get("allow_multiple_currencies", True),
-            "require_line_description": True,
-            "default_currency": currency_code,
-            "default_header": header_defaults,
-            "default_lines": spec.get("default_lines", []),
-            "validation_rules": spec.get("validation_rules", {}),
-            "ui_schema": spec.get("ui_schema", {}),
-            "is_default": spec.get("is_default", False),
-            "is_active": True,
-            "created_by": superuser,
-        }
-
-        config, created = VoucherConfiguration.objects.get_or_create(
-            organization=org,
-            code=code,
-            defaults=defaults,
-        )
-        if created:
-            logger.info(f"Created voucher configuration: {config.code}")
+    seed_voucher_configs(org)
 
 
 def seed_document_sequence_configs(org, currency_code):
