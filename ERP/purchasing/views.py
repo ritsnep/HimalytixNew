@@ -174,7 +174,7 @@ def invoice_detail(request, pk: int):
         return _render_invoice_detail(request, invoice)
 
     context = {
-        "page_title": f"Purchase Invoice {invoice.number}",
+        "page_title": f"Purchase Invoice {invoice.invoice_number}",
         "invoice": invoice,
         "landed_doc": getattr(invoice, "landed_cost_document", None),
     }

@@ -53,20 +53,20 @@ class PurchaseInvoiceForm(OrganizationBoundFormMixin, forms.ModelForm):
     class Meta:
         model = PurchaseInvoice
         fields = [
-            "supplier",
-            "number",
+            "vendor",
+            "invoice_number",
             "invoice_date",
             "due_date",
             "currency",
             "exchange_rate",
         ]
         widgets = {
-            "number": forms.TextInput(attrs={"placeholder": "Auto if left blank"}),
+            "invoice_number": forms.TextInput(attrs={"placeholder": "Auto if left blank"}),
             "exchange_rate": forms.NumberInput(attrs={"step": "0.000001"}),
         }
 
     def _restrict_querysets(self, organization):
-        self.fields["supplier"].queryset = (
+        self.fields["vendor"].queryset = (
             Vendor.objects.filter(organization=organization, is_active=True)
             .order_by("display_name")
         )
@@ -81,7 +81,7 @@ class PurchaseInvoiceForm(OrganizationBoundFormMixin, forms.ModelForm):
 
 class PurchaseInvoiceLineForm(OrganizationBoundFormMixin, forms.ModelForm):
     quantity = forms.DecimalField(min_value=Decimal("0.0001"), max_digits=18, decimal_places=4)
-    unit_price = forms.DecimalField(min_value=Decimal("0.0000"), max_digits=18, decimal_places=4)
+    unit_cost = forms.DecimalField(min_value=Decimal("0.0000"), max_digits=18, decimal_places=4, label="Unit Price")
     vat_rate = forms.DecimalField(min_value=Decimal("0"), max_digits=5, decimal_places=2, required=False)
 
     class Meta:
@@ -91,9 +91,9 @@ class PurchaseInvoiceLineForm(OrganizationBoundFormMixin, forms.ModelForm):
             "warehouse",
             "description",
             "quantity",
-            "unit_price",
+            "unit_cost",
             "vat_rate",
-            "expense_account",
+            "account",
             "input_vat_account",
         ]
         widgets = {
@@ -109,7 +109,7 @@ class PurchaseInvoiceLineForm(OrganizationBoundFormMixin, forms.ModelForm):
             .order_by("name")
         )
         account_qs = ChartOfAccount.objects.filter(organization=organization).order_by("account_name")
-        self.fields["expense_account"].queryset = account_qs
+        self.fields["account"].queryset = account_qs
         self.fields["input_vat_account"].queryset = account_qs
 
 
@@ -151,13 +151,13 @@ class LandedCostLineForm(OrganizationBoundFormMixin, forms.ModelForm):
 
     class Meta:
         model = LandedCostLine
-        fields = ["description", "amount", "gl_account"]
+        fields = ["description", "amount", "credit_account"]
         widgets = {
             "description": forms.TextInput(attrs={"placeholder": "Freight / Insurance / Duty"}),
         }
 
     def _restrict_querysets(self, organization):
-        self.fields["gl_account"].queryset = ChartOfAccount.objects.filter(
+        self.fields["credit_account"].queryset = ChartOfAccount.objects.filter(
             organization=organization
         ).order_by("account_name")
 

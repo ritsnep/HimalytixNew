@@ -16,7 +16,7 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from accounting.models import (
-    Account, Journal, JournalLine, JournalType, Organization,
+    Account, AccountType, Journal, JournalLine, JournalType, Organization,
     AccountingPeriod
 )
 from accounting.services.performance_optimizer import (
@@ -45,12 +45,24 @@ class PerformanceOptimizerTestCase(TransactionTestCase):
             code="TEST"
         )
         
+        # Create account types
+        self.asset_type = AccountType.objects.create(
+            code="AST",
+            name="Asset",
+            nature="asset"
+        )
+        self.revenue_type = AccountType.objects.create(
+            code="REV",
+            name="Revenue", 
+            nature="income"
+        )
+        
         # Create accounts
         self.cash_account = Account.objects.create(
             organization=self.organization,
             code="1000",
             name="Cash",
-            account_type="Asset",
+            account_type=self.asset_type,
             is_active=True
         )
         
@@ -58,7 +70,7 @@ class PerformanceOptimizerTestCase(TransactionTestCase):
             organization=self.organization,
             code="4000",
             name="Revenue",
-            account_type="Revenue",
+            account_type=self.revenue_type,
             is_active=True
         )
         

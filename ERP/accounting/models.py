@@ -1898,6 +1898,73 @@ class PurchaseInvoice(models.Model):
         blank=True,
         related_name='updated_purchase_invoices',
     )
+    
+    # Purchasing-specific fields (for consolidation with purchasing app)
+    purchase_order = models.ForeignKey(
+        'purchasing.PurchaseOrder',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='invoices_accounting',
+        help_text='Link to purchase order'
+    )
+    payment_mode = models.CharField(
+        max_length=32,
+        choices=[
+            ('cash', 'Cash'),
+            ('credit', 'Credit'),
+            ('cheque', 'Cheque'),
+            ('bank_transfer', 'Bank Transfer'),
+        ],
+        default='credit',
+        blank=True
+    )
+    agent_area = models.CharField(max_length=128, blank=True)
+    purchase_account = models.ForeignKey(
+        ChartOfAccount,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='purchase_invoices_header_acct',
+        help_text='Header level default purchase account'
+    )
+    supplier_invoice_number = models.CharField(
+        max_length=64,
+        blank=True,
+        help_text='Vendor/Supplier invoice number'
+    )
+    invoice_date_bs = models.CharField(
+        max_length=10,
+        blank=True,
+        help_text='Date in BS calendar'
+    )
+    discount_amount = models.DecimalField(
+        max_digits=19,
+        decimal_places=4,
+        default=Decimal('0')
+    )
+    discount_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal('0')
+    )
+    taxable_amount = models.DecimalField(
+        max_digits=19,
+        decimal_places=4,
+        default=Decimal('0')
+    )
+    additional_charges_total = models.DecimalField(
+        max_digits=19,
+        decimal_places=4,
+        default=Decimal('0')
+    )
+    rounding_adjustment = models.DecimalField(
+        max_digits=19,
+        decimal_places=4,
+        default=Decimal('0')
+    )
+    terms_and_conditions = models.TextField(blank=True)
+    narration = models.TextField(blank=True)
 
     class Meta:
         db_table = 'purchase_invoice'
@@ -1910,20 +1977,57 @@ class PurchaseInvoice(models.Model):
 
     def __str__(self):
         return f"{self.invoice_number} - {self.vendor_display_name}"
+    
+    @property
+    def number(self):
+        """Alias for purchasing app compatibility."""
+        return self.invoice_number
+    
+    @property
+    def supplier(self):
+        """Alias for purchasing app compatibility."""
+        return self.vendor
 
     def recompute_totals(self, save=True):
+        """Recompute all totals from lines and additional charges."""
         aggregates = self.lines.aggregate(
             subtotal=Sum('line_total'),
             tax_total=Sum('tax_amount'),
         )
         subtotal = aggregates.get('subtotal') or Decimal('0')
         tax_total = aggregates.get('tax_total') or Decimal('0')
-        self.subtotal = subtotal
-        self.tax_total = tax_total
-        self.total = subtotal + tax_total
-        self.base_currency_total = (self.total or Decimal('0')) * (self.exchange_rate or Decimal('1'))
+        
+        # Handle additional charges if present
+        additional_total = Decimal('0')
+        if self.pk and hasattr(self, 'additional_charges'):
+            for charge in self.additional_charges.all():
+                additional_total += charge.amount
+                if charge.is_taxable:
+                    # TODO: Make tax rate configurable from settings
+                    tax_total += charge.amount * Decimal('0.13')
+        
+        self.subtotal = subtotal.quantize(Decimal('0.01'))
+        self.additional_charges_total = additional_total.quantize(Decimal('0.01'))
+        self.taxable_amount = (
+            self.subtotal - 
+            (self.discount_amount or Decimal('0')) + 
+            self.additional_charges_total
+        ).quantize(Decimal('0.01'))
+        self.tax_total = tax_total.quantize(Decimal('0.01'))
+        self.total = (
+            self.taxable_amount + 
+            self.tax_total + 
+            (self.rounding_adjustment or Decimal('0'))
+        ).quantize(Decimal('0.01'))
+        self.base_currency_total = (
+            self.total * (self.exchange_rate or Decimal('1'))
+        ).quantize(Decimal('0.01'))
+        
         if save:
-            super().save(update_fields=['subtotal', 'tax_total', 'total', 'base_currency_total', 'updated_at'])
+            super().save(update_fields=[
+                'subtotal', 'tax_total', 'total', 'base_currency_total',
+                'taxable_amount', 'additional_charges_total', 'updated_at'
+            ])
 
     def payment_totals(self):
         totals = self.receipt_lines.aggregate(
@@ -2071,6 +2175,38 @@ class PurchaseInvoiceLine(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    # Purchasing-specific fields (for consolidation with purchasing app)
+    product = models.ForeignKey(
+        'Inventory.Product',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='purchase_invoice_lines_product',
+        help_text='Product reference for inventory tracking'
+    )
+    warehouse = models.ForeignKey(
+        'Inventory.Warehouse',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='purchase_invoice_lines_warehouse',
+        help_text='Warehouse for inventory receipt'
+    )
+    vat_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal('0'),
+        help_text='VAT rate percentage'
+    )
+    input_vat_account = models.ForeignKey(
+        ChartOfAccount,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='purchase_line_vat_override',
+        help_text='Override VAT account for this line'
+    )
 
     class Meta:
         db_table = 'purchase_invoice_line'
@@ -2079,6 +2215,28 @@ class PurchaseInvoiceLine(models.Model):
 
     def __str__(self):
         return f"{self.invoice.invoice_number} - line {self.line_number}"
+    
+    @property
+    def unit_price(self):
+        """Alias for purchasing app compatibility."""
+        return self.unit_cost
+    
+    @property
+    def line_subtotal(self):
+        """Calculate line subtotal before tax."""
+        return (self.quantity * self.unit_cost).quantize(Decimal('0.01'))
+    
+    @property
+    def line_tax_amount(self):
+        """Calculate line tax amount."""
+        if self.vat_rate:
+            return (self.line_subtotal * (self.vat_rate / Decimal('100'))).quantize(Decimal('0.01'))
+        return self.tax_amount or Decimal('0')
+    
+    @property
+    def line_total_with_tax(self):
+        """Calculate total line amount including tax (property to complement line_total field)."""
+        return self.line_subtotal + self.line_tax_amount
 
     def clean(self):
         if self.quantity <= 0:
@@ -2090,6 +2248,40 @@ class PurchaseInvoiceLine(models.Model):
     def save(self, *args, **kwargs):
         self.line_total = (self.quantity * self.unit_cost) - (self.discount_amount or Decimal('0'))
         super().save(*args, **kwargs)
+
+
+class PurchaseInvoiceAdditionalCharge(models.Model):
+    """Additional costs/charges like Freight, Loading, Insurance, etc."""
+    
+    invoice = models.ForeignKey(
+        PurchaseInvoice,
+        on_delete=models.CASCADE,
+        related_name='additional_charges'
+    )
+    description = models.CharField(max_length=255)
+    amount = models.DecimalField(
+        max_digits=19,
+        decimal_places=4,
+        help_text='Positive for charges, negative for discounts'
+    )
+    gl_account = models.ForeignKey(
+        ChartOfAccount,
+        on_delete=models.PROTECT,
+        help_text='GL Account to post this charge'
+    )
+    is_taxable = models.BooleanField(
+        default=False,
+        help_text='Apply VAT to this charge?'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'purchase_invoice_additional_charge'
+        ordering = ('invoice', 'id')
+
+    def __str__(self):
+        return f"{self.description}: {self.amount}"
 
 
 class PurchaseInvoiceMatch(models.Model):

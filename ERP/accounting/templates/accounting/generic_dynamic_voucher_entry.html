@@ -14,37 +14,81 @@
 
 {% block content %}
 
-<div class="main-content compact-page generic-voucher-shell">
-<div class="page-content">
-    <div class="container-fluid">
-        <div class="row mb-2">
-            <div class="col-12">
-                <div class="page-title-box d-sm-flex align-items-start justify-content-between gap-2">
-                    <div>
-                        <p class="text-muted small mb-1">Dynamic Voucher &middot; {{ config.code }}</p>
-                        <h4 class="mb-0">{{ config.name }}</h4>
-                        <p class="text-muted small mb-0">
-                            This view renders a configuration-driven voucher entry experience.
-                            {% if journal_type_name %}<span class="ms-1">Journal Type: {{ journal_type_name }}</span>{% endif %}
-                        </p>
-                    </div>
-                    <div class="d-flex gap-1 flex-wrap">
-                        <a href="{% url 'accounting:generic_voucher_select' %}" class="btn btn-outline-secondary btn-sm">Change Type</a>
-                        <button type="submit" form="voucher-form" class="btn btn-primary btn-sm" data-action="save" data-role="save-draft"{% if draft_saved or voucher_status == 'awaiting_approval' or voucher_status == 'posted' %} disabled{% endif %}>Save Draft</button>
-                        {% if can_submit %}
-                            <button type="submit" form="voucher-form" class="btn btn-outline-primary btn-sm" data-action="submit_voucher"{% if voucher_status == 'awaiting_approval' or voucher_status == 'posted' %} disabled{% endif %}>Submit for Approval</button>
-                        {% endif %}
-                        {% if can_post %}
-                            <button type="submit" form="voucher-form" class="btn btn-success btn-sm" data-action="post_voucher"{% if voucher_status == 'posted' %} disabled{% endif %}>Post Now</button>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
+<div class="page-content gv-page">
+  <div class="container-fluid">
+
+    <!-- Sticky top toolbar: title + primary actions (minimum vertical space) -->
+    <div class="gv-toolbar sticky-top bg-body" role="region" aria-label="Voucher toolbar">
+      <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+        <div class="min-w-0">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge text-bg-light gv-badge">Dynamic Voucher · {{ config.code }}</span>
+            <span class="text-muted small d-none d-md-inline">{{ config.name }}</span>
+          </div>
+          <h4 class="mb-0 mt-1 gv-title">{{ config.name }}</h4>
         </div>
 
-        {% include "accounting/partials/generic_voucher_form_panel.html" %}
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <!-- Compact stepper toggle -->
+          <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#process-tracker" aria-expanded="false" aria-controls="process-tracker">
+            <i class="fas fa-route me-1"></i>Process
+          </button>
+
+          <a href="{% url 'accounting:generic_voucher_select' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-exchange-alt me-1"></i>Change Type
+          </a>
+
+          <!-- Primary actions (kept visible) -->
+          <div class="btn-group" role="group" aria-label="Voucher actions">
+            <button type="submit" form="voucher-form" class="btn btn-primary btn-sm" data-action="save" data-role="save-draft"{% if draft_saved or voucher_status == 'awaiting_approval' or voucher_status == 'posted' %} disabled{% endif %}>
+              <i class="fas fa-save me-1"></i>Save Draft
+            </button>
+            {% if can_submit %}
+            <button type="submit" form="voucher-form" class="btn btn-outline-primary btn-sm" data-action="submit_voucher"{% if voucher_status == 'awaiting_approval' or voucher_status == 'posted' %} disabled{% endif %}>
+              <i class="fas fa-paper-plane me-1"></i>Submit
+            </button>
+            {% endif %}
+            {% if can_post %}
+            <button type="submit" form="voucher-form" class="btn btn-success btn-sm" data-action="post_voucher"{% if voucher_status == 'posted' %} disabled{% endif %}>
+              <i class="fas fa-check-circle me-1"></i>Post
+            </button>
+            {% endif %}
+          </div>
+
+          <!-- Optional: compact overflow menu on small screens -->
+          <div class="dropdown d-md-none">
+            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="fas fa-ellipsis-v"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="{% url 'accounting:generic_voucher_select' %}">Change Type</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><button class="dropdown-item" type="submit" form="voucher-form" data-action="save">Save Draft</button></li>
+              {% if can_submit %}
+              <li><button class="dropdown-item" type="submit" form="voucher-form" data-action="submit_voucher">Submit</button></li>
+              {% endif %}
+              {% if can_post %}
+              <li><button class="dropdown-item" type="submit" form="voucher-form" data-action="post_voucher">Post</button></li>
+              {% endif %}
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Collapsible process tracker (compact, does not steal vertical space) -->
+      <div class="collapse mt-2" id="process-tracker">
+        <div class="gv-stepper" role="list">
+          <span class="badge rounded-pill bg-secondary" data-step="save" role="listitem">1 · Saving</span>
+          <span class="badge rounded-pill bg-secondary" data-step="journal" role="listitem">2 · Journal</span>
+          <span class="badge rounded-pill bg-secondary" data-step="post" role="listitem">3 · GL</span>
+          <span class="badge rounded-pill bg-secondary" data-step="inventory" role="listitem">4 · Inventory</span>
+          <span class="badge rounded-pill bg-secondary" data-step="complete" role="listitem">5 · Done</span>
+        </div>
+      </div>
     </div>
-</div>
+
+    {% include "accounting/partials/generic_voucher_form_panel.html" %}
+  </div>
 </div>
 {% endblock %}
 

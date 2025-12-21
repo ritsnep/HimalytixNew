@@ -827,47 +827,6 @@ def seed_payment_terms(org, superuser):
             logger.info(f"Created payment term: {pt.name}")
 
 
-def seed_voucher_mode_config(org, superuser, journal_type, currency_code='NPR'):
-    """Seed default voucher mode config."""
-    from accounting.models import VoucherModeConfig
-    from accounting.voucher_schema import ui_schema_to_definition
-    
-    default_ui_schema = {
-        "header": {
-            "journal_date": {"type": "date", "label": "Date", "required": True},
-            "description": {"type": "char", "label": "Description", "required": False},
-        },
-        "lines": {
-            "account": {"type": "account", "label": "Account", "required": True},
-            "debit_amount": {"type": "decimal", "label": "Debit", "required": False},
-            "credit_amount": {"type": "decimal", "label": "Credit", "required": False},
-        }
-    }
-    
-    vmc, created = VoucherModeConfig.objects.get_or_create(
-        organization=org,
-        code='STANDARD',
-        defaults={
-            'name': 'Standard Voucher',
-            'description': 'Standard voucher configuration for Nepal',
-            'is_default': True,
-            'is_active': True,
-            'journal_type': journal_type,
-            'layout_style': 'standard',
-            'show_account_balances': True,
-            'show_tax_details': True,
-            'show_dimensions': True,
-            'allow_multiple_currencies': True,
-            'require_line_description': True,
-            'default_currency': currency_code,
-            'schema_definition': ui_schema_to_definition(default_ui_schema),
-            'created_by': superuser,
-        }
-    )
-    if created:
-        logger.info("Created voucher mode config: Standard Voucher")
-
-
 def _build_party_schema(party_key, party_label, extra_header=None):
     header = {
         "transaction_date": {"type": "date", "label": "Date", "required": True},
@@ -891,59 +850,181 @@ def _build_party_schema(party_key, party_label, extra_header=None):
     return {"header": header, "lines": lines}
 
 
-def get_transaction_voucher_blueprints():
-    """Return the shared blueprint list for transaction-driven voucher configs."""
-    from accounting.voucher_schema import ui_schema_to_definition
-
-    ledger_schema = {
-        "header": {
-            "journal_date": {"type": "date", "label": "Posting Date", "required": True},
-            "reference": {"type": "char", "label": "Reference", "required": False},
-            "description": {"type": "char", "label": "Description", "required": False},
-            "currency": {"type": "char", "label": "Currency", "required": True},
-        },
-        "lines": {
-            "account": {"type": "account", "label": "Account", "required": True},
-            "description": {"type": "char", "label": "Line Description", "required": False},
-            "debit_amount": {"type": "decimal", "label": "Debit", "required": False},
-            "credit_amount": {"type": "decimal", "label": "Credit", "required": False},
-            "cost_center": {"type": "char", "label": "Cost Center", "required": False},
-        },
+def _build_goods_receipt_schema():
+    """Build goods receipt schema matching GoodsReceipt model fields."""
+    header = {
+        "receipt_date": {"type": "date", "label": "Receipt Date", "required": True},
+        "number": {"type": "char", "label": "Receipt Number", "required": True},
+        "purchase_order": {"type": "purchase_order", "label": "Purchase Order", "required": True},
+        "warehouse": {"type": "warehouse", "label": "Warehouse", "required": True},
+        "reference_number": {"type": "char", "label": "Reference Number", "required": False},
+        "status": {"type": "select", "label": "Status", "required": False,
+                  "choices": [("draft", "Draft"), ("received", "Received"), ("inspected", "Inspected"), ("posted", "Posted"), ("cancelled", "Cancelled")]},
     }
 
-    purchase_schema = _build_party_schema("vendor_name", "Vendor")
-    goods_receipt_schema = _build_party_schema(
-        "vendor_name",
-        "Vendor",
-        extra_header={
-            "receipt_number": {"type": "char", "label": "Receipt #", "required": False},
-            "warehouse_code": {"type": "char", "label": "Warehouse", "required": False},
-        },
-    )
-    landed_cost_schema = _build_party_schema(
-        "vendor_name",
-        "Vendor",
-        extra_header={
-            "cost_sheet_number": {"type": "char", "label": "Cost Sheet #", "required": False},
-        },
-    )
-    landed_cost_schema["lines"]["cost_component"] = {"type": "char", "label": "Cost Component", "required": False}
+    lines = {
+        "product": {"type": "product", "label": "Product", "required": True},
+        "quantity_ordered": {"type": "decimal", "label": "Ordered Qty", "required": False},
+        "quantity_received": {"type": "decimal", "label": "Received Qty", "required": True},
+        "unit_price": {"type": "decimal", "label": "Unit Price", "required": False},
+        "warehouse_location": {"type": "char", "label": "Location", "required": False},
+        "batch_number": {"type": "char", "label": "Batch Number", "required": False},
+        "expiry_date": {"type": "date", "label": "Expiry Date", "required": False},
+        "quality_status": {"type": "select", "label": "Quality Status", "required": False,
+                          "choices": [("pending", "Pending"), ("passed", "Passed"), ("failed", "Failed")]},
+    }
 
-    sales_item_schema = _build_party_schema(
-        "customer_name",
-        "Customer",
-        extra_header={"due_date": {"type": "date", "label": "Due Date", "required": False}},
-    )
-    sales_delivery_schema = _build_party_schema(
-        "customer_name",
-        "Customer",
-        extra_header={
-            "delivery_date": {"type": "date", "label": "Delivery Date", "required": False},
-            "delivery_note": {"type": "char", "label": "Delivery Note #", "required": False},
-        },
-    )
+    return {"header": header, "lines": lines}
 
-    return [
+
+def _build_purchase_order_schema():
+    """Build purchase order schema matching PurchaseOrder model fields."""
+    header = {
+        "order_date": {"type": "date", "label": "Order Date", "required": True},
+        "due_date": {"type": "date", "label": "Due Date", "required": False},
+        "vendor": {"type": "vendor", "label": "Vendor", "required": True},
+        "number": {"type": "char", "label": "Order Number", "required": True},
+        "currency": {"type": "currency", "label": "Currency", "required": True},
+        "exchange_rate": {"type": "decimal", "label": "Exchange Rate", "required": False},
+        "expected_receipt_date": {"type": "date", "label": "Expected Receipt Date", "required": False},
+        "send_date": {"type": "date", "label": "Send Date", "required": False},
+        "notes": {"type": "text", "label": "Notes", "required": False},
+    }
+
+    lines = {
+        "product": {"type": "product", "label": "Product", "required": True},
+        "quantity_ordered": {"type": "decimal", "label": "Quantity Ordered", "required": True},
+        "unit_price": {"type": "decimal", "label": "Unit Price", "required": True},
+        "vat_rate": {"type": "decimal", "label": "VAT Rate %", "required": False},
+        "expected_delivery_date": {"type": "date", "label": "Expected Delivery Date", "required": False},
+        "inventory_account": {"type": "account", "label": "Inventory Account", "required": False},
+        "expense_account": {"type": "account", "label": "Expense Account", "required": False},
+    }
+
+    return {"header": header, "lines": lines}
+
+
+def _build_sales_invoice_schema():
+    """Build sales invoice schema matching SalesInvoice model fields."""
+    header = {
+        "invoice_date": {"type": "date", "label": "Invoice Date", "required": True},
+        "due_date": {"type": "date", "label": "Due Date", "required": False},
+        "customer": {"type": "customer", "label": "Customer", "required": True},
+        "invoice_number": {"type": "char", "label": "Invoice Number", "required": True},
+        "reference_number": {"type": "char", "label": "Reference Number", "required": False},
+        "currency": {"type": "currency", "label": "Currency", "required": True},
+        "exchange_rate": {"type": "decimal", "label": "Exchange Rate", "required": False},
+        "payment_term": {"type": "payment_term", "label": "Payment Term", "required": False},
+        "warehouse": {"type": "warehouse", "label": "Warehouse", "required": False},
+        "notes": {"type": "text", "label": "Notes", "required": False},
+    }
+
+    lines = {
+        "line_number": {"type": "integer", "label": "Line #", "required": True},
+        "product": {"type": "product", "label": "Product", "required": False},
+        "description": {"type": "text", "label": "Description", "required": True},
+        "product_code": {"type": "char", "label": "Product Code", "required": False},
+        "quantity": {"type": "decimal", "label": "Quantity", "required": True},
+        "unit_price": {"type": "decimal", "label": "Unit Price", "required": True},
+        "discount_amount": {"type": "decimal", "label": "Discount", "required": False},
+        "line_total": {"type": "decimal", "label": "Line Total", "required": False},
+        "revenue_account": {"type": "account", "label": "Revenue Account", "required": True},
+        "tax_code": {"type": "tax_code", "label": "Tax Code", "required": False},
+        "tax_amount": {"type": "decimal", "label": "Tax Amount", "required": False},
+        "cost_center": {"type": "cost_center", "label": "Cost Center", "required": False},
+        "department": {"type": "department", "label": "Department", "required": False},
+        "project": {"type": "project", "label": "Project", "required": False},
+    }
+
+    return {"header": header, "lines": lines}
+
+
+def _build_sales_order_schema():
+    """Build sales order schema matching SalesOrder model fields."""
+    header = {
+        "order_date": {"type": "date", "label": "Order Date", "required": True},
+        "expected_ship_date": {"type": "date", "label": "Expected Ship Date", "required": False},
+        "customer": {"type": "customer", "label": "Customer", "required": True},
+        "order_number": {"type": "char", "label": "Order Number", "required": True},
+        "reference_number": {"type": "char", "label": "Reference Number", "required": False},
+        "currency": {"type": "currency", "label": "Currency", "required": True},
+        "exchange_rate": {"type": "decimal", "label": "Exchange Rate", "required": False},
+        "warehouse": {"type": "warehouse", "label": "Warehouse", "required": False},
+        "notes": {"type": "text", "label": "Notes", "required": False},
+    }
+
+    lines = {
+        "line_number": {"type": "integer", "label": "Line #", "required": True},
+        "description": {"type": "text", "label": "Description", "required": True},
+        "product_code": {"type": "char", "label": "Product Code", "required": False},
+        "quantity": {"type": "decimal", "label": "Quantity", "required": True},
+        "unit_price": {"type": "decimal", "label": "Unit Price", "required": True},
+        "discount_amount": {"type": "decimal", "label": "Discount", "required": False},
+        "line_total": {"type": "decimal", "label": "Line Total", "required": False},
+        "revenue_account": {"type": "account", "label": "Revenue Account", "required": False},
+        "tax_code": {"type": "tax_code", "label": "Tax Code", "required": False},
+        "tax_amount": {"type": "decimal", "label": "Tax Amount", "required": False},
+    }
+
+    return {"header": header, "lines": lines}
+
+
+def _build_purchase_invoice_schema():
+    """Build comprehensive purchase invoice schema with all consolidated fields."""
+    from accounting.voucher_schema import ui_schema_to_definition
+
+    header = {
+        "invoice_date": {"type": "date", "label": "Invoice Date", "required": True},
+        "due_date": {"type": "date", "label": "Due Date", "required": False},
+        "vendor": {"type": "vendor", "label": "Vendor", "required": True},
+        "invoice_number": {"type": "char", "label": "Invoice Number", "required": True},
+        "supplier_invoice_number": {"type": "char", "label": "Supplier Invoice #", "required": False},
+        "external_reference": {"type": "char", "label": "External Reference", "required": False},
+        "currency": {"type": "currency", "label": "Currency", "required": True},
+        "exchange_rate": {"type": "decimal", "label": "Exchange Rate", "required": False},
+        "payment_term": {"type": "payment_term", "label": "Payment Term", "required": False},
+        "payment_mode": {"type": "select", "label": "Payment Mode", "required": False,
+                        "choices": [("cash", "Cash"), ("credit", "Credit"), ("cheque", "Cheque"), ("bank_transfer", "Bank Transfer")]},
+        "purchase_order": {"type": "purchase_order", "label": "Purchase Order", "required": False},
+        "agent_area": {"type": "char", "label": "Agent Area", "required": False},
+        "purchase_account": {"type": "account", "label": "Purchase Account", "required": False},
+        "warehouse": {"type": "warehouse", "label": "Warehouse", "required": False},
+        "po_number": {"type": "char", "label": "PO Number", "required": False},
+        "receipt_reference": {"type": "char", "label": "Receipt Reference", "required": False},
+        "invoice_date_bs": {"type": "char", "label": "Date (BS)", "required": False},
+        "discount_percentage": {"type": "decimal", "label": "Discount %", "required": False},
+        "discount_amount": {"type": "decimal", "label": "Discount Amount", "required": False},
+        "terms_and_conditions": {"type": "text", "label": "Terms & Conditions", "required": False},
+        "narration": {"type": "text", "label": "Narration", "required": False},
+        "notes": {"type": "text", "label": "Notes", "required": False},
+    }
+
+    lines = {
+        "line_number": {"type": "integer", "label": "Line #", "required": True},
+        "product": {"type": "product", "label": "Product", "required": False},
+        "warehouse": {"type": "warehouse", "label": "Warehouse", "required": False},
+        "description": {"type": "text", "label": "Description", "required": True},
+        "product_code": {"type": "char", "label": "Product Code", "required": False},
+        "quantity": {"type": "decimal", "label": "Quantity", "required": True},
+        "unit_cost": {"type": "decimal", "label": "Unit Cost", "required": True},
+        "discount_amount": {"type": "decimal", "label": "Discount", "required": False},
+        "line_total": {"type": "decimal", "label": "Line Total", "required": False},
+        "account": {"type": "account", "label": "Account", "required": True},
+        "tax_code": {"type": "tax_code", "label": "Tax Code", "required": False},
+        "vat_rate": {"type": "decimal", "label": "VAT Rate %", "required": False},
+        "input_vat_account": {"type": "account", "label": "Input VAT Account", "required": False},
+        "tax_amount": {"type": "decimal", "label": "Tax Amount", "required": False},
+        "cost_center": {"type": "cost_center", "label": "Cost Center", "required": False},
+        "department": {"type": "department", "label": "Department", "required": False},
+        "project": {"type": "project", "label": "Project", "required": False},
+        "po_reference": {"type": "char", "label": "PO Reference", "required": False},
+        "receipt_reference": {"type": "char", "label": "Receipt Reference", "required": False},
+    }
+
+    return {"header": header, "lines": lines}
+
+
+def seed_voucher_configurations(org, superuser, currency_code):
         {
             "config_code": "VM-JE",
             "transaction_code": "TT-JE",
@@ -966,7 +1047,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Purchase Order",
             "module": "purchasing",
             "description": "Purchase order to request goods or services.",
-            "schema_definition": ui_schema_to_definition(purchase_schema),
+            "schema_definition": ui_schema_to_definition(purchase_order_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "PO-",
             "numbering": {"start_number": 5000},
@@ -992,7 +1073,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Purchase Invoice",
             "module": "purchasing",
             "description": "Invoice issued by vendors.",
-            "schema_definition": ui_schema_to_definition(purchase_schema),
+            "schema_definition": ui_schema_to_definition(purchase_invoice_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "PI-",
             "numbering": {"start_number": 2000},
@@ -1005,7 +1086,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Purchase Return",
             "module": "purchasing",
             "description": "Return goods to vendors.",
-            "schema_definition": ui_schema_to_definition(purchase_schema),
+            "schema_definition": ui_schema_to_definition(purchase_invoice_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "PR-",
             "numbering": {"start_number": 2100},
@@ -1018,7 +1099,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Purchase Debit Note",
             "module": "purchasing",
             "description": "Debit notes sent to vendors.",
-            "schema_definition": ui_schema_to_definition(purchase_schema),
+            "schema_definition": ui_schema_to_definition(purchase_invoice_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "PDN-",
             "numbering": {"start_number": 2200},
@@ -1031,7 +1112,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Purchase Credit Note",
             "module": "purchasing",
             "description": "Credit notes from vendors.",
-            "schema_definition": ui_schema_to_definition(purchase_schema),
+            "schema_definition": ui_schema_to_definition(purchase_invoice_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "PCN-",
             "numbering": {"start_number": 2300},
@@ -1057,7 +1138,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Sales Quote",
             "module": "sales",
             "description": "Sales quotation.",
-            "schema_definition": ui_schema_to_definition(sales_item_schema),
+            "schema_definition": ui_schema_to_definition(sales_order_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "SQ-",
             "numbering": {"start_number": 3000},
@@ -1070,7 +1151,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Sales Order",
             "module": "sales",
             "description": "Sales order for goods/services.",
-            "schema_definition": ui_schema_to_definition(sales_item_schema),
+            "schema_definition": ui_schema_to_definition(sales_order_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "SO-",
             "numbering": {"start_number": 3100},
@@ -1096,7 +1177,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Sales Invoice",
             "module": "sales",
             "description": "Invoice issued to customers.",
-            "schema_definition": ui_schema_to_definition(sales_item_schema),
+            "schema_definition": ui_schema_to_definition(sales_invoice_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "SI-",
             "numbering": {"start_number": 3300},
@@ -1109,7 +1190,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Sales Return",
             "module": "sales",
             "description": "Return of goods from customers.",
-            "schema_definition": ui_schema_to_definition(sales_item_schema),
+            "schema_definition": ui_schema_to_definition(sales_invoice_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "SR-",
             "numbering": {"start_number": 3400},
@@ -1122,7 +1203,7 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Sales Debit Note",
             "module": "sales",
             "description": "Debit note to customer.",
-            "schema_definition": ui_schema_to_definition(sales_item_schema),
+            "schema_definition": ui_schema_to_definition(sales_invoice_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "SDN-",
             "numbering": {"start_number": 3500},
@@ -1135,114 +1216,16 @@ def get_transaction_voucher_blueprints():
             "journal_type_name": "Sales Credit Note",
             "module": "sales",
             "description": "Credit note to customer.",
-            "schema_definition": ui_schema_to_definition(sales_item_schema),
+            "schema_definition": ui_schema_to_definition(sales_invoice_schema),
             "layout_flags": {"allow_multiple_products": True},
             "prefix_template": "SCN-",
             "numbering": {"start_number": 3600},
         },
-    ]
-
-
-def seed_transaction_type_configs(org, superuser, currency_code):
-    """Seed the unified transaction type definitions plus numbering defaults."""
-    from django.utils import timezone
-    from accounting.models import (
-        JournalType,
-        NumberRestartRule,
-        TransactionTypeConfig,
-        VoucherModeConfig,
-    )
-
-    today = timezone.localdate()
-    blueprints = get_transaction_voucher_blueprints()
-
-    for spec in blueprints:
-        jt, _ = JournalType.objects.get_or_create(
-            organization=org,
-            code=spec["journal_type_code"],
-            defaults={
-                "name": spec["journal_type_name"],
-                "auto_numbering_prefix": spec["journal_type_code"],
-                "sequence_next": 1,
-                "created_by": superuser,
-            },
-        )
-
-        config, created = VoucherModeConfig.objects.get_or_create(
-            organization=org,
-            code=spec["config_code"],
-            defaults={
-                "name": spec["name"],
-                "description": spec.get("description"),
-                "is_default": spec.get("is_default", False),
-                "is_active": True,
-                "journal_type": jt,
-                "layout_style": spec.get("layout_style", "standard"),
-                "show_account_balances": False,
-                "show_tax_details": True,
-                "show_dimensions": True,
-                "allow_multiple_currencies": spec.get("allow_multiple_currencies", True),
-                "require_line_description": True,
-                "default_currency": currency_code,
-                "schema_definition": spec["schema_definition"],
-                "created_by": superuser,
-            },
-        )
-        if created:
-            logger.info(f"Created transaction mode config: {config.code}")
-
-        numbering = spec.get("numbering", {})
-        start_number = numbering.get("start_number", 1)
-        zero_padding = numbering.get("zero_padding", 4)
-
-        header_defaults = {"currency": currency_code}
-        header_defaults.update(spec.get("header_defaults", {}))
-
-        transaction_defaults = {
-            "module": spec["module"],
-            "name": spec["name"],
-            "abbreviation": spec.get("abbreviation", spec["transaction_code"]),
-            "description": spec.get("description"),
-            "numbering_strategy": spec.get("numbering_strategy", "sequential"),
-            "prefix_strategy": "static",
-            "suffix_strategy": "static",
-            "prefix_template": spec.get("prefix_template", f"{spec['journal_type_code']}-"),
-            "suffix_template": spec.get("suffix_template", ""),
-            "start_number": start_number,
-            "sequence_next": start_number,
-            "zero_padding": zero_padding,
-            "print_after_save": spec.get("print_after_save", False),
-            "auto_print": spec.get("auto_print", False),
-            "use_effective_date": True,
-            "entry_date_default": spec.get("entry_date_default", "transaction"),
-            "layout_flags": spec.get("layout_flags", {}),
-            "header_defaults": header_defaults,
-            "line_defaults": spec.get("line_defaults", []),
-            "validation_rules": spec.get("validation_rules", {}),
-            "legacy_journal_type": jt,
-            "legacy_voucher_config": config,
-            "is_active": True,
-        }
-
-        transaction_config, created = TransactionTypeConfig.objects.get_or_create(
-            organization=org,
-            code=spec["transaction_code"],
-            defaults=transaction_defaults,
-        )
-        if created:
-            logger.info(f"Created transaction type config: {transaction_config.code}")
-
-        restart_defaults = {"restart_from": start_number}
-        restart_rule, restart_created = NumberRestartRule.objects.get_or_create(
-            transaction_type=transaction_config,
-            applicable_from=today,
-            defaults=restart_defaults,
-        )
-        if restart_created:
-            logger.info(f"Created restart rule for {transaction_config.code} at {today}")
-
-
 def seed_voucher_configurations(org, superuser, currency_code):
+    """Seed VoucherModeConfig rows for the generic voucher entry UI."""
+    from accounting.services.voucher_seeding import seed_voucher_configs
+
+    seed_voucher_configs(org)
     """Seed VoucherModeConfig rows for the generic voucher entry UI."""
     from accounting.services.voucher_seeding import seed_voucher_configs
 
@@ -1678,6 +1661,101 @@ def seed_demo_journal(org, superuser, fy, account_map):
     logger.info("Created demo journal entry")
 
 
+def seed_sample_purchase_invoice(org, superuser, account_map):
+    """Create a sample purchase invoice to test CRUD operations."""
+    from accounting.models import (
+        PurchaseInvoice, PurchaseInvoiceLine, PurchaseInvoiceAdditionalCharge,
+        Vendor, Currency, TaxCode, ChartOfAccount, PaymentTerm
+    )
+    from inventory.models import Product, Warehouse
+    from purchasing.models import PurchaseOrder
+    
+    # Check if sample invoice already exists
+    if PurchaseInvoice.objects.filter(organization=org, invoice_number='PI-TEST-001').exists():
+        logger.info("Sample purchase invoice already exists, skipping")
+        return
+    
+    # Get required objects
+    vendor = Vendor.objects.filter(organization=org).first()
+    currency = Currency.objects.filter(currency_code='NPR').first()
+    tax_code = TaxCode.objects.filter(organization=org, name='VAT Standard Rate').first()
+    purchase_account = account_map.get('5010')  # Cost of Goods Sold
+    vat_account = account_map.get('2100')  # VAT Payable
+    
+    # Get inventory objects
+    product = Product.objects.filter(organization=org).first()
+    warehouse = Warehouse.objects.filter(organization=org).first()
+    
+    # Get payment term
+    payment_term = PaymentTerm.objects.filter(organization=org).first()
+    
+    if not all([vendor, currency, tax_code, purchase_account, vat_account]):
+        logger.info("Missing required objects for sample purchase invoice")
+        return
+    
+    # Create sample purchase invoice
+    invoice = PurchaseInvoice.objects.create(
+        organization=org,
+        vendor=vendor,
+        vendor_display_name=vendor.display_name,
+        invoice_number='PI-TEST-001',
+        supplier_invoice_number='SUP-INV-12345',
+        invoice_date=date.today(),
+        due_date=date.today() + timedelta(days=30),
+        payment_term=payment_term,
+        currency=currency,
+        exchange_rate=Decimal('1.0'),
+        payment_mode='credit',
+        agent_area='Kathmandu',
+        purchase_account=purchase_account,
+        warehouse=warehouse,
+        invoice_date_bs='2082-09-15',
+        discount_percentage=Decimal('2.0'),
+        discount_amount=Decimal('200.00'),
+        terms_and_conditions='Payment within 30 days',
+        narration='Sample purchase invoice for testing',
+        notes='Created for testing consolidated purchase invoice functionality',
+        status='draft',
+        created_by=superuser,
+    )
+    
+    # Create invoice line
+    line = PurchaseInvoiceLine.objects.create(
+        invoice=invoice,
+        line_number=1,
+        description='Sample Product Purchase',
+        product_code='PROD-001',
+        quantity=Decimal('10.00'),
+        unit_cost=Decimal('1000.00'),
+        discount_amount=Decimal('100.00'),
+        account=purchase_account,
+        tax_code=tax_code,
+        vat_rate=Decimal('13.00'),
+        input_vat_account=vat_account,
+        product=product,
+        warehouse=warehouse,
+        po_reference='PO-001',
+        receipt_reference='GR-001',
+    )
+    
+    # Create additional charge
+    PurchaseInvoiceAdditionalCharge.objects.create(
+        invoice=invoice,
+        description='Freight Charges',
+        amount=Decimal('500.00'),
+        gl_account=account_map.get('5150'),  # Travel and Transportation
+        is_taxable=True,
+    )
+    
+    # Recompute totals
+    invoice.recompute_totals()
+    
+    logger.info(f"Created sample purchase invoice: {invoice.invoice_number}")
+    logger.info(f"Invoice total: NPR {invoice.total}")
+    logger.info(f"Tax total: NPR {invoice.tax_total}")
+    logger.info(f"Additional charges: NPR {invoice.additional_charges_total}")
+
+
 # =============================================================================
 # MAIN SEED FUNCTION
 # =============================================================================
@@ -1733,12 +1811,6 @@ def seed_all():
     seed_payment_terms(org, superuser)
     
     # 13. Seed voucher mode config
-    from accounting.models import JournalType
-    gj = JournalType.objects.filter(organization=org, code='GJ').first()
-    if gj:
-        seed_voucher_mode_config(org, superuser, gj, currency_code=org_currency_code)
-    seed_transaction_type_configs(org, superuser, org_currency_code)
-    seed_document_sequence_configs(org, org_currency_code)
     seed_voucher_configurations(org, superuser, org_currency_code)
     
     # 14. Seed modules, entities, and permissions
@@ -1762,6 +1834,9 @@ def seed_all():
     # 20. Create demo journal
     seed_demo_journal(org, superuser, fy, account_map)
     
+    # 21. Create sample purchase invoice for testing
+    seed_sample_purchase_invoice(org, superuser, account_map)
+    
     logger.info("=" * 60)
     logger.info("DATABASE SEED COMPLETED SUCCESSFULLY!")
     logger.info("=" * 60)
@@ -1773,6 +1848,7 @@ Summary:
 - Superuser: {superuser.username}
 - Tax Authority: Inland Revenue Department
 - Default Vendor: Nepal Oil Corporation (NOC)
+- Sample Purchase Invoice: PI-TEST-001
 """)
 
 

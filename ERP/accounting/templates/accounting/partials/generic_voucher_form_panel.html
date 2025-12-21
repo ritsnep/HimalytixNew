@@ -12,100 +12,100 @@
     {% csrf_token %}
     <input type="hidden" name="action" id="voucher-action" value="save">
     <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
-    {% if header_form.non_field_errors %}
-    <div class="alert alert-danger py-2 px-3 mb-3">
-      {{ header_form.non_field_errors|join:" " }}
-    </div>
-    {% endif %}
-    <div class="card border-0 shadow-sm mb-3">
-      <div class="card-body">
-        <h6 class="text-uppercase text-muted mb-2">Process Tracker</h6>
-        {% include "accounting/partials/voucher_process_tracker.html" %}
-        <small class="text-muted d-block mt-2" id="process-tracker-note">Ready.</small>
-      </div>
-    </div>
-    <div class="row g-2 align-items-stretch header-actions-row">
-      <div class="col-12 col-xl-8">
-        <div class="card border-0 shadow-sm header-card h-100">
-          <div class="card-body">
-            <div class="row g-2 header-grid">
-              {% for field in header_form.visible_fields %}
-              <div class="col-12 col-md-6 col-lg-4">
-                {% with widget_name=field|widget_type %}
-                {% if widget_name == "CheckboxInput" %}
-                <div class="form-check">
-                  {{ field|add_class:"form-check-input align-middle" }}
-                  <label class="form-check-label small">
-                    {{ field.label }}
-                    {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
-                  </label>
+
+
+    <!-- Header fields: compact, single card, no extra column waste -->
+    <div class="card border-0 shadow-sm gv-card">
+      <div class="card-body gv-card-body">
+
+        <div class="row g-2 align-items-end">
+          <!-- Date -->
+          <div class="col-12 col-md-5 col-lg-3">
+            <label class="form-label gv-label mb-1">Date <span class="text-danger">*</span></label>
+            {% for field in header_form.visible_fields %}
+              {% if field.name == 'journal_date_bs' %}
+                <div class="input-group input-group-sm dual-calendar-picker" data-dual-calendar data-calendar-mode="DUAL" data-initial-view="BS">
+                  {{ field|add_class:"form-control dual-calendar__bs" }}
+                  <input class="form-control dual-calendar__ad d-none" type="date" data-pristine-required-message="Date is required." data-pristine-date-message="Date must be a valid date." required id="id_journal_date" value="{{ header_form.instance.journal_date|date:'Y-m-d' }}" data-role="ad-input" hidden>
+                  <button type="button" class="btn btn-outline-secondary" data-role="toggle">AD</button>
                 </div>
-                {% elif widget_name == "DualCalendarWidget" %}
-                <label class="form-label fw-semibold mb-1">
-                  {{ field.label }}
-                  {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
-                </label>
-                <div class="dual-calendar-wrapper">
-                  {{ field }}
-                </div>
-                {% else %}
-                <label class="form-label fw-semibold mb-1">
-                  {{ field.label }}
-                  {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
-                </label>
+              {% endif %}
+            {% endfor %}
+          </div>
+
+          <!-- Reference -->
+          <div class="col-12 col-md-7 col-lg-3">
+            <label class="form-label gv-label mb-1">Reference</label>
+            {% for field in header_form.visible_fields %}
+              {% if field.name == 'reference' %}
                 {{ field|add_class:"form-control form-control-sm" }}
-                {% endif %}
-                {% endwith %}
-                {% if field.help_text %}
-                <small class="text-muted d-block">{{ field.help_text }}</small>
-                {% endif %}
-                {% if field.errors %}
-                <div class="invalid-feedback d-block">
-                  {{ field.errors|join:", " }}
-                </div>
-                {% endif %}
+              {% endif %}
+            {% endfor %}
+          </div>
+
+          <!-- Currency + Rate (side-by-side to save space) -->
+          <div class="col-12 col-lg-4">
+            <div class="row g-2">
+              <div class="col-7">
+                <label class="form-label gv-label mb-1">Currency</label>
+                {% for field in header_form.visible_fields %}
+                  {% if field.name == 'currency_code' %}
+                    {{ field|add_class:"form-select form-select-sm" }}
+                  {% endif %}
+                {% endfor %}
               </div>
-              {% endfor %}
+              <div class="col-5">
+                <label class="form-label gv-label mb-1">Rate</label>
+                {% for field in header_form.visible_fields %}
+                  {% if field.name == 'exchange_rate' %}
+                    {{ field|add_class:"form-control form-control-sm" }}
+                  {% endif %}
+                {% endfor %}
+              </div>
             </div>
-            {% for hidden in header_form.hidden_fields %}
-            {{ hidden }}
+          </div>
+
+          <!-- Description (compact by default; expands on focus) -->
+          <div class="col-12 col-lg-2">
+            <label class="form-label gv-label mb-1">Description</label>
+            {% for field in header_form.visible_fields %}
+              {% if field.name == 'description' %}
+                {{ field|add_class:"form-control form-control-sm gv-desc" }}
+              {% endif %}
             {% endfor %}
           </div>
         </div>
-      </div>
-      <div class="col-12 col-xl-4">
-        <div class="card border-0 shadow-sm action-card h-100">
-          <div class="card-body d-flex flex-column gap-2">
-            <div>
-              <h6 class="text-uppercase text-muted mb-2">Line Actions</h6>
-              <div class="d-grid gap-2">
-                <button type="button" class="btn btn-sm btn-outline-info" data-line-action="duplicate-last">
-                  <i class="fas fa-copy me-1"></i>Duplicate Last Line
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-success" data-line-action="auto-balance">
-                  <i class="fas fa-balance-scale me-1"></i>Auto Balance
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-warning" data-line-action="sort">
-                  <i class="fas fa-sort-alpha-down me-1"></i>Sort by Account
-                </button>
-              </div>
+
+        <!-- Compact utilities row: tools dropdown + inline status -->
+        <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mt-2">
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <div class="dropdown">
+              <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fas fa-wrench me-1"></i>Tools
+              </button>
+              <ul class="dropdown-menu">
+                <li><button type="button" class="dropdown-item" data-line-action="duplicate-last"><i class="fas fa-copy me-2"></i>Duplicate last line</button></li>
+                <li><button type="button" class="dropdown-item" data-line-action="auto-balance"><i class="fas fa-balance-scale me-2"></i>Auto balance</button></li>
+                <li><button type="button" class="dropdown-item" data-line-action="sort"><i class="fas fa-sort-alpha-down me-2"></i>Sort by account</button></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><button type="button" class="dropdown-item" data-line-action="import"><i class="fas fa-upload me-2"></i>Import CSV</button></li>
+                <li><button type="button" class="dropdown-item" data-line-action="export"><i class="fas fa-download me-2"></i>Export CSV</button></li>
+              </ul>
             </div>
-            <div>
-              <h6 class="text-uppercase text-muted mb-2">Imports / Exports</h6>
-              <div class="d-grid gap-2">
-                <button type="button" class="btn btn-sm btn-outline-dark" data-line-action="import">
-                  <i class="fas fa-upload me-1"></i>Import CSV
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-dark" data-line-action="export">
-                  <i class="fas fa-download me-1"></i>Export CSV
-                </button>
-              </div>
-            </div>
-            <div id="action-status" class="alert alert-info py-2 d-none mb-0" role="alert">
+
+            <div id="action-status" class="alert alert-info py-1 px-2 mb-0 d-none" role="alert">
               <small id="action-status-message">Ready</small>
             </div>
           </div>
+
+          <div class="text-muted small d-flex align-items-center gap-2">
+            <span class="d-none d-md-inline">Tip:</span>
+            <span class="gv-kbd">Ctrl</span><span class="gv-kbd">Enter</span><span class="d-none d-md-inline">Post</span>
+            <span class="text-muted">·</span>
+            <span class="gv-kbd">Alt</span><span class="gv-kbd">N</span><span class="d-none d-md-inline">Add line</span>
+          </div>
         </div>
+
       </div>
     </div>
 
