@@ -4,6 +4,10 @@
 collected_static_files
 /erp/logs/
 logs
+.log
+.logs
+ERP/.log
+ERP/.logs
 # # --- Python bytecode & build ---
 # __pycache__/
 # *.py[cod]

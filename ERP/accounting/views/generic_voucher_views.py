@@ -204,10 +204,17 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
 
         try:
             # Create forms using unified factory entry point
-            header_form_cls, line_formset_cls = VoucherFormFactory.build(
+            build_result = VoucherFormFactory.build(
                 voucher_config=config,
                 organization=organization,
             )
+            
+            # Unpack - may be 2 or 3 items
+            if len(build_result) == 3:
+                header_form_cls, line_formset_cls, additional_charges_formset_cls = build_result
+            else:
+                header_form_cls, line_formset_cls = build_result
+                additional_charges_formset_cls = None
 
             header_form = self._instantiate_target(header_form_cls)
             # VoucherModeConfig doesn't have default_lines attribute, use getattr with fallback
@@ -216,6 +223,12 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
                 line_formset_cls,
                 initial=default_lines if default_lines else None
             )
+            
+            # Build additional charges formset if available
+            additional_charges_formset = None
+            if additional_charges_formset_cls:
+                additional_charges_formset = additional_charges_formset_cls(prefix='additional_charges')
+                
         except VoucherProcessError as exc:
             context = self.get_context_data(
                 config=config,
@@ -235,6 +248,7 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
             config=config,
             header_form=header_form,
             line_formset=line_formset,
+            additional_charges_formset=additional_charges_formset,
             is_create=True,
             line_section_title=line_section_title,
             idempotency_key=_resolve_idempotency_key(request),
@@ -250,10 +264,18 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
         config = self.get_voucher_config()
         organization = self.get_organization()
         try:
-            header_form_cls, line_formset_cls = VoucherFormFactory.build(
+            build_result = VoucherFormFactory.build(
                 voucher_config=config,
                 organization=organization,
             )
+            
+            # Unpack - may be 2 or 3 items
+            if len(build_result) == 3:
+                header_form_cls, line_formset_cls, additional_charges_formset_cls = build_result
+            else:
+                header_form_cls, line_formset_cls = build_result
+                additional_charges_formset_cls = None
+                
         except VoucherProcessError as exc:
             context = self.get_context_data(
                 config=config,
@@ -276,6 +298,15 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
             data=request.POST,
             files=request.FILES,
         )
+        
+        # Build additional charges formset if available
+        additional_charges_formset = None
+        if additional_charges_formset_cls:
+            additional_charges_formset = additional_charges_formset_cls(
+                data=request.POST,
+                files=request.FILES,
+                prefix='additional_charges',
+            )
 
         idempotency_key = _resolve_idempotency_key(request)
         if header_form.is_valid() and line_formset.is_valid():

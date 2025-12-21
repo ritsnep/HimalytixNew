@@ -1007,6 +1007,31 @@ class Currency(models.Model):
         super().save(*args, **kwargs)
 
 
+class Agent(models.Model):
+    """Sales/Purchase agent who handles transactions on behalf of parties."""
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name='agents',
+    )
+    code = models.CharField(max_length=30)
+    name = models.CharField(max_length=255)
+    area = models.CharField(max_length=128, blank=True, help_text="Geographic area covered by the agent")
+    phone = models.CharField(max_length=50, blank=True)
+    email = models.EmailField(blank=True)
+    commission_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0, help_text="Default commission %")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'agent'
+        unique_together = ('organization', 'code')
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"
+
 code_validator = RegexValidator(r'^\d{4}(?:\.\d{2})*$', 'Invalid COA code format.')
 
 MAX_COA_DEPTH = getattr(settings, 'COA_MAX_DEPTH', 10)

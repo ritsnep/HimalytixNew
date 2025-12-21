@@ -35,6 +35,7 @@ SUPPORTED_FIELD_TYPES = {
     "lookup",
     "typeahead",
     "autocomplete",
+    "bsdate",
 }
 
 

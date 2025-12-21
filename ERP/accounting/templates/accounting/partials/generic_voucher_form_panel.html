@@ -6,16 +6,16 @@
   </div>
   {% endif %}
   {% if header_form and line_formset %}
-  <form id="voucher-form" class="generic-voucher-entry-page" method="post" enctype="multipart/form-data"
-        hx-post="." hx-target="#generic-voucher-panel" hx-swap="innerHTML" hx-encoding="multipart/form-data"
-        hx-indicator="#generic-voucher-loading">
+  <form id="voucher-form" class="generic-voucher-entry-page" method="post" enctype="multipart/form-data" hx-post="."
+    hx-target="#generic-voucher-panel" hx-swap="innerHTML" hx-encoding="multipart/form-data"
+    hx-indicator="#generic-voucher-loading">
     {% csrf_token %}
     <input type="hidden" name="action" id="voucher-action" value="save">
     <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
     {% if header_form.non_field_errors %}
-      <div class="alert alert-danger py-2 px-3 mb-3">
-        {{ header_form.non_field_errors|join:" " }}
-      </div>
+    <div class="alert alert-danger py-2 px-3 mb-3">
+      {{ header_form.non_field_errors|join:" " }}
+    </div>
     {% endif %}
     <div class="card border-0 shadow-sm mb-3">
       <div class="card-body">
@@ -30,45 +30,45 @@
           <div class="card-body">
             <div class="row g-2 header-grid">
               {% for field in header_form.visible_fields %}
-                <div class="col-12 col-md-6 col-lg-4">
-                  {% with widget_name=field|widget_type %}
-                    {% if widget_name == "CheckboxInput" %}
-                      <div class="form-check">
-                        {{ field|add_class:"form-check-input align-middle" }}
-                        <label class="form-check-label small">
-                          {{ field.label }}
-                          {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
-                        </label>
-                      </div>
-                    {% elif widget_name == "DualCalendarWidget" %}
-                      <label class="form-label fw-semibold mb-1">
-                        {{ field.label }}
-                        {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
-                      </label>
-                      <div class="dual-calendar-wrapper">
-                        {{ field }}
-                      </div>
-                    {% else %}
-                      <label class="form-label fw-semibold mb-1">
-                        {{ field.label }}
-                        {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
-                      </label>
-                      {{ field|add_class:"form-control form-control-sm" }}
-                    {% endif %}
-                  {% endwith %}
-                  {% if field.help_text %}
-                    <small class="text-muted d-block">{{ field.help_text }}</small>
-                  {% endif %}
-                  {% if field.errors %}
-                    <div class="invalid-feedback d-block">
-                      {{ field.errors|join:", " }}
-                    </div>
-                  {% endif %}
+              <div class="col-12 col-md-6 col-lg-4">
+                {% with widget_name=field|widget_type %}
+                {% if widget_name == "CheckboxInput" %}
+                <div class="form-check">
+                  {{ field|add_class:"form-check-input align-middle" }}
+                  <label class="form-check-label small">
+                    {{ field.label }}
+                    {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+                  </label>
                 </div>
+                {% elif widget_name == "DualCalendarWidget" %}
+                <label class="form-label fw-semibold mb-1">
+                  {{ field.label }}
+                  {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+                </label>
+                <div class="dual-calendar-wrapper">
+                  {{ field }}
+                </div>
+                {% else %}
+                <label class="form-label fw-semibold mb-1">
+                  {{ field.label }}
+                  {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+                </label>
+                {{ field|add_class:"form-control form-control-sm" }}
+                {% endif %}
+                {% endwith %}
+                {% if field.help_text %}
+                <small class="text-muted d-block">{{ field.help_text }}</small>
+                {% endif %}
+                {% if field.errors %}
+                <div class="invalid-feedback d-block">
+                  {{ field.errors|join:", " }}
+                </div>
+                {% endif %}
+              </div>
               {% endfor %}
             </div>
             {% for hidden in header_form.hidden_fields %}
-              {{ hidden }}
+            {{ hidden }}
             {% endfor %}
           </div>
         </div>
@@ -114,24 +114,26 @@
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
           <div>
             <h5 class="mb-0">{{ line_section_title|default:"Line Items" }}</h5>
-            <div class="text-muted small" id="lines-count">Showing {{ line_formset.total_form_count }} line{{ line_formset.total_form_count|pluralize }}</div>
+            <div class="text-muted small" id="lines-count">Showing {{ line_formset.total_form_count }} line{{
+              line_formset.total_form_count|pluralize }}</div>
           </div>
           <div class="d-flex gap-1 flex-wrap">
             <button type="button" class="btn btn-sm btn-outline-primary" id="add-row" data-line-action="add-line">
               <i class="fas fa-plus me-1"></i>Add Row
             </button>
             <button type="button" class="btn btn-sm btn-outline-secondary" data-line-action="add-ten">+10 Rows</button>
-            <button type="button" class="btn btn-sm btn-outline-danger" data-line-action="clear-lines">Clear Rows</button>
+            <button type="button" class="btn btn-sm btn-outline-danger" data-line-action="clear-lines">Clear
+              Rows</button>
           </div>
         </div>
       </div>
       <div class="card-body pt-2">
         {% if line_formset.non_form_errors %}
-          <div class="alert alert-danger py-2 px-3 mb-3">
-            <i class="fas fa-exclamation-circle me-2"></i>
-            <strong>Line Validation Errors:</strong>
-            {{ line_formset.non_form_errors|join:" " }}
-          </div>
+        <div class="alert alert-danger py-2 px-3 mb-3">
+          <i class="fas fa-exclamation-circle me-2"></i>
+          <strong>Line Validation Errors:</strong>
+          {{ line_formset.non_form_errors|join:" " }}
+        </div>
         {% endif %}
         {{ line_formset.management_form }}
         <div class="lines-table-wrapper" id="lines-table-wrapper">
@@ -140,25 +142,79 @@
               <tr>
                 <th class="text-center sticky-col line-number-header" scope="col">#</th>
                 {% if line_formset.forms %}
-                  {% for field in line_formset.forms.0.visible_fields %}
-                    <th scope="col" class="generic-col-header" data-col-key="{{ field.name|escape }}">
-                      <div class="d-flex align-items-center justify-content-between gap-2">
-                        <span class="text-truncate">{{ field.label }}</span>
-                        <span class="col-resizer" title="Resize"></span>
-                      </div>
-                    </th>
-                  {% endfor %}
+                {% for field in line_formset.forms.0.visible_fields %}
+                <th scope="col" class="generic-col-header" data-col-key="{{ field.name|escape }}">
+                  <div class="d-flex align-items-center justify-content-between gap-2">
+                    <span class="text-truncate">{{ field.label }}</span>
+                    <span class="col-resizer" title="Resize"></span>
+                  </div>
+                </th>
+                {% endfor %}
                 {% endif %}
                 <th class="text-center action-col" scope="col">&nbsp;</th>
               </tr>
             </thead>
-            <tbody id="lines-container" class="lines-grid-body" data-line-endpoint="{% url 'accounting:generic_voucher_line' %}" data-voucher-code="{{ config.code|escapejs }}">
+            <tbody id="lines-container" class="lines-grid-body"
+              data-line-endpoint="{% url 'accounting:generic_voucher_line' %}"
+              data-voucher-code="{{ config.code|escapejs }}">
               {% if line_formset.forms %}
-                {% for form in line_formset %}
-                  {% include "accounting/partials/generic_dynamic_voucher_line_row.html" with form=form index=forloop.counter0 %}
-                {% endfor %}
+              {% for form in line_formset %}
+              {% with index=forloop.counter0 %}
+              {% if form.non_field_errors %}
+              <tr class="error-row bg-danger bg-opacity-10">
+                <td colspan="999" class="py-2">
+                  <div class="alert alert-danger mb-0 py-2 px-3 d-flex align-items-center">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <div>
+                      <strong>Line {{ index|add:1 }} Error:</strong>
+                      {{ form.non_field_errors|join:", " }}
+                    </div>
+                  </div>
+                </td>
+              </tr>
               {% endif %}
-              <tr id="no-lines-placeholder"{% if line_formset.forms %} class="d-none"{% endif %}>
+              <tr class="generic-line-row{% if form.non_field_errors or form.errors %} table-danger{% endif %}"
+                data-line-index="{{ index }}" id="line-{{ index }}">
+                <td class="text-center text-muted small sticky-col line-number-cell">{{ index|add:1 }}</td>
+                {% for field in form.visible_fields %}
+                <td class="generic-grid-cell">
+                  {% with widget_name=field|widget_type %}
+                  {% if widget_name == "CheckboxInput" %}
+                  <div class="form-check m-0">
+                    {{ field|add_class:"form-check-input grid-cell" }}
+                  </div>
+                  {% elif widget_name == "DualCalendarWidget" %}
+                  <div class="dual-calendar-wrapper">
+                    {{ field }}
+                  </div>
+                  {% else %}
+                  {% if widget_name == "Select" or widget_name == "SelectMultiple" %}
+                  {{ field|add_class:"form-select form-select-sm grid-cell" }}
+                  {% else %}
+                  {{ field|add_class:"form-control form-control-sm grid-cell" }}
+                  {% endif %}
+                  {% endif %}
+                  {% endwith %}
+                  {% if field.errors %}
+                  <div class="invalid-feedback d-block">
+                    {{ field.errors|join:", " }}
+                  </div>
+                  {% endif %}
+                </td>
+                {% endfor %}
+                <td class="text-center action-col">
+                  <button type="button" class="btn btn-sm btn-outline-danger remove-line-btn" title="Remove row">
+                    <i class="fas fa-times"></i>
+                  </button>
+                  {% for hidden in form.hidden_fields %}
+                  {{ hidden }}
+                  {% endfor %}
+                </td>
+              </tr>
+              {% endwith %}
+              {% endfor %}
+              {% endif %}
+              <tr id="no-lines-placeholder" {% if line_formset.forms %} class="d-none" {% endif %}>
                 <td colspan="999" class="text-center text-muted py-4">
                   <i class="fas fa-plus-circle fa-2x mb-2"></i>
                   <div class="mb-1">No lines yet</div>
@@ -170,24 +226,75 @@
         </div>
       </div>
       <div class="card-footer bg-white border-top">
-        <div
-          id="generic-voucher-summary"
-          hx-post="{% url 'accounting:generic_voucher_recalc' %}"
-          hx-trigger="input changed delay:400ms from:#voucher-form"
-          hx-include="#voucher-form"
-          hx-target="#generic-voucher-summary"
-          hx-swap="innerHTML"
-        >
+        <div id="generic-voucher-summary" hx-post="{% url 'accounting:generic_voucher_recalc' %}"
+          hx-trigger="input changed delay:400ms from:#voucher-form" hx-include="#voucher-form"
+          hx-target="#generic-voucher-summary" hx-swap="innerHTML">
           {% include "accounting/partials/generic_voucher_summary.html" %}
         </div>
       </div>
     </div>
 
+    {% if additional_charges_formset %}
+    <div class="card border-0 shadow-sm mt-2 additional-charges-card">
+      <div class="card-header bg-white border-0 pb-0">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <h6 class="mb-0">Additional Costs / Charges</h6>
+            <div class="text-muted small">Freight, Loading, Discounts, etc.</div>
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-primary" data-action="add-charge">
+            <i class="fas fa-plus me-1"></i>Add Charge
+          </button>
+        </div>
+      </div>
+      <div class="card-body pt-2">
+        {{ additional_charges_formset.management_form }}
+        <table class="table table-sm table-bordered align-middle mb-0" id="additional-charges-table">
+          <thead class="table-light">
+            <tr>
+              <th scope="col">Description</th>
+              <th scope="col">Amount</th>
+              <th scope="col">GL Account</th>
+              <th scope="col" class="text-center" style="width: 80px;">Taxable?</th>
+              <th scope="col" class="text-center" style="width: 50px;">&nbsp;</th>
+            </tr>
+          </thead>
+          <tbody id="additional-charges-container">
+            {% for form in additional_charges_formset %}
+            <tr class="{% if form.errors %}table-danger{% endif %}">
+              <td>{{ form.description }}</td>
+              <td>{{ form.amount }}</td>
+              <td>{{ form.gl_account }}</td>
+              <td class="text-center">{{ form.is_taxable }}</td>
+              <td class="text-center">
+                {{ form.DELETE }}
+                <button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-charge">&times;</button>
+              </td>
+            </tr>
+            {% empty %}
+            <tr id="no-charges-placeholder">
+              <td colspan="5" class="text-center text-muted py-3">
+                <small>No additional charges added. Click "Add Charge" to add one.</small>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
     <div class="d-flex justify-content-end gap-1 mt-2">
       <a href="{% url 'accounting:generic_voucher_select' %}" class="btn btn-outline-secondary">Cancel</a>
-      <button type="submit" class="btn btn-success" data-action="save" data-role="save-draft"{% if draft_saved or voucher_status == 'awaiting_approval' or voucher_status == 'posted' %} disabled{% endif %}>
+      {% if draft_saved or voucher_status == 'awaiting_approval' or voucher_status == 'posted' %}
+      <button type="submit" class="btn btn-success" data-action="save" data-role="save-draft" disabled>
         <i class="fas fa-check me-1"></i>Save {{ config.name }}
       </button>
+      {% else %}
+      <button type="submit" class="btn btn-success" data-action="save" data-role="save-draft">
+        <i class="fas fa-check me-1"></i>Save {{ config.name }}
+      </button>
+      {% endif %}
       <div id="generic-voucher-loading" class="htmx-indicator text-muted small">Saving...</div>
     </div>
   </form>

@@ -16,6 +16,12 @@ class PurchaseInvoice(models.Model):
         DRAFT = "draft", _("Draft")
         POSTED = "posted", _("Posted")
 
+    class PaymentMode(models.TextChoices):
+        CASH = "cash", _("Cash")
+        CREDIT = "credit", _("Credit")
+        CHEQUE = "cheque", _("Cheque")
+        BANK_TRANSFER = "bank_transfer", _("Bank Transfer")
+
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
@@ -28,15 +34,63 @@ class PurchaseInvoice(models.Model):
     )
     number = models.CharField(max_length=64)
     invoice_date = models.DateField()
+    invoice_date_bs = models.CharField(max_length=10, blank=True, help_text="Date in BS (populated via AD-BS converter)")
     due_date = models.DateField(null=True, blank=True)
+
+    # Party Reference
+    supplier_invoice_number = models.CharField(max_length=64, blank=True, help_text="Party Invoice Number")
+    
+    # Order Link
+    purchase_order = models.ForeignKey(
+        "PurchaseOrder",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="invoices",
+    )
+
+    # Payment & Agent
+    payment_mode = models.CharField(
+        max_length=32,
+        choices=PaymentMode.choices,
+        default=PaymentMode.CREDIT,
+    )
+    agent = models.ForeignKey(
+        "accounting.Agent",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="purchase_invoices",
+    )
+    agent_area = models.CharField(max_length=128, blank=True)
+
+    # Accounting
+    purchase_account = models.ForeignKey(
+        ChartOfAccount,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="purchase_invoices_header",
+        help_text="Header level default purchase account",
+    )
 
     currency = models.ForeignKey(Currency, on_delete=models.PROTECT)
     exchange_rate = models.DecimalField(max_digits=18, decimal_places=6, default=Decimal("1"))
 
+    # Totals
     subtotal = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0"))
+    discount_amount = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0"))
+    discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0"))
+    taxable_amount = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0"))
     tax_amount = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0"))
+    additional_charges_total = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0"))
+    rounding_adjustment = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0"))
     total_amount = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0"))
     base_total_amount = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0"))
+
+    # Notes
+    terms_and_conditions = models.TextField(blank=True)
+    narration = models.TextField(blank=True)
 
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.DRAFT)
 
@@ -59,16 +113,28 @@ class PurchaseInvoice(models.Model):
         return f"PI-{self.number}"
 
     def recalc_totals(self):
-        """Recompute subtotal/tax/total from the invoice lines."""
+        """Recompute subtotal/tax/total from the invoice lines and additional charges."""
         subtotal = Decimal("0")
         tax = Decimal("0")
         for line in self.lines.all():
             line_total = line.quantity * line.unit_price
             subtotal += line_total
             tax += line_total * (line.vat_rate / Decimal("100"))
+        
+        # Additional charges
+        additional_total = Decimal("0")
+        for charge in self.additional_charges.all():
+            additional_total += charge.amount
+            if charge.is_taxable:
+                tax += charge.amount * Decimal("0.13")  # Assuming 13% VAT
+        
         self.subtotal = subtotal.quantize(Decimal("0.01"))
+        self.additional_charges_total = additional_total.quantize(Decimal("0.01"))
+        
+        # Calculate taxable amount (Subtotal - Discount + Additional Charges)
+        self.taxable_amount = (self.subtotal - self.discount_amount + self.additional_charges_total).quantize(Decimal("0.01"))
         self.tax_amount = tax.quantize(Decimal("0.01"))
-        self.total_amount = (self.subtotal + self.tax_amount).quantize(Decimal("0.01"))
+        self.total_amount = (self.taxable_amount + self.tax_amount + self.rounding_adjustment).quantize(Decimal("0.01"))
         self.base_total_amount = (self.total_amount * self.exchange_rate).quantize(Decimal("0.01"))
 
     def save(self, *args, **kwargs):
@@ -76,6 +142,29 @@ class PurchaseInvoice(models.Model):
         if self.pk and not skip_recalc:
             self.recalc_totals()
         super().save(*args, **kwargs)
+
+
+class PurchaseInvoiceAdditionalCharge(models.Model):
+    """Additional costs/charges like Freight, Loading, Insurance, etc."""
+    invoice = models.ForeignKey(
+        PurchaseInvoice,
+        on_delete=models.CASCADE,
+        related_name="additional_charges",
+    )
+    description = models.CharField(max_length=255)
+    amount = models.DecimalField(max_digits=18, decimal_places=2, help_text="Positive for charges, negative for discounts")
+    gl_account = models.ForeignKey(
+        ChartOfAccount,
+        on_delete=models.PROTECT,
+        help_text="GL Account to post this charge",
+    )
+    is_taxable = models.BooleanField(default=False, help_text="Apply VAT to this charge?")
+
+    class Meta:
+        db_table = "purchase_invoice_additional_charge"
+
+    def __str__(self):
+        return f"{self.description}: {self.amount}"
 
 
 class PurchaseInvoiceLine(models.Model):

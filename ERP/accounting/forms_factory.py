@@ -784,6 +784,7 @@ class VoucherFormFactory:
             'text': forms.CharField,
             'textarea': forms.CharField,
             'date': forms.DateField,
+            'bsdate': forms.DateField,
             'datetime': forms.DateTimeField,
             'decimal': forms.DecimalField,
             'number': forms.DecimalField,
@@ -827,7 +828,9 @@ class VoucherFormFactory:
             'number': forms.NumberInput,
             'decimal': forms.NumberInput,
             'integer': forms.NumberInput,
+            'integer': forms.NumberInput,
             'checkbox': forms.CheckboxInput,
+            'bsdate': DualCalendarWidget,
         }
         return widget_map.get(field_type)
 
@@ -1310,7 +1313,8 @@ class VoucherFormFactory:
     def build(voucher_config, organization, *, instance=None, data=None, files=None, **kwargs):
         """
         Unified public entry point for voucher form generation.
-        Returns (header_form_class, line_formset_class).
+        Returns (header_form_class, line_formset_class) or 
+        (header_form_class, line_formset_class, additional_charges_formset_class) if schema has additional_charges.
         """
         header_form_cls = VoucherFormFactory.get_generic_voucher_form(
             voucher_config=voucher_config,
@@ -1328,7 +1332,68 @@ class VoucherFormFactory:
             files=files,
             **kwargs,
         )
+        
+        # Check if schema has additional_charges section
+        ui_schema = getattr(voucher_config, 'schema_definition', None) or {}
+        if isinstance(ui_schema, str):
+            import json
+            try:
+                ui_schema = json.loads(ui_schema)
+            except (json.JSONDecodeError, TypeError):
+                ui_schema = {}
+        
+        if 'additional_charges' in ui_schema:
+            additional_charges_formset_cls = VoucherFormFactory.get_additional_charges_formset(
+                voucher_config=voucher_config,
+                organization=organization,
+                data=data,
+                files=files,
+                **kwargs,
+            )
+            return header_form_cls, line_formset_cls, additional_charges_formset_cls
+        
         return header_form_cls, line_formset_cls
+    
+    @staticmethod
+    def get_additional_charges_formset(voucher_config, organization, *, data=None, files=None, **kwargs):
+        """
+        Build a formset for additional charges based on schema definition.
+        """
+        ui_schema = getattr(voucher_config, 'schema_definition', None) or {}
+        if isinstance(ui_schema, str):
+            import json
+            try:
+                ui_schema = json.loads(ui_schema)
+            except (json.JSONDecodeError, TypeError):
+                ui_schema = {}
+        
+        additional_charges_schema = ui_schema.get('additional_charges', {})
+        if not additional_charges_schema:
+            return None
+        
+        # Create a config object for the additional charges section
+        class AdditionalChargesConfig:
+            def __init__(self, schema):
+                self.schema_definition = {'header': schema}
+        
+        ac_config = AdditionalChargesConfig(additional_charges_schema)
+        
+        factory = VoucherFormFactory(
+            configuration=ac_config,
+            organization=organization,
+            prefix='additional_charges',
+            phase='additional_charges',
+        )
+        form_cls = factory.build_form()
+        
+        # Create a formset from this form class
+        from django.forms import formset_factory
+        formset_cls = formset_factory(
+            form_cls,
+            extra=1,
+            can_delete=True,
+        )
+        return formset_cls
 
     @staticmethod
     def get_generic_voucher_formset(voucher_config, organization, instance=None, data=None, files=None, **kwargs):

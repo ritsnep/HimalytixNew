@@ -1,0 +1,4 @@
+Error: column voucher_mode_config.schema_definition does not exist
+LINE 1: SELECT "voucher_mode_config"."schema_definition" FROM "vouch...
+               ^
+

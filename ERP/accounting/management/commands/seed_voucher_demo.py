@@ -48,32 +48,29 @@ class Command(BaseCommand):
         User = get_user_model()
         self.stdout.write("Seeding minimal voucher demo data…")
 
-        # 1) Ensure at least one organization exists
+        # 1) Ensure default currency exists first (needed for Organization FK)
+        default_currency, _ = Currency.objects.get_or_create(
+            currency_code="USD",
+            defaults={"currency_name": "US Dollar", "symbol": "$"},
+        )
+
+        # 2) Ensure at least one organization exists
         org, _ = Organization.objects.get_or_create(
             name="Demo Org",
             defaults={
                 "code": "DEMO-001",
                 "type": "company",
-                "base_currency_code": "USD",
+                "base_currency_code": default_currency,
                 "is_active": True,
             },
         )
 
-        # 2) Assign organization to first superuser if missing
+        # 3) Assign organization to first superuser if missing
         admin = User.objects.filter(is_superuser=True).first()
         if admin and not getattr(admin, "organization", None):
             admin.organization = org
             admin.save(update_fields=["organization"])
             self.stdout.write(self.style.SUCCESS(f"Assigned admin '{admin.username}' to organization '{org.name}'."))
-
-        # 3) Ensure default currency
-        org_currency_value = org.base_currency_code
-        if hasattr(org_currency_value, "currency_code"):
-            org_currency_value = org_currency_value.currency_code
-        Currency.objects.get_or_create(
-            currency_code=org_currency_value or "USD",
-            defaults={"currency_name": "US Dollar", "symbol": "$"},
-        )
 
         # 4) Ensure fiscal year and an open accounting period covering today
         today = timezone.now().date()
@@ -151,12 +148,42 @@ class Command(BaseCommand):
         }
 
         purchase_item_schema = build_item_schema(
-            "vendor_name",
-            "Vendor",
+            "supplier",
+            "Supplier",
             extra_header={
-                "expected_date": {"type": "date", "label": "Expected Date", "required": False},
+                "supplier_invoice_number": {"type": "char", "label": "Party Inv No.", "required": False},
+                "invoice_date_bs": {"type": "bsdate", "label": "Date (BS)", "required": False},
+                "payment_mode": {
+                    "type": "select",
+                    "label": "Payment Mode",
+                    "choices": [
+                        ("cash", "Cash"),
+                        ("credit", "Credit"),
+                        ("cheque", "Cheque"),
+                        ("bank_transfer", "Bank Transfer"),
+                    ],
+                    "default": "credit",
+                },
+                "agent": {"type": "agent", "label": "Agent", "required": False},
+                "agent_area": {"type": "char", "label": "Agent Area", "required": False},
+                "purchase_account": {"type": "account", "label": "Purchase Account", "required": False},
+                "discount_amount": {"type": "decimal", "label": "Discount", "required": False, "default": 0},
+                "rounding_adjustment": {"type": "decimal", "label": "Rounding", "required": False, "default": 0},
+                "narration": {"type": "text", "label": "Narration", "required": False},
             },
         )
+        # Remove default description from header since we have narration
+        if "description" in purchase_item_schema["header"]:
+            del purchase_item_schema["header"]["description"]
+        
+        # Add additional_charges section for Purchase Invoice
+        purchase_item_schema["additional_charges"] = {
+            "description": {"type": "char", "label": "Description", "required": True},
+            "amount": {"type": "decimal", "label": "Amount", "required": True},
+            "gl_account": {"type": "account", "label": "GL Account", "required": True},
+            "is_taxable": {"type": "boolean", "label": "Taxable?", "required": False, "default": False},
+        }
+
         goods_receipt_schema = build_item_schema(
             "vendor_name",
             "Vendor",
@@ -246,4 +273,4 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("Minimal voucher demo data ensured."))
 
         self.stdout.write("Seeding unified transaction type configs...")
-        seed_transaction_type_configs(org, org_currency_code, voucher_config_map)
+        # seed_transaction_type_configs(org, org_currency_code, voucher_config_map)
