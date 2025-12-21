@@ -33,7 +33,8 @@ def _party_field(key: str, label: str, kind: str) -> Dict:
     }
 
 
-def _inventory_fields() -> List[Dict]:
+def _inventory_fields(txn_type: str) -> List[Dict]:
+    requires_unit_cost = txn_type == "receipt"
     return [
         {
             "key": "product",
@@ -50,6 +51,12 @@ def _inventory_fields() -> List[Dict]:
             "lookup": {"model": "Warehouse", "kind": "warehouse"},
         },
         {
+            "key": "uom",
+            "label": "UOM",
+            "field_type": "char",
+            "required": False,
+        },
+        {
             "key": "quantity",
             "label": "Quantity",
             "field_type": "decimal",
@@ -60,10 +67,20 @@ def _inventory_fields() -> List[Dict]:
             "key": "unit_cost",
             "label": "Unit Cost",
             "field_type": "decimal",
-            "required": False,
+            "required": requires_unit_cost,
             "validators": {"min": 0, "step": "0.01"},
         },
     ]
+
+
+def _gl_account_lookup_field(key: str, label: str, *, required: bool) -> Dict:
+    return {
+        "key": key,
+        "label": label,
+        "field_type": "typeahead",
+        "required": required,
+        "lookup": {"model": "ChartOfAccount", "kind": "account"},
+    }
 
 
 def _base_header_fields() -> List[Dict]:
@@ -281,8 +298,11 @@ VOUCHER_DEFINITIONS: List[Dict] = [
         "affects_inventory": True,
         "requires_approval": False,
         "schema": {
-            "header_fields": _base_header_fields() + [_party_field("customer", "Customer", "customer")],
-            "line_fields": _inventory_fields() + _base_line_fields(),
+            "header_fields": _base_header_fields() + [
+                _party_field("customer", "Customer", "customer"),
+                _gl_account_lookup_field("cogs_account", "COGS Account", required=False),
+            ],
+            "line_fields": _inventory_fields("issue") + _base_line_fields(),
             "settings": {"inventory": {"txn_type": "issue"}},
         },
         "workflow": DEFAULT_WORKFLOW,
@@ -296,8 +316,11 @@ VOUCHER_DEFINITIONS: List[Dict] = [
         "affects_inventory": True,
         "requires_approval": False,
         "schema": {
-            "header_fields": _base_header_fields() + [_party_field("customer", "Customer", "customer")],
-            "line_fields": _inventory_fields() + _base_line_fields(),
+            "header_fields": _base_header_fields() + [
+                _party_field("customer", "Customer", "customer"),
+                _gl_account_lookup_field("grir_account", "GR/IR Account", required=True),
+            ],
+            "line_fields": _inventory_fields("receipt") + _base_line_fields(),
             "settings": {"inventory": {"txn_type": "receipt"}},
         },
         "workflow": DEFAULT_WORKFLOW,
@@ -311,8 +334,11 @@ VOUCHER_DEFINITIONS: List[Dict] = [
         "affects_inventory": True,
         "requires_approval": False,
         "schema": {
-            "header_fields": _base_header_fields() + [_party_field("vendor", "Vendor", "vendor")],
-            "line_fields": _inventory_fields() + _base_line_fields(),
+            "header_fields": _base_header_fields() + [
+                _party_field("vendor", "Vendor", "vendor"),
+                _gl_account_lookup_field("grir_account", "GR/IR Account", required=True),
+            ],
+            "line_fields": _inventory_fields("receipt") + _base_line_fields(),
             "settings": {"inventory": {"txn_type": "receipt"}},
         },
         "workflow": DEFAULT_WORKFLOW,
@@ -326,8 +352,11 @@ VOUCHER_DEFINITIONS: List[Dict] = [
         "affects_inventory": True,
         "requires_approval": False,
         "schema": {
-            "header_fields": _base_header_fields() + [_party_field("vendor", "Vendor", "vendor")],
-            "line_fields": _inventory_fields() + _base_line_fields(),
+            "header_fields": _base_header_fields() + [
+                _party_field("vendor", "Vendor", "vendor"),
+                _gl_account_lookup_field("cogs_account", "COGS Account", required=False),
+            ],
+            "line_fields": _inventory_fields("issue") + _base_line_fields(),
             "settings": {"inventory": {"txn_type": "issue"}},
         },
         "workflow": DEFAULT_WORKFLOW,
@@ -369,8 +398,10 @@ VOUCHER_DEFINITIONS: List[Dict] = [
         "affects_inventory": True,
         "requires_approval": False,
         "schema": {
-            "header_fields": _base_header_fields(),
-            "line_fields": _inventory_fields() + _base_line_fields(),
+            "header_fields": _base_header_fields() + [
+                _gl_account_lookup_field("grir_account", "GR/IR Account", required=True),
+            ],
+            "line_fields": _inventory_fields("receipt") + _base_line_fields(),
             "settings": {"inventory": {"txn_type": "receipt"}},
         },
         "workflow": DEFAULT_WORKFLOW,
@@ -384,8 +415,10 @@ VOUCHER_DEFINITIONS: List[Dict] = [
         "affects_inventory": True,
         "requires_approval": False,
         "schema": {
-            "header_fields": _base_header_fields(),
-            "line_fields": _inventory_fields() + _base_line_fields(),
+            "header_fields": _base_header_fields() + [
+                _gl_account_lookup_field("cogs_account", "COGS Account", required=False),
+            ],
+            "line_fields": _inventory_fields("issue") + _base_line_fields(),
             "settings": {"inventory": {"txn_type": "issue"}},
         },
         "workflow": DEFAULT_WORKFLOW,

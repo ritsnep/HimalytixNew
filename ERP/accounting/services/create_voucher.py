@@ -5,7 +5,16 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from ..models import VoucherModeConfig, Journal, JournalLine, AccountingPeriod, ChartOfAccount
+from ..models import (
+    VoucherModeConfig,
+    Journal,
+    JournalLine,
+    AccountingPeriod,
+    ChartOfAccount,
+    CostCenter,
+    Department,
+    Project,
+)
 from accounting.extensions.hooks import HookRunner
 from accounting.services.voucher_errors import VoucherProcessError
 
@@ -58,6 +67,22 @@ def _resolve_by_code_or_name(model, organization, raw_value, *, code_field="code
         matched = qs.filter(**{name_field: name}).first()
         if matched:
             return matched.pk
+    return None
+
+
+def _resolve_fk_with_display(line_data, key, model, organization, *, code_field="code", name_field="name"):
+    direct = _coerce_pk(line_data.get(key))
+    if direct:
+        return direct
+    display = line_data.get(f"{key}_display")
+    if display:
+        return _resolve_by_code_or_name(model, organization, display, code_field=code_field, name_field=name_field)
+    code = line_data.get(f"{key}_code")
+    name = line_data.get(f"{key}_name")
+    if code:
+        return _resolve_by_code_or_name(model, organization, code, code_field=code_field, name_field=name_field)
+    if name:
+        return _resolve_by_code_or_name(model, organization, name, code_field=code_field, name_field=name_field)
     return None
 
 
@@ -271,6 +296,16 @@ def create_voucher_transaction(
             if udf_lines and len(udf_lines) > idx - 1:
                 line_udf = udf_lines[idx - 1]
 
+            cost_center_id = _resolve_fk_with_display(
+                line_data, "cost_center", CostCenter, user_org, code_field="code", name_field="name"
+            )
+            department_id = _resolve_fk_with_display(
+                line_data, "department", Department, user_org, code_field="code", name_field="name"
+            )
+            project_id = _resolve_fk_with_display(
+                line_data, "project", Project, user_org, code_field="code", name_field="name"
+            )
+
             line_kwargs = {
                 "journal": voucher,
                 "line_number": idx,
@@ -278,9 +313,9 @@ def create_voucher_transaction(
                 "description": line_data.get("description", ""),
                 "debit_amount": debit,
                 "credit_amount": credit,
-                "cost_center_id": _coerce_pk(line_data.get("cost_center")),
-                "project_id": _coerce_pk(line_data.get("project")),
-                "department_id": _coerce_pk(line_data.get("department")),
+                "cost_center_id": cost_center_id,
+                "project_id": project_id,
+                "department_id": department_id,
                 "udf_data": line_udf,
             }
             # Only include optional fields if the model supports them.
@@ -324,6 +359,22 @@ def create_voucher_transaction(
 
             default_grir = header_data.get("grir_account") or header_data.get("grir_account_id")
             default_cogs = header_data.get("cogs_account") or header_data.get("cogs_account_id")
+            if default_grir and not isinstance(default_grir, (int,)):
+                default_grir = _resolve_by_code_or_name(
+                    ChartOfAccount,
+                    user_org,
+                    default_grir,
+                    code_field="account_code",
+                    name_field="account_name",
+                )
+            if default_cogs and not isinstance(default_cogs, (int,)):
+                default_cogs = _resolve_by_code_or_name(
+                    ChartOfAccount,
+                    user_org,
+                    default_cogs,
+                    code_field="account_code",
+                    name_field="account_name",
+                )
             default_warehouse = header_data.get("warehouse") or header_data.get("warehouse_id")
             default_location = header_data.get("location") or header_data.get("location_id")
 
@@ -377,6 +428,14 @@ def create_voucher_transaction(
 
                 warehouse = None
                 warehouse_id = _coerce_pk(warehouse_id)
+                if not warehouse_id and line_data.get("warehouse_display"):
+                    warehouse_id = _resolve_by_code_or_name(
+                        Warehouse,
+                        user_org,
+                        line_data.get("warehouse_display"),
+                        code_field="code",
+                        name_field="name",
+                    )
                 if warehouse_id:
                     warehouse = Warehouse.objects.filter(pk=warehouse_id).first()
                 elif warehouse_code:

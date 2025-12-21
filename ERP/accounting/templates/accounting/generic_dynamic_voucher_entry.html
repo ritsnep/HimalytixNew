@@ -30,12 +30,12 @@
                     </div>
                     <div class="d-flex gap-1 flex-wrap">
                         <a href="{% url 'accounting:generic_voucher_select' %}" class="btn btn-outline-secondary btn-sm">Change Type</a>
-                        <button type="submit" form="voucher-form" class="btn btn-primary btn-sm" data-action="save" data-role="save-draft"{% if draft_saved %} disabled{% endif %}>Save Draft</button>
+                        <button type="submit" form="voucher-form" class="btn btn-primary btn-sm" data-action="save" data-role="save-draft"{% if draft_saved or voucher_status == 'awaiting_approval' or voucher_status == 'posted' %} disabled{% endif %}>Save Draft</button>
                         {% if can_submit %}
-                            <button type="submit" form="voucher-form" class="btn btn-outline-primary btn-sm" data-action="submit_voucher">Submit for Approval</button>
+                            <button type="submit" form="voucher-form" class="btn btn-outline-primary btn-sm" data-action="submit_voucher"{% if voucher_status == 'awaiting_approval' or voucher_status == 'posted' %} disabled{% endif %}>Submit for Approval</button>
                         {% endif %}
                         {% if can_post %}
-                            <button type="submit" form="voucher-form" class="btn btn-success btn-sm" data-action="post_voucher">Post Now</button>
+                            <button type="submit" form="voucher-form" class="btn btn-success btn-sm" data-action="post_voucher"{% if voucher_status == 'posted' %} disabled{% endif %}>Post Now</button>
                         {% endif %}
                     </div>
                 </div>

@@ -185,7 +185,7 @@
 
     <div class="d-flex justify-content-end gap-1 mt-2">
       <a href="{% url 'accounting:generic_voucher_select' %}" class="btn btn-outline-secondary">Cancel</a>
-      <button type="submit" class="btn btn-success" data-action="save" data-role="save-draft"{% if draft_saved %} disabled{% endif %}>
+      <button type="submit" class="btn btn-success" data-action="save" data-role="save-draft"{% if draft_saved or voucher_status == 'awaiting_approval' or voucher_status == 'posted' %} disabled{% endif %}>
         <i class="fas fa-check me-1"></i>Save {{ config.name }}
       </button>
       <div id="generic-voucher-loading" class="htmx-indicator text-muted small">Saving...</div>

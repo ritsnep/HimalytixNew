@@ -351,6 +351,7 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
                         idempotency_key=idempotency_key,
                     )
                     context["summary"] = _compute_summary_from_post(request)
+                    context["voucher_status"] = getattr(voucher, "status", None)
                     context["draft_saved"] = commit_type == "save"
                     if commit_type == "post":
                         context["voucher_id"] = voucher.pk
@@ -503,7 +504,9 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
             'voucher_type': kwargs.get('config').code,
             'can_submit': can_submit,
             'can_post': can_post,
+            'can_approve': PermissionUtils.has_permission(user, organization, "accounting", "journal", "approve_journal") if user and organization else False,
             'journal_type_name': getattr(getattr(kwargs.get('config'), 'journal_type', None), 'name', None),
+            'voucher_status': kwargs.get('voucher_status'),
         })
         return context
 

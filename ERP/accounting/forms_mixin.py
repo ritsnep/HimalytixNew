@@ -18,7 +18,11 @@ class BootstrapFormMixin(UDFFormMixin):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             css_class = field.widget.attrs.get('class', '')
-            if 'form-control' not in css_class:
+            # For checkboxes and radios, we should use form-check-input, not form-control
+            is_checkbox = isinstance(field.widget, (forms.CheckboxInput, forms.CheckboxSelectMultiple))
+            is_radio = isinstance(field.widget, forms.RadioSelect)
+            
+            if not is_checkbox and not is_radio and 'form-control' not in css_class and 'form-select' not in css_class:
                 field.widget.attrs['class'] = (css_class + ' form-control').strip()
         self._apply_dual_calendar_widgets()
         # Apply schema-driven UI overrides (if provided). `ui_schema` may be
