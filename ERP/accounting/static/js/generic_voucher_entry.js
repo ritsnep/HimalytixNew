@@ -61,10 +61,10 @@
 
     const displayText = (r) => {
         if (!r) return '';
-        const text = r.text || r.display;
+        const text = r.text || r.display || r.label;
         if (text) return String(text);
-        const code = (r.code || '').toString();
-        const name = (r.name || '').toString();
+        const code = (r.code || r.account_code || r.item_code || '').toString();
+        const name = (r.name || r.account_name || r.display_name || '').toString();
         const joined = `${code}${code && name ? ' - ' : ''}${name}`.trim();
         return joined || name || code;
     };
@@ -259,7 +259,7 @@
         if (!hiddenName || !voucherForm) return null;
         let hidden = null;
         try {
-            hidden = voucherForm.querySelector(`[name="${CSS.escape(hiddenName)}"]`);
+            hidden = voucherForm.querySelector(`input[type="hidden"][name="${CSS.escape(hiddenName)}"]`);
         } catch (err) {
             hidden = null;
         }
@@ -486,9 +486,12 @@
 
         const incomplete = Math.max(0, total - completed);
 
-        document.getElementById('summary-total-lines').textContent = total;
-        document.getElementById('summary-completed-lines').textContent = completed;
-        document.getElementById('summary-incomplete-lines').textContent = incomplete;
+        const totalLinesEl = document.getElementById('summary-total-lines');
+        const completedLinesEl = document.getElementById('summary-completed-lines');
+        const incompleteLinesEl = document.getElementById('summary-incomplete-lines');
+        if (totalLinesEl) totalLinesEl.textContent = total;
+        if (completedLinesEl) completedLinesEl.textContent = completed;
+        if (incompleteLinesEl) incompleteLinesEl.textContent = incomplete;
 
         const countLabel = document.getElementById('lines-count');
         if (countLabel) {

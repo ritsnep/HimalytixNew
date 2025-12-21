@@ -1,34 +1,25 @@
-<div class="row text-center gy-2">
-  <div class="col-6 col-lg-3">
-    <div class="small text-uppercase text-muted">Total Lines</div>
-    <div class="h5 mb-0" id="summary-total-lines">{{ summary.total_lines|default:"0" }}</div>
-  </div>
-  <div class="col-6 col-lg-3">
-    <div class="small text-uppercase text-muted">Completed</div>
-    <div class="h5 mb-0" id="summary-completed-lines">{{ summary.completed|default:0 }}</div>
-  </div>
-  <div class="col-6 col-lg-3">
-    <div class="small text-uppercase text-muted">Incomplete</div>
-    <div class="h5 mb-0" id="summary-incomplete-lines">{{ summary.incomplete|default:"0" }}</div>
-  </div>
-  <div class="col-6 col-lg-3">
-    <div class="small text-uppercase text-muted">Qty / Line Total</div>
-    <div class="h6 mb-0">
-      <span id="summary-total-qty">{{ summary.total_qty|default:"0.00" }}</span>
-      <span class="text-muted">/</span>
-      <span id="summary-line-total">{{ summary.line_total|default:"0.00" }}</span>
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div class="d-flex align-items-center gap-3 flex-wrap">
+    <div class="gv-metric">
+      <div class="gv-metric-label">Lines</div>
+      <div class="gv-metric-value" id="summary-total-lines">{{ summary.total_lines|default:"0" }}</div>
+      <div class="small text-muted">
+        <span id="summary-completed-lines">{{ summary.completed|default:"0" }}</span> done /
+        <span id="summary-incomplete-lines">{{ summary.incomplete|default:"0" }}</span> open
+      </div>
     </div>
+    <div class="gv-metric"><div class="gv-metric-label">Debit</div><div class="gv-metric-value" id="summary-total-debit">{{ summary.total_debit|default:"0.00" }}</div></div>
+    <div class="gv-metric"><div class="gv-metric-label">Credit</div><div class="gv-metric-value" id="summary-total-credit">{{ summary.total_credit|default:"0.00" }}</div></div>
+    <div class="gv-metric"><div class="gv-metric-label">Diff</div><div class="gv-metric-value" id="summary-total-diff">{{ summary.balance_diff|default:"0.00" }}</div></div>
+    <div class="gv-metric"><div class="gv-metric-label">Qty</div><div class="gv-metric-value" id="summary-total-qty">{{ summary.total_qty|default:"0.00" }}</div></div>
+    <div class="gv-metric"><div class="gv-metric-label">Line Total</div><div class="gv-metric-value" id="summary-line-total">{{ summary.line_total|default:"0.00" }}</div></div>
   </div>
-  <div class="col-6 col-lg-3">
-    <div class="small text-uppercase text-muted">Total Debit</div>
-    <div class="h6 mb-0" id="summary-total-debit">{{ summary.total_debit|default:"0.00" }}</div>
-  </div>
-  <div class="col-6 col-lg-3">
-    <div class="small text-uppercase text-muted">Total Credit</div>
-    <div class="h6 mb-0" id="summary-total-credit">{{ summary.total_credit|default:"0.00" }}</div>
-  </div>
-  <div class="col-6 col-lg-3">
-    <div class="small text-uppercase text-muted">Balance Diff</div>
-    <div class="h6 mb-0" id="summary-total-diff">{{ summary.balance_diff|default:"0.00" }}</div>
+
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <a href="{% url 'accounting:generic_voucher_select' %}" class="btn btn-outline-secondary btn-sm">Cancel</a>
+    <button type="submit" class="btn btn-success btn-sm" data-action="save" data-role="save-draft">
+      <i class="fas fa-check me-1"></i>Save Journal
+    </button>
+    <span id="generic-voucher-loading" class="htmx-indicator text-muted small">Saving…</span>
   </div>
 </div>

@@ -11,6 +11,7 @@ from typing import Dict, Any
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.forms import HiddenInput
 from django.db import models
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
@@ -19,6 +20,7 @@ from django.urls import reverse
 from accounting.forms_factory import VoucherFormFactory
 from accounting.forms_factory import build_form
 from accounting.models import VoucherModeConfig, AuditLog, VoucherProcess
+from voucher_config.models import VoucherConfigMaster
 from accounting.views.base_voucher_view import BaseVoucherView
 from accounting.services.voucher_errors import VoucherProcessError
 from accounting.views.views_mixins import PermissionRequiredMixin
@@ -45,6 +47,66 @@ def _render_generic_panel(request, context, *, status=200):
         context,
         status=status,
     )
+
+
+def _resolve_ui_sections(config):
+    ui_schema = config.resolve_ui_schema() if hasattr(config, "resolve_ui_schema") else {}
+    if isinstance(ui_schema, dict) and isinstance(ui_schema.get("sections"), dict):
+        ui_schema = ui_schema["sections"]
+    header_schema = ui_schema.get("header", {}) if isinstance(ui_schema, dict) else {}
+    line_schema = ui_schema.get("lines", {}) if isinstance(ui_schema, dict) else {}
+
+    def _order(section):
+        if isinstance(section, dict):
+            order = section.get("__order__") or [k for k in section.keys() if k != "__order__"]
+            return [k for k in order if k in section and k != "__order__"]
+        return []
+
+    return header_schema, line_schema, _order(header_schema), _order(line_schema)
+
+
+def _default_additional_charges(config):
+    charges = []
+    footer_qs = getattr(config, "footer_charges", None)
+    if not footer_qs:
+        return charges
+    try:
+        footer_items = footer_qs.filter(is_active=True).order_by("display_order", "footer_charge_id")
+    except Exception:
+        return charges
+    for charge in footer_items:
+        ledger = getattr(charge, "ledger", None)
+        ledger_label = None
+        if ledger:
+            code = getattr(ledger, "account_code", None)
+            name = getattr(ledger, "account_name", None) or str(ledger)
+            ledger_label = f"{code} - {name}" if code else name
+        amount = None
+        if getattr(charge, "calculation_type", None) == "amount":
+            amount = charge.amount
+        charges.append({
+            "description": ledger_label or "Charge",
+            "amount": amount,
+            "gl_account": ledger_label or "",
+            "is_taxable": False,
+        })
+    return charges
+
+
+def _prefer_display_field(fields, name: str) -> str:
+    if name in fields:
+        try:
+            if isinstance(fields[name].widget, HiddenInput):
+                display_name = f"{name}_display"
+                if display_name in fields:
+                    return display_name
+        except Exception:
+            pass
+        return name
+    display_name = f"{name}_display"
+    if display_name in fields:
+        return display_name
+    return name
 
 
 def _safe_decimal(value):
@@ -227,7 +289,14 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
             # Build additional charges formset if available
             additional_charges_formset = None
             if additional_charges_formset_cls:
-                additional_charges_formset = additional_charges_formset_cls(prefix='additional_charges')
+                initial_charges = _default_additional_charges(config)
+                if initial_charges:
+                    additional_charges_formset = additional_charges_formset_cls(
+                        prefix='additional_charges',
+                        initial=initial_charges,
+                    )
+                else:
+                    additional_charges_formset = additional_charges_formset_cls(prefix='additional_charges')
                 
         except VoucherProcessError as exc:
             context = self.get_context_data(
@@ -239,7 +308,7 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
                 alert_message=f"{exc.code}: {exc.message}",
                 alert_level="danger",
             )
-            return _render_generic_panel(request, context, status=422)
+            return _render_generic_panel(request, context, status=200)
 
         # Determine line section title based on voucher type
         line_section_title = _line_section_title(config)
@@ -286,7 +355,7 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
                 alert_message=f"{exc.code}: {exc.message}",
                 alert_level="danger",
             )
-            return _render_generic_panel(request, context, status=422)
+            return _render_generic_panel(request, context, status=200)
 
         header_form = self._instantiate_target(
             header_form_cls,
@@ -427,7 +496,7 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
                     context["summary"] = _compute_summary_from_post(request)
                     context["alert_message"] = payload["voucher:message"]
                     context["alert_level"] = "danger"
-                    response = _render_generic_panel(request, context, status=422)
+                    response = _render_generic_panel(request, context, status=200)
                     response["HX-Trigger"] = json.dumps(payload)
                     return response
                 messages.error(request, f"Validation Error: {error_message}")
@@ -466,7 +535,7 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
                     context["summary"] = _compute_summary_from_post(request)
                     context["alert_message"] = payload["voucher:message"]
                     context["alert_level"] = "danger"
-                    response = _render_generic_panel(request, context, status=422)
+                    response = _render_generic_panel(request, context, status=200)
                     response["HX-Trigger"] = json.dumps(payload)
                     return response
                 messages.error(request, f"Validation Error: {exc}")
@@ -513,7 +582,7 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
         )
         context["summary"] = _compute_summary_from_post(request)
 
-        return _render_generic_panel(request, context, status=422 if _is_htmx(request) else 200)
+        return _render_generic_panel(request, context, status=200)
 
     def get_success_url(self, voucher):
         """Return URL to redirect after successful creation."""
@@ -530,6 +599,53 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
         if user and organization:
             can_submit = PermissionUtils.has_permission(user, organization, "accounting", "journal", "submit_journal")
             can_post = PermissionUtils.has_permission(user, organization, "accounting", "journal", "post_journal")
+        config = kwargs.get("config")
+        header_schema = {}
+        line_schema = {}
+        header_order = []
+        line_order = []
+        if config:
+            header_schema, line_schema, header_order, line_order = _resolve_ui_sections(config)
+        line_labels = {}
+        if isinstance(line_schema, dict):
+            for key, cfg in line_schema.items():
+                if key == "__order__":
+                    continue
+                if isinstance(cfg, dict):
+                    line_labels[key] = cfg.get("label") or key.replace("_", " ").title()
+                else:
+                    line_labels[key] = str(key)
+
+        header_form = kwargs.get("header_form")
+        line_formset = kwargs.get("line_formset")
+        header_fields = []
+        if header_form and header_order:
+            for name in header_order:
+                mapped = _prefer_display_field(header_form.fields, name)
+                if mapped in header_form.fields:
+                    header_fields.append(header_form[mapped])
+        elif header_form:
+            header_fields = list(header_form.visible_fields())
+
+        line_field_order = []
+        if line_formset and line_order:
+            for name in line_order:
+                mapped = _prefer_display_field(line_formset.form.base_fields, name)
+                if mapped in line_formset.form.base_fields:
+                    line_field_order.append(mapped)
+        elif line_formset:
+            line_field_order = list(line_formset.form.base_fields.keys())
+        line_columns = []
+        for name in line_order:
+            mapped = _prefer_display_field(line_formset.form.base_fields, name) if line_formset else name
+            if line_formset and mapped not in line_formset.form.base_fields:
+                continue
+            line_columns.append({
+                "name": mapped,
+                "label": line_labels.get(name, name),
+            })
+        if not line_columns and line_field_order:
+            line_columns = [{"name": name, "label": line_labels.get(name, name)} for name in line_field_order]
         context.update({
             'page_title': f"Create {kwargs.get('config').name}",
             'voucher_type': kwargs.get('config').code,
@@ -538,6 +654,14 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
             'can_approve': PermissionUtils.has_permission(user, organization, "accounting", "journal", "approve_journal") if user and organization else False,
             'journal_type_name': getattr(getattr(kwargs.get('config'), 'journal_type', None), 'name', None),
             'voucher_status': kwargs.get('voucher_status'),
+            'line_endpoint': reverse('accounting:generic_voucher_line'),
+            'change_type_url': reverse('accounting:generic_voucher_select'),
+            'header_schema': header_schema,
+            'line_schema': line_schema,
+            'header_fields': header_fields,
+            'line_field_order': line_field_order,
+            'line_labels': line_labels,
+            'line_columns': line_columns,
         })
         return context
 
@@ -594,9 +718,132 @@ class GenericVoucherLineView(PermissionRequiredMixin, BaseVoucherView):
         )
 
         form = LineFormClass()
+        _, line_schema, _, line_order = _resolve_ui_sections(config)
+        line_field_order = []
+        for name in line_order:
+            mapped = _prefer_display_field(LineFormClass.base_fields, name)
+            if mapped in LineFormClass.base_fields:
+                line_field_order.append(mapped)
+        if not line_field_order:
+            line_field_order = list(LineFormClass.base_fields.keys())
+        line_labels = {}
+        if isinstance(line_schema, dict):
+            for key, cfg in line_schema.items():
+                if key == "__order__":
+                    continue
+                if isinstance(cfg, dict):
+                    line_labels[key] = cfg.get("label") or key.replace("_", " ").title()
+                else:
+                    line_labels[key] = str(key)
+        line_columns = []
+        for name in line_order:
+            mapped = _prefer_display_field(LineFormClass.base_fields, name)
+            if mapped in LineFormClass.base_fields:
+                line_columns.append({"name": mapped, "label": line_labels.get(name, name)})
+        if not line_columns:
+            line_columns = [{"name": name, "label": line_labels.get(name, name)} for name in line_field_order]
+
         return render(request, 'accounting/partials/generic_dynamic_voucher_line_row.html', {
             'form': form,
             'index': line_index,
+            'line_schema': line_schema,
+            'line_field_order': line_field_order,
+            'line_labels': line_labels,
+            'line_columns': line_columns,
+        })
+
+
+class ConfigVoucherCreateView(GenericVoucherCreateView):
+    """Generic view for creating vouchers using VoucherConfigMaster."""
+
+    def get_voucher_config(self):
+        code = self.kwargs.get('voucher_code')
+        organization = self.get_organization()
+        return get_object_or_404(
+            VoucherConfigMaster,
+            code=code,
+            organization=organization,
+            is_active=True,
+        )
+
+    def get_context_data(self, **kwargs) -> Dict[str, Any]:
+        context = super().get_context_data(**kwargs)
+        context.update({
+            'line_endpoint': reverse('accounting:config_voucher_line'),
+            'change_type_url': reverse('accounting:generic_voucher_select'),
+        })
+        return context
+
+
+class ConfigVoucherLineView(PermissionRequiredMixin, BaseVoucherView):
+    """HTMX endpoint that renders an additional line item for config-driven vouchers."""
+
+    permission_required = ('accounting', 'voucher', 'add')
+
+    def get(self, request, *args, **kwargs) -> HttpResponse:
+        voucher_code = request.GET.get('voucher_code')
+        if not voucher_code:
+            return HttpResponse("voucher_code parameter is required", status=400)
+
+        organization = self.get_organization()
+        config = get_object_or_404(
+            VoucherConfigMaster,
+            code=voucher_code,
+            organization=organization,
+            is_active=True,
+        )
+
+        index_value = request.GET.get('index', '0')
+        try:
+            line_index = max(0, int(index_value))
+        except ValueError:
+            line_index = 0
+
+        ui_schema = config.resolve_ui_schema() if hasattr(config, 'resolve_ui_schema') else {}
+        if isinstance(ui_schema, dict) and isinstance(ui_schema.get('sections'), dict):
+            ui_schema = ui_schema['sections']
+        lines_schema = ui_schema.get('lines', {}) if isinstance(ui_schema, dict) else {}
+        line_model = VoucherFormFactory._get_line_model_for_voucher_config(config)
+        LineFormClass = build_form(
+            lines_schema,
+            model=line_model,
+            organization=organization,
+            prefix=f"lines-{line_index}"
+        )
+
+        form = LineFormClass()
+        _, line_schema, _, line_order = _resolve_ui_sections(config)
+        line_field_order = []
+        for name in line_order:
+            mapped = _prefer_display_field(LineFormClass.base_fields, name)
+            if mapped in LineFormClass.base_fields:
+                line_field_order.append(mapped)
+        if not line_field_order:
+            line_field_order = list(LineFormClass.base_fields.keys())
+        line_labels = {}
+        if isinstance(line_schema, dict):
+            for key, cfg in line_schema.items():
+                if key == "__order__":
+                    continue
+                if isinstance(cfg, dict):
+                    line_labels[key] = cfg.get("label") or key.replace("_", " ").title()
+                else:
+                    line_labels[key] = str(key)
+        line_columns = []
+        for name in line_order:
+            mapped = _prefer_display_field(LineFormClass.base_fields, name)
+            if mapped in LineFormClass.base_fields:
+                line_columns.append({"name": mapped, "label": line_labels.get(name, name)})
+        if not line_columns:
+            line_columns = [{"name": name, "label": line_labels.get(name, name)} for name in line_field_order]
+
+        return render(request, 'accounting/partials/generic_dynamic_voucher_line_row.html', {
+            'form': form,
+            'index': line_index,
+            'line_schema': line_schema,
+            'line_field_order': line_field_order,
+            'line_labels': line_labels,
+            'line_columns': line_columns,
         })
 
 
@@ -684,7 +931,7 @@ class GenericVoucherValidateView(PermissionRequiredMixin, BaseVoucherView):
                 alert_level="danger",
                 idempotency_key=_resolve_idempotency_key(request),
             )
-            return _render_generic_panel(request, context, status=422)
+            return _render_generic_panel(request, context, status=200)
 
         header_form = self._instantiate_target(header_form_cls, data=request.POST, files=request.FILES)
         line_formset = self._instantiate_target(line_formset_cls, data=request.POST, files=request.FILES)

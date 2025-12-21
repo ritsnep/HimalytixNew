@@ -148,6 +148,7 @@ INSTALLED_APPS = [
     'drf_spectacular',  # <-- OpenAPI schema generation
     'metadata',
     'voucher_schema',
+    'voucher_config',
     'mptt', # Ensure django-mptt is installed and added before inventory app
     'inventory',
     'purchasing',

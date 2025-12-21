@@ -10,9 +10,98 @@
 <link rel="stylesheet" href="{% static 'libs/sweetalert2/dist/sweetalert2.min.css' %}">
 {{ header_form.media }}
 {{ line_formset.media }}
+<style>
+  /* ===== Compact, production-safe UI tweaks (Bootstrap-friendly) ===== */
+
+  .gv-page { --gv-pad: .75rem; --gv-radius: .85rem; --gv-border: rgba(0,0,0,.08); }
+
+  .gv-toolbar {
+    padding: .75rem 0 .5rem;
+    border-bottom: 1px solid var(--gv-border);
+    backdrop-filter: saturate(180%) blur(6px);
+    z-index: 1030; /* above tables */
+  }
+
+  .gv-title { font-size: 1.15rem; line-height: 1.15; }
+  .gv-badge { font-weight: 600; letter-spacing: .02em; }
+
+  .gv-stepper {
+    display: flex;
+    gap: .5rem;
+    overflow: auto;
+    padding-bottom: .25rem;
+    scrollbar-width: thin;
+  }
+
+  .gv-card { border-radius: var(--gv-radius); }
+  .gv-card-body { padding: var(--gv-pad); }
+  .gv-card-header { padding: .6rem var(--gv-pad) .4rem; }
+
+  .gv-label { font-size: .78rem; color: rgba(0,0,0,.72); font-weight: 600; }
+
+  /* Description: compact default, expand on focus for speed */
+  .gv-desc { resize: vertical; max-height: 6rem; transition: all .12s ease-in-out; }
+  .gv-desc:focus { min-height: 5.5rem; }
+
+  /* Grid: maximize usable area */
+  .gv-table-wrap { border-radius: .65rem; overflow: auto; border: 1px solid var(--gv-border); }
+  .gv-grid { margin: 0; }
+  .gv-grid th, .gv-grid td { vertical-align: middle; }
+  .gv-grid th { position: sticky; top: 0; z-index: 2; }
+
+  /* Sticky first and last columns */
+  .gv-sticky-start { position: sticky; left: 0; background: var(--bs-body-bg); z-index: 3; }
+  .gv-sticky-end { position: sticky; right: 0; background: var(--bs-body-bg); z-index: 3; }
+
+  .gv-col-n { width: 44px; min-width: 44px; }
+  .gv-col-act { width: 56px; min-width: 56px; }
+  .gv-col-desc { min-width: 240px; }
+  .gv-col-amt { width: 132px; min-width: 132px; }
+  .gv-col-lookup { min-width: 180px; }
+
+  /* Cells: tighter but still usable */
+  .gv-cell { padding-top: .25rem; padding-bottom: .25rem; }
+  .gv-amt { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* Icon buttons: compact hit-area without looking cramped */
+  .gv-icon-btn { width: 34px; height: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+
+  /* Summary: sticky, compact metrics */
+  .gv-summary { padding: .55rem var(--gv-pad); }
+  .gv-metric { display: grid; gap: .05rem; }
+  .gv-metric-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; color: rgba(0,0,0,.55); }
+  .gv-metric-value { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* Mini keyboard hint badges */
+  .gv-kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    padding: 0 .35rem;
+    height: 20px;
+    font-size: .72rem;
+    border: 1px solid var(--gv-border);
+    border-bottom-width: 2px;
+    border-radius: .35rem;
+    background: rgba(0,0,0,.02);
+  }
+
+  /* Reduce default Bootstrap table border heaviness */
+  .table-bordered > :not(caption) > * { border-color: rgba(0,0,0,.07); }
+
+  /* Mobile ergonomics */
+  @media (max-width: 576px) {
+    .gv-title { font-size: 1.05rem; }
+    .gv-col-desc { min-width: 200px; }
+    .gv-col-lookup { min-width: 160px; }
+  }
+</style>
 {% endblock %}
 
 {% block content %}
+{% url 'accounting:generic_voucher_select' as default_change_type_url %}
+<div class="main-content">
 
 <div class="page-content gv-page">
   <div class="container-fluid">
@@ -34,7 +123,7 @@
             <i class="fas fa-route me-1"></i>Process
           </button>
 
-          <a href="{% url 'accounting:generic_voucher_select' %}" class="btn btn-outline-secondary btn-sm">
+          <a href="{{ change_type_url|default:default_change_type_url }}" class="btn btn-outline-secondary btn-sm">
             <i class="fas fa-exchange-alt me-1"></i>Change Type
           </a>
 
@@ -61,7 +150,7 @@
               <i class="fas fa-ellipsis-v"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item" href="{% url 'accounting:generic_voucher_select' %}">Change Type</a></li>
+              <li><a class="dropdown-item" href="{{ change_type_url|default:default_change_type_url }}">Change Type</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><button class="dropdown-item" type="submit" form="voucher-form" data-action="save">Save Draft</button></li>
               {% if can_submit %}
@@ -90,12 +179,22 @@
     {% include "accounting/partials/generic_voucher_form_panel.html" %}
   </div>
 </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'libs/sweetalert2/dist/sweetalert2.min.js' %}"></script>
 <script src="{% static 'js/generic_voucher_entry.js' %}"></script>
 <script>
+    (function () {
+        if (window.FormBase) {
+            const form = document.getElementById('voucher-form');
+            if (form) {
+                window.FormBase.mount(form);
+            }
+        }
+    })();
+
     (function () {
         const initVoucherForm = () => {
             const form = document.getElementById('voucher-form');
@@ -226,5 +325,48 @@
             }
         });
     })();
+
+    // ===== Small, production-safe helpers (no external dependencies) =====
+
+    // 1) Ensure correct "action" value is submitted based on clicked button.
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        const form = btn.form || document.getElementById('voucher-form');
+        if (!form) return;
+        const actionInput = document.getElementById('voucher-action');
+        if (actionInput) actionInput.value = btn.dataset.action || 'save';
+    }, true);
+
+    // 2) Keyboard shortcuts: Alt+N add line, Ctrl+Enter post voucher.
+    document.addEventListener('keydown', function (e) {
+        const activeTag = (document.activeElement && document.activeElement.tagName || '').toLowerCase();
+        const isTyping = ['input','textarea','select'].includes(activeTag);
+
+        // Alt+N: add line (works even while typing)
+        if (e.altKey && (e.key === 'n' || e.key === 'N')) {
+            const addBtn = document.querySelector('[data-line-action="add-line"]');
+            if (addBtn) { e.preventDefault(); addBtn.click(); }
+        }
+
+        // Ctrl+Enter: post (only when in form area)
+        if (e.ctrlKey && e.key === 'Enter') {
+            const postBtn = document.querySelector('button[data-action="post_voucher"]');
+            if (postBtn) {
+                e.preventDefault();
+                // Respect user intent: if they are typing in a multiline textarea, do not hijack unless they hold Ctrl.
+                postBtn.click();
+            }
+        }
+    });
+
+    // 3) Optional: keep lines-count up to date (safe fallback; your backend can override).
+    function updateLineCount() {
+        const rows = document.querySelectorAll('#lines-container tr.generic-line-row');
+        const el = document.getElementById('lines-count');
+        if (el) el.textContent = `Showing ${rows.length} line${rows.length === 1 ? '' : 's'}`;
+    }
+    document.addEventListener('htmx:afterSwap', updateLineCount);
+    document.addEventListener('DOMContentLoaded', updateLineCount);
 </script>
 {% endblock %}

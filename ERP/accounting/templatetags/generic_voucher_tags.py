@@ -7,8 +7,10 @@ register = template.Library()
 
 @register.filter
 def widget_type(bound_field):
-    widget = getattr(bound_field.field, 'widget', None)
-    return widget.__class__.__name__ if widget else ''
+    if not hasattr(bound_field, "field"):
+        return ""
+    widget = getattr(bound_field.field, "widget", None)
+    return widget.__class__.__name__ if widget else ""
 
 
 @register.filter
@@ -32,3 +34,13 @@ def status_badge_class(status_value):
     if status_value in ("failed", "error"):
         return "danger"
     return "secondary"
+
+
+@register.filter
+def get_field(form, field_name):
+    if not form or not field_name:
+        return ""
+    try:
+        return form[field_name]
+    except Exception:
+        return ""

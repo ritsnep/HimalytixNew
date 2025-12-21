@@ -14,31 +14,41 @@
 {% endif %}
 <tr class="generic-line-row{% if form.non_field_errors or form.errors %} table-danger{% endif %}" data-line-index="{{ index }}" id="line-{{ index }}">
     <td class="text-center text-muted small sticky-col line-number-cell">{{ index|add:1 }}</td>
-    {% for field in form.visible_fields %}
+    {% for col in line_columns %}
+        {% with field=form|get_field:col.name widget_name=field|widget_type %}
         <td class="generic-grid-cell">
-            {% with widget_name=field|widget_type %}
-                {% if widget_name == "CheckboxInput" %}
-                    <div class="form-check m-0">
-                        {{ field|add_class:"form-check-input grid-cell" }}
-                    </div>
-                {% elif widget_name == "DualCalendarWidget" %}
-                    <div class="dual-calendar-wrapper">
-                        {{ field }}
-                    </div>
+            {% if widget_name == "CheckboxInput" %}
+                <div class="form-check m-0">
+                    {{ field|add_class:"form-check-input grid-cell" }}
+                </div>
+            {% elif widget_name == "DualCalendarWidget" %}
+                <div class="dual-calendar-wrapper">
+                    {{ field }}
+                </div>
+            {% else %}
+                {% if widget_name == "Select" or widget_name == "SelectMultiple" %}
+                    {{ field|add_class:"form-select form-select-sm grid-cell" }}
                 {% else %}
-                    {% if widget_name == "Select" or widget_name == "SelectMultiple" %}
-                        {{ field|add_class:"form-select form-select-sm grid-cell" }}
-                    {% else %}
-                        {{ field|add_class:"form-control form-control-sm grid-cell" }}
-                    {% endif %}
+                    {{ field|add_class:"form-control form-control-sm grid-cell" }}
                 {% endif %}
-            {% endwith %}
+            {% endif %}
             {% if field.errors %}
                 <div class="invalid-feedback d-block">
                     {{ field.errors|join:", " }}
                 </div>
+            {% elif col.name|slice:"-8:" == "_display" %}
+                {% with base_name=col.name|slice:":-8" %}
+                  {% with base_field=form|get_field:base_name %}
+                    {% if base_field.errors %}
+                      <div class="invalid-feedback d-block">
+                        {{ base_field.errors|join:", " }}
+                      </div>
+                    {% endif %}
+                  {% endwith %}
+                {% endwith %}
             {% endif %}
         </td>
+        {% endwith %}
     {% endfor %}
     <td class="text-center action-col">
         <button type="button" class="btn btn-sm btn-outline-danger remove-line-btn" title="Remove row">

@@ -1,12 +1,16 @@
-const root = document.body;
+(function () {
+  if (window.__ui_main_initialized) return;
+  window.__ui_main_initialized = true;
 
-function setCookie(name, value) {
-  try {
-    document.cookie = `${name}=${value};path=/;max-age=${60 * 60 * 24 * 365}`;
-  } catch (e) {
-    /* non-blocking */
+  const root = document.body;
+
+  function setCookie(name, value) {
+    try {
+      document.cookie = `${name}=${value};path=/;max-age=${60 * 60 * 24 * 365}`;
+    } catch (e) {
+      /* non-blocking */
+    }
   }
-}
 
 function getPersisted(key, fallback) {
   const cookieVal = getCookie(key);
@@ -291,3 +295,5 @@ if (overlay && window.htmx) {
   htmx.on('htmx:responseError', () => overlay.classList.remove('show'));
   htmx.on('htmx:afterSwap', () => overlay.classList.remove('show'));
 }
+
+})();

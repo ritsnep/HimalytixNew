@@ -26,6 +26,7 @@ def configure_widget_for_schema(field_name, field_schema, widget):
         'party': 'party',
         'customer': 'customer',
         'vendor': 'vendor',
+        'agent': 'agent',
         'product': 'product',
         'warehouse': 'warehouse',
         'cost_center': 'cost_center',
@@ -41,17 +42,54 @@ def configure_widget_for_schema(field_name, field_schema, widget):
     lookup_types = set(lookup_aliases) | {'lookup', 'typeahead', 'autocomplete'}
     if field_type in lookup_types:
         lookup_kind = (
-            field_schema.get('lookup_model')
-            or field_schema.get('lookup_kind')
+            field_schema.get('lookup_kind')
             or field_schema.get('lookup')
-            or field_schema.get('choices')
             or lookup_aliases.get(field_type)
-            or 'account'
+            or None
         )
+        if lookup_kind:
+            lookup_kind = str(lookup_kind).replace('-', '_').lower()
+        lookup_model = field_schema.get('lookup_model')
+        if not lookup_kind and lookup_model:
+            model_key = str(lookup_model).replace('-', '_').lower()
+            model_map = {
+                'chartofaccount': 'account',
+                'account': 'account',
+                'vendor': 'vendor',
+                'supplier': 'vendor',
+                'customer': 'customer',
+                'client': 'customer',
+                'agent': 'agent',
+                'product': 'product',
+                'item': 'product',
+                'service': 'product',
+                'inventoryitem': 'product',
+                'warehouse': 'warehouse',
+                'taxcode': 'tax_code',
+                'costcenter': 'cost_center',
+                'department': 'department',
+                'project': 'project',
+            }
+            lookup_kind = model_map.get(model_key)
+        lookup_kind = lookup_kind or 'account'
         lookup_url = field_schema.get('lookup_url')
         endpoint = None
+        lookup_endpoints = {
+            'account': '/accounting/journal-entry/lookup/accounts/',
+            'vendor': '/accounting/journal-entry/lookup/vendors/',
+            'customer': '/accounting/journal-entry/lookup/customers/',
+            'agent': '/accounting/journal-entry/lookup/agents/',
+            'product': '/accounting/journal-entry/lookup/products/',
+            'warehouse': '/accounting/journal-entry/lookup/warehouses/',
+            'tax_code': '/accounting/journal-entry/lookup/tax-codes/',
+            'cost_center': '/accounting/journal-entry/lookup/cost-centers/',
+            'department': '/accounting/journal-entry/lookup/departments/',
+            'project': '/accounting/journal-entry/lookup/projects/',
+        }
         if lookup_url:
             endpoint = lookup_url
+        elif lookup_kind in lookup_endpoints:
+            endpoint = lookup_endpoints[lookup_kind]
         elif field_type in ('lookup', 'typeahead', 'autocomplete'):
             endpoint = f"/accounting/api/{lookup_kind}/search/"
         base_classes = widget.attrs.get('class', '').strip()
@@ -601,7 +639,9 @@ class VoucherFormFactory:
                 'account': {'account', 'gl_account', 'ledger', 'chartofaccount'},
                 'vendor': {'vendor', 'supplier'},
                 'customer': {'customer', 'client'},
+                'agent': {'agent'},
                 'product': {'product', 'item', 'service', 'inventoryitem', 'inventory_item'},
+                'warehouse': {'warehouse'},
                 'tax_code': {'tax_code', 'taxcode'},
                 'cost_center': {'cost_center'},
                 'department': {'department'},
@@ -619,7 +659,9 @@ class VoucherFormFactory:
             'account': '/accounting/journal-entry/lookup/accounts/',
             'vendor': '/accounting/journal-entry/lookup/vendors/',
             'customer': '/accounting/journal-entry/lookup/customers/',
+            'agent': '/accounting/journal-entry/lookup/agents/',
             'product': '/accounting/journal-entry/lookup/products/',
+            'warehouse': '/accounting/journal-entry/lookup/warehouses/',
             'tax_code': '/accounting/journal-entry/lookup/tax-codes/',
             'cost_center': '/accounting/journal-entry/lookup/cost-centers/',
             'department': '/accounting/journal-entry/lookup/departments/',
@@ -1370,11 +1412,19 @@ class VoucherFormFactory:
         additional_charges_schema = ui_schema.get('additional_charges', {})
         if not additional_charges_schema:
             return None
-        
+        if isinstance(additional_charges_schema, list):
+            from accounting.voucher_schema import definition_to_ui_schema
+            additional_charges_schema = definition_to_ui_schema(
+                {"header_fields": additional_charges_schema}
+            ).get("header", {})
+
         # Create a config object for the additional charges section
         class AdditionalChargesConfig:
             def __init__(self, schema):
                 self.schema_definition = {'header': schema}
+
+            def resolve_ui_schema(self):
+                return self.schema_definition
         
         ac_config = AdditionalChargesConfig(additional_charges_schema)
         

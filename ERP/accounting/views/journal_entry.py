@@ -2659,6 +2659,40 @@ def journal_department_lookup(request):
 
 @login_required
 @require_GET
+def journal_agent_lookup(request):
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+    query = (request.GET.get("q") or "").strip()
+    from accounting.models import Agent
+
+    qs = Agent.objects.filter(organization=organization, is_active=True)
+    if query:
+        qs = qs.filter(Q(code__icontains=query) | Q(name__icontains=query))
+    qs = qs.order_by("code")[:20]
+    results = [{"id": obj.pk, "code": obj.code, "name": obj.name} for obj in qs]
+    return JsonResponse({"ok": True, "results": results})
+
+
+@login_required
+@require_GET
+def journal_warehouse_lookup(request):
+    organization = _active_organization(request.user)
+    if not organization:
+        return _json_error("Active organization required.", status=400)
+    query = (request.GET.get("q") or "").strip()
+    from inventory.models import Warehouse
+
+    qs = Warehouse.objects.filter(organization=organization, is_active=True)
+    if query:
+        qs = qs.filter(Q(code__icontains=query) | Q(name__icontains=query))
+    qs = qs.order_by("code")[:20]
+    results = [{"id": obj.pk, "code": obj.code, "name": obj.name} for obj in qs]
+    return JsonResponse({"ok": True, "results": results})
+
+
+@login_required
+@require_GET
 def journal_project_lookup(request):
     organization = _active_organization(request.user)
     if not organization:

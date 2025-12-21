@@ -121,6 +121,14 @@ def ensure_company_config(sender, instance: Organization, created, **kwargs):
                 logger = logging.getLogger(__name__)
                 logger.exception("Voucher definition seeding failed for org %s", instance.id)
                 raise
+            try:
+                from voucher_config.seeding import seed_voucher_config_master
+                seed_voucher_config_master(instance, reset=False, repair=True)
+            except Exception:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.exception("Voucher config master seeding failed for org %s", instance.id)
+                raise
 
 
 # ============================================================================

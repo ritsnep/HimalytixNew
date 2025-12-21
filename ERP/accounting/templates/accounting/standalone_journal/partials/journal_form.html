@@ -1,0 +1,41 @@
+{% load i18n %}
+{% load widget_tweaks %}
+
+<div id="standalone-journal-form-panel">
+  {% if alert_message %}
+  <div class="alert alert-{{ alert_level|default:'info' }} mb-3" role="alert">
+    {{ alert_message }}
+  </div>
+  {% endif %}
+  {% if form.non_field_errors %}
+  <div class="alert alert-danger">
+    {% for error in form.non_field_errors %}{{ error }}<br>{% endfor %}
+  </div>
+  {% endif %}
+  <form
+    method="post"
+    id="standalone-journal-form"
+    hx-post="{{ form_action }}"
+    hx-target="#journal-form-container"
+    hx-swap="innerHTML"
+    hx-indicator="#standalone-journal-loading"
+    novalidate
+  >
+    {% csrf_token %}
+    <!-- Journal header -->
+    <!-- (fields for journal_type, period, journal_date, reference, currency_code, exchange_rate and description) -->
+    <!-- Inline lines table with add/remove line support -->
+    <!-- Save and cancel buttons -->
+  </form>
+</div>
+
+<!-- Hidden template for adding new lines dynamically -->
+<script type="text/template" id="standalone-line-empty-form">
+  ...
+</script>
+
+<script>
+(function () {
+  // JS to add lines and update totals
+})();
+</script>

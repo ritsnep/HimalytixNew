@@ -114,6 +114,13 @@ from ..views.voucher_create_view import (
     VoucherAccountLookupHtmxView,
     VoucherTaxCalculationHtmxView,
 )
+# accounting/urls.py
+
+from accounting.standalonejournalform import (
+    StandaloneJournalListView,
+    StandaloneJournalCreateView,
+    StandaloneJournalUpdateView,
+)
 
 app_name = "accounting"
 
@@ -142,8 +149,12 @@ urlpatterns = [
     path('journal-entry/lookup/tax-codes/', journal_entry.journal_tax_code_lookup, name='journal_tax_code_lookup'),
     path('journal-entry/lookup/products/', journal_entry.journal_product_lookup, name='journal_product_lookup'),
     path('journal-entry/lookup/customers/', journal_entry.journal_customer_lookup, name='journal_customer_lookup'),
+    path('journal-entry/lookup/agents/', journal_entry.journal_agent_lookup, name='journal_agent_lookup'),
+    path('journal-entry/lookup/warehouses/', journal_entry.journal_warehouse_lookup, name='journal_warehouse_lookup'),
     path('journal-entry/lookup/departments/', journal_entry.journal_department_lookup, name='journal_department_lookup'),
     path('journal-entry/lookup/projects/', journal_entry.journal_project_lookup, name='journal_project_lookup'),
+    path('api/agent/search/', journal_entry.journal_agent_lookup, name='api_agent_lookup'),
+    path('api/warehouse/search/', journal_entry.journal_warehouse_lookup, name='api_warehouse_lookup'),
     path('journal-entry/lookup/tax-codes/', journal_entry.journal_tax_code_lookup, name='journal_tax_code_lookup'),
     path('journal-entry/lookup/vendors/', journal_entry.journal_vendor_lookup, name='journal_vendor_lookup'),
     path('journal-entry/lookup/customers/', journal_entry.journal_customer_lookup, name='journal_customer_lookup'),
@@ -200,6 +211,7 @@ urlpatterns = [
     path('journal/import/validate/', views_import.JournalImportValidateView.as_view(), name='journal_import_validate'),
     path('journal/import/process/', views_import.JournalImportProcessView.as_view(), name='journal_import_process'),
     path('journals/<int:journal_id>/save-as-recurring/', recurring_journal_views.RecurringJournalCreateView.as_view(), name='save_as_recurring'),
+
 
     # Manual Journal URLs
     path('manual-journals/', ManualJournalListView.as_view(), name='manual_journal_list'),
@@ -275,6 +287,8 @@ urlpatterns = [
     path('generic-voucher/recalc/', generic_voucher_views.GenericVoucherRecalcView.as_view(), name='generic_voucher_recalc'),
     path('generic-voucher/<slug:voucher_code>/validate/', generic_voucher_views.GenericVoucherValidateView.as_view(), name='generic_voucher_validate'),
     path('generic-voucher/<int:voucher_id>/status/', generic_voucher_views.VoucherProcessStatusView.as_view(), name='voucher_process_status'),
+    path('config-voucher/<slug:voucher_code>/create/', generic_voucher_views.ConfigVoucherCreateView.as_view(), name='config_voucher_create'),
+    path('config-voucher/line/', generic_voucher_views.ConfigVoucherLineView.as_view(), name='config_voucher_line'),
         path('generic-voucher/htmx/vendor-lookup/', generic_voucher_lookups.GenericVoucherVendorLookupJsonView.as_view(), name='generic_voucher_vendor_lookup_hx'),
         path('generic-voucher/htmx/customer-lookup/', generic_voucher_lookups.GenericVoucherCustomerLookupJsonView.as_view(), name='generic_voucher_customer_lookup_hx'),
         path('generic-voucher/htmx/product-lookup/', generic_voucher_lookups.GenericVoucherProductLookupJsonView.as_view(), name='generic_voucher_product_lookup_hx'),
@@ -510,4 +524,13 @@ urlpatterns += [
 # i18n URLs (Phase 3 Task 6)
 urlpatterns += [
     path('', include('accounting.urls.i18n_urls')),
+]
+
+urlpatterns += [
+    # list all journal entries
+    path('newjournals/', StandaloneJournalListView.as_view(), name='standalone_journal_list'),
+    # create a new journal
+    path('newjournals/add/', StandaloneJournalCreateView.as_view(), name='standalone_journal_add'),
+    # edit an existing draft journal
+    path('newjournals/<int:pk>/edit/', StandaloneJournalUpdateView.as_view(), name='standalone_journal_edit'),
 ]
