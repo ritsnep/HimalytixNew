@@ -1,0 +1,84 @@
+
+<div class="card border-0 shadow-sm" id="totalsPanel">
+  <div class="card-body">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <div class="fw-semibold">Totals</div>
+      <span class="badge text-bg-light">VAT @ 13%</span>
+    </div>
+
+    <div class="totals-row">
+      <div class="label">Sub Total</div>
+      <div class="value money">{{ draft.sub_total }}</div>
+    </div>
+
+    <div class="totals-row align-items-center">
+      <div class="label">Discount</div>
+      <div class="d-flex gap-1" style="max-width:220px;">
+        <input class="form-control form-control-sm text-end"
+               name="header_discount_value"
+               value="{{ draft.header_discount_value }}"
+               inputmode="decimal">
+        <select class="form-select form-select-sm" name="header_discount_type" style="max-width:90px;">
+          <option value="amt" {% if draft.header_discount_type == "amt" %}selected{% endif %}>Amt</option>
+          <option value="pct" {% if draft.header_discount_type == "pct" %}selected{% endif %}>Per</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="totals-row">
+      <div class="label">NonVatable Amount</div>
+      <div class="value money">{{ draft.nonvat_amount }}</div>
+    </div>
+    <div class="totals-row">
+      <div class="label">NonVatable Disc</div>
+      <div class="value money">{{ draft.nonvat_discount }}</div>
+    </div>
+    <div class="totals-row">
+      <div class="label">Total NonVatable Amount</div>
+      <div class="value money">{{ draft.total_nonvat_amount }}</div>
+    </div>
+
+    <div class="totals-row hr"></div>
+
+    <div class="totals-row">
+      <div class="label">Vatable Amount</div>
+      <div class="value money">{{ draft.vatable_amount }}</div>
+    </div>
+    <div class="totals-row">
+      <div class="label">Vatable Disc</div>
+      <div class="value money">{{ draft.vatable_discount }}</div>
+    </div>
+    <div class="totals-row">
+      <div class="label">Total Vatable Amount</div>
+      <div class="value money">{{ draft.total_vatable_amount }}</div>
+    </div>
+
+    <div class="totals-row hr"></div>
+
+    <div class="totals-row">
+      <div class="label">Taxable Amount</div>
+      <div class="value money">{{ draft.taxable_amount }}</div>
+    </div>
+    <div class="totals-row">
+      <div class="label">VAT @ 13%</div>
+      <div class="value money">{{ draft.vat_amount }}</div>
+    </div>
+
+    <div class="totals-row align-items-center">
+      <div class="label">Bill Rounding</div>
+      <div class="d-flex gap-1" style="max-width:220px;">
+        <input class="form-control form-control-sm text-end"
+               name="rounding_amount"
+               value="{{ draft.rounding_amount }}"
+               inputmode="decimal">
+      </div>
+    </div>
+
+    <div class="totals-row hr"></div>
+
+    <div class="totals-row">
+      <div class="label fw-semibold">Grand Total</div>
+      <div class="value money grand">{{ draft.grand_total }}</div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,22 @@
+
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+  <div class="small text-muted">Columns</div>
+  <div class="chip-bar btn-group" role="group" aria-label="Column toggles"
+       hx-post="{% url 'vouchers_sales_invoice:columns_pref' draft_id=draft.id %}"
+       hx-trigger="change"
+       hx-include="#sales-invoice-form"
+       hx-target="#recalc-sink"
+       hx-swap="innerHTML">
+    <input type="checkbox" class="btn-check" id="chip_hs_code" name="col_hs_code" autocomplete="off" {% if ui_cols.hs_code %}checked{% endif %}>
+    <label class="btn btn-outline-secondary btn-sm" for="chip_hs_code">HS / Item Code</label>
+
+    <input type="checkbox" class="btn-check" id="chip_description" name="col_description" autocomplete="off" {% if ui_cols.description %}checked{% endif %}>
+    <label class="btn btn-outline-secondary btn-sm" for="chip_description">Description</label>
+
+    <input type="checkbox" class="btn-check" id="chip_discount" name="col_discount" autocomplete="off" {% if ui_cols.discount %}checked{% endif %}>
+    <label class="btn btn-outline-secondary btn-sm" for="chip_discount">Discount</label>
+
+    <input type="checkbox" class="btn-check" id="chip_net_rate" name="col_net_rate" autocomplete="off" {% if ui_cols.net_rate %}checked{% endif %}>
+    <label class="btn btn-outline-secondary btn-sm" for="chip_net_rate">Net Rate</label>
+  </div>
+</div>

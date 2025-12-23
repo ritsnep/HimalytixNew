@@ -166,58 +166,63 @@
 
 <!-- JavaScript to load vendor summary when vendor changes -->
 <script>
-document.addEventListener('change', function(e) {
-  if (e.target.classList.contains('vendor-select')) {
-    const vendorId = e.target.value;
-    const summaryDiv = document.getElementById('vendor-summary');
-    const supplierInfoDiv = document.getElementById('supplier-info');
-    
-    if (vendorId) {
-      fetch(`/accounting/purchase-invoice/load-vendor/${vendorId}/`)
-        .then(r => r.json())
-        .then(data => {
-          if (data.success) {
-            if (supplierInfoDiv) {
-              supplierInfoDiv.textContent = data.supplier_info || '';
-              supplierInfoDiv.style.display = data.supplier_info ? 'block' : 'none';
-            }
-            const agentSelect = document.getElementById('agent_id');
-            if (agentSelect && data.agent_id) agentSelect.value = String(data.agent_id);
-            const areaSelect = document.getElementById('agent_area_id');
-            if (areaSelect && data.area_id) areaSelect.value = String(data.area_id);
-            const dueDaysInput = document.getElementById('due_days');
-            if (dueDaysInput && data.due_days) dueDaysInput.value = data.due_days;
-            const invoiceDateInput = document.getElementById('id_invoice_date');
-            const dueDateInput = document.getElementById('id_due_date');
-            if (invoiceDateInput && dueDateInput && data.due_days) {
-              const baseDate = new Date(invoiceDateInput.value);
-              if (!isNaN(baseDate.getTime())) {
-                baseDate.setDate(baseDate.getDate() + parseInt(data.due_days, 10));
-                if (dueDateInput.type === 'date') {
-                  dueDateInput.valueAsDate = baseDate;
-                } else {
-                  dueDateInput.value = baseDate.toISOString().slice(0, 10);
+(function () {
+  if (window.purchaseVendorSummaryInit) return;
+  window.purchaseVendorSummaryInit = true;
+
+  document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('vendor-select')) {
+      const vendorId = e.target.value;
+      const summaryDiv = document.getElementById('vendor-summary');
+      const supplierInfoDiv = document.getElementById('supplier-info');
+      
+      if (vendorId) {
+        fetch(`/accounting/purchase-invoice/load-vendor/${vendorId}/`)
+          .then(r => r.json())
+          .then(data => {
+            if (data.success) {
+              if (supplierInfoDiv) {
+                supplierInfoDiv.textContent = data.supplier_info || '';
+                supplierInfoDiv.style.display = data.supplier_info ? 'block' : 'none';
+              }
+              const agentSelect = document.getElementById('agent_id');
+              if (agentSelect && data.agent_id) agentSelect.value = String(data.agent_id);
+              const areaSelect = document.getElementById('agent_area_id');
+              if (areaSelect && data.area_id) areaSelect.value = String(data.area_id);
+              const dueDaysInput = document.getElementById('due_days');
+              if (dueDaysInput && data.due_days) dueDaysInput.value = data.due_days;
+              const invoiceDateInput = document.getElementById('id_invoice_date');
+              const dueDateInput = document.getElementById('id_due_date');
+              if (invoiceDateInput && dueDateInput && data.due_days) {
+                const baseDate = new Date(invoiceDateInput.value);
+                if (!isNaN(baseDate.getTime())) {
+                  baseDate.setDate(baseDate.getDate() + parseInt(data.due_days, 10));
+                  if (dueDateInput.type === 'date') {
+                    dueDateInput.valueAsDate = baseDate;
+                  } else {
+                    dueDateInput.value = baseDate.toISOString().slice(0, 10);
+                  }
                 }
               }
             }
-          }
-        })
-        .catch(() => {});
-      // Fetch vendor details via AJAX
-      fetch(`/api/vendor/${vendorId}/summary/`)
-        .then(r => r.json())
-        .then(data => {
-          document.getElementById('vendor-balance').textContent = data.outstanding_balance || '0.00';
-          document.getElementById('vendor-terms').textContent = data.payment_terms || '-';
-          document.getElementById('vendor-last-inv').textContent = data.last_invoice_date || '-';
-          document.getElementById('vendor-status').textContent = data.status || '-';
-          summaryDiv.style.display = 'block';
-        })
-        .catch(() => summaryDiv.style.display = 'none');
-    } else {
-      summaryDiv.style.display = 'none';
-      if (supplierInfoDiv) supplierInfoDiv.style.display = 'none';
+          })
+          .catch(() => {});
+        // Fetch vendor details via AJAX
+        fetch(`/api/vendor/${vendorId}/summary/`)
+          .then(r => r.json())
+          .then(data => {
+            document.getElementById('vendor-balance').textContent = data.outstanding_balance || '0.00';
+            document.getElementById('vendor-terms').textContent = data.payment_terms || '-';
+            document.getElementById('vendor-last-inv').textContent = data.last_invoice_date || '-';
+            document.getElementById('vendor-status').textContent = data.status || '-';
+            summaryDiv.style.display = 'block';
+          })
+          .catch(() => summaryDiv.style.display = 'none');
+      } else {
+        summaryDiv.style.display = 'none';
+        if (supplierInfoDiv) supplierInfoDiv.style.display = 'none';
+      }
     }
-  }
-});
+  });
+})();
 </script>

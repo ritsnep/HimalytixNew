@@ -1,0 +1,25 @@
+<tr>
+  <td>
+    <select class="form-select form-select-sm" name="rcpt_account__{{ r.id }}">
+      <option value="">— Select —</option>
+      {% for l in receipt_ledgers %}
+        <option value="{{ l.id }}" {% if r.account_id == l.id %}selected{% endif %}>{{ l.name }}</option>
+      {% endfor %}
+    </select>
+  </td>
+  <td>
+    <input class="form-control form-control-sm text-end" name="rcpt_amount__{{ r.id }}" value="{{ r.amount }}" inputmode="decimal" />
+  </td>
+  <td>
+    <input class="form-control form-control-sm" name="rcpt_note__{{ r.id }}" value="{{ r.note }}" placeholder="Optional..." />
+  </td>
+  <td class="text-center">
+    <button class="btn btn-outline-danger btn-sm" type="button" title="Remove"
+            hx-post="{% url 'vouchers_sales_invoice:delete_receipt' draft_id=draft.id receipt_id=r.id %}"
+            hx-include="#sales-invoice-form"
+            hx-target="#recalc-sink"
+            hx-swap="innerHTML">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </td>
+</tr>

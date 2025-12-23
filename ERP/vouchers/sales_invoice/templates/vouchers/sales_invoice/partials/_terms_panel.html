@@ -1,0 +1,15 @@
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body">
+    <div class="fw-semibold mb-2">Terms &amp; Conditions</div>
+    <label class="form-label">Select T&amp;C</label>
+    <select class="form-select form-select-sm mb-2" name="terms_id">
+      <option value="">— Select Terms —</option>
+      {% for t in terms %}
+        <option value="{{ t.id }}" {% if draft.terms_id == t.id %}selected{% endif %}>{{ t.name }}</option>
+      {% endfor %}
+    </select>
+    <label class="form-label">Terms Preview</label>
+    <textarea class="form-control form-control-sm readonly" rows="5" readonly>{{ draft.terms_preview|default:"E & O E\nProducts once sold are not refundable" }}</textarea>
+  </div>
+</div>

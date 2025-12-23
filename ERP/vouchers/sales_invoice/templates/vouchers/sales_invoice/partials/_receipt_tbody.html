@@ -1,0 +1,9 @@
+<tbody id="payTbody">
+  {% for r in draft.receipts.all %}
+    {% include "vouchers/sales_invoice/partials/_receipt_row.html" with r=r %}
+  {% empty %}
+    <tr>
+      <td colspan="4" class="text-center text-muted py-3">No receipt rows. Click “Add New Row”.</td>
+    </tr>
+  {% endfor %}
+</tbody>

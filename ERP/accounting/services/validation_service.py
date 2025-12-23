@@ -36,7 +36,11 @@ class ValidationService:
         # Validate line items
         if 'line_items' in data:
             for i, item in enumerate(data['line_items']):
-                item_errors = ValidationService.validate_line_item(item, data.get('vendor_id'))
+                item_errors = ValidationService.validate_line_item(
+                    item,
+                    data.get('vendor_id'),
+                    organization=organization,
+                )
                 if item_errors:
                     errors[f'line_item_{i}'] = item_errors
 
@@ -48,7 +52,7 @@ class ValidationService:
         return errors
 
     @staticmethod
-    def validate_line_item(item_data, vendor_id=None):
+    def validate_line_item(item_data, vendor_id=None, organization=None):
         """
         Validate individual line item data.
         """
@@ -57,11 +61,14 @@ class ValidationService:
         # Validate product
         if 'product_id' in item_data:
             try:
-                product_details = ProductService.get_product_details(item_data['product_id'])
-                if not product_details['is_active']:
-                    errors['product'] = 'Product is inactive'
+                if organization:
+                    product_details = ProductService.get_product_details(organization, item_data['product_id'])
+                    if not product_details['is_active']:
+                        errors['product'] = 'Product is inactive'
             except ValidationError as e:
                 errors['product'] = str(e)
+            except TypeError:
+                errors['product'] = 'Product validation failed.'
 
         # Validate quantity and rate
         if 'quantity' in item_data and item_data['quantity'] <= 0:
@@ -71,8 +78,8 @@ class ValidationService:
             errors['rate'] = 'Rate cannot be negative'
 
         # Validate pricing
-        if vendor_id and 'product_id' in item_data and 'rate' in item_data:
-            pricing = PricingService.get_pricing_for_party(item_data['product_id'], vendor_id)
+        if vendor_id and 'product_id' in item_data and 'rate' in item_data and organization:
+            pricing = PricingService.get_pricing_for_party(organization, item_data['product_id'], vendor_id)
             if item_data['rate'] < pricing['party_price'] * 0.9:  # Allow 10% variance
                 errors['rate'] = 'Rate significantly below party price'
 

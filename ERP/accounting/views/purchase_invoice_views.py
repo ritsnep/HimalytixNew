@@ -19,22 +19,12 @@ from inventory.models import Warehouse, Product
 def purchase_invoice_new_enhanced(request):
     """Enhanced purchase invoice form with HTMX integration"""
     organization = request.user.get_active_organization()
-    
-    if request.method == 'GET':
-        form = PurchaseInvoiceForm(organization=organization)
-        # Get empty queryset for display (HTMX will handle adding items)
-        line_items = PurchaseInvoiceLine.objects.none()
 
-        # Prepare empty inline formset for items so management form fields exist
-        # Use unbound formset (no instance) to avoid BaseFormSet __init__ errors
-        line_formset = PurchaseInvoiceLineFormSet(prefix='items', form_kwargs={'organization': organization})
-
-        # Prepare payments formset (simple formset) for management form
+    def _build_payment_formset(data=None):
         from django import forms
         from django.forms import formset_factory
-
-        # Get Cash and Bank accounts - filter by account_type name using Q objects
         from django.db.models import Q
+
         cash_bank_accounts = ChartOfAccount.objects.filter(
             Q(organization=organization),
             Q(account_type__name__in=['Cash', 'Bank']) | Q(is_bank_account=True),
@@ -62,7 +52,21 @@ def purchase_invoice_new_enhanced(request):
             DELETE = forms.BooleanField(required=False)
 
         PaymentFormSet = formset_factory(_PaymentForm, extra=0)
-        payments_formset = PaymentFormSet(prefix='payments')
+        if data is None:
+            return PaymentFormSet(prefix='payments'), cash_bank_accounts
+        return PaymentFormSet(data, prefix='payments'), cash_bank_accounts
+
+    if request.method == 'GET':
+        form = PurchaseInvoiceForm(organization=organization)
+        # Get empty queryset for display (HTMX will handle adding items)
+        line_items = PurchaseInvoiceLine.objects.none()
+
+        # Prepare empty inline formset for items so management form fields exist
+        # Use unbound formset (no instance) to avoid BaseFormSet __init__ errors
+        line_formset = PurchaseInvoiceLineFormSet(prefix='items', form_kwargs={'organization': organization})
+
+        # Prepare payments formset (simple formset) for management form
+        payments_formset, cash_bank_accounts = _build_payment_formset()
 
         context = {
             'form': form,
@@ -78,41 +82,86 @@ def purchase_invoice_new_enhanced(request):
     elif request.method == 'POST':
         form = PurchaseInvoiceForm(request.POST, organization=organization)
 
-        # Bind formsets for validation/saving
-        # Line items inline formset needs instance after invoice saved; we'll save invoice first then bind and validate line formset
-        from django import forms
-        from django.forms import formset_factory
+        payments_formset, cash_bank_accounts = _build_payment_formset(request.POST)
 
-        from django.db.models import Q
-        cash_bank_accounts = ChartOfAccount.objects.filter(
-            Q(organization=organization),
-            Q(account_type__name__in=['Cash', 'Bank']) | Q(is_bank_account=True),
-            is_active=True
-        ).distinct()
-        account_choices = [('', 'Select account')]
-        account_choices.extend([(str(acct.pk), f"{acct.code} - {acct.name}") for acct in cash_bank_accounts])
+        invoice_stub = PurchaseInvoice(organization=organization)
+        line_formset = PurchaseInvoiceLineFormSet(
+            request.POST,
+            prefix='items',
+            instance=invoice_stub,
+            form_kwargs={'organization': organization},
+        )
 
-        class _PaymentForm(forms.Form):
-            payment_method = forms.ChoiceField(
-                required=False,
-                choices=[
-                    ('cash', 'Cash'),
-                    ('bank', 'Bank'),
-                    ('bank_transfer', 'Bank Transfer'),
-                    ('cheque', 'Cheque'),
-                    ('wire_transfer', 'Wire Transfer'),
-                ],
+        form_valid = form.is_valid()
+        lines_valid = line_formset.is_valid()
+        payments_valid = payments_formset.is_valid()
+
+        if form_valid and lines_valid and payments_valid:
+            valid_lines = [
+                f for f in line_formset.forms
+                if f.cleaned_data and not f.cleaned_data.get('DELETE') and f.has_changed()
+            ]
+            if not valid_lines:
+                form.add_error(None, "At least one line item is required.")
+                form_valid = False
+
+        if form_valid and lines_valid and payments_valid:
+            from decimal import Decimal
+            from accounting.services.validation_service import ValidationService
+
+            header_discount_value = form.cleaned_data.get('discount_value') or 0
+            header_discount_type = form.cleaned_data.get('discount_type') or 'amount'
+            bill_rounding = form.cleaned_data.get('bill_rounding') or 0
+            calc_lines = []
+            validation_lines = []
+            for line_form in line_formset.forms:
+                if not line_form.cleaned_data or line_form.cleaned_data.get('DELETE'):
+                    continue
+                qty = line_form.cleaned_data.get('quantity') or 0
+                rate = line_form.cleaned_data.get('unit_cost') or 0
+                vat_rate = line_form.cleaned_data.get('vat_rate') or 0
+                calc_lines.append({
+                    'qty': qty,
+                    'rate': rate,
+                    'vat_applicable': Decimal(str(vat_rate)) > 0,
+                    'row_discount_value': line_form.cleaned_data.get('discount_amount') or 0,
+                    'row_discount_type': 'amount',
+                })
+                product = line_form.cleaned_data.get('product')
+                warehouse = line_form.cleaned_data.get('warehouse')
+                validation_line = {
+                    'quantity': qty,
+                    'rate': rate,
+                }
+                if product:
+                    validation_line['product_id'] = product.pk
+                if warehouse:
+                    validation_line['warehouse_id'] = warehouse.pk
+                validation_lines.append(validation_line)
+
+            calc = PurchaseCalculator(
+                lines=calc_lines,
+                header_discount_value=header_discount_value,
+                header_discount_type=header_discount_type,
+                bill_rounding=bill_rounding,
             )
-            cash_bank_id = forms.ChoiceField(required=False, choices=account_choices)
-            due_date = forms.DateField(required=False)
-            amount = forms.DecimalField(required=False, max_digits=19, decimal_places=4)
-            remarks = forms.CharField(required=False)
-            DELETE = forms.BooleanField(required=False)
+            totals = calc.compute()
+            total_amount = totals.get('totals', {}).get('grand_total', 0)
 
-        PaymentFormSet = formset_factory(_PaymentForm, extra=0)
-        payments_formset = PaymentFormSet(request.POST, prefix='payments')
+            validation_errors = ValidationService.validate_purchase_invoice_data(
+                organization,
+                {
+                    'vendor_id': form.cleaned_data['vendor'].pk if form.cleaned_data.get('vendor') else None,
+                    'line_items': validation_lines,
+                    'total_amount': total_amount,
+                },
+            )
+            if validation_errors:
+                for key, err in validation_errors.items():
+                    form.add_error(None, f"{key}: {err}")
+                form_valid = False
 
-        if form.is_valid():
+        if form_valid and lines_valid and payments_valid:
             try:
                 with transaction.atomic():
                     invoice = form.save(commit=False)
@@ -125,27 +174,24 @@ def purchase_invoice_new_enhanced(request):
                         invoice.agent_area = area.name if area else str(agent_area_id)
                     invoice.save()
 
-                    # Process line items
-                    try:
-                        line_formset = PurchaseInvoiceLineFormSet(
-                            request.POST,
-                            prefix='items',
-                            instance=invoice,
-                            form_kwargs={'organization': organization},
-                        )
-                        if line_formset.is_valid():
-                            # Save lines
-                            line_objects = line_formset.save(commit=False)
-                            for obj in line_objects:
-                                obj.invoice = invoice
-                                obj.save()
-                            # Handle deletions
-                            for obj in line_formset.deleted_objects:
-                                obj.delete()
-                        else:
-                            raise ValueError(f"Line items invalid: {line_formset.errors}")
-                    except Exception as e:
-                        raise
+                    # Re-bind line formset with actual invoice for saving
+                    line_formset = PurchaseInvoiceLineFormSet(
+                        request.POST,
+                        prefix='items',
+                        instance=invoice,
+                        form_kwargs={'organization': organization},
+                    )
+                    if line_formset.is_valid():
+                        # Save lines
+                        line_objects = line_formset.save(commit=False)
+                        for obj in line_objects:
+                            obj.invoice = invoice
+                            obj.save()
+                        # Handle deletions
+                        for obj in line_formset.deleted_objects:
+                            obj.delete()
+                    else:
+                        raise ValueError(f"Line items invalid: {line_formset.errors}")
 
                     # Process payments
                     if payments_formset.is_valid():
@@ -197,22 +243,25 @@ def purchase_invoice_new_enhanced(request):
                         invoice.save(update_fields=['metadata'])
 
                     # Success
-                    return JsonResponse({
-                        'success': True,
-                        'invoice_id': invoice.id,
-                        'message': 'Purchase Invoice created successfully'
-                    })
+                    context = {
+                        'form': form,
+                        'line_items': PurchaseInvoiceLine.objects.none(),
+                        'line_formset': line_formset,
+                        'payments_formset': payments_formset,
+                        'cash_bank_accounts': cash_bank_accounts,
+                        'agents': AgentService.get_agents_for_dropdown(organization),
+                        'areas': AgentService.get_areas_for_dropdown(organization),
+                        'alert_message': 'Purchase Invoice created successfully.',
+                        'alert_level': 'success',
+                    }
+                    response = render(request, 'accounting/purchase/new_enhanced.html', context)
+                    response['HX-Trigger'] = 'purchaseInvoiceSaved'
+                    return response
             except Exception as e:
                 form.add_error(None, f"Error saving invoice: {str(e)}")
-        else:
-            # form invalid
-            pass
-        
+
         # Re-display form with errors
         line_items = PurchaseInvoiceLine.objects.none()
-        # re-create unbound formsets for rendering
-        line_formset = PurchaseInvoiceLineFormSet(prefix='items', form_kwargs={'organization': organization})
-        payments_formset = PaymentFormSet(prefix='payments')
         context = {
             'form': form,
             'line_items': line_items,
@@ -222,7 +271,8 @@ def purchase_invoice_new_enhanced(request):
             'agents': AgentService.get_agents_for_dropdown(organization),
             'areas': AgentService.get_areas_for_dropdown(organization),
         }
-        return render(request, 'accounting/purchase/new_enhanced.html', context)
+        status = 422 if _is_htmx(request) else 200
+        return render(request, 'accounting/purchase/new_enhanced.html', context, status=status)
 
 
 @require_http_methods(["GET", "POST"])
@@ -626,7 +676,7 @@ from accounting.models import Vendor
 from accounting.services.purchase_invoice_service import PurchaseInvoiceService
 from accounting.views.views_mixins import AccountsPayablePermissionMixin
 
-PurchaseInvoiceLineFormSet = forms.formset_factory(
+VendorBillLineFormSet = forms.formset_factory(
     PurchaseInvoiceLineForm,
     extra=1,
     can_delete=True,
@@ -727,7 +777,7 @@ class VendorBillCreateView(AccountsPayablePermissionMixin, View):
         kwargs = {"prefix": "lines", "form_kwargs": {"organization": organization}}
         if data is not None:
             kwargs["data"] = data
-        return PurchaseInvoiceLineFormSet(**kwargs)
+        return VendorBillLineFormSet(**kwargs)
 
     def _build_context(self, organization, form, line_formset):
         return {

@@ -1,0 +1,8 @@
+{% if buyer_snapshot %}
+Balance: NPR {{ buyer_snapshot.balance|default:"0.00" }} |
+PAN: {{ buyer_snapshot.pan|default:"—" }} |
+Credit Limit: NPR {{ buyer_snapshot.credit_limit|default:"0.00" }} |
+Overdue: NPR {{ buyer_snapshot.overdue|default:"0.00" }}
+{% else %}
+Please select Buyer’s Name to view balance and details.
+{% endif %}

@@ -1,0 +1,163 @@
+
+<!-- Row A -->
+<div class="row g-2 align-items-end mb-2">
+  <div class="col-lg-4">
+    <div class="row g-2">
+      <div class="col-4">
+        <label class="form-label">Invoice Prefix</label>
+        <input class="form-control form-control-sm" name="invoice_prefix" value="{{ draft.invoice_prefix }}">
+      </div>
+      <div class="col-4">
+        <label class="form-label">Invoice No</label>
+        <input class="form-control form-control-sm" name="invoice_no" value="{{ draft.invoice_no }}" readonly>
+      </div>
+      <div class="col-4">
+        <label class="form-label">Next No</label>
+        <div class="input-group input-group-sm">
+          <input class="form-control" value="Auto" readonly>
+          <button class="btn btn-outline-secondary"
+                  type="button"
+                  title="Re-fetch next number"
+                  hx-post="{% url 'vouchers_sales_invoice:refetch_no' draft_id=draft.id %}"
+                  hx-include="#sales-invoice-form"
+                  hx-target="#recalc-sink"
+                  hx-swap="innerHTML">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <label class="form-label">Buyer’s Name</label>
+    <select class="form-select form-select-sm"
+            name="buyer_id"
+            id="buyer_id"
+            hx-get="{% url 'vouchers_sales_invoice:buyer_info' draft_id=draft.id %}"
+            hx-trigger="change"
+            hx-target="#buyer_info"
+            hx-include="#sales-invoice-form">
+      <option value="">— Select Buyer —</option>
+      {% for buyer in buyers %}
+        <option value="{{ buyer.id }}" {% if draft.buyer_id == buyer.id %}selected{% endif %}>{{ buyer.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="col-lg-4">
+    <label class="form-label">Reference / Party Invoice Number</label>
+    <input class="form-control form-control-sm" name="ref_no" value="{{ draft.ref_no }}" placeholder="e.g., SB-REF-7781" />
+  </div>
+</div>
+
+<!-- Row B -->
+<div class="row g-2 align-items-end mb-2">
+  <div class="col-lg-4">
+    <div class="row g-2">
+      <div class="col-6">
+        <label class="form-label">Date (BS)</label>
+        <input class="form-control form-control-sm"
+               name="date_bs"
+               value="{{ draft.date_bs }}"
+               placeholder="2082-09-07"
+               hx-post="{% url 'vouchers_sales_invoice:date_bs_to_ad' draft_id=draft.id %}"
+               hx-trigger="change delay:200ms"
+               hx-include="#sales-invoice-form"
+               hx-target="#recalc-sink"
+               hx-swap="innerHTML">
+      </div>
+      <div class="col-6">
+        <label class="form-label">Date (AD)</label>
+        <input type="date"
+               class="form-control form-control-sm"
+               name="date_ad"
+               value="{{ draft.date_ad|date:'Y-m-d' }}"
+               hx-post="{% url 'vouchers_sales_invoice:date_ad_to_bs' draft_id=draft.id %}"
+               hx-trigger="change delay:200ms"
+               hx-include="#sales-invoice-form"
+               hx-target="#recalc-sink"
+               hx-swap="innerHTML">
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <label class="form-label">Buyer Info</label>
+    <div class="form-control form-control-sm readonly" id="buyer_info">
+      {% include "vouchers/sales_invoice/partials/_buyer_info.html" %}
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="row g-2">
+      <div class="col-4">
+        <label class="form-label">Due Days</label>
+        <input type="number" class="form-control form-control-sm" name="due_days" value="{{ draft.due_days }}" min="0">
+      </div>
+      <div class="col-8">
+        <label class="form-label">Order Reference</label>
+        <div class="input-group input-group-sm">
+          <select class="form-select" name="order_ref_id">
+            <option value="">— Select Sales Order —</option>
+            {% for order in orders %}
+              <option value="{{ order.id }}" {% if draft.order_ref_id == order.id %}selected{% endif %}>{{ order.display }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn btn-outline-primary" type="button"
+                  hx-post="{% url 'vouchers_sales_invoice:apply_order' draft_id=draft.id %}"
+                  hx-include="#sales-invoice-form"
+                  hx-target="#recalc-sink"
+                  hx-swap="innerHTML">
+            <i class="bi bi-lightning-charge me-1"></i>Apply
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Row C -->
+<div class="row g-2 align-items-end mb-3">
+  <div class="col-lg-4">
+    <label class="form-label">Sales Account</label>
+    <select class="form-select form-select-sm" name="sales_account_id">
+      <option value="">— Select Sales Account —</option>
+      {% for a in sales_accounts %}
+        <option value="{{ a.id }}" {% if draft.sales_account_id == a.id %}selected{% endif %}>{{ a.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="col-lg-4">
+    <label class="form-label">Payment Mode</label>
+    <select class="form-select form-select-sm" name="payment_mode">
+      {% for pm in payment_modes %}
+        <option value="{{ pm }}" {% if draft.payment_mode == pm %}selected{% endif %}>{{ pm }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="row g-2">
+      <div class="col-6">
+        <label class="form-label">Agent Name</label>
+        <select class="form-select form-select-sm" name="agent_id">
+          <option value="">— Select Agent —</option>
+          {% for ag in agents %}
+            <option value="{{ ag.id }}" {% if draft.agent_id == ag.id %}selected{% endif %}>{{ ag.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-6">
+        <label class="form-label">Agent Area</label>
+        <select class="form-select form-select-sm" name="agent_area_id">
+          <option value="">— Select Area —</option>
+          {% for area in agent_areas %}
+            <option value="{{ area.id }}" {% if draft.agent_area_id == area.id %}selected{% endif %}>{{ area.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </div>
+</div>

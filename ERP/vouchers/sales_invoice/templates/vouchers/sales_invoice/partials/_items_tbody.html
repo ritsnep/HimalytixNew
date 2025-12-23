@@ -1,0 +1,9 @@
+<tbody id="itemsTbody">
+  {% for line in draft.lines.all %}
+    {% include "vouchers/sales_invoice/partials/_line_row.html" with line=line sn=forloop.counter %}
+  {% empty %}
+    <tr>
+      <td colspan="12" class="text-center text-muted py-3">No items. Click “Add New Row”.</td>
+    </tr>
+  {% endfor %}
+</tbody>

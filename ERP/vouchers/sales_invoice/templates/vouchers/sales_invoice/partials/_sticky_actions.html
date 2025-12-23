@@ -1,0 +1,14 @@
+
+<div class="card-footer sticky-actions">
+  <div class="d-flex justify-content-end gap-2 p-2">
+    <a class="btn btn-danger btn-sm" href="{% url 'vouchers_sales_invoice:cancel' draft_id=draft.id %}">
+      Cancel Transaction
+    </a>
+    <button class="btn btn-primary btn-sm"
+            type="submit"
+            form="sales-invoice-form"
+            formaction="{% url 'vouchers_sales_invoice:save' draft_id=draft.id %}">
+      <i class="bi bi-check2-circle me-1"></i>Save Transaction
+    </button>
+  </div>
+</div>

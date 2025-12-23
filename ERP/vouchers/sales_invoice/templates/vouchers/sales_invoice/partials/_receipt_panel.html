@@ -1,0 +1,29 @@
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <div class="fw-semibold">Add Receipt</div>
+      <div class="small text-muted">Remaining: <span class="money fw-semibold" id="remaining_balance">{{ draft.remaining_balance }}</span></div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered align-middle mb-2">
+        <thead class="bg-body">
+          <tr>
+            <th>Bank/Cash (Ledger)</th>
+            <th style="width:140px;">Amount</th>
+            <th>Note</th>
+            <th style="width:44px;"></th>
+          </tr>
+        </thead>
+        {% include "vouchers/sales_invoice/partials/_receipt_tbody.html" %}
+      </table>
+    </div>
+    <button class="btn btn-outline-primary btn-sm" type="button"
+            hx-post="{% url 'vouchers_sales_invoice:add_receipt' draft_id=draft.id %}"
+            hx-include="#sales-invoice-form"
+            hx-target="#recalc-sink"
+            hx-swap="innerHTML">
+      <i class="bi bi-plus-lg me-1"></i>Add New Row
+    </button>
+  </div>
+</div>

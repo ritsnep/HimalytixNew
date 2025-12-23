@@ -1,0 +1,94 @@
+
+<tr>
+  <td class="text-center small">{{ sn }}</td>
+  <td>
+    <select class="form-select form-select-sm"
+            name="line_item_id__{{ line.id }}">
+      <option value="">— Select Item —</option>
+      {% for it in items %}
+        <option value="{{ it.id }}" {% if line.item_id == it.id %}selected{% endif %}>{{ it.name }}</option>
+      {% endfor %}
+    </select>
+  </td>
+  {% if ui_cols.hs_code %}
+  <td class="col-hs_code">
+    <input class="form-control form-control-sm readonly"
+           name="line_hs_code__{{ line.id }}"
+           value="{{ line.hs_code }}"
+           readonly />
+  </td>
+  {% endif %}
+  {% if ui_cols.description %}
+  <td class="col-description">
+    <input class="form-control form-control-sm"
+           name="line_description__{{ line.id }}"
+           value="{{ line.description }}"
+           placeholder="Optional..." />
+  </td>
+  {% endif %}
+  <td>
+    <div class="input-group input-group-sm">
+      <input class="form-control text-end"
+             name="line_qty__{{ line.id }}"
+             value="{{ line.qty }}"
+             inputmode="decimal" />
+      <select class="form-select" name="line_unit_id__{{ line.id }}" style="max-width:90px;">
+        {% for u in units %}
+          <option value="{{ u }}" {% if line.unit_id == u %}selected{% endif %}>{{ u }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </td>
+  <td>
+    <select class="form-select form-select-sm" name="line_godown_id__{{ line.id }}">
+      <option value="">— Select —</option>
+      {% for g in godowns %}
+        <option value="{{ g.id }}" {% if line.godown_id == g.id %}selected{% endif %}>{{ g.name }}</option>
+      {% endfor %}
+    </select>
+  </td>
+  <td>
+    <input class="form-control form-control-sm text-end"
+           name="line_rate__{{ line.id }}"
+           value="{{ line.rate }}"
+           inputmode="decimal" />
+  </td>
+  <td>
+    <select class="form-select form-select-sm" name="line_vat_yes__{{ line.id }}">
+      <option value="yes" {% if line.vat_applicable %}selected{% endif %}>Yes</option>
+      <option value="no" {% if not line.vat_applicable %}selected{% endif %}>No</option>
+    </select>
+  </td>
+  {% if ui_cols.discount %}
+  <td class="col-discount">
+    <div class="input-group input-group-sm">
+      <select class="form-select" name="line_disc_type__{{ line.id }}" style="max-width:90px;">
+        <option value="none" {% if line.disc_type == "none" %}selected{% endif %}>None</option>
+        <option value="pct" {% if line.disc_type == "pct" %}selected{% endif %}>%</option>
+        <option value="amt" {% if line.disc_type == "amt" %}selected{% endif %}>Amt</option>
+      </select>
+      <input class="form-control text-end"
+             name="line_disc_value__{{ line.id }}"
+             value="{{ line.disc_value }}"
+             inputmode="decimal" />
+    </div>
+  </td>
+  {% endif %}
+  {% if ui_cols.net_rate %}
+  <td class="col-net_rate">
+    <input class="form-control form-control-sm readonly text-end money" value="{{ line.net_rate }}" readonly />
+  </td>
+  {% endif %}
+  <td>
+    <input class="form-control form-control-sm readonly text-end money" value="{{ line.line_total }}" readonly />
+  </td>
+  <td class="text-center">
+    <button class="btn btn-outline-danger btn-sm" type="button" title="Remove"
+            hx-post="{% url 'vouchers_sales_invoice:delete_line' draft_id=draft.id line_id=line.id %}"
+            hx-include="#sales-invoice-form"
+            hx-target="#recalc-sink"
+            hx-swap="innerHTML">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </td>
+</tr>

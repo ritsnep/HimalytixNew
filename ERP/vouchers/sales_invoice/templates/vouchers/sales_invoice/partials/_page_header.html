@@ -1,0 +1,19 @@
+
+<div class="d-flex align-items-start justify-content-between gap-2 mb-3">
+  <div>
+    <div class="page-subtitle">Sales · Voucher Entry</div>
+    <h4 class="mb-0">New Sales Invoice</h4>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'accounting:generic_voucher_select' %}">Change Type</a>
+    <button class="btn btn-primary btn-sm"
+            type="submit"
+            form="sales-invoice-form"
+            formaction="{% url 'vouchers_sales_invoice:save' draft_id=draft.id %}">
+      <i class="bi bi-check2-circle me-1"></i>Save Transaction
+    </button>
+    <span class="htmx-indicator small text-muted align-self-center">
+      <i class="bi bi-arrow-repeat me-1"></i>Updating…
+    </span>
+  </div>
+</div>

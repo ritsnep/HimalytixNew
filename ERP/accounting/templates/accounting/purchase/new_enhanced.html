@@ -32,13 +32,35 @@
     </div>
 
     <!-- Main Form -->
+    <div id="purchase-form-panel">
     <form id="purchase-form" method="post" action="{% url 'accounting:purchase_invoice_new_enhanced' %}"
           data-add-line-url="{% url 'accounting:purchase_add_line_hx' %}"
           data-add-payment-url="{% url 'accounting:purchase_add_payment_hx' %}"
           data-product-detail-url="{% url 'accounting:load_product_details' 0 %}"
+          hx-post="." hx-target="#purchase-form-panel" hx-swap="outerHTML"
           novalidate>
 
       {% csrf_token %}
+      {% if alert_message %}
+        <div class="alert alert-{{ alert_level|default:'info' }} small mb-3">
+          {{ alert_message }}
+        </div>
+      {% endif %}
+      {% if form.errors or line_formset.errors or line_formset.non_form_errors or payments_formset.errors %}
+        <div class="alert alert-danger small mb-3">
+          Please correct the errors highlighted in the form.
+        </div>
+      {% endif %}
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger small mb-3">
+          {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+        </div>
+      {% endif %}
+      {% if line_formset.non_form_errors %}
+        <div class="alert alert-danger small mb-3">
+          {% for error in line_formset.non_form_errors %}<div>{{ error }}</div>{% endfor %}
+        </div>
+      {% endif %}
 
       <!-- SUPPLIER INFO SECTION -->
       {% include "accounting/purchase/_supplier_info_new.html" %}
@@ -262,6 +284,7 @@
       </div>
 
     </form>
+    </div>
 
   </div>
 </div>
@@ -269,13 +292,9 @@
 <!-- JavaScript for interactivity -->
 <script>
 (function () {
-  const form = document.getElementById('purchase-form');
-  if (!form) return;
-
-  const addLineUrl = form.dataset.addLineUrl;
-  const addPaymentUrl = form.dataset.addPaymentUrl;
-  const productDetailUrl = form.dataset.productDetailUrl;
-  const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || '';
+  const state = window.PurchaseInvoiceEnhanced || (window.PurchaseInvoiceEnhanced = {});
+  if (state.bound) return;
+  state.bound = true;
 
   const el = (id) => document.getElementById(id);
   const num = (val) => {
@@ -322,8 +341,8 @@
   }
 
   function getProductUrl(productId) {
-    if (!productDetailUrl) return '';
-    return productDetailUrl.replace('0', String(productId));
+    if (!state.productDetailUrl) return '';
+    return state.productDetailUrl.replace('0', String(productId));
   }
 
   function applyColumnVisibility(prefs) {
@@ -347,22 +366,18 @@
 
   const PREF_KEY = "purchase_invoice_columns_v1";
   const defaultPrefs = { code: false, description: true, discount: false, net: false };
-  let prefs = defaultPrefs;
-  try {
-    prefs = { ...defaultPrefs, ...(JSON.parse(localStorage.getItem(PREF_KEY)) || {}) };
-  } catch (_) {}
-  applyColumnVisibility(prefs);
 
-  ["code", "description", "discount", "net"].forEach((key) => {
-    const chip = el(`chip_${key}`);
-    if (chip) {
-      chip.addEventListener("change", () => {
-        prefs[key] = chip.checked;
-        localStorage.setItem(PREF_KEY, JSON.stringify(prefs));
-        applyColumnVisibility(prefs);
-      });
+  function loadPrefs() {
+    try {
+      return { ...defaultPrefs, ...(JSON.parse(localStorage.getItem(PREF_KEY)) || {}) };
+    } catch (_) {
+      return { ...defaultPrefs };
     }
-  });
+  }
+
+  function savePrefs(nextPrefs) {
+    localStorage.setItem(PREF_KEY, JSON.stringify(nextPrefs));
+  }
 
   function updateLineNumbers() {
     const rows = [...document.querySelectorAll('#items-tbody tr.item-row')].filter(r => !r.classList.contains('d-none'));
@@ -465,7 +480,8 @@
     const totalInput = document.querySelector('input[name="items-TOTAL_FORMS"]');
     if (!tbody || !totalInput) return;
     const formCount = parseInt(totalInput.value, 10) || 0;
-    fetch(`${addLineUrl}?form_count=${formCount}&prefix=items&variant=enhanced`)
+    if (!state.addLineUrl) return;
+    fetch(`${state.addLineUrl}?form_count=${formCount}&prefix=items&variant=enhanced`)
       .then((r) => r.text())
       .then((html) => {
         const emptyRow = el('item-row-empty');
@@ -475,7 +491,7 @@
         const newRow = tbody.querySelector(`tr[data-line-index="${formCount}"]`);
         if (newRow) {
           setAccountDefaults(newRow);
-          applyColumnVisibility(prefs);
+          applyColumnVisibility(state.prefs);
         }
         updateLineNumbers();
         recalcTotals();
@@ -487,7 +503,8 @@
     const totalInput = document.querySelector('input[name="payments-TOTAL_FORMS"]');
     if (!tbody || !totalInput) return;
     const formCount = parseInt(totalInput.value, 10) || 0;
-    fetch(`${addPaymentUrl}?form_count=${formCount}&variant=enhanced`)
+    if (!state.addPaymentUrl) return;
+    fetch(`${state.addPaymentUrl}?form_count=${formCount}&variant=enhanced`)
       .then((r) => r.text())
       .then((html) => {
         const placeholder = tbody.querySelector('tr.payment-row');
@@ -498,10 +515,32 @@
       });
   }
 
-  el('btn-add-line')?.addEventListener('click', addLineRow);
-  el('btn-add-payment')?.addEventListener('click', addPaymentRow);
-
   document.addEventListener('click', (e) => {
+    if (state.form && !state.form.contains(e.target)) return;
+    if (e.target.closest('#btn-add-line')) {
+      addLineRow();
+      return;
+    }
+    if (e.target.closest('#btn-add-payment')) {
+      addPaymentRow();
+      return;
+    }
+    if (e.target.closest('#rounding-minus')) {
+      const input = el('id_bill_rounding');
+      if (input) {
+        input.value = String(num(input.value) - 0.01);
+        recalcTotals();
+      }
+      return;
+    }
+    if (e.target.closest('#rounding-plus')) {
+      const input = el('id_bill_rounding');
+      if (input) {
+        input.value = String(num(input.value) + 0.01);
+        recalcTotals();
+      }
+      return;
+    }
     const removeLine = e.target.closest('.btn-delete-row');
     if (removeLine) {
       const row = removeLine.closest('.item-row');
@@ -530,13 +569,14 @@
   });
 
   document.addEventListener('change', (e) => {
+    if (state.form && !state.form.contains(e.target)) return;
     if (e.target.classList.contains('product-select')) {
       const row = e.target.closest('.item-row');
       const productId = e.target.value;
       const vendorId = el('id_vendor')?.value || '';
       if (!productId || !row) return;
       const url = `${getProductUrl(productId)}?vendor_id=${encodeURIComponent(vendorId)}`;
-      fetch(url, { headers: { 'X-CSRFToken': csrfToken } })
+      fetch(url, { headers: { 'X-CSRFToken': state.csrfToken || '' } })
         .then((r) => r.json())
         .then((data) => {
           if (!data || !data.success) return;
@@ -555,9 +595,24 @@
         })
         .catch(() => {});
     }
+    if (e.target.id === 'id_discount_type') {
+      recalcTotals();
+    }
+    if (e.target.id === 'id_purchase_account') {
+      document.querySelectorAll('#items-tbody tr.item-row').forEach((row) => setAccountDefaults(row));
+    }
+    if (e.target.id && e.target.id.startsWith('chip_')) {
+      const key = e.target.id.replace('chip_', '');
+      if (state.prefs && key in state.prefs) {
+        state.prefs[key] = e.target.checked;
+        savePrefs(state.prefs);
+        applyColumnVisibility(state.prefs);
+      }
+    }
   });
 
   document.addEventListener('input', (e) => {
+    if (state.form && !state.form.contains(e.target)) return;
     if (e.target.classList.contains('line-qty') ||
         e.target.classList.contains('line-rate') ||
         e.target.classList.contains('line-discount') ||
@@ -569,33 +624,45 @@
     }
   });
 
-  document.addEventListener('change', (e) => {
-    if (e.target.id === 'id_discount_type') {
-      recalcTotals();
-    }
-  });
+  function attachPristine(form) {
+    if (!form || form.dataset.pristineBound === 'true' || typeof Pristine === 'undefined') return;
+    const pristine = new Pristine(form);
+    window.pristineInstances = window.pristineInstances || new Map();
+    window.pristineInstances.set(form, pristine);
+    form.dataset.pristineBound = 'true';
+    form.addEventListener('submit', (evt) => {
+      if (!pristine.validate()) {
+        evt.preventDefault();
+        evt.stopPropagation();
+      }
+    });
+  }
 
-  el('rounding-minus')?.addEventListener('click', () => {
-    const input = el('id_bill_rounding');
-    if (input) {
-      input.value = String(num(input.value) - 0.01);
-      recalcTotals();
-    }
-  });
-
-  el('rounding-plus')?.addEventListener('click', () => {
-    const input = el('id_bill_rounding');
-    if (input) {
-      input.value = String(num(input.value) + 0.01);
-      recalcTotals();
-    }
-  });
-
-  document.querySelectorAll('#items-tbody tr.item-row').forEach((row) => setAccountDefaults(row));
-  el('id_purchase_account')?.addEventListener('change', () => {
+  function refreshFormState() {
+    const form = document.getElementById('purchase-form');
+    state.form = form;
+    if (!form) return;
+    state.addLineUrl = form.dataset.addLineUrl || '';
+    state.addPaymentUrl = form.dataset.addPaymentUrl || '';
+    state.productDetailUrl = form.dataset.productDetailUrl || '';
+    state.csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || '';
+    state.prefs = loadPrefs();
+    applyColumnVisibility(state.prefs);
     document.querySelectorAll('#items-tbody tr.item-row').forEach((row) => setAccountDefaults(row));
+    attachPristine(form);
+    recalcTotals();
+  }
+
+  document.body.addEventListener('htmx:afterSwap', (evt) => {
+    if (evt.target && evt.target.id === 'purchase-form-panel') {
+      refreshFormState();
+      if (state.form && window.pristineInstances?.has(state.form)) {
+        window.pristineInstances.get(state.form).validate();
+      }
+    }
   });
-  recalcTotals();
+
+  refreshFormState();
 })();
 </script>
 {% endblock %}

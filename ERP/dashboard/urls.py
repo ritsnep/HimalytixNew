@@ -27,7 +27,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, Sp
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    
+
     # ==========================================================================
     # HEALTH CHECK ENDPOINTS (No authentication required)
     # ==========================================================================
@@ -59,6 +59,7 @@ urlpatterns = [
     # Include accounting app with explicit namespace for reverse('accounting:*') lookups
     path('accounting/', include(('accounting.urls', 'accounting'), namespace='accounting')),
     path('voucher-config/', include(('voucher_config.urls', 'voucher_config'), namespace='voucher_config')),
+    path('vouchers/sales-invoice/', include('vouchers.sales_invoice.urls', namespace='vouchers_sales_invoice')),
     path('print/', include('printing.urls')),
     path('pos/', include(('pos.urls', 'pos'), namespace='pos')),
     path('backups/', include(('backups.urls', 'backups'), namespace='backups')),

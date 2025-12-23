@@ -168,6 +168,7 @@ INSTALLED_APPS = [
     'django_celery_beat',
     'printing',
     'configuration',
+    'vouchers',
 ]
 
 if ENABLE_SILK:
@@ -207,7 +208,10 @@ ROOT_URLCONF = 'dashboard.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates')],
+        'DIRS': [
+            os.path.join(BASE_DIR, 'templates'),
+            os.path.join(BASE_DIR, 'vouchers', 'sales_invoice', 'templates'),
+        ],
         'APP_DIRS': False,  # Must be False when using custom loaders
         'OPTIONS': {
             'context_processors': [
