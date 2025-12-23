@@ -1,0 +1,32 @@
+{% load generic_voucher_tags %}
+<tr class="generic-line-row" data-line-index="{{ index }}" id="line-{{ index }}">
+  <td class="text-center">{{ index|add:1 }}</td>
+  {% for col in line_columns %}
+    {% with field=form|get_field:col.name widget_name=field|widget_type %}
+      <td>
+        {% if widget_name == "CheckboxInput" %}
+          <div class="form-check m-0">
+            {{ field|add_class:"form-check-input grid-cell" }}
+          </div>
+        {% elif widget_name == "Select" or widget_name == "SelectMultiple" %}
+          {{ field|add_class:"form-select form-select-sm grid-cell" }}
+        {% else %}
+          {{ field|add_class:"form-control form-control-sm grid-cell" }}
+        {% endif %}
+        {% if field.errors %}
+          <div class="invalid-feedback d-block">
+            {{ field.errors|join:", " }}
+          </div>
+        {% endif %}
+      </td>
+    {% endwith %}
+  {% endfor %}
+  <td class="text-center">
+    <button type="button" class="btn btn-outline-danger btn-sm remove-line-btn" title="Remove row" aria-label="Remove row">
+      <i class="fas fa-times"></i>
+    </button>
+    {% for hidden in form.hidden_fields %}
+      {{ hidden }}
+    {% endfor %}
+  </td>
+</tr>

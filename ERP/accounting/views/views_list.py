@@ -1,9 +1,10 @@
 from accounting.models import (
-    AccountType, FiscalYear, GeneralLedger, Journal,  JournalLine, JournalType, ChartOfAccount, 
+    AccountType, Agent, FiscalYear, GeneralLedger, Journal,  JournalLine, JournalType, ChartOfAccount,
     AccountingPeriod, TaxCode, Department, Project, CostCenter,
     VoucherModeConfig, VoucherModeDefault, Currency, CurrencyExchangeRate, TaxAuthority, TaxType
 )
 from accounting.forms import AccountTypeForm, FiscalYearForm, JournalForm, JournalLineForm, JournalLineFormSet, VoucherModeConfigForm, VoucherModeDefaultForm, VoucherUDFConfigForm, AccountingPeriodForm, JournalTypeForm, ChartOfAccountForm, CostCenterForm, TaxTypeForm, TaxAuthorityForm, CurrencyForm, CurrencyExchangeRateForm, ProjectForm, DepartmentForm
+from accounting.forms import AgentForm
 from django.views.generic import ListView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from accounting.views.views_mixins import PermissionRequiredMixin
@@ -105,6 +106,18 @@ class DepartmentListView(SmartListView):
         context = super().get_context_data(**kwargs)
         context['create_url'] = reverse('accounting:department_create')
         context['create_button_text'] = 'New Department'
+        return context
+
+class AgentListView(SmartListView):
+    model = Agent
+    template_name = 'accounting/agent_list.html'
+    context_object_name = 'agents'
+    permission_required = ('accounting', 'agent', 'view')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['create_url'] = reverse('accounting:agent_create')
+        context['create_button_text'] = 'New Agent'
         return context
 
 class JournalListView(BaseListView):

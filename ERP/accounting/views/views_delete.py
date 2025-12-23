@@ -436,3 +436,28 @@ class TaxTypeDeleteView(PermissionRequiredMixin, LoginRequiredMixin, DeleteView)
             return redirect('accounting:tax_type_list')
         messages.success(request, f"Tax Type '{self.object.name}' deleted successfully.")
         return super().delete(request, *args, **kwargs)
+
+class AgentDeleteView(LoginRequiredMixin, DeleteView):
+    model = Agent
+    template_name = 'accounting/agent_confirm_delete.html'
+    success_url = reverse_lazy('accounting:agent_list')
+
+    def get_queryset(self):
+        return Agent.objects.filter(organization=self.request.user.organization)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        obj = self.get_object()
+        context['form_title'] = 'Delete Agent'
+        context['page_title'] = 'Delete Agent'
+        context['breadcrumbs'] = [
+            ('Agents', reverse_lazy('accounting:agent_list')),
+            (f'Delete: {obj.name}', None)
+        ]
+        return context
+
+    def delete(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        # Add any specific checks here, e.g., if the agent is used in transactions
+        messages.success(request, f"Agent '{self.object.name}' deleted successfully.")
+        return super().delete(request, *args, **kwargs)

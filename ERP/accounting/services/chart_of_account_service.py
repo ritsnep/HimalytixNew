@@ -27,3 +27,42 @@ class ChartOfAccountService:
 
     def all_accounts(self):
         return self.repository.all()
+
+    @staticmethod
+    def get_purchase_accounts_for_dropdown(organization):
+        """
+        Get purchase-related accounts for dropdown selection.
+        """
+        from accounting.models import AccountType
+        purchase_account_types = AccountType.objects.filter(
+            nature__in=['expense', 'asset']
+        )
+        accounts = ChartOfAccount.objects.filter(
+            organization=organization,
+            account_type__in=purchase_account_types,
+            archived_at__isnull=True
+        ).order_by('account_name')
+        return [
+            {'id': account.account_id, 'name': f"{account.account_code} - {account.account_name}"}
+            for account in accounts
+        ]
+
+    @staticmethod
+    def get_payment_ledgers_for_dropdown(organization):
+        """
+        Get cash/bank accounts for payment ledger dropdown.
+        """
+        from accounting.models import AccountType
+        payment_account_types = AccountType.objects.filter(
+            nature='asset'
+        )
+        accounts = ChartOfAccount.objects.filter(
+            organization=organization,
+            account_type__in=payment_account_types,
+            account_code__regex=r'^(1000|1100|1200)',  # Cash/Bank account codes
+            archived_at__isnull=True
+        ).order_by('account_name')
+        return [
+            {'id': account.account_id, 'name': f"{account.account_code} - {account.account_name}"}
+            for account in accounts
+        ]

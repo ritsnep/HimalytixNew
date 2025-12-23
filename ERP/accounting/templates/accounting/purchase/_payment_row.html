@@ -1,0 +1,28 @@
+{% load widget_tweaks %}
+
+<tr id="payment-{{ forloop.counter0 }}" class="payment-row">
+  <td>
+    {% include_form_field form.payment_type class="form-select form-select-sm" %}
+  </td>
+  <td>
+    {% include_form_field form.due_date class="form-control form-control-sm" type="date" %}
+  </td>
+  <td>
+    {% include_form_field form.amount class="form-control form-control-sm text-end recalc" %}
+  </td>
+  <td>
+    <button type="button" class="btn btn-sm btn-outline-danger"
+            hx-post="{% url 'purchasing:purchase_payment_delete' %}"
+            hx-vals='{"row":"{{ forloop.counter0 }}"}'
+            hx-include="#purchase-form"
+            hx-target="closest tr"
+            hx-swap="swap:1s delete"
+            hx-confirm="Remove this payment?">
+      <i class="bi bi-trash"></i>
+    </button>
+  </td>
+  {% if form.id %}
+    {% include_form_field form.id type="hidden" %}
+  {% endif %}
+  {% include_form_field form.DELETE type="hidden" %}
+</tr>

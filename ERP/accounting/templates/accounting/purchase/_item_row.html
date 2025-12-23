@@ -1,0 +1,65 @@
+<tr id="row-{{ idx }}">
+  <td class="text-center small">{{ forloop.counter|default:idx|add:1 }}</td>
+
+  <td>
+    {% include_form_field f.item_id class="form-select form-select-sm recalc" %}
+  </td>
+
+  {% if ui.hs_code %}
+  <td>
+    <input class="form-control form-control-sm bg-light" value="{{ f.initial.hs_code|default:'' }}" readonly>
+  </td>
+  {% endif %}
+
+  {% if ui.description %}
+  <td>
+    {% include_form_field f.description class="form-control form-control-sm recalc" %}
+  </td>
+  {% endif %}
+
+  <td>
+    <div class="input-group input-group-sm">
+      {% include_form_field f.qty class="form-control text-end recalc" %}
+      {% include_form_field f.unit_id class="form-select recalc" %}
+    </div>
+  </td>
+
+  <td>{% include_form_field f.godown_id class="form-select form-select-sm recalc" %}</td>
+  <td>{% include_form_field f.rate class="form-control form-control-sm text-end recalc" %}</td>
+  <td>{% include_form_field f.vat_applicable class="form-select form-select-sm recalc" %}</td>
+
+  {% if ui.discount %}
+  <td>
+    <div class="input-group input-group-sm">
+      {% include_form_field f.discount_type class="form-select recalc" %}
+      {% include_form_field f.discount_value class="form-control text-end recalc" %}
+    </div>
+  </td>
+  {% endif %}
+
+  {% if ui.net_rate %}
+  <td>
+    <input class="form-control form-control-sm bg-light text-end money" value="{{ f.initial.net_rate|default:'0.00' }}" readonly>
+  </td>
+  {% endif %}
+
+  <td>
+    <input class="form-control form-control-sm bg-light text-end money" value="{{ f.initial.amount|default:'0.00' }}" readonly>
+  </td>
+
+  <td class="text-center">
+    {% if f.DELETE %}{{ f.DELETE }}{% endif %}
+
+    <button type="button" class="btn btn-outline-danger btn-sm"
+            hx-post="{% url 'purchasing:purchase_line_delete' idx %}"
+            hx-include="#purchase-form"
+            hx-target="#row-{{ idx }}"
+            hx-swap="outerHTML">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </td>
+</tr>
+
+{% if new_total %}
+<input type="hidden" id="id_items-TOTAL_FORMS" name="items-TOTAL_FORMS" value="{{ new_total }}" hx-swap-oob="true">
+{% endif %}

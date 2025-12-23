@@ -2,10 +2,15 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
+import logging
+
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from usermanagement.models import Organization
+
+logger = logging.getLogger(__name__)
 
 
 NUMBERING_METHOD_CHOICES = [
@@ -160,12 +165,117 @@ class VoucherConfigMaster(models.Model):
 
         return definition
 
+    ALLOWED_FIELD_TYPES = {
+        "text",
+        "number",
+        "decimal",
+        "date",
+        "datetime",
+        "select",
+        "multiselect",
+        "checkbox",
+        "textarea",
+        "email",
+        "phone",
+        "url",
+        "char",
+        "typeahead",
+        "bsdate",
+        "boolean",
+    } 
+
+    FIELD_TYPE_ALIASES = {
+        "string": "char",
+        "str": "char",
+        "bool": "boolean",
+    }
+
+    def _normalize_field_type(self, field: Dict[str, Any]) -> str:
+        field_type = field.get("field_type") or field.get("type")
+        if not field_type:
+            field_type = "char"
+        if isinstance(field_type, str):
+            field_type = field_type.strip().lower()
+        else:
+            field_type = "char"
+        field_type = self.FIELD_TYPE_ALIASES.get(field_type, field_type)
+        field["field_type"] = field_type
+        return field_type
+
+    def _inject_udfs(self, definition: Dict[str, Any]) -> None:
+        """Inject UDF fields into header_fields or line_fields."""
+        udfs = self.udf_configs.filter(is_active=True).order_by('display_order')
+        for udf in udfs:
+            field_def = {
+                "name": udf.field_name,
+                "label": udf.display_name,
+                "field_type": udf.field_type or "text",
+                "required": udf.is_required,
+                "default": udf.default_value,
+                "help_text": udf.help_text,
+                "display_order": udf.display_order,
+            }
+            if udf.choices:
+                field_def["choices"] = udf.choices
+            if udf.min_value is not None:
+                field_def["min_value"] = float(udf.min_value)
+            if udf.max_value is not None:
+                field_def["max_value"] = float(udf.max_value)
+            if udf.min_length is not None:
+                field_def["min_length"] = udf.min_length
+            if udf.max_length is not None:
+                field_def["max_length"] = udf.max_length
+            if udf.validation_regex:
+                field_def["regex"] = udf.validation_regex
+
+            if udf.scope == "header":
+                definition.setdefault("header_fields", []).append(field_def)
+            elif udf.scope == "line":
+                definition.setdefault("line_fields", []).append(field_def)
+
+    def _validate_schema(self, definition: Dict[str, Any]) -> None:
+        """Validate schema for controlled vocabulary and config."""
+        errors = []
+        for section in ["header_fields", "line_fields"]:
+            for field in definition.get(section, []):
+                field_type = self._normalize_field_type(field)
+                if field_type not in self.ALLOWED_FIELD_TYPES:
+                    msg = (
+                        "CFG-001: Unknown field_type '%s' in %s; defaulting to 'char'." % (field_type, section)
+                    )
+                    logger.warning(msg)
+                    errors.append(msg)
+                    field["field_type"] = "char"
+
+        return errors
+
     def resolve_ui_schema(self) -> Dict[str, Any]:
         """Return UI schema for voucher entry rendering."""
         from accounting.voucher_schema import definition_to_ui_schema
+        from django.core.exceptions import ValidationError
 
         definition = self.schema_definition or self._build_definition()
-        return definition_to_ui_schema(definition)
+        
+        # Inject UDFs
+        self._inject_udfs(definition)
+
+        # Validate schema (collect errors)
+        validation_errors = self._validate_schema(definition)
+        if validation_errors:
+            return {"error": "; ".join(validation_errors)}
+
+        ui = definition_to_ui_schema(definition)
+
+        # Backwards compatibility: some callers/tests expect `header_fields` and
+        # `line_fields` keys (legacy naming). Mirror `header`/`lines` into
+        # these aliases so both shapes are supported.
+        if isinstance(ui, dict):
+            if "header" in ui and "header_fields" not in ui:
+                ui["header_fields"] = ui["header"]
+            if "lines" in ui and "line_fields" not in ui:
+                ui["line_fields"] = ui["lines"]
+
+        return ui
 
 
 class InventoryLineConfig(models.Model):
@@ -314,3 +424,57 @@ class FooterChargeSetup(models.Model):
             "amount": self.amount if self.amount is not None else None,
             "can_edit": self.can_edit,
         }
+
+
+class VoucherUDFConfig(models.Model):
+    """User-Defined Fields configuration for voucher entry forms in voucher_config"""
+    FIELD_TYPE_CHOICES = [
+        ('text', 'Text'),
+        ('number', 'Number'),
+        ('decimal', 'Decimal'),
+        ('date', 'Date'),
+        ('datetime', 'Date & Time'),
+        ('select', 'Dropdown'),
+        ('multiselect', 'Multi-Select'),
+        ('checkbox', 'Checkbox'),
+        ('textarea', 'Text Area'),
+        ('email', 'Email'),
+        ('phone', 'Phone'),
+        ('url', 'URL'),
+    ]
+    
+    SCOPE_CHOICES = [
+        ('header', 'Voucher Header'),
+        ('line', 'Journal Line'),
+    ]
+    
+    udf_id = models.BigAutoField(primary_key=True)
+    organization = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name='voucher_config_udf_configs', db_column='organization_id')
+    voucher_config = models.ForeignKey(VoucherConfigMaster, on_delete=models.CASCADE, related_name='udf_configs', db_column='voucher_config_id')
+    field_name = models.CharField(max_length=50, help_text="Internal field name (no spaces, lowercase)")
+    display_name = models.CharField(max_length=100, help_text="User-friendly display name")
+    field_type = models.CharField(max_length=20, choices=FIELD_TYPE_CHOICES, default='text')
+    scope = models.CharField(max_length=10, choices=SCOPE_CHOICES, default='header')
+    is_required = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    default_value = models.CharField(max_length=255, blank=True, null=True)
+    choices = models.JSONField(null=True, blank=True, help_text="For select/multiselect fields")
+    min_value = models.DecimalField(max_digits=19, decimal_places=4, null=True, blank=True)
+    max_value = models.DecimalField(max_digits=19, decimal_places=4, null=True, blank=True)
+    min_length = models.IntegerField(null=True, blank=True)
+    max_length = models.IntegerField(null=True, blank=True)
+    validation_regex = models.CharField(max_length=255, null=True, blank=True)
+    help_text = models.TextField(null=True, blank=True)
+    display_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'voucher_config_udf_config'
+        unique_together = ('voucher_config', 'field_name')
+        ordering = ['scope', 'display_order', 'field_name']
+        verbose_name = "Voucher Config UDF Configuration"
+        verbose_name_plural = "Voucher Config UDF Configurations"
+
+    def __str__(self):
+        return f"{self.voucher_config.code} - {self.display_name}"

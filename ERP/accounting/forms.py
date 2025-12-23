@@ -3,60 +3,61 @@ from django import forms
 from django.forms import inlineformset_factory
 from .models import (
     AccountType,
+    Agent,
     Approval,
+    ApprovalStep,
+    ApprovalTask,
+    ApprovalWorkflow,
+    APPayment,
+    APPaymentLine,
+    ARReceipt,
+    ARReceiptLine,
+    Asset,
+    AssetCategory,
+    AssetEvent,
     Attachment,
+    AutoIncrementCodeGenerator,
+    BankAccount,
+    BankStatement,
+    BankStatementLine,
+    BankTransaction,
+    Budget,
+    BudgetLine,
+    CashAccount,
+    ChartOfAccount,
     CostCenter,
     Currency,
+    CurrencyExchangeRate,
+    Customer,
     Department,
+    Dimension,
+    DimensionValue,
     FiscalYear,
+    GeneralLedger,
     Journal,
     Journal,
     JournalLine,
     JournalType,
-    ChartOfAccount,
-    AccountingPeriod,
-    Project,
-    TaxAuthority,
-    TaxCode,
-    TaxType,
-    VoucherModeConfig,
-    VoucherModeDefault,
-    CurrencyExchangeRate,
-    GeneralLedger,
-    VoucherUDFConfig,
+    PaymentApproval,
+    PaymentBatch,
     PaymentTerm,
-    Vendor,
-    Customer,
-    Dimension,
-    DimensionValue,
+    Project,
     PurchaseInvoice,
     PurchaseInvoiceLine,
+    Quotation,
+    QuotationLine,
     SalesInvoice,
     SalesInvoiceLine,
     SalesOrder,
     SalesOrderLine,
-    Quotation,
-    QuotationLine,
-    ARReceipt,
-    ARReceiptLine,
-    APPayment,
-    APPaymentLine,
-    PaymentBatch,
-    PaymentApproval,
-    BankAccount,
-    CashAccount,
-    BankTransaction,
-    BankStatement,
-    BankStatementLine,
-    Budget,
-    BudgetLine,
-    AssetCategory,
-    Asset,
-    AssetEvent,
-    ApprovalWorkflow,
-    ApprovalStep,
-    ApprovalTask,
-    AutoIncrementCodeGenerator,
+    TaxAuthority,
+    TaxCode,
+    TaxType,
+    Vendor,
+    VoucherModeConfig,
+    VoucherModeDefault,
+    VoucherUDFConfig,
+    AccountingPeriod,
 )
 from .forms_mixin import BootstrapFormMixin
 import re
@@ -2244,6 +2245,8 @@ class PaymentBatchForm(BootstrapFormMixin, forms.ModelForm):
 
 
 class APPaymentForm(BootstrapFormMixin, forms.ModelForm):
+    # Non-model field to carry allocation JSON from the UI. Expected shape: [{"invoice": <id>, "amount": "12.34", "discount": "0.00"}, ...]
+    allocations = forms.CharField(required=False, widget=forms.HiddenInput())
     class Meta:
         model = APPayment
         fields = (
@@ -2286,6 +2289,29 @@ class APPaymentForm(BootstrapFormMixin, forms.ModelForm):
             )
             self.instance.organization = self.organization
 
+    def clean_allocations(self):
+        raw = self.cleaned_data.get('allocations')
+        if not raw:
+            return []
+        import json
+        try:
+            parsed = json.loads(raw)
+            if not isinstance(parsed, list):
+                raise forms.ValidationError("Allocations must be a JSON list")
+            # Normalize items
+            out = []
+            for item in parsed:
+                if not isinstance(item, dict):
+                    continue
+                out.append({
+                    'invoice': item.get('invoice'),
+                    'amount': item.get('amount'),
+                    'discount': item.get('discount', 0),
+                })
+            return out
+        except json.JSONDecodeError:
+            raise forms.ValidationError("Invalid allocations JSON")
+
 class APPaymentLineForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = APPaymentLine
@@ -2307,3 +2333,59 @@ class APPaymentLineForm(BootstrapFormMixin, forms.ModelForm):
         if self.vendor:
             queryset = queryset.filter(vendor=self.vendor)
         self.fields['invoice'].queryset = queryset
+
+
+class AgentForm(BootstrapFormMixin, forms.ModelForm):
+    code = forms.CharField(
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'readonly': True,
+        })
+    )
+
+    class Meta:
+        model = Agent
+        fields = ('code', 'name', 'area', 'phone', 'email', 'commission_rate', 'is_active')
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'area': forms.TextInput(attrs={'class': 'form-control'}),
+            'phone': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'commission_rate': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.organization = kwargs.pop('organization', None)
+        super().__init__(*args, **kwargs)
+        if self.organization:
+            self.instance.organization = self.organization
+        if not self.instance.pk and not self.initial.get('code'):
+            code_generator = AutoIncrementCodeGenerator(
+                Agent,
+                'code',
+                organization=self.organization,
+                prefix='AGT',
+                suffix='',
+            )
+            generated_code = code_generator.generate_code()
+            self.initial['code'] = generated_code
+            self.fields['code'].initial = generated_code
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if self.organization:
+            instance.organization = self.organization
+        if not instance.code:
+            code_generator = AutoIncrementCodeGenerator(
+                Agent,
+                'code',
+                organization=self.organization,
+                prefix='AGT',
+                suffix='',
+            )
+            instance.code = code_generator.generate_code()
+        if commit:
+            instance.save()
+        return instance
+

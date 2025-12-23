@@ -5985,6 +5985,7 @@ class VoucherModeConfig(models.Model):
     archived_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='archived_voucher_configs')
     rowversion = models.PositiveIntegerField(default=1)
     validation_rules = models.JSONField(default=dict, blank=True)
+    ui_profile = models.CharField(max_length=100, null=True, blank=True, help_text="Optional UI profile name (e.g. purchase_invoice_v1)")
 
     def resolve_ui(self):
         """Return schema converted to legacy UI format for form rendering."""
@@ -7044,3 +7045,130 @@ class SalesOrderVoucherLine(BaseVoucherLine):
         db_table = 'sales_order_voucher_line'
         unique_together = ('sales_order_voucher', 'line_number')
         abstract = False
+
+
+class Pricing(models.Model):
+    """
+    Party-specific pricing for products (vendors/customers).
+    Supports different pricing tiers and discount structures.
+    """
+    pricing_id = models.BigAutoField(primary_key=True)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name='pricings',
+    )
+    product = models.ForeignKey(
+        'Inventory.Product',
+        on_delete=models.CASCADE,
+        related_name='pricings',
+    )
+    party = models.ForeignKey(
+        'accounting.Vendor',
+        on_delete=models.CASCADE,
+        related_name='pricings',
+        help_text='Vendor or customer for party-specific pricing',
+    )
+    price_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('standard', 'Standard Price'),
+            ('special', 'Special Price'),
+            ('contract', 'Contract Price'),
+        ],
+        default='standard',
+    )
+    unit_price = models.DecimalField(max_digits=19, decimal_places=4)
+    discount_type = models.CharField(
+        max_length=10,
+        choices=[
+            ('percentage', 'Percentage'),
+            ('amount', 'Fixed Amount'),
+        ],
+        default='percentage',
+    )
+    discount_value = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    currency = models.ForeignKey(
+        'Currency',
+        on_delete=models.PROTECT,
+        related_name='pricings',
+    )
+    effective_from = models.DateField(null=True, blank=True)
+    effective_to = models.DateField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    priority = models.PositiveIntegerField(default=1, help_text='Higher priority takes precedence')
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_pricings',
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='updated_pricings',
+    )
+
+    class Meta:
+        db_table = 'pricing'
+        unique_together = ('organization', 'product', 'party', 'price_type')
+        ordering = ('-priority', '-effective_from')
+        indexes = [
+            models.Index(fields=['organization', 'product', 'party']),
+            models.Index(fields=['organization', 'is_active', 'effective_from', 'effective_to']),
+        ]
+
+    def __str__(self):
+        return f"{self.product.code} - {self.party.display_name} @ {self.unit_price}"
+
+    def clean(self):
+        if self.effective_from and self.effective_to and self.effective_from > self.effective_to:
+            raise ValidationError("Effective from date must be before effective to date.")
+
+
+class Area(models.Model):
+    """
+    Geographic areas for agent assignment and regional management.
+    """
+    area_id = models.BigAutoField(primary_key=True)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name='areas',
+    )
+    code = models.CharField(max_length=20)
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    region = models.CharField(max_length=100, blank=True, help_text='Broader region this area belongs to')
+    is_active = models.BooleanField(default=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_areas',
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='updated_areas',
+    )
+
+    class Meta:
+        db_table = 'area'
+        unique_together = ('organization', 'code')
+        ordering = ('name',)
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"

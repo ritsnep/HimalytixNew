@@ -1,0 +1,21 @@
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-2 p-md-3">
+
+    {{ items_fs.management_form }}
+
+    {% include "purchase/_items_table.html" %}
+
+    <button type="button" class="btn btn-outline-primary btn-sm"
+            hx-get="{% url 'purchasing:purchase_line_add' %}?index={{ items_fs.total_form_count }}"
+            hx-target="#items-tbody"
+            hx-swap="beforeend">
+      <i class="bi bi-plus-lg me-1"></i>Add New Row
+    </button>
+
+    <div class="mt-3">
+      <div class="small text-muted mb-1">In Words</div>
+      {% include "purchase/_in_words.html" %}
+    </div>
+
+  </div>
+</div>

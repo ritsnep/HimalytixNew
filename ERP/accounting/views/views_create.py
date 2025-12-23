@@ -8,6 +8,7 @@ from accounting.forms import (
     JournalForm, JournalLineForm, JournalLineFormSet, VoucherUDFConfigForm,
     GeneralLedgerForm, TaxCodeForm
 )
+from accounting.forms import AgentForm
 
 from accounting.forms.general_ledger_form import GeneralLedgerForm
 from django.views.generic import CreateView
@@ -758,4 +759,32 @@ class GeneralLedgerCreateView(PermissionRequiredMixin, UserOrganizationMixin, Cr
                 ('Create Entry', None)
             ]
         })
+        return context
+
+
+class AgentCreateView(LoginRequiredMixin, CreateView):
+    model = Agent
+    form_class = AgentForm
+    template_name = 'accounting/agent_form.html'
+    success_url = reverse_lazy('accounting:agent_list')
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['organization'] = self.request.user.organization
+        return kwargs
+
+    def form_valid(self, form):
+        form.instance.organization = self.request.user.organization
+        form.instance.created_by = self.request.user
+        messages.success(self.request, "Agent created successfully.")
+        return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['form_title'] = 'Create Agent'
+        context['back_url'] = reverse('accounting:agent_list')
+        context['breadcrumbs'] = [
+            ('Agents', reverse('accounting:agent_list')),
+            ('Create Agent', None)
+        ]
         return context

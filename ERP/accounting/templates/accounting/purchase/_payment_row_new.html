@@ -1,0 +1,24 @@
+{% load widget_tweaks %}
+<tr class="payment-row" data-payment-index="{{ form_index }}">
+  <td>
+    {{ form.payment_method|add_class:"form-select form-select-sm payment-method" }}
+  </td>
+  <td>
+    {{ form.cash_bank_id|add_class:"form-select form-select-sm payment-account" }}
+  </td>
+  <td>
+    {{ form.due_date|add_class:"form-control form-control-sm payment-date" }}
+  </td>
+  <td>
+    {{ form.amount|add_class:"form-control form-control-sm text-end payment-amount" }}
+  </td>
+  <td>
+    {{ form.remarks|add_class:"form-control form-control-sm" }}
+  </td>
+  <td class="text-center" width="40">
+    <button type="button" class="btn btn-sm btn-outline-danger btn-delete-payment" title="Remove" data-payment-index="{{ form_index }}">
+      <i class="bi bi-x-lg"></i>
+    </button>
+    {% if form.DELETE %}{{ form.DELETE }}{% endif %}
+  </td>
+</tr>

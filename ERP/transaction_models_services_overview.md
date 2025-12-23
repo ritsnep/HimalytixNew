@@ -103,6 +103,30 @@ Transaction models are primarily stored in the accounting app, with services pro
 - **IRDSubmissionService**: Nepal tax authority integration
 - **ReportService**: Financial and transaction reporting
 - **AuditService**: Transaction audit trails
+- **ProductService** (Inventory App): Product master data management
+  - Retrieves product details (unit, HS code, description, VAT)
+  - Validates stock availability and pricing
+  - Manages standard and party-specific prices
+- **VendorService** (Accounting App): Vendor master data management
+  - Retrieves vendor details (balance, credit limit, PAN)
+  - Auto-selects agents and areas based on vendor
+  - Validates credit limits and payment terms
+- **PricingService** (Accounting App): Pricing logic and party-specific rates
+  - Manages standard vs. party-specific pricing
+  - Calculates discounts and validates pricing rules
+  - Supports bulk pricing operations
+- **AgentService** (Accounting App): Agent and area management
+  - Auto-selects agents based on vendor/location
+  - Manages agent assignments and validations
+  - Provides agent details and area hierarchies
+- **ValidationService** (Accounting App): Centralized form and business rule validation
+  - Validates complete transaction data
+  - Checks credit limits, stock, and pricing rules
+  - Provides field-level validation with context
+- **NotificationService** (Accounting App): Event-driven notifications
+  - Sends approval requests and status updates
+  - Handles vendor communications and alerts
+  - Manages system error notifications
 
 ## 2. Purchasing App (Procurement Transactions)
 

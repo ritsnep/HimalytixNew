@@ -1,0 +1,6 @@
+{% comment %} Render imported blank line rows and an auto-trigger to recalc totals. {% endcomment %}
+{% for it in import_forms %}
+    {% include 'accounting/partials/_purchase_line_row.html' with form=it.form form_index=it.form_index %}
+{% endfor %}
+
+<div hx-post="{% url 'accounting:purchase_recalc_hx' %}" hx-trigger="load" hx-include="#purchase-invoice-form" hx-target="#purchase-recalc-region" hx-swap="innerHTML"></div>

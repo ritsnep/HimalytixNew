@@ -1,0 +1,24 @@
+<tr class="payment-row">
+    {% with form=form %}
+        {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+        {# Render allocations hidden field for APPaymentForm compatibility #}
+        {% if form.allocations %}{{ form.allocations }}{% endif %}
+        <td>
+            {{ form.payment_ledger|default_if_none:'' }}
+        </td>
+        <td>
+            {{ form.amount }}
+        </td>
+        <td>
+            {{ form.note }}
+        </td>
+        <td>
+            {% if form.DELETE %}
+            <button type="button" class="btn btn-sm btn-outline-danger" 
+                hx-post="{% url 'accounting:purchase_remove_payment_hx' %}" 
+                hx-include="closest tr form, #purchase-invoice-form" 
+                hx-swap="outerHTML">Remove</button>
+            {% endif %}
+        </td>
+    {% endwith %}
+</tr>

@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_nested import routers
 
 from accounting.api import views, dashboard_views, audit
+from accounting.views import purchase_api_views
 
 router = DefaultRouter()
 router.register(r'vendors', views.VendorViewSet, basename='vendor')
@@ -38,4 +39,10 @@ urlpatterns += [
     path('vouchers/types/<int:voucher_type_id>/fields/<str:field_name>/', views.get_field_config, name='get_field_config'),
     path('vouchers/configs/', views.save_field_config, name='save_field_config'),
     path('vouchers/types/<int:voucher_type_id>/reset-defaults/', views.reset_voucher_type_defaults, name='reset_voucher_type_defaults'),
+    
+    # Purchase Invoice API endpoints
+    path('vendor/<int:vendor_id>/summary/', purchase_api_views.api_vendor_summary, name='api_vendor_summary'),
+    path('product/<int:product_id>/', purchase_api_views.api_product_detail, name='api_product_detail'),
+    path('cash-bank-accounts/', purchase_api_views.api_cash_bank_accounts, name='api_cash_bank_accounts'),
+    path('warehouses/', purchase_api_views.api_warehouses, name='api_warehouses'),
 ]

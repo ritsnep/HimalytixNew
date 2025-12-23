@@ -1,0 +1,17 @@
+<div class="d-flex gap-2 justify-content-between">
+  <button type="button" class="btn btn-outline-secondary" id="btn-cancel"
+          hx-get="{% url 'purchasing:purchase_list' %}"
+          hx-confirm="Discard changes and return to list?">
+    <i class="bi bi-x-circle"></i> Cancel
+  </button>
+  <div class="d-flex gap-2">
+    <button type="button" class="btn btn-outline-info" id="btn-clear"
+            hx-post="{% url 'purchasing:purchase_clear' %}"
+            hx-confirm="Clear form and start fresh?">
+      <i class="bi bi-arrow-counterclockwise"></i> Clear
+    </button>
+    <button type="submit" class="btn btn-primary" id="btn-save">
+      <i class="bi bi-check-circle"></i> Save Purchase
+    </button>
+  </div>
+</div>

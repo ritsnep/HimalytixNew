@@ -1,0 +1,223 @@
+{% load widget_tweaks %}
+
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body p-3">
+    
+    <!-- Row 1: Vendor, Invoice Date, Due Date -->
+    <div class="row g-2 mb-2">
+      <div class="col-md-4">
+        <label class="form-label small text-muted">Vendor <span class="text-danger">*</span></label>
+        {% if form.vendor %}
+          {{ form.vendor|add_class:"form-select form-select-sm vendor-select" }}
+        {% endif %}
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small text-muted">Invoice Date <span class="text-danger">*</span></label>
+        {% if form.invoice_date %}
+          {{ form.invoice_date|add_class:"form-control form-control-sm" }}
+        {% endif %}
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small text-muted">Due Date</label>
+        {% if form.due_date %}
+          {{ form.due_date|add_class:"form-control form-control-sm" }}
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Row 2: Vendor Summary (Dynamic, loaded via HTMX) -->
+    <div id="vendor-summary" class="alert alert-light border border-light small py-2 px-3 mb-2" style="display: none;">
+      <div class="row g-2">
+        <div class="col-md-3"><small class="text-muted">Outstanding:</small><div class="money fw-semibold" id="vendor-balance">-</div></div>
+        <div class="col-md-3"><small class="text-muted">Terms:</small><div id="vendor-terms">-</div></div>
+        <div class="col-md-3"><small class="text-muted">Last Invoice:</small><div id="vendor-last-inv">-</div></div>
+        <div class="col-md-3"><small class="text-muted">Status:</small><div id="vendor-status">-</div></div>
+      </div>
+    </div>
+    <div id="supplier-info" class="alert alert-info small py-2 px-3 mb-2" style="display: none;"></div>
+
+    <!-- Row 3: Supplier Invoice No, Supplier Ref, Purchase Order -->
+    <div class="row g-2 mb-2">
+      <div class="col-md-4">
+        <label class="form-label small text-muted">Supplier Invoice #</label>
+        {% if form.supplier_invoice_number %}
+          {{ form.supplier_invoice_number }}
+        {% endif %}
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small text-muted">External Reference</label>
+        {% if form.external_reference %}
+          {{ form.external_reference }}
+        {% endif %}
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small text-muted">Purchase Order</label>
+        <div class="d-flex gap-1">
+          {% if form.purchase_order %}
+            {{ form.purchase_order }}
+          {% endif %}
+          <button type="button" class="btn btn-sm btn-outline-primary" 
+            hx-post="{% url 'accounting:purchase_apply_order_hx' %}" 
+            hx-include="#purchase-form" 
+            hx-target="#items-tbody" 
+            hx-swap="beforeend">Apply</button>
+        </div>
+      </div>
+    </div>
+    <div class="row g-2 mb-2">
+      <div class="col-md-4">
+        <label class="form-label small text-muted">Invoice Number</label>
+        {% if form.invoice_number %}
+          {{ form.invoice_number }}
+        {% endif %}
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small text-muted">External Reference</label>
+        {% if form.external_reference %}
+          {{ form.external_reference }}
+        {% endif %}
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small text-muted">PO Number</label>
+        {% if form.po_number %}
+          {{ form.po_number }}
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Row 4: Payment Mode, Purchase Account, Agent Area, Invoice Date (BS) -->
+    <div class="row g-2 mb-2">
+      <div class="col-md-3">
+        <label class="form-label small text-muted">Payment Mode</label>
+        {% if form.payment_mode %}
+          {{ form.payment_mode|add_class:"form-select form-select-sm" }}
+        {% endif %}
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small text-muted">Purchase Account</label>
+        {% if form.purchase_account %}
+          {{ form.purchase_account|add_class:"form-select form-select-sm" }}
+        {% endif %}
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small text-muted">Agent</label>
+        <select class="form-select form-select-sm" name="agent_id" id="agent_id">
+          <option value="">- Select Agent -</option>
+          {% for agent in agents %}
+            <option value="{{ agent.id }}">{{ agent.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small text-muted">Agent Area</label>
+        <select class="form-select form-select-sm" name="agent_area_id" id="agent_area_id">
+          <option value="">- Select Area -</option>
+          {% for area in areas %}
+            <option value="{{ area.id }}">{{ area.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <!-- Row 5: Invoice Date (BS), Due Days -->
+    <div class="row g-2 mb-2">
+      <div class="col-md-3">
+        <label class="form-label small text-muted">Invoice Date (BS)</label>
+        {% if form.invoice_date_bs %}
+          {{ form.invoice_date_bs|add_class:"form-control form-control-sm" }}
+        {% endif %}
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small text-muted">Due Days</label>
+        <input type="number" class="form-control form-control-sm" id="due_days" name="due_days" min="0" value="0">
+      </div>
+    </div>
+
+    <!-- Row 6: Currency, Exchange Rate, Warehouse, GR/IR Account -->
+    <div class="row g-2">
+      <div class="col-md-3">
+        <label class="form-label small text-muted">Currency</label>
+        {% if form.currency %}
+          {{ form.currency|add_class:"form-select form-select-sm" }}
+        {% endif %}
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small text-muted">Exchange Rate</label>
+        {% if form.exchange_rate %}
+          {{ form.exchange_rate|add_class:"form-control form-control-sm text-end" }}
+        {% endif %}
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small text-muted">Warehouse</label>
+        {% if form.warehouse %}
+          {{ form.warehouse|add_class:"form-select form-select-sm" }}
+        {% endif %}
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small text-muted">GR/IR Account</label>
+        {% if form.grir_account %}
+          {{ form.grir_account|add_class:"form-select form-select-sm" }}
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- JavaScript to load vendor summary when vendor changes -->
+<script>
+document.addEventListener('change', function(e) {
+  if (e.target.classList.contains('vendor-select')) {
+    const vendorId = e.target.value;
+    const summaryDiv = document.getElementById('vendor-summary');
+    const supplierInfoDiv = document.getElementById('supplier-info');
+    
+    if (vendorId) {
+      fetch(`/accounting/purchase-invoice/load-vendor/${vendorId}/`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            if (supplierInfoDiv) {
+              supplierInfoDiv.textContent = data.supplier_info || '';
+              supplierInfoDiv.style.display = data.supplier_info ? 'block' : 'none';
+            }
+            const agentSelect = document.getElementById('agent_id');
+            if (agentSelect && data.agent_id) agentSelect.value = String(data.agent_id);
+            const areaSelect = document.getElementById('agent_area_id');
+            if (areaSelect && data.area_id) areaSelect.value = String(data.area_id);
+            const dueDaysInput = document.getElementById('due_days');
+            if (dueDaysInput && data.due_days) dueDaysInput.value = data.due_days;
+            const invoiceDateInput = document.getElementById('id_invoice_date');
+            const dueDateInput = document.getElementById('id_due_date');
+            if (invoiceDateInput && dueDateInput && data.due_days) {
+              const baseDate = new Date(invoiceDateInput.value);
+              if (!isNaN(baseDate.getTime())) {
+                baseDate.setDate(baseDate.getDate() + parseInt(data.due_days, 10));
+                if (dueDateInput.type === 'date') {
+                  dueDateInput.valueAsDate = baseDate;
+                } else {
+                  dueDateInput.value = baseDate.toISOString().slice(0, 10);
+                }
+              }
+            }
+          }
+        })
+        .catch(() => {});
+      // Fetch vendor details via AJAX
+      fetch(`/api/vendor/${vendorId}/summary/`)
+        .then(r => r.json())
+        .then(data => {
+          document.getElementById('vendor-balance').textContent = data.outstanding_balance || '0.00';
+          document.getElementById('vendor-terms').textContent = data.payment_terms || '-';
+          document.getElementById('vendor-last-inv').textContent = data.last_invoice_date || '-';
+          document.getElementById('vendor-status').textContent = data.status || '-';
+          summaryDiv.style.display = 'block';
+        })
+        .catch(() => summaryDiv.style.display = 'none');
+    } else {
+      summaryDiv.style.display = 'none';
+      if (supplierInfoDiv) supplierInfoDiv.style.display = 'none';
+    }
+  }
+});
+</script>

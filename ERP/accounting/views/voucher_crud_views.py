@@ -23,6 +23,9 @@ from accounting.models import (
     JournalType, ChartOfAccount
 )
 from accounting.forms_factory import build_form, build_formset
+from django.forms import modelformset_factory
+from accounting.forms import APPaymentForm
+from accounting.models import APPayment
 from accounting.schema_loader import load_voucher_schema
 from accounting.services.create_voucher import create_voucher
 from accounting.services.post_journal import (
@@ -58,6 +61,85 @@ def _build_voucher_htmx_endpoints():
         "reject": reverse('accounting:journal_reject'),
         "post": reverse('accounting:journal_post'),
     }
+
+
+def _persist_payment_formset(payment_formset, journal, header_data, organization, user):
+    """Persist payments from a payment formset.
+
+    Uses APPaymentService.create_payment when allocations are provided,
+    otherwise falls back to creating APPayment directly to preserve
+    previous behavior for simple payments.
+    """
+    payments_saved = []
+    from accounting.models import APPayment
+    # Require APPaymentService for creating payments to ensure business rules are applied
+    from accounting.services.app_payment_service import APPaymentService, PaymentAllocation
+    svc = APPaymentService(user)
+
+    for pform in payment_formset.forms:
+        if not getattr(pform, 'cleaned_data', None):
+            continue
+        pdata = pform.cleaned_data
+        if pdata.get('DELETE'):
+            inst = getattr(pform, 'instance', None)
+            if inst and inst.pk:
+                inst.delete()
+            continue
+        amt = pdata.get('amount') or 0
+        if not amt:
+            continue
+        vendor = header_data.get('supplier') or header_data.get('vendor')
+        bank_account = pdata.get('bank_account') or pdata.get('payment_ledger') or None
+
+        # Build allocations if provided on the form (optional)
+        allocations = []
+        if PaymentAllocation and pdata.get('allocations'):
+            for a in pdata.get('allocations'):
+                allocations.append(PaymentAllocation(invoice=a.get('invoice'), amount=a.get('amount'), discount=a.get('discount', 0)))
+
+        # Always use service (allocations may be empty list but service will handle basic create)
+        payment = None
+        if svc:
+            if not allocations:
+                # If no explicit allocations provided, create a single allocation mapping to no invoice
+                # Build a synthetic allocation targeting no invoice (service expects invoice objects for allocations).
+                # In this minimal UI path, we call service with empty allocations and let it validate amount.
+                allocs = []
+            else:
+                allocs = allocations
+
+            # If allocations contain invoice ids (not objects), attempt to map to PurchaseInvoice objects
+            mapped_allocs = []
+            from accounting.models import PurchaseInvoice
+            for a in allocs:
+                inv = a.get('invoice')
+                if inv and not hasattr(inv, 'pk'):
+                    try:
+                        inv_obj = PurchaseInvoice.objects.get(pk=inv, organization=organization)
+                    except Exception:
+                        inv_obj = None
+                else:
+                    inv_obj = inv
+                if inv_obj:
+                    mapped_allocs.append(PaymentAllocation(invoice=inv_obj, amount=a.get('amount'), discount=a.get('discount', 0)))
+
+            payment = svc.create_payment(
+                organization=organization,
+                vendor=vendor,
+                payment_number=pdata.get('payment_number') or f"PY-{journal.pk}-{len(payments_saved)+1}",
+                payment_date=pdata.get('payment_date') or journal.journal_date,
+                bank_account=bank_account,
+                currency=pdata.get('currency') or getattr(organization, 'base_currency_code', None),
+                exchange_rate=pdata.get('exchange_rate') or 1,
+                allocations=mapped_allocs,
+                payment_method=pdata.get('payment_method') or 'bank_transfer',
+                batch=pdata.get('batch') if pdata.get('batch') else None,
+            )
+        
+
+        payments_saved.append(payment)
+
+    return payments_saved
 
 
 def _inject_udfs_into_schema(schema, udf_configs):
@@ -236,11 +318,16 @@ class VoucherCreateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
         if request:
             header_form = HeaderForm(request.POST)
             line_formset = LineFormSet(request.POST)
+            # Payment formset using APPaymentForm to reuse existing widgets
+            PaymentFormSet = modelformset_factory(APPayment, form=APPaymentForm, extra=1, can_delete=True)
+            payment_formset = PaymentFormSet(request.POST or None, queryset=APPayment.objects.none(), form_kwargs={'organization': organization}, prefix='payments')
         else:
             header_form = HeaderForm(initial={'journal_date': timezone.now().strftime('%Y-%m-%d')})
             line_formset = LineFormSet()
+            PaymentFormSet = modelformset_factory(APPayment, form=APPaymentForm, extra=1, can_delete=True)
+            payment_formset = PaymentFormSet(queryset=APPayment.objects.none(), form_kwargs={'organization': organization}, prefix='payments')
         
-        return header_form, line_formset
+        return header_form, line_formset, payment_formset
 
     def get(self, request, *args, **kwargs):
         """Display empty voucher entry form or config selection."""
@@ -283,7 +370,7 @@ class VoucherCreateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
 
         user_perms = self.get_user_perms(request)
         
-        header_form, line_formset = self._create_voucher_forms(schema, organization, user_perms)
+        header_form, line_formset, payment_formset = self._create_voucher_forms(schema, organization, user_perms)
 
         defaults = list(getattr(config, 'defaults', []).all())
         
@@ -299,6 +386,7 @@ class VoucherCreateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
             "configs": all_configs,  # Template expects configs
             "header_form": header_form,
             "line_formset": line_formset,
+            "payment_formset": payment_formset,
             "user_perms": user_perms,
             "page_title": f"Create New Voucher - {config.name}",
             "voucher_configs": all_configs,
@@ -317,7 +405,15 @@ class VoucherCreateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
         }
         if warning:
             context["warning"] = warning
-        return render(request, self.template_name, context)
+        # Allow voucher-specific UI profiles to select an alternate template
+        template = self.template_name
+        try:
+            if getattr(config, 'ui_profile', None) == 'purchase_invoice_v1':
+                template = 'accounting/purchase_invoice_form.html'
+        except Exception:
+            template = self.template_name
+
+        return render(request, template, context)
 
     def _build_initial_state(self, config, organization):
         """Build initial state for the new SPA voucher entry."""
@@ -406,9 +502,9 @@ class VoucherCreateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
         organization = request.user.get_active_organization()
         user_perms = self.get_user_perms(request)
         
-        header_form, line_formset = self._create_voucher_forms(schema, organization, user_perms, request=request)
+        header_form, line_formset, payment_formset = self._create_voucher_forms(schema, organization, user_perms, request=request)
 
-        if header_form.is_valid() and line_formset.is_valid():
+        if header_form.is_valid() and line_formset.is_valid() and (payment_formset.is_valid() if 'payment_formset' in locals() else True):
             header_data = header_form.cleaned_data
             lines_data = [f.cleaned_data for f in line_formset.forms 
                          if f.cleaned_data and not f.cleaned_data.get('DELETE', False)]
@@ -417,32 +513,37 @@ class VoucherCreateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
             errors = validation_service.validate_journal_entry(header_data, lines_data)
 
             if not errors:
-                with transaction.atomic():
-                    try:
+                # All validations passed. Save voucher, lines and payments in a single transaction.
+                try:
+                    with transaction.atomic():
                         journal = create_voucher(
                             user=request.user,
                             config_id=config.pk,
                             header_data=header_data,
                             lines_data=lines_data,
                         )
+
+                        # Persist payments if any (uses APPaymentService when possible)
+                        payments_saved = _persist_payment_formset(payment_formset, journal, header_data, organization, request.user)
+
                         messages.success(request, f"Voucher {journal.journal_number} created successfully.")
                         return redirect('accounting:voucher_detail', pk=journal.pk)
-                    except (JournalError, ValidationError) as e:
-                        logger.error("Error creating voucher", exc_info=True, extra={
-                            'error': str(e),
-                            'user_id': getattr(request.user, 'pk', None),
-                            'organization_id': getattr(organization, 'pk', None),
-                            'config_id': getattr(config, 'pk', None)
-                        })
-                        messages.error(request, f"Error creating voucher: {e}")
-                    except Exception as e:
-                        logger.exception("Unexpected error creating voucher", extra={
-                            'error': str(e),
-                            'user_id': getattr(request.user, 'pk', None),
-                            'organization_id': getattr(organization, 'pk', None),
-                            'config_id': getattr(config, 'pk', None)
-                        })
-                        messages.error(request, "An unexpected error occurred while creating the voucher.")
+                except (JournalError, ValidationError) as e:
+                    logger.error("Error creating voucher", exc_info=True, extra={
+                        'error': str(e),
+                        'user_id': getattr(request.user, 'pk', None),
+                        'organization_id': getattr(organization, 'pk', None),
+                        'config_id': getattr(config, 'pk', None)
+                    })
+                    messages.error(request, f"Error creating voucher: {e}")
+                except Exception as e:
+                    logger.exception("Unexpected error creating voucher", extra={
+                        'error': str(e),
+                        'user_id': getattr(request.user, 'pk', None),
+                        'organization_id': getattr(organization, 'pk', None),
+                        'config_id': getattr(config, 'pk', None)
+                    })
+                    messages.error(request, "An unexpected error occurred while creating the voucher.")
             else:
                 # Add validation errors to forms
                 if 'general' in errors:
@@ -489,6 +590,11 @@ class VoucherCreateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
         }
         if warning:
             context["warning"] = warning
+        # Compute totals from line formset for initial display
+        try:
+            context.update(self.calculate_totals_from_formset(line_formset))
+        except Exception:
+            pass
         return render(request, self.template_name, context)
 
 
@@ -529,6 +635,8 @@ class VoucherUpdateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
         if request:
             header_form = HeaderForm(request.POST, instance=journal)
             line_formset = LineFormSet(request.POST, queryset=journal.lines.all() if journal else JournalLine.objects.none())
+            PaymentFormSet = modelformset_factory(APPayment, form=APPaymentForm, extra=0, can_delete=True)
+            payment_formset = PaymentFormSet(request.POST or None, queryset=APPayment.objects.filter(journal=journal) if journal else APPayment.objects.none(), form_kwargs={'organization': organization}, prefix='payments')
         else:
             # Populate initial data from existing journal
             initial_data = {}
@@ -542,8 +650,10 @@ class VoucherUpdateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
                 }
             header_form = HeaderForm(initial=initial_data, instance=journal)
             line_formset = LineFormSet(queryset=journal.lines.all() if journal else JournalLine.objects.none())
-        
-        return header_form, line_formset
+            PaymentFormSet = modelformset_factory(APPayment, form=APPaymentForm, extra=0, can_delete=True)
+            payment_formset = PaymentFormSet(queryset=APPayment.objects.filter(journal=journal) if journal else APPayment.objects.none(), form_kwargs={'organization': organization}, prefix='payments')
+
+        return header_form, line_formset, payment_formset
 
     def get(self, request, *args, **kwargs):
         """Display voucher edit form with existing data."""
@@ -570,7 +680,7 @@ class VoucherUpdateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
             return redirect('accounting:voucher_detail', pk=journal.pk)
 
         user_perms = self.get_user_perms(request)
-        header_form, line_formset = self._create_voucher_forms(schema, organization, user_perms, journal=journal)
+        header_form, line_formset, payment_formset = self._create_voucher_forms(schema, organization, user_perms, journal=journal)
 
         # Get all active accounts for the dropdown
         accounts = ChartOfAccount.objects.filter(
@@ -582,6 +692,7 @@ class VoucherUpdateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
             "config": config,
             "header_form": header_form,
             "line_formset": line_formset,
+            "payment_formset": payment_formset,
             "user_perms": user_perms,
             "page_title": f"Edit Voucher {journal.journal_number}",
             "voucher": journal,
@@ -617,9 +728,9 @@ class VoucherUpdateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
         schema, warning = self._get_voucher_schema(config)
         
         user_perms = self.get_user_perms(request)
-        header_form, line_formset = self._create_voucher_forms(schema, organization, user_perms, journal=journal, request=request)
+        header_form, line_formset, payment_formset = self._create_voucher_forms(schema, organization, user_perms, journal=journal, request=request)
 
-        if header_form.is_valid() and line_formset.is_valid():
+        if header_form.is_valid() and line_formset.is_valid() and (payment_formset.is_valid() if 'payment_formset' in locals() else True):
             header_data = header_form.cleaned_data
             lines_data = [f.cleaned_data for f in line_formset.forms 
                          if f.cleaned_data and not f.cleaned_data.get('DELETE', False)]
@@ -661,6 +772,12 @@ class VoucherUpdateView(VoucherConfigMixin, PermissionRequiredMixin, LoginRequir
                         # Update totals
                         journal.update_totals()
                         journal.save()
+
+                        # Persist payments (create/update/delete) for this journal
+                        try:
+                            _persist_payment_formset(payment_formset, journal, header_data, organization, request.user)
+                        except Exception:
+                            raise
                         
                         messages.success(request, f"Voucher {journal.journal_number} updated successfully.")
                         return redirect('accounting:voucher_detail', pk=journal.pk)

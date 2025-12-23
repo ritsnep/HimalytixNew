@@ -32,7 +32,7 @@ from ..views.report_views import (
 
 # Import from views_list.py
 from ..views.views_list import (
-     ChartOfAccountTreeListView, FiscalYearListView, CostCenterListView, DepartmentListView,
+     AgentListView, ChartOfAccountTreeListView, FiscalYearListView, CostCenterListView, DepartmentListView,
     AccountTypeListView, GeneralLedgerListView, TaxCodeListView,
     JournalListView
 )
@@ -59,7 +59,7 @@ from ..views.currency_bulk_import import (
 
 # Import from views_create.py
 from ..views.views_create import (
-    CostCenterCreateView, DepartmentCreateView, FiscalYearCreateView, JournalCreateView, VoucherModeConfigCreateView,
+    AgentCreateView, CostCenterCreateView, DepartmentCreateView, FiscalYearCreateView, JournalCreateView, VoucherModeConfigCreateView,
     VoucherModeDefaultCreateView, VoucherUDFConfigCreateView, ChartOfAccountCreateView,
     AccountTypeCreateView, CurrencyCreateView, CurrencyExchangeRateCreateView,
     TaxAuthorityCreateView, TaxTypeCreateView, ProjectCreateView, AccountingPeriodCreateView,
@@ -68,7 +68,7 @@ from ..views.views_create import (
 
 # Import from views_update.py
 from ..views.views_update import (
-    CostCenterUpdateView, FiscalYearUpdateView, VoucherModeConfigUpdateView,
+    AgentUpdateView, CostCenterUpdateView, FiscalYearUpdateView, VoucherModeConfigUpdateView,
     VoucherModeDefaultUpdateView, VoucherUDFConfigUpdateView, ChartOfAccountUpdateView,
     AccountTypeUpdateView, CurrencyUpdateView, CurrencyExchangeRateUpdateView,
     TaxAuthorityUpdateView, TaxTypeUpdateView, ProjectUpdateView, AccountingPeriodUpdateView,
@@ -318,6 +318,11 @@ urlpatterns = [
     path('departments/<int:pk>/update/', DepartmentUpdateView.as_view(), name='department_update'),
     path('departments/<int:pk>/delete/', DepartmentDeleteView.as_view(), name='department_delete'),
 
+    # Agent URLs
+    path('agents/', AgentListView.as_view(), name='agent_list'),
+    path('agents/create/', AgentCreateView.as_view(), name='agent_create'),
+    path('agents/<int:pk>/update/', AgentUpdateView.as_view(), name='agent_update'),
+
     # Chart of Accounts URLs
     path('chart-of-accounts/', ChartOfAccountTreeListView.as_view(), name='chart_of_accounts_list'),
     path('chart-of-accounts.hx/', ChartOfAccountListPartial.as_view(), name='chart_of_accounts_list_hx'),
@@ -419,6 +424,26 @@ urlpatterns = [
     path('vendor-bills/new/', purchase_invoice_views.vendor_bill_create_deprecated, name='vendor_bill_create'),
     path('vendor-bills/line-row/', purchase_invoice_views.VendorBillLineRowView.as_view(), name='vendor_bill_line_row'),
     path('vendor-bills/vendor-summary/', purchase_invoice_views.VendorSummaryHXView.as_view(), name='vendor_summary_hx'),
+
+    # New HTMX endpoints for purchase invoice form integration
+    path('purchase-invoice/new-enhanced/', purchase_invoice_views.purchase_invoice_new_enhanced, name='purchase_invoice_new_enhanced'),
+    path('purchase/add-line/', purchase_invoice_views.purchase_add_line_hx, name='purchase_add_line_hx'),
+    path('purchase/remove-line/', purchase_invoice_views.purchase_remove_line_hx, name='purchase_remove_line_hx'),
+    path('purchase/recalc/', purchase_invoice_views.purchase_recalc_hx, name='purchase_recalc_hx'),
+    path('purchase/add-payment/', purchase_invoice_views.purchase_add_payment_hx, name='purchase_add_payment_hx'),
+    path('purchase/remove-payment/', purchase_invoice_views.purchase_remove_payment_hx, name='purchase_remove_payment_hx'),
+    path('purchase/payment-recalc/', purchase_invoice_views.purchase_payment_recalc_hx, name='purchase_payment_recalc_hx'),
+    path('purchase/supplier-summary/', purchase_invoice_views.purchase_supplier_summary_hx, name='purchase_supplier_summary_hx'),
+    path('purchase/apply-order/', purchase_invoice_views.purchase_apply_order_hx, name='purchase_apply_order_hx'),
+    path('purchase-invoice/new/', purchase_invoice_views.purchase_invoice_form, name='purchase_invoice_form'),
+    path('purchase-invoice/load-vendor/<int:vendor_id>/', purchase_invoice_views.load_vendor_details, name='load_vendor_details'),
+    path('purchase-invoice/load-product/<int:product_id>/', purchase_invoice_views.load_product_details, name='load_product_details'),
+    path('purchase-invoice/search-products/', purchase_invoice_views.search_products_hx, name='search_products_hx'),
+    path('purchase-invoice/calculate-totals/', purchase_invoice_views.calculate_invoice_totals, name='calculate_totals'),
+    path('purchase-invoice/save/', purchase_invoice_views.save_purchase_invoice, name='save_purchase_invoice'),
+    path('purchase-invoice/apply-order/<int:order_id>/', purchase_invoice_views.apply_purchase_order, name='apply_order'),
+    path('purchase-invoice/next-voucher-no/', purchase_invoice_views.get_next_voucher_number, name='next_voucher_no'),
+
     path('vendor-payments/scheduler/', payment_scheduler_views.PaymentSchedulerView.as_view(), name='payment_scheduler'),
     path('vendor-payments/statement/', vendor_statement_views.VendorStatementView.as_view(), name='vendor_statement'),
     path('customer-payments/statement/', customer_statement_views.CustomerStatementView.as_view(), name='customer_statement'),

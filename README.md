@@ -4,7 +4,7 @@ Multi-tenant ERP platform focused on accounting, inventory, and user-management 
 
 ## Highlights
 
-- **Accounting** – Advanced journal entry grid with voucher templates, posting workflow, and depth-checked chart of accounts.
+- **Accounting** – Advanced journal entry grid with voucher templates, posting workflow, and depth-checked chart of accounts. Includes configuration-driven voucher entry UI via the `voucher_config` app.
 - **Inventory** – Product catalog, warehouses, batches/serials, and inventory snapshots that tie back to GL accounts.
 - **Multi-tenancy & Security** – Tenant middleware, scoped permissions, DRF authentication, and hardened session management.
 - **APIs & Automation** – Versioned REST API under `/api/v1/` with OpenAPI docs served via DRF Spectacular at `/api/docs`.

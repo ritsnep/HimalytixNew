@@ -1,0 +1,100 @@
+<!-- Row A: Voucher, Supplier, Reference -->
+<div class="row g-2 align-items-end mb-2">
+  <div class="col-lg-4">
+    <div class="row g-2">
+      <div class="col-4">
+        <label class="form-label small text-muted">Voucher Prefix</label>
+        {% include_form_field form.voucher_prefix class="form-control form-control-sm recalc" %}
+      </div>
+      <div class="col-4">
+        <label class="form-label small text-muted">Voucher No</label>
+        {% include_form_field form.voucher_no class="form-control form-control-sm recalc" %}
+      </div>
+      <div class="col-4">
+        <label class="form-label small text-muted">Fiscal Year</label>
+        {% include_form_field form.fiscal_year class="form-control form-control-sm recalc" %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <label class="form-label small text-muted">Supplier Name</label>
+    {% include_form_field form.party_ledger_id class="form-select form-select-sm recalc" %}
+  </div>
+
+  <div class="col-lg-4">
+    <label class="form-label small text-muted">Reference / Party Invoice No</label>
+    {% include_form_field form.party_invoice_no class="form-control form-control-sm recalc" %}
+  </div>
+</div>
+
+<!-- Row B: Dates, Supplier Info, Due Days -->
+<div class="row g-2 align-items-end mb-2">
+  <div class="col-lg-4">
+    <div class="row g-2">
+      <div class="col-6">
+        <label class="form-label small text-muted">Date (BS)</label>
+        {% include_form_field form.date_bs class="form-control form-control-sm recalc" %}
+      </div>
+      <div class="col-6">
+        <label class="form-label small text-muted">Date (AD)</label>
+        {% include_form_field form.date_ad class="form-control form-control-sm recalc" %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <label class="form-label small text-muted">Supplier Info</label>
+    <div class="form-control form-control-sm bg-light" id="supplier-info">
+      {% if supplier_info %}{{ supplier_info }}{% else %}- Select Supplier -{% endif %}
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <label class="form-label small text-muted">Due Days</label>
+    {% include_form_field form.due_days class="form-control form-control-sm recalc" %}
+  </div>
+</div>
+
+<!-- Row C: Account, Payment Mode, Agent -->
+<div class="row g-2 align-items-end mb-2">
+  <div class="col-lg-4">
+    <label class="form-label small text-muted">Purchase Account</label>
+    {% include_form_field form.purchase_account_ledger_id class="form-select form-select-sm recalc" %}
+  </div>
+
+  <div class="col-lg-4">
+    <label class="form-label small text-muted">Payment Mode</label>
+    {% include_form_field form.payment_mode class="form-select form-select-sm recalc" %}
+  </div>
+
+  <div class="col-lg-4">
+    <div class="row g-2">
+      <div class="col-6">
+        <label class="form-label small text-muted">Agent Name</label>
+        {% include_form_field form.agent_id class="form-select form-select-sm recalc" %}
+      </div>
+      <div class="col-6">
+        <label class="form-label small text-muted">Agent Area</label>
+        {% include_form_field form.agent_area_id class="form-select form-select-sm recalc" %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Row D: Order Reference -->
+<div class="row g-2 align-items-end mb-3">
+  <div class="col-12">
+    <label class="form-label small text-muted">Order Reference</label>
+    <div class="input-group input-group-sm">
+      {% include_form_field form.order_reference_id class="form-select recalc" %}
+      <button type="button" class="btn btn-outline-primary"
+              hx-post="{% url 'purchasing:purchase_apply_order' %}"
+              hx-include="#purchase-form"
+              hx-target="#items-wrap"
+              hx-swap="outerHTML">
+        <i class="bi bi-lightning-charge me-1"></i>Apply
+      </button>
+    </div>
+  </div>
+</div>

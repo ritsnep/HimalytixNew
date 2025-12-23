@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+
+{% block title %}New Purchase Invoice{% endblock %}
+
+{% block head %}
+<style>
+  .table-responsive { max-height: 500px; overflow-y: auto; }
+  .sticky-actions { position: sticky; bottom: 0; z-index: 10; background: white; box-shadow: 0 -2px 5px rgba(0,0,0,0.1); }
+  .recalc { border: 1px solid #dee2e6; }
+  .text-end { text-align: right; }
+  .money { font-family: 'Courier New', monospace; text-align: right; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-content py-3">
+  <div class="container-fluid">
+    <div class="card shadow-sm">
+      <div class="card-body">
+
+        <!-- Header Band -->
+        {% include "purchase/_header_band.html" %}
+
+        <!-- One form with HTMX-driven recalculation -->
+        <form id="purchase-form" method="post" action="{% url 'purchasing:invoice-create' %}"
+              hx-post="{% url 'purchasing:purchase_recalc' %}"
+              hx-trigger="change from:.recalc, keyup delay:300ms from:.recalc"
+              hx-target="#totals-wrap"
+              hx-swap="outerHTML">
+
+          {% csrf_token %}
+
+          <!-- Header Info Section -->
+          <div id="header-wrap">
+            {% include "purchase/_supplier_info.html" %}
+          </div>
+
+          <!-- Column Chips -->
+          {% include "purchase/_column_chips.html" %}
+
+          <!-- Main Grid: Items + Totals -->
+          <div class="row g-3">
+            <div class="col-xl-8">
+              <div id="items-wrap">
+                {% include "purchase/_items_wrap.html" %}
+              </div>
+            </div>
+
+            <div class="col-xl-4">
+              <div id="totals-wrap">
+                {% include "purchase/_totals_wrap.html" %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Panels: Terms + Payments -->
+          <div class="row g-3 mt-1">
+            <div class="col-lg-6">{% include "purchase/_terms_panel.html" %}</div>
+            <div class="col-lg-6">{% include "purchase/_payments_panel.html" %}</div>
+          </div>
+
+          <!-- Narration -->
+          <div class="mt-3">
+            <label class="form-label">Narration</label>
+            {% include_form_field form.narration class="form-control form-control-sm recalc" %}
+          </div>
+
+          <!-- Footer Actions -->
+          {% include "purchase/_footer_actions.html" %}
+
+        </form>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

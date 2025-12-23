@@ -1,3 +1,617 @@
+from django.shortcuts import render, get_object_or_404, redirect
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.db import models, transaction
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_protect
+
+from accounting.forms_factory import VoucherFormFactory
+from accounting.models import VoucherModeConfig, PurchaseInvoice, PurchaseInvoiceLine, APPayment, ChartOfAccount, Vendor
+from accounting.services.purchase_calculator import PurchaseCalculator
+from accounting.forms import PurchaseInvoiceForm, APPaymentForm
+from accounting.forms import PurchaseInvoiceLineFormSet
+from inventory.models import Warehouse, Product
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+@csrf_protect
+def purchase_invoice_new_enhanced(request):
+    """Enhanced purchase invoice form with HTMX integration"""
+    organization = request.user.get_active_organization()
+    
+    if request.method == 'GET':
+        form = PurchaseInvoiceForm(organization=organization)
+        # Get empty queryset for display (HTMX will handle adding items)
+        line_items = PurchaseInvoiceLine.objects.none()
+
+        # Prepare empty inline formset for items so management form fields exist
+        # Use unbound formset (no instance) to avoid BaseFormSet __init__ errors
+        line_formset = PurchaseInvoiceLineFormSet(prefix='items', form_kwargs={'organization': organization})
+
+        # Prepare payments formset (simple formset) for management form
+        from django import forms
+        from django.forms import formset_factory
+
+        # Get Cash and Bank accounts - filter by account_type name using Q objects
+        from django.db.models import Q
+        cash_bank_accounts = ChartOfAccount.objects.filter(
+            Q(organization=organization),
+            Q(account_type__name__in=['Cash', 'Bank']) | Q(is_bank_account=True),
+            is_active=True
+        ).distinct()
+
+        account_choices = [('', 'Select account')]
+        account_choices.extend([(str(acct.pk), f"{acct.code} - {acct.name}") for acct in cash_bank_accounts])
+
+        class _PaymentForm(forms.Form):
+            payment_method = forms.ChoiceField(
+                required=False,
+                choices=[
+                    ('cash', 'Cash'),
+                    ('bank', 'Bank'),
+                    ('bank_transfer', 'Bank Transfer'),
+                    ('cheque', 'Cheque'),
+                    ('wire_transfer', 'Wire Transfer'),
+                ],
+            )
+            cash_bank_id = forms.ChoiceField(required=False, choices=account_choices)
+            due_date = forms.DateField(required=False)
+            amount = forms.DecimalField(required=False, max_digits=19, decimal_places=4)
+            remarks = forms.CharField(required=False)
+            DELETE = forms.BooleanField(required=False)
+
+        PaymentFormSet = formset_factory(_PaymentForm, extra=0)
+        payments_formset = PaymentFormSet(prefix='payments')
+
+        context = {
+            'form': form,
+            'line_items': line_items,
+            'line_formset': line_formset,
+            'payments_formset': payments_formset,
+            'cash_bank_accounts': cash_bank_accounts,
+            'agents': AgentService.get_agents_for_dropdown(organization),
+            'areas': AgentService.get_areas_for_dropdown(organization),
+        }
+        return render(request, 'accounting/purchase/new_enhanced.html', context)
+    
+    elif request.method == 'POST':
+        form = PurchaseInvoiceForm(request.POST, organization=organization)
+
+        # Bind formsets for validation/saving
+        # Line items inline formset needs instance after invoice saved; we'll save invoice first then bind and validate line formset
+        from django import forms
+        from django.forms import formset_factory
+
+        from django.db.models import Q
+        cash_bank_accounts = ChartOfAccount.objects.filter(
+            Q(organization=organization),
+            Q(account_type__name__in=['Cash', 'Bank']) | Q(is_bank_account=True),
+            is_active=True
+        ).distinct()
+        account_choices = [('', 'Select account')]
+        account_choices.extend([(str(acct.pk), f"{acct.code} - {acct.name}") for acct in cash_bank_accounts])
+
+        class _PaymentForm(forms.Form):
+            payment_method = forms.ChoiceField(
+                required=False,
+                choices=[
+                    ('cash', 'Cash'),
+                    ('bank', 'Bank'),
+                    ('bank_transfer', 'Bank Transfer'),
+                    ('cheque', 'Cheque'),
+                    ('wire_transfer', 'Wire Transfer'),
+                ],
+            )
+            cash_bank_id = forms.ChoiceField(required=False, choices=account_choices)
+            due_date = forms.DateField(required=False)
+            amount = forms.DecimalField(required=False, max_digits=19, decimal_places=4)
+            remarks = forms.CharField(required=False)
+            DELETE = forms.BooleanField(required=False)
+
+        PaymentFormSet = formset_factory(_PaymentForm, extra=0)
+        payments_formset = PaymentFormSet(request.POST, prefix='payments')
+
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    invoice = form.save(commit=False)
+                    invoice.organization = organization
+                    invoice.created_by = request.user
+                    agent_area_id = request.POST.get('agent_area_id')
+                    if agent_area_id:
+                        from accounting.models import Area
+                        area = Area.objects.filter(organization=organization, area_id=agent_area_id).first()
+                        invoice.agent_area = area.name if area else str(agent_area_id)
+                    invoice.save()
+
+                    # Process line items
+                    try:
+                        line_formset = PurchaseInvoiceLineFormSet(
+                            request.POST,
+                            prefix='items',
+                            instance=invoice,
+                            form_kwargs={'organization': organization},
+                        )
+                        if line_formset.is_valid():
+                            # Save lines
+                            line_objects = line_formset.save(commit=False)
+                            for obj in line_objects:
+                                obj.invoice = invoice
+                                obj.save()
+                            # Handle deletions
+                            for obj in line_formset.deleted_objects:
+                                obj.delete()
+                        else:
+                            raise ValueError(f"Line items invalid: {line_formset.errors}")
+                    except Exception as e:
+                        raise
+
+                    # Process payments
+                    if payments_formset.is_valid():
+                        from accounting.models import APPayment, APPaymentLine, Currency
+                        saved_payments = []
+                        for idx, pform in enumerate(payments_formset.cleaned_data):
+                            if not pform or pform.get('DELETE'):
+                                continue
+                            amount = pform.get('amount') or 0
+                            if float(amount) <= 0:
+                                continue
+                            payment_method = pform.get('payment_method') or 'bank'
+                            bank_id = pform.get('cash_bank_id')
+                            bank_account = None
+                            if bank_id:
+                                try:
+                                    bank_account = ChartOfAccount.objects.get(pk=int(bank_id), organization=organization)
+                                except Exception:
+                                    bank_account = None
+
+                            payment_number = f"PY-{invoice.pk}-{len(saved_payments)+1}"
+                            ap = APPayment.objects.create(
+                                organization=organization,
+                                vendor=invoice.vendor,
+                                payment_number=payment_number,
+                                payment_date=pform.get('due_date') or invoice.invoice_date,
+                                payment_method=payment_method,
+                                bank_account=bank_account or ChartOfAccount.objects.filter(organization=organization, is_bank_account=True).first(),
+                                currency=invoice.currency or Currency.objects.filter(is_active=True).first(),
+                                exchange_rate=invoice.exchange_rate or 1,
+                                amount=amount,
+                                discount_taken=0,
+                                status='draft',
+                                created_by=request.user,
+                            )
+                            # Link payment line to invoice
+                            APPaymentLine.objects.create(
+                                payment=ap,
+                                invoice=invoice,
+                                applied_amount=amount,
+                                discount_taken=0,
+                            )
+                            saved_payments.append(ap)
+
+                    agent_id = request.POST.get('agent_id')
+                    if agent_id:
+                        invoice.metadata = dict(invoice.metadata or {})
+                        invoice.metadata['agent_id'] = agent_id
+                        invoice.save(update_fields=['metadata'])
+
+                    # Success
+                    return JsonResponse({
+                        'success': True,
+                        'invoice_id': invoice.id,
+                        'message': 'Purchase Invoice created successfully'
+                    })
+            except Exception as e:
+                form.add_error(None, f"Error saving invoice: {str(e)}")
+        else:
+            # form invalid
+            pass
+        
+        # Re-display form with errors
+        line_items = PurchaseInvoiceLine.objects.none()
+        # re-create unbound formsets for rendering
+        line_formset = PurchaseInvoiceLineFormSet(prefix='items', form_kwargs={'organization': organization})
+        payments_formset = PaymentFormSet(prefix='payments')
+        context = {
+            'form': form,
+            'line_items': line_items,
+            'line_formset': line_formset,
+            'payments_formset': payments_formset,
+            'cash_bank_accounts': cash_bank_accounts,
+            'agents': AgentService.get_agents_for_dropdown(organization),
+            'areas': AgentService.get_areas_for_dropdown(organization),
+        }
+        return render(request, 'accounting/purchase/new_enhanced.html', context)
+
+
+@require_http_methods(["GET", "POST"])
+def purchase_add_line_hx(request):
+    """Return a rendered blank purchase line row for HTMX add-line actions."""
+    organization = request.user.get_active_organization()
+    form_count = request.GET.get('form_count') or request.POST.get('form_count') or '0'
+    try:
+        form_index = int(form_count)
+    except Exception:
+        form_index = 0
+
+    prefix_val = request.GET.get('prefix') or request.POST.get('prefix') or 'lines'
+    variant = request.GET.get('variant') or request.POST.get('variant') or 'default'
+    # Create a PurchaseInvoice product line form (not a generic journal line)
+    from accounting.forms import PurchaseInvoiceLineForm
+    form_prefix = f"{prefix_val}-{form_index}"
+    blank_line = PurchaseInvoiceLineForm(prefix=form_prefix, organization=organization)
+
+    context = {
+        'form': blank_line,
+        'form_index': form_index,
+    }
+    template_name = 'accounting/partials/_purchase_line_row.html'
+    if variant == 'enhanced':
+        template_name = 'accounting/purchase/_line_row_new.html'
+    return render(request, template_name, context)
+
+
+@require_http_methods(["POST"])
+def purchase_remove_line_hx(request):
+    """Handle line removal and re-render the lines table partial.
+
+    Expects the full formset data to be posted (so DELETE marker can be applied server-side),
+    then returns the updated lines table HTML for replacement.
+    """
+    organization = request.user.get_active_organization()
+    # Bind the posted purchase header and line formset so management form indexes are correct
+    from accounting.forms import PurchaseInvoiceForm, PurchaseInvoiceLineForm
+    prefix_val = request.POST.get('prefix') or request.GET.get('prefix') or 'items'
+    header_form = PurchaseInvoiceForm(data=request.POST, organization=organization)
+    PurchaseInvoiceLineFormSet_local = forms.formset_factory(PurchaseInvoiceLineForm, can_delete=True)
+    line_formset = PurchaseInvoiceLineFormSet_local(data=request.POST, prefix=prefix_val)
+
+    # We don't require the forms to be valid to re-render; just show updated rows
+    context = {'line_formset': line_formset}
+    return render(request, 'accounting/partials/_purchase_lines_table.html', context)
+
+
+@require_http_methods(["POST"])
+def purchase_recalc_hx(request):
+    """Recalculate per-row and totals using posted header + lines; return combined partial.
+
+    Returns the combined HTML fragment for replacement of the recalc region.
+    """
+    organization = request.user.get_active_organization()
+    from accounting.forms import PurchaseInvoiceForm, PurchaseInvoiceLineForm
+    prefix_val = request.POST.get('prefix') or request.GET.get('prefix') or 'items'
+    header_form = PurchaseInvoiceForm(data=request.POST, organization=organization)
+    PurchaseInvoiceLineFormSet_local = forms.formset_factory(PurchaseInvoiceLineForm, can_delete=True)
+    line_formset = PurchaseInvoiceLineFormSet_local(data=request.POST, prefix=prefix_val)
+
+    # Extract data for calculator
+    header_data = header_form.cleaned_data if header_form.is_valid() else {}
+    lines = []
+    for form in line_formset.forms:
+        if not getattr(form, 'cleaned_data', None):
+            # if not bound/valid, try initial data
+            data = form.initial or {}
+        else:
+            data = form.cleaned_data
+        if data.get('DELETE'):
+            continue
+        vat_rate = data.get('vat_rate')
+        vat_applicable = (
+            data.get('vat') in (True, 'Yes', 'yes', 'Y', 'y')
+            or data.get('vat_applicable') in (True, 'Yes')
+            or (vat_rate is not None and float(vat_rate) > 0)
+        )
+        # normalize expected keys
+        lines.append({
+            'qty': data.get('qty') or data.get('quantity') or 0,
+            'rate': data.get('rate') or data.get('unit_cost') or data.get('unit_price') or 0,
+            'vat_applicable': vat_applicable,
+            'row_discount_value': data.get('discount') or data.get('discount_amount') or 0,
+            'row_discount_type': data.get('discount_type') or 'amount',
+        })
+
+    # Header discount and rounding
+    header_discount_value = (
+        header_data.get('header_discount_value')
+        or header_data.get('discount_value')
+        or header_data.get('discount')
+        or 0
+    )
+    header_discount_type = (
+        header_data.get('header_discount_type')
+        or header_data.get('discount_type')
+        or 'amount'
+    )
+    bill_rounding = header_data.get('bill_rounding') or header_data.get('rounding') or 0
+
+    calc = PurchaseCalculator(
+        lines=lines,
+        header_discount_value=header_discount_value,
+        header_discount_type=header_discount_type,
+        bill_rounding=bill_rounding
+    )
+    result = calc.compute()
+
+    context = {
+        'line_formset': line_formset,
+        'calc_rows': result['rows'],
+        'totals': result['totals'],
+    }
+
+    return render(request, 'accounting/partials/_purchase_recalc_region.html', context)
+
+
+@require_http_methods(["GET"])
+def purchase_add_payment_hx(request):
+    """Return a rendered blank payment row for HTMX add-payment actions."""
+    organization = request.user.get_active_organization()
+    form_count = request.GET.get('form_count') or request.POST.get('form_count') or '0'
+    try:
+        form_index = int(form_count)
+    except Exception:
+        form_index = 0
+
+    variant = request.GET.get('variant') or request.POST.get('variant') or 'default'
+    # Simple payment form rendering uses existing widgets; prefix 'payments'
+    from django import forms
+
+    template_name = 'accounting/partials/_purchase_payment_row.html'
+    if variant == 'enhanced':
+        from django.db.models import Q
+        cash_bank_accounts = ChartOfAccount.objects.filter(
+            Q(organization=organization),
+            Q(account_type__name__in=['Cash', 'Bank']) | Q(is_bank_account=True),
+            is_active=True
+        ).distinct()
+        account_choices = [('', 'Select account')]
+        account_choices.extend([(str(acct.pk), f"{acct.code} - {acct.name}") for acct in cash_bank_accounts])
+
+        class _PaymentForm(forms.Form):
+            payment_method = forms.ChoiceField(
+                required=False,
+                choices=[
+                    ('cash', 'Cash'),
+                    ('bank', 'Bank'),
+                    ('bank_transfer', 'Bank Transfer'),
+                    ('cheque', 'Cheque'),
+                    ('wire_transfer', 'Wire Transfer'),
+                ],
+            )
+            cash_bank_id = forms.ChoiceField(required=False, choices=account_choices)
+            due_date = forms.DateField(required=False)
+            amount = forms.DecimalField(required=False, max_digits=19, decimal_places=4)
+            remarks = forms.CharField(required=False)
+            DELETE = forms.BooleanField(required=False)
+
+        PaymentForm = _PaymentForm(prefix=f'payments-{form_index}')
+        template_name = 'accounting/purchase/_payment_row_new.html'
+    else:
+        class _PaymentForm(forms.Form):
+            payment_ledger = forms.CharField(required=False)
+            amount = forms.DecimalField(required=False, max_digits=19, decimal_places=4)
+            note = forms.CharField(required=False)
+            DELETE = forms.BooleanField(required=False)
+
+        PaymentForm = _PaymentForm(prefix=f'payments-{form_index}')
+
+    context = {
+        'form': PaymentForm,
+        'form_index': form_index,
+    }
+    return render(request, template_name, context)
+
+
+@require_http_methods(["POST"])
+def purchase_apply_order_hx(request):
+    """Import lines from an order reference and return appended rows + trigger recalc."""
+    organization = request.user.get_active_organization()
+    order_ref = (
+        request.POST.get('order_reference') or
+        request.POST.get('order_ref') or
+        request.POST.get('purchase_order') or
+        request.GET.get('order_reference') or
+        request.GET.get('purchase_order')
+    )
+    form_count = request.POST.get('form_count') or request.GET.get('form_count') or '0'
+    try:
+        start_index = int(form_count)
+    except Exception:
+        start_index = 0
+
+    imported = []
+    if order_ref:
+        from accounting.services.order_import_service import import_purchase_order_lines
+        imported = import_purchase_order_lines(organization, order_ref)
+
+    forms = []
+    for idx, item in enumerate(imported):
+        fi = start_index + idx
+        form = VoucherFormFactory.create_blank_line_form(organization=organization, form_index=fi)
+        # Populate initial values expected by line form
+        form.initial.update({
+            'quantity': item.get('quantity', 0),
+            'rate': item.get('unit_cost', 0),
+            'unit': item.get('unit'),
+            'godown': item.get('godown'),
+            'po_reference': item.get('po_line_id') or item.get('po_reference'),
+        })
+        forms.append({'form': form, 'form_index': fi})
+
+    context = {'import_forms': forms}
+    # Return partial with rows and an auto-triggered recalc loader
+    return render(request, 'accounting/partials/_purchase_import_rows_and_recalc.html', context)
+
+
+@require_http_methods(["POST"])
+def purchase_remove_payment_hx(request):
+    """Handle payment removal and re-render the payments table partial."""
+    # Bind posted payment formset and re-render
+    from django import forms
+    variant = request.POST.get('variant') or request.GET.get('variant') or 'default'
+
+    if variant == 'enhanced' or any(key.endswith('-payment_method') for key in request.POST.keys()):
+        class PaymentForm(forms.Form):
+            payment_method = forms.CharField(required=False)
+            cash_bank_id = forms.CharField(required=False)
+            due_date = forms.DateField(required=False)
+            amount = forms.DecimalField(required=False, max_digits=19, decimal_places=4)
+            remarks = forms.CharField(required=False)
+            DELETE = forms.BooleanField(required=False)
+        template_name = 'accounting/purchase/_payments_table_new.html'
+    else:
+        class PaymentForm(forms.Form):
+            payment_ledger = forms.CharField(required=False)
+            amount = forms.DecimalField(required=False, max_digits=19, decimal_places=4)
+            note = forms.CharField(required=False)
+            DELETE = forms.BooleanField(required=False)
+        template_name = 'accounting/partials/_purchase_payments_table.html'
+
+    PaymentFormSet = forms.formset_factory(PaymentForm, can_delete=True)
+    payment_formset = PaymentFormSet(data=request.POST, prefix='payments')
+
+    context = {'payment_formset': payment_formset}
+    return render(request, template_name, context)
+
+
+@require_http_methods(["POST"])
+def purchase_payment_recalc_hx(request):
+    """Recalculate remaining balance given header+lines+payments; return payments + remaining partials."""
+    organization = request.user.get_active_organization()
+    from django import forms
+    from decimal import Decimal
+
+    # Re-use existing line calculator to obtain grand total
+    header_form = VoucherFormFactory.get_journal_form(organization=organization, data=request.POST)
+    line_formset = VoucherFormFactory.get_journal_line_formset(organization=organization, data=request.POST)
+
+    # Build lines for calculator (same logic as purchase_recalc_hx)
+    lines = []
+    for form in line_formset.forms:
+        data = form.cleaned_data if getattr(form, 'cleaned_data', None) else form.initial or {}
+        if data.get('DELETE'):
+            continue
+        lines.append({
+            'qty': data.get('qty') or data.get('quantity') or 0,
+            'rate': data.get('rate') or 0,
+            'vat_applicable': data.get('vat') in (True, 'Yes', 'yes', 'Y', 'y') or data.get('vat_applicable') in (True, 'Yes'),
+            'row_discount_value': data.get('discount') or 0,
+            'row_discount_type': data.get('discount_type') or 'amount',
+        })
+
+    header_data = header_form.cleaned_data if header_form.is_valid() else {}
+    header_discount_value = (
+        header_data.get('header_discount_value')
+        or header_data.get('discount_value')
+        or header_data.get('discount')
+        or 0
+    )
+    header_discount_type = (
+        header_data.get('header_discount_type')
+        or header_data.get('discount_type')
+        or 'amount'
+    )
+    bill_rounding = header_data.get('bill_rounding') or 0
+
+    calc = PurchaseCalculator(
+        lines=lines,
+        header_discount_value=header_discount_value,
+        header_discount_type=header_discount_type,
+        bill_rounding=bill_rounding,
+    )
+    result = calc.compute()
+    grand_total = result['totals'].get('grand_total') or Decimal('0')
+
+    # Bind payments
+    if any(key.endswith('-payment_method') for key in request.POST.keys()):
+        class PaymentForm(forms.Form):
+            payment_method = forms.CharField(required=False)
+            cash_bank_id = forms.CharField(required=False)
+            due_date = forms.DateField(required=False)
+            amount = forms.DecimalField(required=False, max_digits=19, decimal_places=4)
+            remarks = forms.CharField(required=False)
+            DELETE = forms.BooleanField(required=False)
+    else:
+        class PaymentForm(forms.Form):
+            payment_ledger = forms.CharField(required=False)
+            amount = forms.DecimalField(required=False, max_digits=19, decimal_places=4)
+            note = forms.CharField(required=False)
+            DELETE = forms.BooleanField(required=False)
+
+    PaymentFormSet = forms.formset_factory(PaymentForm, can_delete=True)
+    payment_formset = PaymentFormSet(data=request.POST, prefix='payments')
+
+    payment_sum = Decimal('0')
+    if payment_formset.is_valid():
+        for f in payment_formset.forms:
+            if f.cleaned_data.get('DELETE'):
+                continue
+            amt = f.cleaned_data.get('amount') or 0
+            payment_sum += Decimal(str(amt))
+    else:
+        # Fallback: try to read raw POST values
+        idx = 0
+        while True:
+            key = f'payments-{idx}-amount'
+            if key not in request.POST:
+                break
+            raw = request.POST.get(key) or '0'
+            try:
+                payment_sum += Decimal(raw)
+            except Exception:
+                pass
+            idx += 1
+
+    remaining = grand_total - payment_sum
+
+    context = {
+        'payment_formset': payment_formset,
+        'remaining': remaining,
+        'totals': result['totals'],
+    }
+    # Return combined payments table and remaining balance partials (wrapper partial)
+    return render(request, 'accounting/partials/_purchase_payments_region.html', context)
+
+
+@require_http_methods(["GET"])
+def purchase_supplier_summary_hx(request):
+    """Return supplier summary panel when supplier changes. Respects organization scope."""
+    organization = request.user.get_active_organization()
+    vendor_id = request.GET.get('vendor') or request.GET.get('supplier')
+    vendor = None
+    if vendor_id:
+        try:
+            vendor = Vendor.objects.get(pk=vendor_id, organization=organization)
+        except Vendor.DoesNotExist:
+            vendor = None
+
+    # Use aging service to compute outstanding if vendor present
+    balance = None
+    outstanding = None
+    last_invoice = None
+    credit_limit = None
+    if vendor:
+        from accounting.services.ap_aging_service import APAgingService
+        aging = APAgingService(organization)
+        rows = aging.build()
+        # find row for vendor
+        vendor_row = next((r for r in rows if r.vendor_id == vendor.vendor_id), None)
+        outstanding = vendor_row.total if vendor_row else 0
+        # current balance: positive outstanding means vendor is owed (Dr)
+        balance = outstanding
+        last_invoice = (
+            PurchaseInvoice.objects.filter(organization=organization, vendor=vendor).order_by('-invoice_date').first()
+        )
+        credit_limit = vendor.credit_limit
+
+    context = {
+        'vendor': vendor,
+        'balance': balance,
+        'outstanding': outstanding,
+        'last_invoice': last_invoice,
+        'credit_limit': credit_limit,
+    }
+    return render(request, 'accounting/partials/_supplier_summary_panel.html', context)
 from decimal import Decimal
 
 from django import forms
@@ -175,10 +789,301 @@ def vendor_bill_create_deprecated(request):
     from django.contrib import messages
     from django.shortcuts import redirect
     from django.urls import reverse
-    
+
     messages.info(
         request,
         "Vendor Bill Entry has been moved to the Purchasing module for better workflow integration. "
         "Redirecting to Purchase Invoice form..."
     )
     return redirect(reverse("purchasing:invoice-create"))
+
+
+# New HTMX endpoints that call the implemented services
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib import messages
+from accounting.services.vendor_service import VendorService
+from inventory.services import ProductService
+from accounting.services.pricing_service import PricingService
+from accounting.services.agent_service import AgentService
+from accounting.services.validation_service import ValidationService
+from accounting.services.notification_service import NotificationService
+from accounting.services.document_sequence_service import DocumentSequenceService
+from accounting.services.chart_of_account_service import ChartOfAccountService
+from purchasing.services.purchase_order_service import PurchaseOrderQueryService
+from accounting.services.payment_term_service import PaymentTermService
+from inventory.services.inventory_service import WarehouseService
+from inventory.models import Unit
+import json
+
+
+@require_http_methods(["GET"])
+def search_products_hx(request):
+    """HTMX endpoint for product search with autocomplete."""
+    organization = request.user.get_active_organization()
+    query = request.GET.get('q', '').strip()
+    form_index = request.GET.get('form_index', '0')
+
+    if len(query) < 2:
+        return render(request, 'accounting/partials/_product_search_results.html', {'results': []})
+
+    try:
+        from inventory.models import Product
+        products = Product.objects.filter(organization=organization)
+
+        # Don't filter by is_active since Product model doesn't have this field
+        # if hasattr(Product, 'is_active'):
+        #     products = products.filter(is_active=True)
+
+        if query:
+            products = (
+                products.filter(code__icontains=query)
+                | products.filter(name__icontains=query)
+                | products.filter(barcode__icontains=query)
+            )
+
+        products = products.order_by('code')[:10]
+
+        results = []
+        for product in products:
+            unit_name = product.base_unit.name if product.base_unit else 'Nos'
+            results.append({
+                'id': product.id,
+                'text': f"{product.code} - {product.name}",
+                'code': product.code or '',
+                'name': product.name,
+                'unit': unit_name,
+                'hs_code': product.hs_code or '',
+            })
+
+        return render(request, 'accounting/partials/_product_search_results.html', {
+            'results': results,
+            'form_index': form_index
+        })
+
+    except Exception as e:
+        return render(request, 'accounting/partials/_product_search_results.html', {'results': []})
+
+
+@require_http_methods(["GET"])
+def get_fiscal_year_hx(request):
+    """Get current fiscal year for the organization."""
+    organization = request.user.get_active_organization()
+    # TODO: Implement proper fiscal year service
+    return JsonResponse({'fiscal_year': '82/83'})
+
+
+def purchase_invoice_form(request):
+    """Render the main purchase invoice form"""
+    organization = request.user.get_active_organization()
+    context = {
+        'voucher_prefix': 'PB',
+        'fiscal_year': '82/83',  # Get from FiscalYearService
+        'suppliers': VendorService.get_vendors_for_dropdown(organization),
+        'purchase_accounts': ChartOfAccountService.get_purchase_accounts_for_dropdown(organization),
+        'agents': AgentService.get_agents_for_dropdown(organization),
+        'areas': AgentService.get_areas_for_dropdown(organization),
+        'orders': PurchaseOrderQueryService.get_pending_orders_for_dropdown(organization),
+        'terms': PaymentTermService.get_payment_terms_for_dropdown(organization),
+        'godowns': WarehouseService.get_warehouses_for_dropdown(organization),
+        'payment_ledgers': ChartOfAccountService.get_payment_ledgers_for_dropdown(organization),
+        'items': ProductService.get_products_for_dropdown(organization),
+        'units': [{'code': u.code, 'name': u.name} for u in Unit.objects.filter(organization=organization, is_active=True)],
+    }
+    return render(request, 'accounting/purchaseinvoice_mockup.html', context)
+
+
+def load_vendor_details(request, vendor_id):
+    """Load vendor details via HTMX"""
+    if request.method == 'POST':
+        vendor_id = request.POST.get('party_ledger_id')
+    
+    try:
+        organization = request.user.get_active_organization()
+        details = VendorService.get_vendor_details(organization, vendor_id)
+        agent_info = AgentService.auto_select_agent_for_vendor(organization, vendor_id)
+
+        return JsonResponse({
+            'success': True,
+            'supplier_info': f"Balance: NPR {details['balance']:.2f} | PAN: {details['pan']} | Credit Limit: NPR {details['credit_limit']:.2f}",
+            'agent_id': agent_info['agent_id'],
+            'area_id': agent_info['area_id'],
+            'due_days': 30,  # From vendor payment terms
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+def load_product_details(request, product_id):
+    """Load product details for line item"""
+    if request.method == 'POST':
+        product_id = request.POST.get('item_id')
+    
+    try:
+        organization = request.user.get_active_organization()
+        product = ProductService.get_product_details(organization, product_id)
+        vendor_id = request.POST.get('party_ledger_id') or request.GET.get('vendor_id')
+
+        pricing = {'standard_price': product.get('standard_price', 0)}
+        if vendor_id:
+            pricing = PricingService.get_pricing_for_party(organization, product_id, int(vendor_id))
+
+        rate = pricing.get('party_price', pricing.get('standard_price', 0))
+
+        return JsonResponse({
+            'success': True,
+            'code': product.get('code') or '',
+            'hs_code': product['hs_code'],
+            'description': product['description'],
+            'unit': product['unit'],
+            'vat_applicable': product['vat_applicable'],
+            'vat_rate': product.get('vat_rate', 0),
+            'rate': rate,
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@require_POST
+def calculate_invoice_totals(request):
+    """Calculate and return invoice totals"""
+    try:
+        organization = request.user.get_active_organization()
+        
+        # Parse line items from form data
+        line_items = []
+        item_count = 0
+        
+        # Parse form data to extract line items
+        for key, value in request.POST.items():
+            if key.startswith('lines-') and key.endswith('-item_id'):
+                # This is a line item
+                index = key.split('-')[1]
+                line_item = {
+                    'item_id': request.POST.get(f'lines-{index}-item_id'),
+                    'quantity': request.POST.get(f'lines-{index}-qty', 0),
+                    'rate': request.POST.get(f'lines-{index}-rate', 0),
+                    'discount': request.POST.get(f'lines-{index}-discount_value', 0),
+                    'vat_rate': 13.0 if request.POST.get(f'lines-{index}-vat_applicable') == 'yes' else 0.0,
+                }
+                line_items.append(line_item)
+
+        header_discount = {
+            'value': request.POST.get('hdr_discount_value', 0),
+            'type': request.POST.get('hdr_discount_type', 'amount')
+        }
+
+        # Import the purchase invoice service
+        from accounting.services.purchase_invoice_service import PurchaseInvoiceService
+
+        totals = PurchaseInvoiceService.calculate_totals(organization, line_items, header_discount)
+
+        return JsonResponse({
+            'success': True,
+            'totals': totals,
+            'in_words': PurchaseInvoiceService.amount_to_words(totals['grand_total']),
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@require_POST
+def save_purchase_invoice(request):
+    """Save the purchase invoice"""
+    try:
+        organization = request.user.get_active_organization()
+        
+        # Parse form data into invoice structure
+        data = {
+            'voucher_prefix': request.POST.get('voucher_prefix'),
+            'voucher_no': request.POST.get('voucher_no'),
+            'fiscal_year': request.POST.get('fiscal_year'),
+            'vendor_id': request.POST.get('party_ledger_id'),
+            'date_bs': request.POST.get('date_bs'),
+            'date_ad': request.POST.get('date_ad'),
+            'reference_no': request.POST.get('party_invoice_no'),
+            'purchase_account': request.POST.get('purchase_account_ledger_id'),
+            'payment_mode': request.POST.get('payment_mode'),
+            'agent_id': request.POST.get('agent_id'),
+            'area_id': request.POST.get('agent_area_id'),
+            'due_days': request.POST.get('due_days'),
+            'order_reference': request.POST.get('order_reference_id'),
+            'narration': request.POST.get('narration'),
+            'line_items': [],
+            'header_discount': {
+                'value': request.POST.get('hdr_discount_value', 0),
+                'type': request.POST.get('hdr_discount_type', 'amount')
+            },
+            'bill_rounding': request.POST.get('bill_rounding', 0),
+        }
+        
+        # Parse line items
+        item_ids = [key for key in request.POST.keys() if key.endswith('-item_id') and key.startswith('lines-')]
+        for item_key in item_ids:
+            index = item_key.split('-')[1]
+            line_item = {
+                'item_id': request.POST.get(f'lines-{index}-item_id'),
+                'hs_code': request.POST.get(f'lines-{index}-hs_code'),
+                'description': request.POST.get(f'lines-{index}-description'),
+                'quantity': request.POST.get(f'lines-{index}-qty', 0),
+                'unit': request.POST.get(f'lines-{index}-unit_id'),
+                'godown': request.POST.get(f'lines-{index}-godown_id'),
+                'rate': request.POST.get(f'lines-{index}-rate', 0),
+                'vat_applicable': request.POST.get(f'lines-{index}-vat_applicable') == 'yes',
+                'discount_type': request.POST.get(f'lines-{index}-discount_type', 'none'),
+                'discount_value': request.POST.get(f'lines-{index}-discount_value', 0),
+            }
+            data['line_items'].append(line_item)
+
+        # Import the purchase invoice service
+        from accounting.services.purchase_invoice_service import PurchaseInvoiceService
+
+        # Validate data
+        errors = ValidationService.validate_purchase_invoice_data(organization, data)
+        if errors:
+            return JsonResponse({'success': False, 'errors': errors})
+
+        # Create invoice
+        invoice = PurchaseInvoiceService.create_invoice(organization, data, request.user)
+
+        # Send notifications if needed
+        if invoice.amount > 100000:  # High value threshold
+            NotificationService.send_approval_notification(
+                invoice.id, invoice.get_approvers(), 'purchase_invoice'
+            )
+
+        return JsonResponse({
+            'success': True,
+            'invoice_id': invoice.id,
+            'message': 'Invoice saved successfully'
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+def apply_purchase_order(request, order_id):
+    """Apply purchase order lines to invoice"""
+    if request.method == 'POST':
+        order_id = request.POST.get('order_reference_id')
+    
+    try:
+        organization = request.user.get_active_organization()
+
+        # Import the purchase invoice service (we'll need to create this)
+        from accounting.services.purchase_invoice_service import PurchaseInvoiceService
+
+        order_lines = PurchaseInvoiceService.get_order_lines_for_invoice(organization, order_id)
+        return JsonResponse({'success': True, 'lines': order_lines})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+def get_next_voucher_number(request):
+    """Get next voucher number"""
+    try:
+        organization = request.user.get_active_organization()
+        next_no = DocumentSequenceService.get_next_number(organization, 'purchase_invoice', 'PB')
+        return JsonResponse({'success': True, 'voucher_no': next_no})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

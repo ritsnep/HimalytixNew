@@ -12,6 +12,7 @@ INSTALLED_APPS = [
     'reporting',
     'usermanagement',
     'enterprise',
+    'voucher_config',
 ]
 MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -42,4 +43,5 @@ MIGRATION_MODULES = {
     'usermanagement': None,
     'accounting': None,
     'reporting': None,
+    'voucher_config': None,
 }

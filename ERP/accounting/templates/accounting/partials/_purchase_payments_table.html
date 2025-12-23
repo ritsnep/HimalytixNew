@@ -1,0 +1,29 @@
+<div id="purchase-payments-table">
+    {% if payment_formset %}
+        {{ payment_formset.management_form }}
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>Bank / Cash</th>
+                    <th class="text-end">Amount</th>
+                    <th>Note</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for form in payment_formset.forms %}
+                    {% include 'accounting/partials/_purchase_payment_row.html' with form=form %}
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="text-muted">No payments added.</div>
+    {% endif %}
+
+    <div class="d-flex gap-2 mt-2">
+        <button type="button" class="btn btn-outline-primary btn-sm"
+            hx-get="{% url 'accounting:purchase_add_payment_hx' %}?form_count={{ payment_formset.total_form_count|default:0 }}"
+            hx-target="#purchase-payments-table tbody"
+            hx-swap="beforeend">Add Payment</button>
+    </div>
+</div>

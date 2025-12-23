@@ -1,0 +1,11 @@
+{% if results %}
+  {% for result in results %}
+  <div class="product-search-result p-2 border-bottom cursor-pointer"
+       onclick="selectProduct({{ form_index }}, {{ result.id }}, '{{ result.text|escapejs }}', '{{ result.unit|escapejs }}', '{{ result.hs_code|escapejs }}')">
+    <div class="fw-semibold">{{ result.text }}</div>
+    <small class="text-muted">Unit: {{ result.unit }} | HS: {{ result.hs_code }}</small>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="p-2 text-muted">No products found</div>
+{% endif %}

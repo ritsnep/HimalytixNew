@@ -1,0 +1,29 @@
+{% load generic_voucher_tags %}
+<tr class="generic-line-row" data-line-index="{{ form_index }}" id="line-{{ form_index }}">
+  <td class="text-center">{{ form_index|add:1 }}</td>
+  {% for field in form.visible_fields %}
+    <td>
+      {% with widget_name=field|widget_type %}
+        {% if widget_name == "Select" %}
+          {{ field|add_class:"form-select form-select-sm" }}
+        {% elif widget_name == "CheckboxInput" %}
+          <div class="form-check m-0">{{ field|add_class:"form-check-input" }}</div>
+        {% else %}
+          {{ field|add_class:"form-control form-control-sm" }}
+        {% endif %}
+      {% endwith %}
+      {% if field.errors %}
+        <div class="invalid-feedback d-block">{{ field.errors|join:", " }}</div>
+      {% endif %}
+    </td>
+  {% endfor %}
+  <td class="text-center">
+    <button type="button" class="btn btn-outline-danger btn-sm"
+      hx-post="{% url 'accounting:purchase_remove_line_hx' %}"
+      hx-include="#purchase-invoice-form"
+      hx-vals='{"lines-{{ form_index }}-DELETE":"on"}'
+      hx-target="#purchase-recalc-region"
+      hx-swap="innerHTML">&times;</button>
+    {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+  </td>
+</tr>

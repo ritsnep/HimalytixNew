@@ -2,19 +2,30 @@
 
 This document gathers the key pieces of the configuration-first voucher entry pipeline so anyone can understand how to declare a voucher, render its form, and persist header/line data without hard-coding every document type.
 
-## Core Models
+## Architecture Overview
+
+The voucher entry system has evolved to support two configuration approaches:
+
+1. **Legacy System**: Uses `VoucherModeConfig` and `VoucherConfiguration` in the accounting app
+2. **New Isolated System**: Uses the dedicated `voucher_config` app with its own models and services
+
+The new system provides better isolation, dedicated models, and HTMX-powered UI while maintaining integration with existing accounting workflows.
+
+## Legacy System (Accounting App)
+
+### Core Models
 
 - **VoucherModeConfig** drives the existing UI overrides and remains the source of truth for the generic views (ERP/accounting/models.py:5453). It tracks organization, journal type, layout flags, default ledgers/cost centers, and exposes a `ui_schema` JSON blob (ERP/accounting/models.py:5460 and ERP/accounting/models.py:5490). `resolve_ui()` merges that blob with a header/lines skeleton so views never render empty sections (ERP/accounting/models.py:5497).
 - **VoucherConfiguration** is the new multi-module cousin that stores `module`, `layout_style`, layout toggles (`show_account_balances`, `show_dimensions`, etc.) and default JSON payloads for headers and lines (ERP/accounting/models.py:5555, ERP/accounting/models.py:5582, ERP/accounting/models.py:5589, ERP/accounting/models.py:5598). It also keeps `validation_rules`, `version`, and lifecycle metadata for audits (ERP/accounting/models.py:5602 and ERP/accounting/models.py:5607). Calling `resolve_ui()` (ERP/accounting/models.py:5627) or its alias `resolve_ui_schema()` (ERP/accounting/models.py:5633) guarantees the standard {"header": {...}, "lines": {...}} structure.
 - **TransactionTypeConfig** sits beside the voucher configurations and governs numbering, prefixes, and suffix templates for every document type to keep sequenced numbering consistent across modules (ERP/accounting/models.py:5674).
 
-## UI Schema Structure
+### UI Schema Structure
 
 - A configuration stores `ui_schema` with explicit `sections`, `header`, and `lines` dictionaries whose `fields` entries declare `order_no`, `widget` type, lookups, defaults, read-only flags, and validation hints. The standard set of 17 vouchers shown in `VOUCHER_CONFIGS` (ERP/create_all_voucher_configs.py:29) illustrates how each voucher defines `code`, `name`, `description`, and a fully populated `ui_schema`. Field payloads like `voucher_date`, `customer`, and `status` follow that file, demonstrating autofocus, widget type, and default `status="draft"` handling (ERP/create_all_voucher_configs.py:31).
 - The shared `resolve_ui()` helpers pad missing sections (`header`/`lines`) so forms can safely ask for `ui_schema.get('header', [])` or `ui_schema.get('lines', [])` without having to guard against `None` (ERP/accounting/models.py:5497 and ERP/accounting/models.py:5627).
 - Default header values live in `default_header`, and reusable line templates can be supplied via `default_lines` so formsets render with starter rows when no POST data is present (ERP/accounting/models.py:5598 and ERP/accounting/models.py:5599). These defaults let voucher entries pre-fill `default_currency`, `status`, or other static fields without touching templates.
 
-## Form Generation Pipeline
+### Form Generation Pipeline
 
 - `VoucherFormFactory.get_generic_voucher_form()` takes a `VoucherConfiguration`, resolves the header schema, and hands it off to `build_form`, passing the target model determined by `_get_model_for_voucher_config()` (ERP/accounting/forms/form_factory.py:177 and ERP/accounting/forms/form_factory.py:279). The factory includes organization context, prefixes, and any instance/data/files bindings, and it quietly falls back when `VoucherModeConfig` lacks a `module` attribute by defaulting to 'accounting' (ERP/accounting/forms/form_factory.py:205 and ERP/accounting/forms/form_factory.py:286).
 - `get_generic_voucher_formset()` mirrors that process for line models and adds default lines when present (ERP/accounting/forms/form_factory.py:226 and ERP/accounting/forms/form_factory.py:268). `_get_line_model_for_voucher_config()` contains the module-specific logic that maps `/sales/`, `/purchasing/`, or `/inventory/` vouchers to their respective line models, with fallbacks such as using `JournalLine` when no module-specific table exists (ERP/accounting/forms/form_factory.py:324).
@@ -22,21 +33,88 @@ This document gathers the key pieces of the configuration-first voucher entry pi
 - `LazyVoucherForms` caches `VoucherModeConfig`-based forms for quick lookup (`VOUCHER_FORMS`), which lets legacy code fetch a form class without rebuilding it on every request (ERP/accounting/forms_factory.py:832).
 - The helper `get_voucher_ui_header()` pulls the header portion of the active config (by journal type or the `is_default` flag) for classical journal form generation (ERP/accounting/forms/form_factory.py:382).
 
-## Runtime Views
+### Runtime Views
 
 - `GenericVoucherCreateView` (ERP/accounting/views/generic_voucher_views.py:29) drives the `accounting/generic_dynamic_voucher_entry.html` template. On GET it resolves the active `VoucherModeConfig` (ERP/accounting/views/generic_voucher_views.py:47), builds the header form (ERP/accounting/views/generic_voucher_views.py:52) and line formset (ERP/accounting/views/generic_voucher_views.py:59), applies `default_lines` (ERP/accounting/views/generic_voucher_views.py:63), and sets the section title based on voucher metadata (ERP/accounting/views/generic_voucher_views.py:71). The view logs debug data and renders the forms with `config` in context.
 - On POST the same factory rehydrates the forms with `request.POST`/`request.FILES` (ERP/accounting/views/generic_voucher_views.py:96). Inside `transaction.atomic()` it links the header to the organization (ERP/accounting/views/generic_voucher_views.py:136), applies the journal type/period defaults (ERP/accounting/views/generic_voucher_views.py:140 and ERP/accounting/views/generic_voucher_views.py:145), populates audit fields (ERP/accounting/views/generic_voucher_views.py:152), saves the header, and loops over each validated line to set the FK and line number before saving (ERP/accounting/views/generic_voucher_views.py:199 and ERP/accounting/views/generic_voucher_views.py:211). Afterward it writes an `AuditLog` record so every creation is traceable (ERP/accounting/views/generic_voucher_views.py:226).
 - `GenericVoucherLineView` (ERP/accounting/views/generic_voucher_views.py:301) is the HTMX endpoint used for "add another line" buttons. It accepts `voucher_code`, resolves the config (ERP/accounting/views/generic_voucher_views.py:306), builds a line form via `build_form()` (ERP/accounting/views/generic_voucher_views.py:327), and renders `accounting/partials/generic_dynamic_voucher_line_row.html` (ERP/accounting/views/generic_voucher_views.py:334).
 - `VoucherTypeSelectionView` (ERP/accounting/views/generic_voucher_views.py:341) surfaces every active `VoucherModeConfig` so users can pick a voucher type. It loads configs (ERP/accounting/views/generic_voucher_views.py:352), groups them by journal type (ERP/accounting/views/generic_voucher_views.py:358), and renders `accounting/voucher_type_selection.html` with the selection data (ERP/accounting/views/generic_voucher_views.py:361).
 
-## Supporting Operations
+### Supporting Operations
 
 - The `create_all_voucher_configs.py` script standardizes the configured vouchers by comparing `VOUCHER_CONFIGS` with the database, updating `ui_schema`, and creating any missing configs (ERP/create_all_voucher_configs.py:29). Running this script ensures the 17 core vouchers (e.g., `sales-invoice-vm-si`, `VM08`, and others) always have complete schemas and descriptions as a baseline (ERP/create_all_voucher_configs.py:31).
 - Because the generic entry views still depend on `VoucherModeConfig`, any new voucher type must either reuse that model or be wired through `VoucherConfiguration` while preserving the fields expected by `VoucherFormFactory`. Adding a new `ui_schema` section typically involves defining the field metadata, ensuring the model includes the expected foreign keys, and updating `TransactionTypeConfig` if the numbering should change (ERP/accounting/models.py:5674).
 - Use `VoucherFormFactory.get_voucher_ui_header()` when rendering header-only forms outside the generic views, and rely on the schema helpers to inject runtime defaults (ERP/accounting/forms/form_factory.py:382).
+
+## New Isolated System (voucher_config App)
+
+### Core Models
+
+- **VoucherConfigMaster**: Defines voucher type identity, labels, flags, and schema overrides (voucher_config/models.py). Includes organization, code, label, numbering settings, and UI toggles.
+- **InventoryLineConfig**: Configures line item grid columns and behaviors for inventory vouchers (voucher_config/models.py). Controls display of rate, quantity, batch numbers, etc.
+- **FooterChargeSetup**: Defines footer charges, taxes, and totals calculations (voucher_config/models.py).
+- **VoucherUDFConfig**: Manages user-defined fields for custom voucher extensions (voucher_config/models.py).
+
+### Schema Builder
+
+- `resolve_ui_schema()` method in `VoucherConfigMaster` generates UI schemas by merging base schemas with configuration settings (voucher_config/models.py).
+- Supports dynamic field injection, controlled vocabulary, and validation rules.
+
+### HTMX UI Components
+
+- **Views**: HTMX-powered endpoints for dynamic interactions (voucher_config/views.py)
+  - Voucher selection and creation
+  - Real-time validation and recalculation
+  - Draft saves and posting
+  - Line item management
+- **Templates**: Modular HTMX templates in `voucher_config/templates/` with partial updates
+- **Services**:
+  - `DraftService`: Atomic draft operations (voucher_config/services/draft_service.py)
+  - `PostingOrchestrator`: Integration with accounting posting workflow (voucher_config/services/posting_service.py)
+
+### Integration Points
+
+- Uses existing `VoucherFormFactory` for form generation compatibility
+- Integrates with accounting posting services for GL and inventory updates
+- Shares audit logging and validation frameworks
+- Maintains voucher-to-journal mapping and balancing requirements
+
+### CRUD Operations
+
+- **Create**: Dynamic form generation based on configuration
+- **Read**: Configurable display layouts with conditional sections
+- **Update**: Draft editing with real-time validation
+- **Delete**: Safe removal of unposted vouchers
+
+## Migration Strategy
+
+### Coexistence Period
+- Both systems operate in parallel
+- Legacy system remains default for existing workflows
+- New system available via feature flag
+
+### Gradual Migration
+1. Deploy voucher_config app alongside accounting
+2. Enable for new voucher types
+3. Migrate existing configurations over time
+4. Deprecate legacy VoucherModeConfig usage
+
+### Backward Compatibility
+- Existing APIs and workflows unchanged
+- Form factory supports both configuration types
+- Audit trails maintained across systems
 
 ## Notes & Next Steps
 
 1. Expand `VoucherConfiguration` usage across the UI so future modules no longer rely on `VoucherModeConfig` for the generic entry flow.
 2. Improve `_get_line_model_for_voucher_config()` once each module exposes its dedicated line tables instead of falling back to `JournalLine` (ERP/accounting/forms/form_factory.py:324).
 3. Document any custom validation rules inside `validation_rules` so `VoucherFormFactory` has a clear picture of what extra checks to apply (ERP/accounting/models.py:5602).
+4. Complete migration to voucher_config app for all new voucher types.
+5. Implement configuration UI for admin users to customize voucher schemas.
+6. Add comprehensive testing for HTMX interactions and edge cases.
+
+## UI Components & Widgets
+
+Refer to `voucher_config/UI_GUIDELINES.md` for front-end conventions, reusable HTMX widgets (vendor/customer/item/account lookups), the Advanced toggle pattern, and line-item HTMX endpoints. The guidelines document contains scaffold outlines for purchasing vouchers (PO, GR, PI, LC), a reusability matrix of widgets, and implementation recommendations (mixins, services, JS helpers).
+
+Follow `form_base.html` and `list_base.html` contracts when creating voucher templates and partials so all voucher forms have consistent action bars, keyboard shortcuts and dirty-state handling.

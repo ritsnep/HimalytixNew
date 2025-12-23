@@ -13,7 +13,7 @@ from ..models import (
     RMA, RMALine, TransitWarehouse, Product, Warehouse, Location,
     Batch, InventoryItem, StockLedger
 )
-from .inventory_posting_service import InventoryPostingService
+from accounting.services.inventory_posting_service import InventoryPostingService
 
 
 class PickPackShipService:

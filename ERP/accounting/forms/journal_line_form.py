@@ -170,8 +170,13 @@ class JournalLineForm(BootstrapFormMixin, forms.ModelForm):
             organization: Organization instance for filtering choices
             journal: Optional parent Journal instance
         """
+        # Remove framework-specific kwargs that shouldn't be passed to ModelForm
         self.organization = kwargs.pop('organization', None)
         self.journal = kwargs.pop('journal', None)
+        # Some callers pass through extra context like 'journal_type' or 'prefix'
+        # which ModelForm / BaseModelForm don't accept — pop them to avoid TypeError.
+        kwargs.pop('journal_type', None)
+        kwargs.pop('prefix', None)
 
         super().__init__(*args, **kwargs)
 

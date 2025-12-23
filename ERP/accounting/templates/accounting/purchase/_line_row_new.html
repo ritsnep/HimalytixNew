@@ -1,0 +1,55 @@
+{% load widget_tweaks %}
+<tr class="item-row" data-line-index="{{ form_index }}">
+  <td class="text-center text-muted small" width="30">{{ form_index|add:1 }}</td>
+  <td class="col-particulars">
+    {{ form.product|add_class:"form-select form-select-sm product-select recalc" }}
+  </td>
+  <td class="col-code">
+    {{ form.product_code|add_class:"form-control form-control-sm product-code" }}
+  </td>
+  <td class="col-description">
+    {{ form.description|add_class:"form-control form-control-sm" }}
+  </td>
+  <td class="col-qty">
+    <div class="input-group input-group-sm">
+      {{ form.quantity|add_class:"form-control form-control-sm text-end line-qty recalc" }}
+      {{ form.unit_display|add_class:"form-control form-control-sm unit-display" }}
+    </div>
+  </td>
+  <td class="col-warehouse">
+    {{ form.warehouse|add_class:"form-select form-select-sm recalc" }}
+  </td>
+  <td class="col-rate">
+    {{ form.unit_cost|add_class:"form-control form-control-sm text-end line-rate recalc" }}
+  </td>
+  <td class="col-vat">
+    {{ form.vat_rate|add_class:"form-control form-control-sm text-end line-vat recalc" }}
+  </td>
+  <td class="col-discount">
+    {{ form.discount_amount|add_class:"form-control form-control-sm text-end line-discount recalc" }}
+  </td>
+  <td class="col-net">
+    <input type="text" class="form-control form-control-sm text-end net-rate" readonly value="0.00">
+  </td>
+  <td class="col-total">
+    <input type="text" class="form-control form-control-sm text-end line-total" readonly value="0.00">
+  </td>
+  <td class="text-center" width="40">
+    <button type="button" class="btn btn-sm btn-outline-danger btn-delete-row" title="Remove" data-row-index="{{ form_index }}">
+      <i class="bi bi-x-lg"></i>
+    </button>
+    <div class="d-none">
+      {{ form.account }}
+      {{ form.tax_code }}
+      {{ form.tax_amount }}
+      {{ form.cost_center }}
+      {{ form.department }}
+      {{ form.project }}
+      {{ form.dimension_value }}
+      {{ form.po_reference }}
+      {{ form.receipt_reference }}
+      {% if form.DELETE %}{{ form.DELETE }}{% endif %}
+      {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+    </div>
+  </td>
+</tr>

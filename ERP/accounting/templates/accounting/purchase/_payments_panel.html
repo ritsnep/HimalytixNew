@@ -1,0 +1,43 @@
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-light border-0">
+    <h6 class="mb-0">Payment Schedule</h6>
+  </div>
+  <div class="card-body">
+
+    {% if form.payments.non_form_errors %}
+      <div class="alert alert-danger mb-3">
+        {{ form.payments.non_form_errors }}
+      </div>
+    {% endif %}
+
+    <div class="table-responsive">
+      <table class="table table-sm table-hover">
+        <thead class="table-light">
+          <tr>
+            <th class="text-muted small">Payment Type</th>
+            <th class="text-muted small">Due Date</th>
+            <th class="text-muted small text-end">Amount</th>
+            <th class="text-muted small" width="40"></th>
+          </tr>
+        </thead>
+        <tbody id="payments-tbody">
+          {% for payment_form in form.payments %}
+            {% include "purchase/_payment_row.html" with form=payment_form forloop=forloop %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center">
+      <small class="text-muted">Remaining Balance: <strong class="money">{{ totals.remaining_balance|default:'0.00' }}</strong></small>
+      <button type="button" class="btn btn-sm btn-outline-primary"
+              hx-post="{% url 'purchasing:purchase_payment_add' %}"
+              hx-include="#purchase-form"
+              hx-target="#payments-tbody"
+              hx-swap="beforeend">
+        <i class="bi bi-plus-circle"></i> Add Payment
+      </button>
+    </div>
+
+  </div>
+</div>

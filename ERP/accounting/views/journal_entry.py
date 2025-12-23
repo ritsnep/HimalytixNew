@@ -235,8 +235,26 @@ def journal_product_lookup(request):
     qs = _org_filter(qs, request)
     if q:
         qs = qs.filter(Q(code__icontains=q) | Q(name__icontains=q) | Q(description__icontains=q))
-    data = _lookup_payload(qs.order_by('code'), {'code': 'code', 'name': 'name'})
-    return JsonResponse({'results': data})
+    
+    results = []
+    for p in qs.order_by('code')[:10]:  # limit to 10
+        pid = getattr(p, 'pk', None)
+        unit = getattr(p, 'base_unit', None)
+        unit_id = getattr(unit, 'id', None) if unit else None
+        unit_code = getattr(unit, 'code', '') if unit else ''
+        unit_name = getattr(unit, 'name', '') if unit else ''
+        
+        results.append({
+            'id': pid,
+            'text': f"{p.code} - {p.name}",
+            'code': p.code,
+            'name': p.name,
+            'unit_id': unit_id,
+            'unit_code': unit_code,
+            'unit_name': unit_name,
+        })
+    
+    return JsonResponse({'results': results})
 
 
 @login_required

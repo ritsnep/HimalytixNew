@@ -1,0 +1,221 @@
+{% extends "partials/base.html" %}
+{% load generic_voucher_tags %}
+{% block title %}New Purchase Invoice{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'accounting/css/voucher_entry.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="page-content py-4">
+  <main>
+    <div class="container-fluid mt-3">
+      <form id="purchase-invoice-form" method="post" enctype="multipart/form-data" hx-post="." hx-target="#purchase-invoice-panel" hx-swap="innerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="config_id" value="{{ config.pk }}">
+
+    <div id="purchase-invoice-panel">
+      <div class="card mb-3">
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12 col-md-3">
+              <label class="form-label">Prefix / No / FY</label>
+              {{ header_form.prefix|default_if_none:''|add_class:"form-control form-control-sm" }}
+            </div>
+
+            <div class="col-12 col-md-3">
+              <label class="form-label">Supplier</label>
+              {% comment %} Expect header field name 'supplier' or similar in schema {% endcomment %}
+              {% if header_form.supplier %}
+                {% url 'accounting:purchase_supplier_summary_hx' as supplier_summary_url %}
+                {{ header_form.supplier.as_widget(attrs={"id":"id_supplier","hx-get":supplier_summary_url,"hx-trigger":"change","hx-target":"#supplier-summary-panel","hx-swap":"innerHTML","class":"form-select form-select-sm"}) }}
+              {% else %}
+                <input class="form-control form-control-sm" disabled placeholder="Supplier Name">
+              {% endif %}
+            </div>
+
+            <div class="col-12 col-md-3">
+              <label class="form-label">Party Invoice No</label>
+              {% if header_form.party_reference %}
+                {{ header_form.party_reference|add_class:"form-control form-control-sm" }}
+              {% else %}
+                <input class="form-control form-control-sm" name="party_reference" placeholder="Reference / Party Invoice Number">
+              {% endif %}
+            </div>
+
+            <div class="col-12 col-md-3">
+              <label class="form-label">Due Days</label>
+              {% if header_form.credit_days %}
+                {{ header_form.credit_days|add_class:"form-control form-control-sm" }}
+              {% else %}
+                <input class="form-control form-control-sm" name="credit_days" value="0">
+              {% endif %}
+            </div>
+
+            <div class="col-12 col-md-3">
+              <label class="form-label">Date (BS)</label>
+              {% if header_form.date_bs %}
+                {{ header_form.date_bs|add_class:"form-control form-control-sm" }}
+              {% elif header_form.journal_date %}
+                {{ header_form.journal_date|add_class:"form-control form-control-sm" }}
+              {% else %}
+                <input class="form-control form-control-sm" name="date_bs" placeholder="YYYY-MM-DD">
+              {% endif %}
+            </div>
+
+            <div class="col-12 col-md-3">
+              <label class="form-label">Date (AD)</label>
+              {% if header_form.date_ad %}
+                {{ header_form.date_ad|add_class:"form-control form-control-sm" }}
+              {% endif %}
+            </div>
+
+            <div class="col-12 col-md-3">
+              <label class="form-label">Purchase Account</label>
+              {% if header_form.purchase_account %}
+                {{ header_form.purchase_account|add_class:"form-select form-select-sm" }}
+              {% else %}
+                <select class="form-select form-select-sm"><option>- Purchase Account -</option></select>
+              {% endif %}
+            </div>
+
+            <div class="col-12 col-md-3">
+              <label class="form-label">Payment Mode</label>
+              {% if header_form.payment_mode %}
+                {{ header_form.payment_mode|add_class:"form-select form-select-sm" }}
+              {% else %}
+                <select class="form-select form-select-sm"><option>Cash</option></select>
+              {% endif %}
+            </div>
+
+            <div class="col-12 col-md-3">
+              <label class="form-label">Order Reference</label>
+              {% if header_form.order_reference %}
+                <div class="d-flex gap-1">
+                  {{ header_form.order_reference|add_class:"form-select form-select-sm" }}
+                  <button type="button" class="btn btn-sm btn-outline-primary" 
+                    hx-post="{% url 'accounting:purchase_apply_order_hx' %}"
+                    hx-include="#purchase-invoice-form"
+                    hx-target="#purchase-lines tbody"
+                    hx-swap="beforeend">Apply</button>
+                </div>
+              {% else %}
+                <input class="form-control form-control-sm" name="order_reference">
+              {% endif %}
+            </div>
+
+            <div class="col-12 col-md-3">
+              <label class="form-label">Agent Name / Area</label>
+              <div class="d-flex gap-1">
+                {% if header_form.agent_name %}
+                  {{ header_form.agent_name|add_class:"form-control form-control-sm" }}
+                {% else %}
+                  <input class="form-control form-control-sm" name="agent_name" placeholder="Agent Name">
+                {% endif %}
+                {% if header_form.agent_area %}
+                  {{ header_form.agent_area|add_class:"form-control form-control-sm" }}
+                {% endif %}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Supplier info / summary panel -->
+      <div class="card mb-3">
+        <div class="card-body" id="supplier-summary-area">
+          <div id="supplier-summary-panel">
+            <div class="alert alert-info mb-0">Please select Supplier Name to view balance and details.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lines + Totals region (HTMX targets) -->
+      <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <strong>Items</strong>
+          <div class="btn-group">
+            <button type="button" class="btn btn-sm btn-outline-primary" id="add-line-btn"
+              hx-get="{% url 'accounting:purchase_add_line_hx' %}?form_count={{ line_formset.total_form_count }}"
+              hx-swap="beforeend" hx-target="#purchase-lines tbody">Add</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="add-ten">+10</button>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <div id="purchase-recalc-region" hx-post="{% url 'accounting:purchase_recalc_hx' %}" hx-trigger="change, keyup delay:300ms from:#purchase-invoice-form" hx-include="#purchase-invoice-form" hx-target="#purchase-recalc-region" hx-swap="innerHTML">
+            {% include 'accounting/partials/_purchase_recalc_region.html' %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Totals placeholder -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <div class="row">
+            <div class="col-12 col-md-6">
+              <p class="mb-1">In Words:</p>
+              <p class="text-muted">Zero rupees only.</p>
+            </div>
+            <div class="col-12 col-md-6 text-end">
+              <p>Sub Total: <strong>0.00</strong></p>
+              <p>Vatable Amount: <strong>0.00</strong></p>
+              <p>Taxable Amount: <strong>0.00</strong></p>
+              <p class="h5">Grand Total: <strong>0.00</strong></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Terms & Payment panels -->
+      <div class="row g-3">
+        <div class="col-12 col-md-6">
+          <div class="card mb-3">
+            <div class="card-header">Terms & Conditions</div>
+            <div class="card-body">
+              {% if header_form.terms %}
+                {{ header_form.terms|add_class:"form-select form-select-sm" }}
+              {% else %}
+                <select class="form-select form-select-sm"><option>Select T&C</option></select>
+              {% endif %}
+              <p class="small text-muted mt-2">Products once sold are not refundable</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-md-6">
+          <div class="card mb-3">
+              <div class="card-header">Add Payment</div>
+              <div class="card-body">
+                <div id="purchase-payments-area" hx-post="{% url 'accounting:purchase_payment_recalc_hx' %}" hx-trigger="change, keyup delay:300ms from:#purchase-invoice-form" hx-include="#purchase-invoice-form" hx-target="#purchase-payments-area" hx-swap="innerHTML">
+                  {% include 'accounting/partials/_purchase_payments_region.html' %}
+                </div>
+              </div>
+            </div>
+        </div>
+      </div>
+
+      <!-- Narration and actions -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <div class="mb-3">
+            {% if header_form.narration %}
+              {{ header_form.narration|add_class:"form-control gv-desc" }}
+            {% else %}
+              <textarea class="form-control gv-desc" rows="3" name="narration"></textarea>
+            {% endif %}
+          </div>
+
+          <div class="d-flex justify-content-end gap-2">
+            <a href="{{ cancel_url }}" class="btn btn-outline-secondary">Cancel Transaction</a>
+            <button type="submit" class="btn btn-primary">Save Transaction</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </form>
+  </main>
+</div>
+{% endblock %}

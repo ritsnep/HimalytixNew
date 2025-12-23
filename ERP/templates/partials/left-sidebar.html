@@ -182,6 +182,13 @@
                             </a>
                         </li>
                         {% endif %}
+                        {% if user|has_permission:'accounting_agent_view' %}
+                        <li>
+                            <a href="{% url 'accounting:agent_list' %}">
+                                <span>Agents</span>
+                            </a>
+                        </li>
+                        {% endif %}
                         <!-- Journal Entry -->
                         <li>
                             <a href="{% url 'accounting:journal_entry' %}">

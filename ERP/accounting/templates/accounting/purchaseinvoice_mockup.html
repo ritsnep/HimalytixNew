@@ -1,0 +1,1192 @@
+<!doctype html>
+{% load static %}
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>New Purchase Invoice (Mockup)</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons (optional) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <!-- HTMX -->
+  <script src="{% static 'libs/htmx.org/dist/htmx.min.js' %}"></script>
+
+  <style>
+    .page-subtitle { font-size:.8125rem; color:#6c757d; }
+    .card-compact .form-label { font-size:.75rem; color:#6c757d; margin-bottom:.25rem; }
+    .card-compact .form-control, .card-compact .form-select { font-size:.875rem; }
+    .chip-bar .btn { border-radius:999px; padding:.25rem .6rem; font-size:.8rem; }
+    .table thead th { font-size:.75rem; color:#6c757d; text-transform:uppercase; letter-spacing:.02em; }
+    .table td { vertical-align:middle; }
+    .money { font-variant-numeric: tabular-nums; }
+    .totals-row { display:flex; justify-content:space-between; gap:1rem; padding:.35rem 0; }
+    .totals-row .label { color:#6c757d; font-size:.85rem; }
+    .totals-row .value { font-weight:600; }
+    .totals-row.hr { border-top:1px dashed rgba(0,0,0,.15); margin:.4rem 0; padding-top:.6rem; }
+    .grand { font-size:1.05rem; }
+    .readonly { background:#f8f9fa; }
+    .sticky-actions { position:sticky; bottom:0; z-index:5; background:rgba(255,255,255,.95); backdrop-filter:saturate(180%) blur(6px); border-top:1px solid rgba(0,0,0,.08); }
+  </style>
+</head>
+
+<body class="bg-light" data-lookup-product="/accounting/journal-entry/lookup/products/">
+{% load static %}
+{% csrf_token %}
+
+<!-- Navigation Sidebar -->
+<div class="d-flex">
+  <nav class="bg-dark text-white" style="width: 250px; min-height: 100vh; position: fixed; left: 0; top: 0; z-index: 1000;">
+    <div class="p-3">
+      <h5 class="text-white mb-4">ERP Dashboard</h5>
+      <ul class="nav flex-column">
+        <li class="nav-item mb-2">
+          <a class="nav-link text-white" href="#" hx-get="{% url 'accounting:dashboard' %}" hx-target="#main-content">
+            <i class="bi bi-house-door me-2"></i>Dashboard
+          </a>
+        </li>
+        <li class="nav-item mb-2">
+          <a class="nav-link text-white" href="#" hx-get="{% url 'accounting:purchase_invoice_form' %}" hx-target="#main-content">
+            <i class="bi bi-receipt me-2"></i>Purchase Invoice
+          </a>
+        </li>
+        <li class="nav-item mb-2">
+          <a class="nav-link text-white" href="#" hx-get="{% url 'accounting:sales_invoice_list' %}" hx-target="#main-content">
+            <i class="bi bi-file-earmark-text me-2"></i>Sales Invoices
+          </a>
+        </li>
+        <li class="nav-item mb-2">
+          <a class="nav-link text-white" href="#" hx-get="{% url 'accounting:vendor_statement' %}" hx-target="#main-content">
+            <i class="bi bi-graph-up me-2"></i>Vendor Statements
+          </a>
+        </li>
+        <li class="nav-item mb-2">
+          <a class="nav-link text-white" href="#" hx-get="{% url 'accounting:customer_statement' %}" hx-target="#main-content">
+            <i class="bi bi-graph-down me-2"></i>Customer Statements
+          </a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Main Content Area -->
+  <div class="flex-grow-1" style="margin-left: 250px;">
+    <div id="main-content">
+      <form id="purchase-invoice-form"
+            hx-post="{% url 'accounting:save_purchase_invoice' %}"
+            hx-target="#messages"
+            hx-swap="innerHTML"
+            enctype="multipart/form-data">
+
+        <!-- Messages area -->
+        <div id="messages" class="container-fluid py-2">
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        </div>
+
+        <div class="page-content py-3">
+  <div class="container-fluid">
+
+    <div class="card shadow-sm card-compact">
+      <div class="card-body">
+
+        <!-- 2.1 Page Header -->
+        <div class="d-flex align-items-start justify-content-between gap-2 mb-3">
+          <div>
+            <div class="page-subtitle">Purchase · Voucher Entry</div>
+            <h4 class="mb-0">New Purchase Invoice</h4>
+          </div>
+          <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-outline-secondary btn-sm" type="button">Change Type</button>
+            <button class="btn btn-primary btn-sm" type="submit" id="btnSaveTop">
+              <i class="bi bi-check2-circle me-1"></i>Save Transaction
+            </button>
+          </div>
+        </div>
+
+        <!-- 2.2 Header Grid -->
+        <!-- Row A -->
+        <div class="row g-2 align-items-end mb-2">
+          <!-- Left cluster: Prefix / No / FY -->
+          <div class="col-lg-4">
+            <div class="row g-2">
+              <div class="col-4">
+                <label class="form-label">Voucher Prefix</label>
+                <input class="form-control form-control-sm" id="voucher_prefix" value="PB" />
+              </div>
+              <div class="col-4">
+                <label class="form-label">Voucher No</label>
+                <input class="form-control form-control-sm" id="voucher_no" value="2" />
+              </div>
+              <div class="col-4">
+                <label class="form-label">Fiscal Year</label>
+                <div class="input-group input-group-sm">
+                  <input class="form-control" id="fiscal_year" value="82/83" />
+                  <button class="btn btn-outline-secondary" type="button" id="btnRefetchNo"
+                          hx-get="{% url 'accounting:next_voucher_no' %}"
+                          hx-target="#voucher_no"
+                          hx-swap="innerHTML">
+                    <i class="bi bi-arrow-clockwise"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Middle cluster: Supplier -->
+          <div class="col-lg-4">
+            <label class="form-label">Supplier Name</label>
+            <select class="form-select form-select-sm" id="party_ledger_id"
+                    hx-post="{% url 'accounting:load_vendor_details' 0 %}"
+                    hx-target="#supplier_info"
+                    hx-swap="innerHTML"
+                    hx-include="[name='csrfmiddlewaretoken']"
+                    name="party_ledger_id">
+              <option value="">— Select Supplier —</option>
+              {% for supplier in suppliers %}
+              <option value="{{ supplier.id }}">{{ supplier.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Right cluster: Party Inv No -->
+          <div class="col-lg-4">
+            <label class="form-label">Reference / Party Invoice No</label>
+            <input class="form-control form-control-sm" id="party_invoice_no" placeholder="e.g., INV-7781" />
+          </div>
+        </div>
+
+        <!-- Row B -->
+        <div class="row g-2 align-items-end mb-2">
+          <div class="col-lg-4">
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label">Date (BS)</label>
+                <input class="form-control form-control-sm" id="date_bs" placeholder="2082-09-07" />
+              </div>
+              <div class="col-6">
+                <label class="form-label">Date (AD)</label>
+                <input type="date" class="form-control form-control-sm" id="date_ad" />
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-4">
+            <label class="form-label">Supplier Info</label>
+            <div class="form-control form-control-sm readonly" id="supplier_info">
+              Please select Supplier Name to view balance and details.
+            </div>
+          </div>
+
+          <div class="col-lg-4">
+            <label class="form-label">Due Days</label>
+            <input type="number" class="form-control form-control-sm" id="due_days" value="30" min="0" />
+          </div>
+        </div>
+
+        <!-- Row C -->
+        <div class="row g-2 align-items-end mb-2">
+          <div class="col-lg-4">
+            <label class="form-label">Purchase Account</label>
+            <select class="form-select form-select-sm" id="purchase_account_ledger_id">
+              <option value="">- Select Purchase Account -</option>
+            </select>
+          </div>
+
+          <div class="col-lg-4">
+            <label class="form-label">Payment Mode</label>
+            <select class="form-select form-select-sm" id="payment_mode">
+              <option value="Cash">Cash</option>
+              <option value="Credit">Credit</option>
+              <option value="Bank">Bank</option>
+              <option value="Mixed">Mixed</option>
+            </select>
+          </div>
+
+          <div class="col-lg-4">
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label">Agent Name</label>
+                <select class="form-select form-select-sm" id="agent_id">
+                  <option value="">- Select Agent -</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Agent Area</label>
+                <select class="form-select form-select-sm" id="agent_area_id">
+                  <option value="">- Select Area -</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row D -->
+        <div class="row g-2 align-items-end mb-3">
+          <div class="col-12">
+            <label class="form-label">Order Reference</label>
+            <div class="input-group input-group-sm">
+              <select class="form-select" id="order_reference_id">
+                <option value="">- Select Pending Order/GRN -</option>
+                {% for order in orders %}
+                <option value="{{ order.id }}">{{ order.name }}</option>
+                {% endfor %}
+              </select>
+              <button class="btn btn-outline-primary" type="button" id="btnApplyOrder"
+                      hx-post="{% url 'accounting:apply_order' 0 %}"
+                      hx-target="#itemsTbody"
+                      hx-swap="innerHTML"
+                      hx-include="#order_reference_id, [name='csrfmiddlewaretoken']">
+                <i class="bi bi-lightning-charge me-1"></i>Apply
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2.3 Column toggle chips -->
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+          <div class="small text-muted">Columns</div>
+          <div class="chip-bar btn-group" role="group" aria-label="Column toggles">
+            <input type="checkbox" class="btn-check" id="chip_hs_code" autocomplete="off">
+            <label class="btn btn-outline-secondary btn-sm" for="chip_hs_code">HS / Item Code</label>
+
+            <input type="checkbox" class="btn-check" id="chip_description" autocomplete="off" checked>
+            <label class="btn btn-outline-secondary btn-sm" for="chip_description">Description</label>
+
+            <input type="checkbox" class="btn-check" id="chip_discount" autocomplete="off">
+            <label class="btn btn-outline-secondary btn-sm" for="chip_discount">Discount</label>
+
+            <input type="checkbox" class="btn-check" id="chip_net_rate" autocomplete="off">
+            <label class="btn btn-outline-secondary btn-sm" for="chip_net_rate">Net Rate</label>
+          </div>
+        </div>
+
+        <!-- 2.4 + 2.5 Line items + Totals side-by-side -->
+        <div class="row g-3">
+          <!-- Left: line items -->
+          <div class="col-xl-8">
+            <div class="card border-0 shadow-sm">
+              <div class="card-body p-2 p-md-3">
+                <div class="table-responsive">
+                  <table class="table table-sm table-bordered align-middle mb-2" id="itemsTable">
+                    <thead class="bg-body">
+                      <tr>
+                        <th style="width:44px;">SN</th>
+                        <th>Particulars</th>
+                        <th class="col-hs_code">HS / Code</th>
+                        <th class="col-description">Description</th>
+                        <th style="width:150px;">Qty + Unit</th>
+                        <th style="width:140px;">Godown</th>
+                        <th style="width:110px;">Rate</th>
+                        <th style="width:92px;">VAT</th>
+                        <th class="col-discount" style="width:160px;">Discount</th>
+                        <th class="col-net_rate" style="width:120px;">Net Rate</th>
+                        <th style="width:140px;">Amount</th>
+                        <th style="width:44px;"></th>
+                      </tr>
+                    </thead>
+                    <tbody id="itemsTbody">
+                      <!-- rows injected -->
+                    </tbody>
+                  </table>
+                </div>
+
+                <button class="btn btn-outline-primary btn-sm" type="button" id="btnAddItemRow">
+                  <i class="bi bi-plus-lg me-1"></i>Add New Row
+                </button>
+
+                <!-- 2.6 In Words -->
+                <div class="mt-3">
+                  <div class="small text-muted mb-1">In Words</div>
+                  <div class="form-control form-control-sm readonly" id="in_words">Zero rupees only.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: totals panel -->
+          <div class="col-xl-4">
+            <div id="totals-panel"
+                 hx-post="{% url 'accounting:calculate_totals' %}"
+                 hx-trigger="change from:#itemsTbody, input from:#itemsTbody, change from:#hdr_discount_value, change from:#hdr_discount_type, input from:#bill_rounding"
+                 hx-target="#totals-panel"
+                 hx-swap="innerHTML"
+                 hx-include="#itemsTbody input, #itemsTbody select, #hdr_discount_value, #hdr_discount_type, #bill_rounding, [name='csrfmiddlewaretoken']">
+              <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                  <div class="d-flex align-items-center justify-content-between mb-2">
+                    <div class="fw-semibold">Totals</div>
+                    <span class="badge text-bg-light">VAT @ 13%</span>
+                  </div>
+
+                  <div class="totals-row">
+                    <div class="label">Sub Total</div>
+                    <div class="value money" id="t_sub_total">0.00</div>
+                  </div>
+
+                  <div class="totals-row align-items-center">
+                    <div class="label">Discount</div>
+                    <div class="d-flex gap-1" style="max-width:220px;">
+                      <input class="form-control form-control-sm text-end" id="hdr_discount_value" value="0" inputmode="decimal">
+                      <select class="form-select form-select-sm" id="hdr_discount_type" style="max-width:90px;">
+                        <option value="amt">Amt</option>
+                        <option value="pct">Per</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="totals-row">
+                    <div class="label">NonVatable Amount</div>
+                    <div class="value money" id="t_nonvat_amt">0.00</div>
+                  </div>
+                  <div class="totals-row">
+                    <div class="label">NonVatable Disc</div>
+                    <div class="value money" id="t_nonvat_disc">0.00</div>
+                  </div>
+                  <div class="totals-row">
+                    <div class="label">Total NonVatable Amount</div>
+                    <div class="value money" id="t_total_nonvat">0.00</div>
+                  </div>
+
+                  <div class="totals-row hr"></div>
+
+                  <div class="totals-row">
+                    <div class="label">Vatable Amount</div>
+                    <div class="value money" id="t_vat_amt">0.00</div>
+                  </div>
+                  <div class="totals-row">
+                    <div class="label">Vatable Disc</div>
+                    <div class="value money" id="t_vat_disc">0.00</div>
+                  </div>
+                  <div class="totals-row">
+                    <div class="label">Total Vatable Amount</div>
+                    <div class="value money" id="t_total_vat">0.00</div>
+                  </div>
+
+                  <div class="totals-row hr"></div>
+
+                  <div class="totals-row">
+                    <div class="label">Taxable Amount</div>
+                    <div class="value money" id="t_taxable">0.00</div>
+                  </div>
+                  <div class="totals-row">
+                    <div class="label">VAT @ 13%</div>
+                    <div class="value money" id="t_vat_13">0.00</div>
+                  </div>
+
+                  <div class="totals-row align-items-center">
+                    <div class="label">Bill Rounding</div>
+                    <div class="d-flex gap-1" style="max-width:220px;">
+                      <div class="btn-group btn-group-sm" role="group" aria-label="rounding">
+                        <button class="btn btn-outline-secondary" type="button" id="roundMinus"><i class="bi bi-dash-lg"></i></button>
+                        <button class="btn btn-outline-secondary" type="button" id="roundPlus"><i class="bi bi-plus-lg"></i></button>
+                      </div>
+                      <input class="form-control form-control-sm text-end" id="bill_rounding" value="0" inputmode="decimal">
+                    </div>
+                  </div>
+
+                  <div class="totals-row hr"></div>
+
+                  <div class="totals-row">
+                    <div class="label fw-semibold">Grand Total</div>
+                    <div class="value money grand" id="t_grand">0.00</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2.7 Bottom two panels -->
+        <div class="row g-3 mt-1">
+          <!-- Terms -->
+          <div class="col-lg-6">
+            <div class="card border-0 shadow-sm">
+              <div class="card-body">
+                <div class="fw-semibold mb-2">Terms & Conditions</div>
+                <label class="form-label">Select T&C</label>
+                <select class="form-select form-select-sm mb-2" id="terms_id">
+                  <option value="">- Select Terms -</option>
+                </select>
+                <label class="form-label">Terms Preview</label>
+                <textarea class="form-control form-control-sm readonly" rows="5" id="terms_preview" readonly>
+Payment due within agreed period. Goods once sold are not returnable. Subject to Birgunj jurisdiction.
+                </textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Payments -->
+          <div class="col-lg-6">
+            <div class="card border-0 shadow-sm">
+              <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <div class="fw-semibold">Add Payment</div>
+                  <div class="small text-muted">Remaining: <span class="money fw-semibold" id="remaining_balance">0.00</span></div>
+                </div>
+
+                <div class="table-responsive">
+                  <table class="table table-sm table-bordered align-middle mb-2">
+                    <thead class="bg-body">
+                      <tr>
+                        <th>Bank/Cash (Ledger)</th>
+                        <th style="width:140px;">Amount</th>
+                        <th>Note</th>
+                        <th style="width:44px;"></th>
+                      </tr>
+                    </thead>
+                    <tbody id="payTbody"></tbody>
+                  </table>
+                </div>
+
+                <button class="btn btn-outline-primary btn-sm" type="button" id="btnAddPayRow">
+                  <i class="bi bi-plus-lg me-1"></i>Add New Row
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2.8 Narration -->
+        <div class="mt-3">
+          <label class="form-label">Narration</label>
+          <textarea class="form-control form-control-sm" id="narration" rows="2" placeholder="Optional narration..."></textarea>
+        </div>
+
+      </div>
+
+      <!-- 2.9 Footer actions -->
+      <div class="card-footer sticky-actions">
+        <div class="d-flex justify-content-end gap-2 p-2">
+          <button class="btn btn-danger btn-sm" type="button" id="btnCancel">Cancel Transaction</button>
+          <button class="btn btn-primary btn-sm" type="submit" id="btnSaveBottom">
+            <i class="bi bi-check2-circle me-1"></i>Save Transaction
+          </button>
+        </div>
+      </div>
+    </div>
+
+    </form> <!-- End of purchase-invoice-form -->
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+(() => {
+  // ------------------------
+  // Sample data (replace with your lookups)
+  // ------------------------
+  const suppliers = [
+    {% for supplier in suppliers %}
+    { id: "{{ supplier.id }}", name: "{{ supplier.name }}" },
+    {% endfor %}
+  ];
+
+  const purchaseAccounts = [
+    {% for account in purchase_accounts %}
+    { id: "{{ account.id }}", name: "{{ account.name }}" },
+    {% endfor %}
+  ];
+
+  const agents = [
+    {% for agent in agents %}
+    { id: "{{ agent.id }}", name: "{{ agent.name }}" },
+    {% endfor %}
+  ];
+
+  const areas = [
+    {% for area in areas %}
+    { id: "{{ area.id }}", name: "{{ area.name }}" },
+    {% endfor %}
+  ];
+
+  const orders = [
+    {% for order in orders %}
+    { id: "{{ order.id }}", name: "{{ order.name }}" },
+    {% endfor %}
+  ];
+
+  const terms = [
+    {% for term in terms %}
+    { id: "{{ term.id }}", name: "{{ term.name }}" },
+    {% endfor %}
+  ];
+
+  const items = [
+    {% for item in items %}
+    { id: "{{ item.id }}", name: "{{ item.name }}", code: "{{ item.code }}", unit: "{{ item.unit }}" },
+    {% endfor %}
+  ];
+
+  const godowns = [
+    {% for godown in godowns %}
+    { id: "{{ godown.id }}", name: "{{ godown.name }}" },
+    {% endfor %}
+  ];
+
+  const paymentLedgers = [
+    {% for ledger in payment_ledgers %}
+    { id: "{{ ledger.id }}", name: "{{ ledger.name }}" },
+    {% endfor %}
+  ];
+
+  const units = [
+    {% for unit in units %}
+    "{{ unit.name }}",
+    {% endfor %}
+  ];
+
+  // ------------------------
+  // Helpers
+  // ------------------------
+  const fmt = (n) => new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n || 0));
+  const num = (v) => {
+    const x = (v ?? "").toString().replace(/,/g, "").trim();
+    const n = Number(x);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  // basic English words for rupees (good enough for UI preview)
+  function numberToWords(n) {
+    n = Math.floor(Math.abs(n));
+    if (n === 0) return "Zero";
+    const a = ["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
+    const b = ["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
+    const chunk = (x) => {
+      let s = "";
+      if (x >= 100) { s += a[Math.floor(x/100)] + " Hundred "; x %= 100; }
+      if (x >= 20) { s += b[Math.floor(x/10)] + " "; x %= 10; }
+      if (x > 0) s += a[x] + " ";
+      return s.trim();
+    };
+    const units = [
+      { v: 1_000_000_000, w: "Billion" },
+      { v: 1_000_000, w: "Million" },
+      { v: 1_000, w: "Thousand" },
+    ];
+    let out = "";
+    for (const u of units) {
+      if (n >= u.v) {
+        out += chunk(Math.floor(n/u.v)) + " " + u.w + " ";
+        n %= u.v;
+      }
+    }
+    out += chunk(n);
+    return out.trim();
+  }
+
+  function optList(data, valueKey="id", labelKey="name") {
+    return data.map(x => `<option value="${x[valueKey]}">${x[labelKey]}</option>`).join("");
+  }
+
+  // ------------------------
+  // Lookup functionality
+  // ------------------------
+  const PRODUCT_LOOKUP_URL = document.body.dataset.lookupProduct;
+
+  function getCSRFToken() {
+    const input = document.querySelector('input[name=csrfmiddlewaretoken]');
+    return input ? input.value : '';
+  }
+
+  async function fetchJSON(url, options = {}, context = {}) {
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'X-CSRFToken': getCSRFToken(),
+          'Content-Type': 'application/json',
+        },
+        ...options
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Fetch error:', error, context);
+      return null;
+    }
+  }
+
+  async function lookupProduct(query) {
+    if (!PRODUCT_LOOKUP_URL || !query || query.length < 2) {
+      return [];
+    }
+
+    const url = `${PRODUCT_LOOKUP_URL}?q=${encodeURIComponent(query)}&limit=10`;
+    const response = await fetchJSON(url, {}, { action: `Lookup Product ${query}` });
+
+    if (response && response.results) {
+      return response.results;
+    }
+
+    return [];
+  }
+
+  // ------------------------
+  // Initialize elements
+  // ------------------------
+  const el = (id) => document.getElementById(id);
+
+  // Default date AD today
+  el("date_ad").valueAsDate = new Date();
+
+  // ------------------------
+  // Column toggles (localStorage)
+  // ------------------------
+  const PREF_KEY = "voucher_ui_pref_purchase_columns_v1";
+  const defaultPrefs = { hs_code: false, description: true, discount: false, net_rate: false };
+
+  function loadPrefs() {
+    try {
+      const v = JSON.parse(localStorage.getItem(PREF_KEY) || "null");
+      return { ...defaultPrefs, ...(v || {}) };
+    } catch { return { ...defaultPrefs }; }
+  }
+  function savePrefs(p) { localStorage.setItem(PREF_KEY, JSON.stringify(p)); }
+
+  function applyColumnVisibility(p) {
+    const map = {
+      hs_code: "col-hs_code",
+      description: "col-description",
+      discount: "col-discount",
+      net_rate: "col-net_rate",
+    };
+
+    Object.entries(map).forEach(([k, cls]) => {
+      document.querySelectorAll(`.${cls}`).forEach(cell => {
+        cell.classList.toggle("d-none", !p[k]);
+      });
+    });
+
+    const hsCodeChip = el("chip_hs_code");
+    if (hsCodeChip) hsCodeChip.checked = !!p.hs_code;
+
+    const descChip = el("chip_description");
+    if (descChip) descChip.checked = !!p.description;
+
+    const discChip = el("chip_discount");
+    if (discChip) discChip.checked = !!p.discount;
+
+    const netRateChip = el("chip_net_rate");
+    if (netRateChip) netRateChip.checked = !!p.net_rate;
+  }
+
+  let prefs = loadPrefs();
+  // default hidden: hs_code + net_rate (already in defaults)
+  // default visible: description (true in defaults)
+  applyColumnVisibility(prefs);
+
+  ["hs_code","description","discount","net_rate"].forEach(k => {
+    const chip = el(`chip_${k}`);
+    if (chip) {
+      chip.addEventListener("change", () => {
+        prefs[k] = chip.checked;
+        savePrefs(prefs);
+        applyColumnVisibility(prefs);
+      });
+    }
+  });
+
+  // ------------------------
+  // Line items grid
+  // ------------------------
+  let lineSeq = 0;
+
+  function itemOptions() {
+    return `<option value="">- Select Item -</option>` + items.map(i => `<option value="${i.id}">${i.name}</option>`).join("");
+  }
+  function unitOptions(selected="") {
+    return units.map(u => `<option value="${u}" ${u===selected?"selected":""}>${u}</option>`).join("");
+  }
+  function godownOptions() {
+    return godowns.map(g => `<option value="${g}">${g}</option>`).join("");
+  }
+
+  function makeLineRow() {
+    lineSeq += 1;
+    const tr = document.createElement("tr");
+    tr.dataset.lineId = String(lineSeq);
+    tr.innerHTML = `
+      <td class="text-center small">${lineSeq}</td>
+
+      <td>
+        <div class="product-search-container position-relative">
+          <input type="text"
+                 class="form-control form-control-sm product-search-input"
+                 data-field="product_search"
+                 placeholder="Search products..."
+                 autocomplete="off">
+
+          <div id="product-search-results-${lineSeq}"
+               class="product-search-results position-absolute bg-white border rounded shadow-sm"
+               style="display: none; z-index: 1000; max-height: 200px; overflow-y: auto; width: 100%;"></div>
+
+          <div id="product-search-indicator-${lineSeq}"
+               class="htmx-indicator position-absolute top-50 end-0 translate-middle-y me-2" style="display: none;">
+            <div class="spinner-border spinner-border-sm text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+
+          <input type="hidden" data-field="item_id" value="">
+        </div>
+      </td>
+
+      <td class="col-hs_code">
+        <input class="form-control form-control-sm readonly" data-field="hs_code" readonly value="" placeholder="-" />
+      </td>
+
+      <td class="col-description">
+        <input class="form-control form-control-sm" data-field="description" placeholder="Optional..." />
+      </td>
+
+      <td>
+        <div class="input-group input-group-sm">
+          <input class="form-control text-end line-num" data-field="qty" value="1" inputmode="decimal" />
+          <select class="form-select" data-field="unit_id" style="max-width:90px;">
+            ${unitOptions("Nos")}
+          </select>
+        </div>
+      </td>
+
+      <td>
+        <select class="form-select form-select-sm" data-field="godown_id">
+          ${godownOptions()}
+        </select>
+      </td>
+
+      <td>
+        <input class="form-control form-control-sm text-end line-num" data-field="rate" value="0" inputmode="decimal" />
+      </td>
+
+      <td>
+        <select class="form-select form-select-sm" data-field="vat_applicable">
+          <option value="yes" selected>Yes</option>
+          <option value="no">No</option>
+        </select>
+      </td>
+
+      <td class="col-discount">
+        <div class="input-group input-group-sm">
+          <select class="form-select" data-field="discount_type" style="max-width:90px;">
+            <option value="none" selected>None</option>
+            <option value="pct">%</option>
+            <option value="amt">Amt</option>
+          </select>
+          <input class="form-control text-end line-num" data-field="discount_value" value="0" inputmode="decimal" />
+        </div>
+      </td>
+
+      <td class="col-net_rate">
+        <input class="form-control form-control-sm readonly text-end money" data-field="net_rate" readonly value="0.00" />
+      </td>
+
+      <td>
+        <input class="form-control form-control-sm readonly text-end money" data-field="amount" readonly value="0.00" />
+      </td>
+
+      <td class="text-center">
+        <button class="btn btn-outline-danger btn-sm" type="button" data-action="remove-line" title="Remove">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </td>
+    `;
+    return tr;
+  }
+
+  function addLineRow() {
+    const tbody = el("itemsTbody");
+    if (tbody) {
+      const tr = makeLineRow();
+      tbody.appendChild(tr);
+      applyColumnVisibility(prefs); // apply for newly inserted cells
+      recalcAll();
+    }
+  }
+
+  function removeLineRow(btn) {
+    const tr = btn?.closest("tr");
+    if (tr) {
+      tr.remove();
+      // re-number SN
+      const tbody = el("itemsTbody");
+      if (tbody) {
+        [...tbody.querySelectorAll("tr")].forEach((r, idx) => {
+          const td = r.querySelector("td");
+          if (td) td.textContent = String(idx + 1);
+        });
+      }
+      recalcAll();
+    }
+  }
+
+  el("btnAddItemRow")?.addEventListener("click", addLineRow);
+
+  el("itemsTbody")?.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-action='remove-line']");
+    if (btn) removeLineRow(btn);
+  });
+
+  el("itemsTbody")?.addEventListener("change", (e) => {
+    const tr = e.target.closest("tr");
+    if (!tr) return;
+
+    if (e.target.matches("[data-field='item_id']")) {
+      const id = e.target.value;
+      const it = items.find(x => x.id === id);
+      const hsCodeField = tr.querySelector("[data-field='hs_code']");
+      if (hsCodeField) hsCodeField.value = it ? it.code : "";
+
+      const unitField = tr.querySelector("[data-field='unit_id']");
+      if (unitField) unitField.innerHTML = unitOptions(it ? it.unit : "Nos");
+    }
+
+    recalcAll();
+  });
+
+  el("itemsTbody")?.addEventListener("input", (e) => {
+    if (e.target.classList.contains("line-num") || e.target.id === "hdr_discount_value") recalcAll();
+  });
+
+  // initial 2 rows
+  addLineRow();
+  addLineRow();
+
+  // ------------------------
+  // Payments grid
+  // ------------------------
+  function payLedgerOptions() {
+    return `<option value="">- Select -</option>` + paymentLedgers.map(p => `<option value="${p}">${p}</option>`).join("");
+  }
+
+  function makePayRow() {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>
+        <select class="form-select form-select-sm pay-ledger" data-field="payment_ledger_id">
+          ${payLedgerOptions()}
+        </select>
+      </td>
+      <td>
+        <input class="form-control form-control-sm text-end pay-amt" data-field="payment_amount" value="0" inputmode="decimal" />
+      </td>
+      <td>
+        <input class="form-control form-control-sm" data-field="payment_note" placeholder="Optional..." />
+      </td>
+      <td class="text-center">
+        <button class="btn btn-outline-danger btn-sm" type="button" data-action="remove-pay" title="Remove">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </td>
+    `;
+    return tr;
+  }
+
+  function addPayRow() {
+    const payTbody = el("payTbody");
+    if (payTbody) {
+      payTbody.appendChild(makePayRow());
+      recalcAll();
+    }
+  }
+
+  el("btnAddPayRow")?.addEventListener("click", addPayRow);
+
+  el("payTbody")?.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-action='remove-pay']");
+    if (btn) { btn.closest("tr")?.remove(); recalcAll(); }
+  });
+
+  el("payTbody")?.addEventListener("input", (e) => {
+    if (e.target.classList.contains("pay-amt")) recalcAll();
+  });
+
+  // add one pay row by default
+  addPayRow();
+
+  // ------------------------
+  // Rounding controls
+  // ------------------------
+  el("roundPlus")?.addEventListener("click", () => {
+    const roundingEl = el("bill_rounding");
+    if (roundingEl) {
+      roundingEl.value = String(num(roundingEl.value) + 1);
+      recalcAll();
+    }
+  });
+  el("roundMinus")?.addEventListener("click", () => {
+    const roundingEl = el("bill_rounding");
+    if (roundingEl) {
+      roundingEl.value = String(num(roundingEl.value) - 1);
+      recalcAll();
+    }
+  });
+  el("bill_rounding")?.addEventListener("input", recalcAll);
+  el("hdr_discount_type")?.addEventListener("change", recalcAll);
+
+  // ------------------------
+  // Totals calc
+  // ------------------------
+  function getLineValues(tr) {
+    if (!tr) return { qty: 0, rate: 0, gross: 0, discType: "none", discVal: 0, discAmt: 0, net: 0, vatYes: false };
+
+    const qty = num(tr.querySelector("[data-field='qty']")?.value);
+    const rate = num(tr.querySelector("[data-field='rate']")?.value);
+    const vatYes = tr.querySelector("[data-field='vat_applicable']")?.value === "yes";
+
+    const discType = tr.querySelector("[data-field='discount_type']")?.value || "none";
+    const discVal = num(tr.querySelector("[data-field='discount_value']")?.value);
+
+    const gross = qty * rate;
+
+    let discAmt = 0;
+    if (discType === "pct") discAmt = gross * (discVal / 100);
+    else if (discType === "amt") discAmt = discVal;
+
+    discAmt = Math.max(0, Math.min(discAmt, gross));
+    const net = gross - discAmt;
+
+    return { qty, rate, gross, discType, discVal, discAmt, net, vatYes };
+  }
+
+  function recalcAll() {
+    const tbody = el("itemsTbody");
+    if (!tbody) return;
+
+    const rows = [...tbody.querySelectorAll("tr")];
+
+    let subTotal = 0;
+    let lineDiscVat = 0, lineDiscNonVat = 0;
+    let netVat = 0, netNonVat = 0;
+
+    rows.forEach(tr => {
+      const v = getLineValues(tr);
+      subTotal += v.gross;
+
+      if (v.vatYes) { lineDiscVat += v.discAmt; netVat += v.net; }
+      else { lineDiscNonVat += v.discAmt; netNonVat += v.net; }
+
+      const netRateField = tr.querySelector("[data-field='net_rate']");
+      if (netRateField) netRateField.value = fmt(v.qty ? (v.net / v.qty) : 0);
+
+      const amountField = tr.querySelector("[data-field='amount']");
+      if (amountField) amountField.value = fmt(v.net);
+    });
+
+    // Header discount applied after line discounts, allocated proportionally
+    const hdrType = el("hdr_discount_type")?.value || "amt";
+    const hdrVal = num(el("hdr_discount_value")?.value || "0");
+
+    const netAfterLineDisc = Math.max(0, subTotal - (lineDiscVat + lineDiscNonVat));
+    let hdrDisc = 0;
+    if (hdrType === "pct") hdrDisc = netAfterLineDisc * (hdrVal / 100);
+    else hdrDisc = hdrVal;
+    hdrDisc = Math.max(0, Math.min(hdrDisc, netAfterLineDisc));
+
+    const netTotal = netVat + netNonVat;
+    const shareVat = netTotal > 0 ? (netVat / netTotal) : 0;
+    const shareNon = 1 - shareVat;
+
+    const hdrDiscVat = hdrDisc * shareVat;
+    const hdrDiscNon = hdrDisc * shareNon;
+
+    const totalVatDisc = lineDiscVat + hdrDiscVat;
+    const totalNonVatDisc = lineDiscNonVat + hdrDiscNon;
+
+    const totalVatable = Math.max(0, netVat - hdrDiscVat);
+    const totalNonVatable = Math.max(0, netNonVat - hdrDiscNon);
+
+    const taxable = totalVatable; // per your spec
+    const vatAmount = taxable * 0.13;
+
+    const rounding = num(el("bill_rounding")?.value || "0");
+    const grand = totalNonVatable + totalVatable + vatAmount + rounding;
+
+    // write totals
+    const elements = {
+      "t_sub_total": fmt(subTotal),
+      "t_nonvat_amt": fmt(netNonVat),
+      "t_nonvat_disc": fmt(totalNonVatDisc),
+      "t_total_nonvat": fmt(totalNonVatable),
+      "t_vat_amt": fmt(netVat),
+      "t_vat_disc": fmt(totalVatDisc),
+      "t_total_vat": fmt(totalVatable),
+      "t_taxable": fmt(taxable),
+      "t_vat_13": fmt(vatAmount),
+      "t_grand": fmt(grand)
+    };
+
+    Object.entries(elements).forEach(([id, value]) => {
+      const elem = el(id);
+      if (elem) elem.textContent = value;
+    });
+
+    const inWordsElem = el("in_words");
+    if (inWordsElem) inWordsElem.textContent = `${numberToWords(grand)} rupees only.`;
+
+    // payments + remaining
+    const payTbody = el("payTbody");
+    const paySum = payTbody ? [...payTbody.querySelectorAll(".pay-amt")].reduce((a, inp) => a + num(inp.value), 0) : 0;
+
+    const remainingElem = el("remaining_balance");
+    if (remainingElem) remainingElem.textContent = fmt(grand - paySum);
+  }
+
+  // ------------------------
+  // Product Search Functions
+  // ------------------------
+  function handleSearchResults(formIndex, results) {
+    const resultsDiv = document.getElementById(`product-search-results-${formIndex}`);
+    if (!resultsDiv) return;
+
+    if (!results || results.length === 0) {
+      resultsDiv.innerHTML = '';
+      resultsDiv.style.display = 'none';
+      return;
+    }
+
+    // Generate HTML from JSON results
+    const html = results.map(product => {
+      const id = product.id || '';
+      const name = product.name || 'Unknown Product';
+      const code = product.code || '';
+      const text = product.text || `${code} - ${name}`;
+
+      return `
+        <div class="product-result-item p-2 border-bottom cursor-pointer hover-bg-light"
+             onclick="selectProduct('${formIndex}', '${id}', '${name.replace(/'/g, '\\\'')}', '', '')">
+          <div class="fw-bold">${name}</div>
+          <small class="text-muted">Code: ${code}</small>
+        </div>
+      `;
+    }).join('');
+
+    resultsDiv.innerHTML = html;
+    resultsDiv.style.display = 'block';
+  }
+
+  function selectProduct(formIndex, productId, productText, unit, hsCode) {
+    const tr = document.querySelector(`tr[data-line-id="${formIndex}"]`);
+    if (!tr) return;
+
+    // Set the hidden input
+    const hiddenInput = tr.querySelector('input[data-field="item_id"]');
+    if (hiddenInput) hiddenInput.value = productId;
+
+    // Set the search input text
+    const searchInput = tr.querySelector('.product-search-input');
+    if (searchInput) searchInput.value = productText;
+
+    // Hide results
+    const resultsDiv = document.getElementById(`product-search-results-${formIndex}`);
+    if (resultsDiv) resultsDiv.style.display = 'none';
+
+    // Populate other fields
+    const hsCodeInput = tr.querySelector('input[data-field="hs_code"]');
+    if (hsCodeInput) hsCodeInput.value = hsCode;
+
+    const unitSelect = tr.querySelector('select[data-field="unit_id"]');
+    if (unitSelect) {
+      // Set unit option as selected
+      const options = unitSelect.querySelectorAll('option');
+      options.forEach(opt => {
+        opt.selected = opt.value === unit;
+      });
+    }
+
+    // Load product details via HTMX
+    if (productId) {
+      // You can add HTMX call here to load additional product details if needed
+    }
+
+    // Trigger recalculation
+    recalcAll();
+  }
+
+  function loadProductDetails(formIndex, productId) {
+    const tr = document.querySelector(`tr[data-line-id="${formIndex}"]`);
+    if (!tr) return;
+
+    // Use HTMX to load product details
+    htmx.ajax('GET', `/accounting/purchase-invoice/load-product/${productId}/`, {
+      target: tr,
+      swap: 'none',
+      include: '[name="csrfmiddlewaretoken"]',
+      values: { 'item_id': productId }
+    });
+  }
+
+  // Product search input handler
+  document.addEventListener('input', async function(e) {
+    if (e.target.classList.contains('product-search-input')) {
+      const query = e.target.value.trim();
+      const formIndex = e.target.closest('tr').dataset.lineId;
+
+      if (!query || query.length < 2) {
+        handleSearchResults(formIndex, []);
+        return;
+      }
+
+      // Show loading indicator
+      const indicator = document.getElementById(`product-search-indicator-${formIndex}`);
+      if (indicator) indicator.style.display = 'block';
+
+      try {
+        const results = await lookupProduct(query);
+        handleSearchResults(formIndex, results);
+      } catch (error) {
+        console.error('Product search error:', error);
+        handleSearchResults(formIndex, []);
+      } finally {
+        // Hide loading indicator
+        if (indicator) indicator.style.display = 'none';
+      }
+    }
+  });
+
+  // Hide search results when clicking outside
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.product-search-container')) {
+      document.querySelectorAll('.product-search-results').forEach(div => {
+        div.style.display = 'none';
+      });
+    }
+  });
+
+  // Show results when input is focused
+  document.addEventListener('focusin', function(e) {
+    if (e.target.classList.contains('product-search-input')) {
+      const formIndex = e.target.closest('tr').dataset.lineId;
+      const resultsDiv = document.getElementById(`product-search-results-${formIndex}`);
+      if (resultsDiv && resultsDiv.innerHTML.trim()) {
+        resultsDiv.style.display = 'block';
+      }
+    }
+  });
+
+  // ------------------------
+  // Initialize
+  // ------------------------
+  // initial calc
+  recalcAll();
+
+  // Make functions globally available for HTMX
+  window.handleSearchResults = handleSearchResults;
+  window.selectProduct = selectProduct;
+})();
+</script>
+
+</body>
+</html>

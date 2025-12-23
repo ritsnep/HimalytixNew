@@ -1,0 +1,899 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>New Sales Invoice (Mockup)</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons (optional) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+  <style>
+    .page-subtitle { font-size:.8125rem; color:#6c757d; }
+    .card-compact .form-label { font-size:.75rem; color:#6c757d; margin-bottom:.25rem; }
+    .card-compact .form-control, .card-compact .form-select { font-size:.875rem; }
+    .chip-bar .btn { border-radius:999px; padding:.25rem .6rem; font-size:.8rem; }
+    .table thead th { font-size:.75rem; color:#6c757d; text-transform:uppercase; letter-spacing:.02em; }
+    .table td { vertical-align:middle; }
+    .money { font-variant-numeric: tabular-nums; }
+    .totals-row { display:flex; justify-content:space-between; gap:1rem; padding:.35rem 0; }
+    .totals-row .label { color:#6c757d; font-size:.85rem; }
+    .totals-row .value { font-weight:600; }
+    .totals-row.hr { border-top:1px dashed rgba(0,0,0,.15); margin:.4rem 0; padding-top:.6rem; }
+    .grand { font-size:1.05rem; }
+    .readonly { background:#f8f9fa; }
+    .sticky-actions { position:sticky; bottom:0; z-index:5; background:rgba(255,255,255,.95); backdrop-filter:saturate(180%) blur(6px); border-top:1px solid rgba(0,0,0,.08); }
+  </style>
+</head>
+
+<body class="bg-light">
+
+<div class="page-content py-3">
+  <div class="container-fluid">
+
+    <div class="card shadow-sm card-compact">
+      <div class="card-body">
+
+        <!-- 2.1 Page Header -->
+        <div class="d-flex align-items-start justify-content-between gap-2 mb-3">
+          <div>
+            <div class="page-subtitle">Sales · Voucher Entry</div>
+            <h4 class="mb-0">New Sales Invoice</h4>
+          </div>
+          <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-outline-secondary btn-sm" type="button">Change Type</button>
+            <button class="btn btn-primary btn-sm" type="button" id="btnSaveTop">
+              <i class="bi bi-check2-circle me-1"></i>Save Transaction
+            </button>
+          </div>
+        </div>
+
+        <!-- 2.2 Header Grid -->
+        <!-- Row A -->
+        <div class="row g-2 align-items-end mb-2">
+          <!-- Left cluster: Prefix / No / Refresh -->
+          <div class="col-lg-4">
+            <div class="row g-2">
+              <div class="col-4">
+                <label class="form-label">Invoice Prefix</label>
+                <input class="form-control form-control-sm" id="invoice_prefix" value="SB" />
+              </div>
+              <div class="col-4">
+                <label class="form-label">Invoice No</label>
+                <input class="form-control form-control-sm" id="invoice_no" value="3" />
+              </div>
+              <div class="col-4">
+                <label class="form-label">Next No</label>
+                <div class="input-group input-group-sm">
+                  <input class="form-control" id="next_no_hint" value="Auto" readonly />
+                  <button class="btn btn-outline-secondary" type="button" id="btnRefetchNo" title="Re-fetch next number">
+                    <i class="bi bi-arrow-clockwise"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Middle cluster: Buyer -->
+          <div class="col-lg-4">
+            <label class="form-label">Buyer’s Name</label>
+            <select class="form-select form-select-sm" id="buyer_id">
+              <option value="">— Select Buyer —</option>
+            </select>
+          </div>
+
+          <!-- Right cluster: Reference No -->
+          <div class="col-lg-4">
+            <label class="form-label">Reference / Party Invoice Number</label>
+            <input class="form-control form-control-sm" id="ref_no" placeholder="e.g., SB-REF-7781" />
+          </div>
+        </div>
+
+        <!-- Row B -->
+        <div class="row g-2 align-items-end mb-2">
+          <div class="col-lg-4">
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label">Date (BS)</label>
+                <input class="form-control form-control-sm" id="date_bs" placeholder="2082-09-07" />
+              </div>
+              <div class="col-6">
+                <label class="form-label">Date (AD)</label>
+                <input type="date" class="form-control form-control-sm" id="date_ad" />
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-4">
+            <label class="form-label">Buyer Info</label>
+            <div class="form-control form-control-sm readonly" id="buyer_info">
+              Please select Buyer’s Name to view balance and details.
+            </div>
+          </div>
+
+          <div class="col-lg-4">
+            <div class="row g-2">
+              <div class="col-4">
+                <label class="form-label">Due Days</label>
+                <input type="number" class="form-control form-control-sm" id="due_days" value="30" min="0" />
+              </div>
+              <div class="col-8">
+                <label class="form-label">Order Reference</label>
+                <div class="input-group input-group-sm">
+                  <select class="form-select" id="order_ref_id">
+                    <option value="">— Select Sales Order —</option>
+                  </select>
+                  <button class="btn btn-outline-primary" type="button" id="btnApplyOrder">
+                    <i class="bi bi-lightning-charge me-1"></i>Apply
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row C -->
+        <div class="row g-2 align-items-end mb-3">
+          <div class="col-lg-4">
+            <label class="form-label">Sales Account</label>
+            <select class="form-select form-select-sm" id="sales_account_id">
+              <option value="">— Select Sales Account —</option>
+            </select>
+          </div>
+
+          <div class="col-lg-4">
+            <label class="form-label">Payment Mode</label>
+            <select class="form-select form-select-sm" id="payment_mode">
+              <option value="Credit">Credit</option>
+              <option value="Cash">Cash</option>
+              <option value="Bank">Bank</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div class="col-lg-4">
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label">Agent Name</label>
+                <select class="form-select form-select-sm" id="agent_id">
+                  <option value="">— Select Agent —</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Agent Area</label>
+                <select class="form-select form-select-sm" id="agent_area_id">
+                  <option value="">— Select Area —</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2.3 Column toggle chips -->
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+          <div class="small text-muted">Columns</div>
+          <div class="chip-bar btn-group" role="group" aria-label="Column toggles">
+            <input type="checkbox" class="btn-check" id="chip_hs_code" autocomplete="off" checked>
+            <label class="btn btn-outline-secondary btn-sm" for="chip_hs_code">HS / Item Code</label>
+
+            <input type="checkbox" class="btn-check" id="chip_description" autocomplete="off" checked>
+            <label class="btn btn-outline-secondary btn-sm" for="chip_description">Description</label>
+
+            <input type="checkbox" class="btn-check" id="chip_discount" autocomplete="off" checked>
+            <label class="btn btn-outline-secondary btn-sm" for="chip_discount">Discount</label>
+
+            <input type="checkbox" class="btn-check" id="chip_net_rate" autocomplete="off" checked>
+            <label class="btn btn-outline-secondary btn-sm" for="chip_net_rate">Net Rate</label>
+          </div>
+        </div>
+
+        <!-- 2.4 + 2.5 Line items + Totals side-by-side -->
+        <div class="row g-3">
+          <!-- Left: line items -->
+          <div class="col-xl-8">
+            <div class="card border-0 shadow-sm">
+              <div class="card-body p-2 p-md-3">
+                <div class="table-responsive">
+                  <table class="table table-sm table-bordered align-middle mb-2" id="itemsTable">
+                    <thead class="bg-body">
+                      <tr>
+                        <th style="width:44px;">SN</th>
+                        <th>Particulars</th>
+                        <th class="col-hs_code">HS / Code</th>
+                        <th class="col-description">Description</th>
+                        <th style="width:150px;">Qty + Unit</th>
+                        <th style="width:140px;">Godown</th>
+                        <th style="width:110px;">Rate</th>
+                        <th style="width:92px;">VAT</th>
+                        <th class="col-discount" style="width:160px;">Discount</th>
+                        <th class="col-net_rate" style="width:120px;">Net Rate</th>
+                        <th style="width:140px;">Amount</th>
+                        <th style="width:44px;"></th>
+                      </tr>
+                    </thead>
+                    <tbody id="itemsTbody">
+                      <!-- rows injected -->
+                    </tbody>
+                  </table>
+                </div>
+
+                <button class="btn btn-outline-primary btn-sm" type="button" id="btnAddItemRow">
+                  <i class="bi bi-plus-lg me-1"></i>Add New Row
+                </button>
+
+                <!-- In Words -->
+                <div class="mt-3">
+                  <div class="small text-muted mb-1">In Words</div>
+                  <div class="form-control form-control-sm readonly" id="in_words">Zero rupees only.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: totals panel -->
+          <div class="col-xl-4">
+            <div class="card border-0 shadow-sm">
+              <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <div class="fw-semibold">Totals</div>
+                  <span class="badge text-bg-light">VAT @ 13%</span>
+                </div>
+
+                <div class="totals-row">
+                  <div class="label">Sub Total</div>
+                  <div class="value money" id="t_sub_total">0.00</div>
+                </div>
+
+                <div class="totals-row align-items-center">
+                  <div class="label">Discount</div>
+                  <div class="d-flex gap-1" style="max-width:220px;">
+                    <input class="form-control form-control-sm text-end" id="hdr_discount_value" value="0" inputmode="decimal">
+                    <select class="form-select form-select-sm" id="hdr_discount_type" style="max-width:90px;">
+                      <option value="amt">Amt</option>
+                      <option value="pct">Per</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="totals-row">
+                  <div class="label">NonVatable Amount</div>
+                  <div class="value money" id="t_nonvat_amt">0.00</div>
+                </div>
+                <div class="totals-row">
+                  <div class="label">NonVatable Disc</div>
+                  <div class="value money" id="t_nonvat_disc">0.00</div>
+                </div>
+                <div class="totals-row">
+                  <div class="label">Total NonVatable Amount</div>
+                  <div class="value money" id="t_total_nonvat">0.00</div>
+                </div>
+
+                <div class="totals-row.hr"></div>
+
+                <div class="totals-row">
+                  <div class="label">Vatable Amount</div>
+                  <div class="value money" id="t_vat_amt">0.00</div>
+                </div>
+                <div class="totals-row">
+                  <div class="label">Vatable Disc</div>
+                  <div class="value money" id="t_vat_disc">0.00</div>
+                </div>
+                <div class="totals-row">
+                  <div class="label">Total Vatable Amount</div>
+                  <div class="value money" id="t_total_vat">0.00</div>
+                </div>
+
+                <div class="totals-row.hr"></div>
+
+                <div class="totals-row">
+                  <div class="label">Taxable Amount</div>
+                  <div class="value money" id="t_taxable">0.00</div>
+                </div>
+                <div class="totals-row">
+                  <div class="label">VAT @ 13%</div>
+                  <div class="value money" id="t_vat_13">0.00</div>
+                </div>
+
+                <div class="totals-row align-items-center">
+                  <div class="label">Bill Rounding</div>
+                  <div class="d-flex gap-1" style="max-width:220px;">
+                    <div class="btn-group btn-group-sm" role="group" aria-label="rounding">
+                      <button class="btn btn-outline-secondary" type="button" id="roundMinus"><i class="bi bi-dash-lg"></i></button>
+                      <button class="btn btn-outline-secondary" type="button" id="roundPlus"><i class="bi bi-plus-lg"></i></button>
+                    </div>
+                    <input class="form-control form-control-sm text-end" id="bill_rounding" value="0" inputmode="decimal">
+                  </div>
+                </div>
+
+                <div class="totals-row.hr"></div>
+
+                <div class="totals-row">
+                  <div class="label fw-semibold">Grand Total</div>
+                  <div class="value money grand" id="t_grand">0.00</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- 2.6 Bottom two panels -->
+        <div class="row g-3 mt-1">
+          <!-- Terms -->
+          <div class="col-lg-6">
+            <div class="card border-0 shadow-sm">
+              <div class="card-body">
+                <div class="fw-semibold mb-2">Terms & Conditions</div>
+                <label class="form-label">Select T&C</label>
+                <select class="form-select form-select-sm mb-2" id="terms_id">
+                  <option value="">— Select Terms —</option>
+                </select>
+                <label class="form-label">Terms Preview</label>
+                <textarea class="form-control form-control-sm readonly" rows="5" id="terms_preview" readonly>
+E & O E
+Products once sold are not refundable.
+Subject to Birgunj jurisdiction.
+                </textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Receipts -->
+          <div class="col-lg-6">
+            <div class="card border-0 shadow-sm">
+              <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <div class="fw-semibold">Add Receipt</div>
+                  <div class="small text-muted">Remaining: <span class="money fw-semibold" id="remaining_balance">0.00</span></div>
+                </div>
+
+                <div class="table-responsive">
+                  <table class="table table-sm table-bordered align-middle mb-2">
+                    <thead class="bg-body">
+                      <tr>
+                        <th>Bank/Cash (Ledger)</th>
+                        <th style="width:140px;">Amount</th>
+                        <th>Note</th>
+                        <th style="width:44px;"></th>
+                      </tr>
+                    </thead>
+                    <tbody id="payTbody"></tbody>
+                  </table>
+                </div>
+
+                <button class="btn btn-outline-primary btn-sm" type="button" id="btnAddPayRow">
+                  <i class="bi bi-plus-lg me-1"></i>Add New Row
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Narration -->
+        <div class="mt-3">
+          <label class="form-label">Narration</label>
+          <textarea class="form-control form-control-sm" id="narration" rows="2" placeholder="Optional narration..."></textarea>
+        </div>
+
+      </div>
+
+      <!-- Footer actions -->
+      <div class="card-footer sticky-actions">
+        <div class="d-flex justify-content-end gap-2 p-2">
+          <button class="btn btn-danger btn-sm" type="button" id="btnCancel">Cancel Transaction</button>
+          <button class="btn btn-primary btn-sm" type="button" id="btnSaveBottom">
+            <i class="bi bi-check2-circle me-1"></i>Save Transaction
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+(() => {
+  // ------------------------
+  // Sample data (replace with your lookups)
+  // ------------------------
+  const buyers = [
+    { id: "B1", name: "ABC Traders" },
+    { id: "B2", name: "Birgunj Retail Mart" },
+  ];
+
+  const salesAccounts = [
+    { id: "SA1", name: "Sales - Local" },
+    { id: "SA2", name: "Sales - Export" },
+  ];
+
+  const agents = [
+    { id: "A1", name: "Agent Ram" },
+    { id: "A2", name: "Agent Shyam" },
+  ];
+
+  const areas = [
+    { id: "AR1", name: "Birgunj - Ward 10" },
+    { id: "AR2", name: "Parsa - Rural" },
+  ];
+
+  const orders = [
+    { id: "SO-101", name: "SO-101 (Pending)" },
+    { id: "SO-102", name: "SO-102 (Pending)" },
+  ];
+
+  const terms = [
+    { id: "T1", name: "Trade Terms" },
+    { id: "T2", name: "Standard Sales Terms" },
+  ];
+
+  const items = [
+    { id: "I1", name: "Cement (50kg)", code: "HS-2523", unit: "Bag", defaultRate: 950, vatApplicable: true },
+    { id: "I2", name: "Rod (12mm)", code: "HS-7214", unit: "Kg",  defaultRate: 125, vatApplicable: true },
+    { id: "I3", name: "Transport Charge", code: "SRV-001", unit: "Nos", defaultRate: 500, vatApplicable: false },
+  ];
+
+  const units = ["Nos", "Kg", "Ltr", "Bag", "Box"];
+  const godowns = ["Main Store", "Secondary Store"];
+  const receiptLedgers = ["Cash", "NIC Asia Bank", "NMB Bank"];
+
+  // ------------------------
+  // Helpers
+  // ------------------------
+  const fmt = (n) => new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n || 0));
+  const num = (v) => {
+    const x = (v ?? "").toString().replace(/,/g, "").trim();
+    const n = Number(x);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  function numberToWords(n) {
+    n = Math.floor(Math.abs(n));
+    if (n === 0) return "Zero";
+    const a = ["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
+    const b = ["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
+    const chunk = (x) => {
+      let s = "";
+      if (x >= 100) { s += a[Math.floor(x/100)] + " Hundred "; x %= 100; }
+      if (x >= 20) { s += b[Math.floor(x/10)] + " "; x %= 10; }
+      if (x > 0) s += a[x] + " ";
+      return s.trim();
+    };
+    const units = [
+      { v: 1_000_000_000, w: "Billion" },
+      { v: 1_000_000, w: "Million" },
+      { v: 1_000, w: "Thousand" },
+    ];
+    let out = "";
+    for (const u of units) {
+      if (n >= u.v) {
+        out += chunk(Math.floor(n/u.v)) + " " + u.w + " ";
+        n %= u.v;
+      }
+    }
+    out += chunk(n);
+    return out.trim();
+  }
+
+  function optList(data, valueKey="id", labelKey="name") {
+    return data.map(x => `<option value="${x[valueKey]}">${x[labelKey]}</option>`).join("");
+  }
+
+  const el = (id) => document.getElementById(id);
+
+  // ------------------------
+  // Populate header selects
+  // ------------------------
+  el("buyer_id").insertAdjacentHTML("beforeend", optList(buyers));
+  el("sales_account_id").insertAdjacentHTML("beforeend", optList(salesAccounts));
+  el("agent_id").insertAdjacentHTML("beforeend", optList(agents));
+  el("agent_area_id").insertAdjacentHTML("beforeend", optList(areas));
+  el("order_ref_id").insertAdjacentHTML("beforeend", optList(orders));
+  el("terms_id").insertAdjacentHTML("beforeend", optList(terms));
+
+  // Default date AD today
+  el("date_ad").valueAsDate = new Date();
+
+  // ------------------------
+  // Column toggles (localStorage)
+  // ------------------------
+  const PREF_KEY = "voucher_ui_pref_sales_columns_v1";
+  const defaultPrefs = { hs_code: true, description: true, discount: true, net_rate: true };
+
+  function loadPrefs() {
+    try {
+      const v = JSON.parse(localStorage.getItem(PREF_KEY) || "null");
+      return { ...defaultPrefs, ...(v || {}) };
+    } catch { return { ...defaultPrefs }; }
+  }
+  function savePrefs(p) { localStorage.setItem(PREF_KEY, JSON.stringify(p)); }
+
+  function applyColumnVisibility(p) {
+    const map = {
+      hs_code: "col-hs_code",
+      description: "col-description",
+      discount: "col-discount",
+      net_rate: "col-net_rate",
+    };
+
+    Object.entries(map).forEach(([k, cls]) => {
+      document.querySelectorAll(`.${cls}`).forEach(cell => {
+        cell.classList.toggle("d-none", !p[k]);
+      });
+    });
+
+    el("chip_hs_code").checked = !!p.hs_code;
+    el("chip_description").checked = !!p.description;
+    el("chip_discount").checked = !!p.discount;
+    el("chip_net_rate").checked = !!p.net_rate;
+  }
+
+  let prefs = loadPrefs();
+  applyColumnVisibility(prefs);
+
+  ["hs_code","description","discount","net_rate"].forEach(k => {
+    el(`chip_${k}`).addEventListener("change", () => {
+      prefs[k] = el(`chip_${k}`).checked;
+      savePrefs(prefs);
+      applyColumnVisibility(prefs);
+    });
+  });
+
+  // ------------------------
+  // Line items grid
+  // ------------------------
+  let lineSeq = 0;
+
+  function itemOptions() {
+    return `<option value="">— Select Item —</option>` + items.map(i => `<option value="${i.id}">${i.name}</option>`).join("");
+  }
+  function unitOptions(selected="") {
+    return units.map(u => `<option value="${u}" ${u===selected?"selected":""}>${u}</option>`).join("");
+  }
+  function godownOptions() {
+    return godowns.map(g => `<option value="${g}">${g}</option>`).join("");
+  }
+
+  function makeLineRow() {
+    lineSeq += 1;
+    const tr = document.createElement("tr");
+    tr.dataset.lineId = String(lineSeq);
+    tr.innerHTML = `
+      <td class="text-center small">${lineSeq}</td>
+
+      <td>
+        <select class="form-select form-select-sm line-item" data-field="item_id">
+          ${itemOptions()}
+        </select>
+      </td>
+
+      <td class="col-hs_code">
+        <input class="form-control form-control-sm readonly" data-field="hs_code" readonly value="" placeholder="—" />
+      </td>
+
+      <td class="col-description">
+        <input class="form-control form-control-sm" data-field="description" placeholder="Optional..." />
+      </td>
+
+      <td>
+        <div class="input-group input-group-sm">
+          <input class="form-control text-end line-num" data-field="qty" value="1" inputmode="decimal" />
+          <select class="form-select" data-field="unit_id" style="max-width:90px;">
+            ${unitOptions("Nos")}
+          </select>
+        </div>
+      </td>
+
+      <td>
+        <select class="form-select form-select-sm" data-field="godown_id">
+          ${godownOptions()}
+        </select>
+      </td>
+
+      <td>
+        <input class="form-control form-control-sm text-end line-num" data-field="rate" value="0" inputmode="decimal" />
+      </td>
+
+      <td>
+        <select class="form-select form-select-sm" data-field="vat_applicable">
+          <option value="yes" selected>Yes</option>
+          <option value="no">No</option>
+        </select>
+      </td>
+
+      <td class="col-discount">
+        <div class="input-group input-group-sm">
+          <select class="form-select" data-field="discount_type" style="max-width:90px;">
+            <option value="none" selected>None</option>
+            <option value="pct">%</option>
+            <option value="amt">Amt</option>
+          </select>
+          <input class="form-control text-end line-num" data-field="discount_value" value="0" inputmode="decimal" />
+        </div>
+      </td>
+
+      <td class="col-net_rate">
+        <input class="form-control form-control-sm readonly text-end money" data-field="net_rate" readonly value="0.00" />
+      </td>
+
+      <td>
+        <input class="form-control form-control-sm readonly text-end money" data-field="amount" readonly value="0.00" />
+      </td>
+
+      <td class="text-center">
+        <button class="btn btn-outline-danger btn-sm" type="button" data-action="remove-line" title="Remove">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </td>
+    `;
+    return tr;
+  }
+
+  function addLineRow() {
+    const tr = makeLineRow();
+    el("itemsTbody").appendChild(tr);
+    applyColumnVisibility(prefs);
+    recalcAll();
+  }
+
+  function removeLineRow(btn) {
+    const tr = btn.closest("tr");
+    tr?.remove();
+    [...el("itemsTbody").querySelectorAll("tr")].forEach((r, idx) => {
+      r.querySelector("td").textContent = String(idx + 1);
+    });
+    recalcAll();
+  }
+
+  el("btnAddItemRow").addEventListener("click", addLineRow);
+
+  el("itemsTbody").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-action='remove-line']");
+    if (btn) removeLineRow(btn);
+  });
+
+  el("itemsTbody").addEventListener("change", (e) => {
+    const tr = e.target.closest("tr");
+    if (!tr) return;
+
+    if (e.target.matches("[data-field='item_id']")) {
+      const id = e.target.value;
+      const it = items.find(x => x.id === id);
+
+      tr.querySelector("[data-field='hs_code']").value = it ? it.code : "";
+      tr.querySelector("[data-field='unit_id']").innerHTML = unitOptions(it ? it.unit : "Nos");
+
+      // Default rate + VAT applicability from item master (mock)
+      tr.querySelector("[data-field='rate']").value = it ? String(it.defaultRate || 0) : "0";
+      tr.querySelector("[data-field='vat_applicable']").value = (it && it.vatApplicable) ? "yes" : "no";
+    }
+
+    recalcAll();
+  });
+
+  el("itemsTbody").addEventListener("input", (e) => {
+    if (e.target.classList.contains("line-num")) recalcAll();
+  });
+
+  // initial 2 rows
+  addLineRow();
+  addLineRow();
+
+  // ------------------------
+  // Receipts grid
+  // ------------------------
+  function receiptLedgerOptions() {
+    return `<option value="">— Select —</option>` + receiptLedgers.map(p => `<option value="${p}">${p}</option>`).join("");
+  }
+
+  function makePayRow() {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>
+        <select class="form-select form-select-sm pay-ledger" data-field="account_id">
+          ${receiptLedgerOptions()}
+        </select>
+      </td>
+      <td>
+        <input class="form-control form-control-sm text-end pay-amt" data-field="amount" value="0" inputmode="decimal" />
+      </td>
+      <td>
+        <input class="form-control form-control-sm" data-field="note" placeholder="Optional..." />
+      </td>
+      <td class="text-center">
+        <button class="btn btn-outline-danger btn-sm" type="button" data-action="remove-pay" title="Remove">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </td>
+    `;
+    return tr;
+  }
+
+  function addPayRow() {
+    el("payTbody").appendChild(makePayRow());
+    recalcAll();
+  }
+
+  el("btnAddPayRow").addEventListener("click", addPayRow);
+
+  el("payTbody").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-action='remove-pay']");
+    if (btn) { btn.closest("tr")?.remove(); recalcAll(); }
+  });
+
+  el("payTbody").addEventListener("input", (e) => {
+    if (e.target.classList.contains("pay-amt")) recalcAll();
+  });
+
+  // add one pay row by default
+  addPayRow();
+
+  // ------------------------
+  // Buyer info mock
+  // ------------------------
+  el("buyer_id").addEventListener("change", () => {
+    const id = el("buyer_id").value;
+    if (!id) {
+      el("buyer_info").textContent = "Please select Buyer’s Name to view balance and details.";
+      return;
+    }
+    el("buyer_info").textContent = `Balance: NPR ${fmt(18500)} | PAN: 123456789 | Credit Limit: NPR ${fmt(300000)} | Overdue: NPR ${fmt(2500)}`;
+  });
+
+  // ------------------------
+  // Header discount + rounding controls
+  // ------------------------
+  el("hdr_discount_value").addEventListener("input", recalcAll);
+  el("hdr_discount_type").addEventListener("change", recalcAll);
+
+  el("roundPlus").addEventListener("click", () => {
+    el("bill_rounding").value = String(num(el("bill_rounding").value) + 1);
+    recalcAll();
+  });
+  el("roundMinus").addEventListener("click", () => {
+    el("bill_rounding").value = String(num(el("bill_rounding").value) - 1);
+    recalcAll();
+  });
+  el("bill_rounding").addEventListener("input", recalcAll);
+
+  // ------------------------
+  // Totals calc (matches your spec)
+  // ------------------------
+  const VAT_RATE = 13;
+
+  function getLineValues(tr) {
+    const qty = num(tr.querySelector("[data-field='qty']").value);
+    const rate = num(tr.querySelector("[data-field='rate']").value);
+    const vatYes = tr.querySelector("[data-field='vat_applicable']").value === "yes";
+
+    const discType = tr.querySelector("[data-field='discount_type']")?.value || "none";
+    const discVal = num(tr.querySelector("[data-field='discount_value']")?.value);
+
+    const gross = qty * rate;
+
+    let discAmt = 0;
+    if (discType === "pct") discAmt = gross * (discVal / 100);
+    else if (discType === "amt") discAmt = discVal;
+
+    discAmt = Math.max(0, Math.min(discAmt, gross));
+    const taxable = gross - discAmt;
+
+    let vat = 0;
+    let lineTotal = taxable;
+
+    if (vatYes) {
+      vat = taxable * (VAT_RATE / 100);
+      lineTotal = taxable + vat;
+    }
+
+    const netRate = qty ? (lineTotal / qty) : 0;
+
+    return { qty, rate, gross, discAmt, taxable, vatYes, vat, lineTotal, netRate };
+  }
+
+  function recalcAll() {
+    const rows = [...el("itemsTbody").querySelectorAll("tr")];
+
+    let subTotal = 0;
+
+    let nonVatTaxableSum = 0;
+    let nonVatDiscSum = 0;
+
+    let vatTaxableSum = 0;
+    let vatDiscSum = 0;
+
+    let vatAmountSum = 0;
+
+    rows.forEach(tr => {
+      const v = getLineValues(tr);
+
+      subTotal += v.gross;
+
+      if (v.vatYes) {
+        vatDiscSum += v.discAmt;
+        vatTaxableSum += v.taxable;
+        vatAmountSum += v.vat;
+      } else {
+        nonVatDiscSum += v.discAmt;
+        nonVatTaxableSum += v.taxable;
+      }
+
+      tr.querySelector("[data-field='net_rate']").value = fmt(v.netRate);
+      tr.querySelector("[data-field='amount']").value = fmt(v.lineTotal);
+    });
+
+    // Header discount (applied after line discount), allocated proportionally on taxable amounts
+    const hdrType = el("hdr_discount_type").value; // pct/amt
+    const hdrVal = num(el("hdr_discount_value").value);
+
+    const taxableBeforeHdr = nonVatTaxableSum + vatTaxableSum;
+    let hdrDisc = 0;
+    if (hdrType === "pct") hdrDisc = taxableBeforeHdr * (hdrVal / 100);
+    else hdrDisc = hdrVal;
+
+    hdrDisc = Math.max(0, Math.min(hdrDisc, taxableBeforeHdr));
+
+    const shareVat = taxableBeforeHdr > 0 ? (vatTaxableSum / taxableBeforeHdr) : 0;
+    const hdrDiscVat = hdrDisc * shareVat;
+    const hdrDiscNon = hdrDisc - hdrDiscVat;
+
+    const totalNonVatable = Math.max(0, nonVatTaxableSum - hdrDiscNon);
+    const totalVatable = Math.max(0, vatTaxableSum - hdrDiscVat);
+
+    const totalNonVatDisc = nonVatDiscSum + hdrDiscNon;
+    const totalVatDisc = vatDiscSum + hdrDiscVat;
+
+    const taxableAmount = totalVatable; // per spec
+    const vatAmount = taxableAmount * (VAT_RATE / 100);
+
+    const rounding = num(el("bill_rounding").value);
+    const grand = totalNonVatable + totalVatable + vatAmount + rounding;
+
+    // write totals
+    el("t_sub_total").textContent = fmt(subTotal);
+
+    el("t_nonvat_amt").textContent = fmt(nonVatTaxableSum);
+    el("t_nonvat_disc").textContent = fmt(totalNonVatDisc);
+    el("t_total_nonvat").textContent = fmt(totalNonVatable);
+
+    el("t_vat_amt").textContent = fmt(vatTaxableSum);
+    el("t_vat_disc").textContent = fmt(totalVatDisc);
+    el("t_total_vat").textContent = fmt(totalVatable);
+
+    el("t_taxable").textContent = fmt(taxableAmount);
+    el("t_vat_13").textContent = fmt(vatAmount);
+    el("t_grand").textContent = fmt(grand);
+
+    el("in_words").textContent = `${numberToWords(grand)} rupees only.`;
+
+    // receipts + remaining
+    const paid = [...el("payTbody").querySelectorAll(".pay-amt")].reduce((a, inp) => a + num(inp.value), 0);
+    el("remaining_balance").textContent = fmt(grand - paid);
+  }
+
+  // ------------------------
+  // Actions (mock)
+  // ------------------------
+  function mockSave() {
+    recalcAll();
+    alert("Mock Save: UI totals calculated. Wire this to your Django/HTMX submit next.");
+  }
+
+  el("btnSaveTop").addEventListener("click", mockSave);
+  el("btnSaveBottom").addEventListener("click", mockSave);
+
+  el("btnApplyOrder").addEventListener("click", () => alert("Mock Apply Order: load pending order lines into grid."));
+  el("btnRefetchNo").addEventListener("click", () => alert("Mock: re-fetch next invoice number (server-side)."));
+
+  el("btnCancel").addEventListener("click", () => alert("Mock Cancel."));
+
+  // Initial calc
+  recalcAll();
+})();
+</script>
+
+</body>
+</html>

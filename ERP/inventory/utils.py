@@ -41,8 +41,7 @@ class ProductService:
             QuerySet of saleable products
         """
         queryset = Product.objects.filter(
-            organization=organization,
-            is_active=True
+            organization=organization
         )
 
         if category:
@@ -81,7 +80,7 @@ class ProductService:
         )
 
         if not include_inactive:
-            queryset = queryset.filter(is_active=True)
+            pass  # Product model doesn't have is_active field
 
         queryset = OrganizationService.filter_queryset_by_org(queryset, organization)
         products = queryset[:limit]
@@ -97,7 +96,6 @@ class ProductService:
                 'unit': ProductService.get_product_unit_display(product),
                 'selling_price': str(product.sale_price),
                 'available_stock': str(stock_info['available_stock']),
-                'is_active': product.is_active,
                 'category': product.category.name if product.category else '',
             })
 
@@ -615,15 +613,13 @@ class InventoryService:
         # Get inventory products
         inventory_products = Product.objects.filter(
             organization=organization,
-            is_inventory_item=True,
-            is_active=True
+            is_inventory_item=True
         )
 
         # Aggregate stock data
         stock_summary = InventoryItem.objects.filter(
             organization=organization,
-            product__is_inventory_item=True,
-            product__is_active=True
+            product__is_inventory_item=True
         ).aggregate(
             total_products=Count('product', distinct=True),
             total_value=Sum(F('quantity_on_hand') * F('unit_cost')),
@@ -687,7 +683,6 @@ class InventoryService:
         valuation_data = InventoryItem.objects.filter(
             organization=organization,
             product__is_inventory_item=True,
-            product__is_active=True,
             quantity_on_hand__gt=0
         ).select_related('product').values(
             'product__code', 'product__name', 'product__id'

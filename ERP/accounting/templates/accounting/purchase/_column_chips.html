@@ -1,0 +1,43 @@
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+  <div class="small text-muted">Columns</div>
+
+  <div class="btn-group" role="group" aria-label="Column toggles">
+
+    <button type="button" class="btn btn-outline-secondary btn-sm {% if ui.hs_code %}active{% endif %}"
+            hx-post="{% url 'purchasing:purchase_column_pref' %}"
+            hx-vals='{"col":"hs_code"}'
+            hx-include="#purchase-form"
+            hx-target="#items-wrap"
+            hx-swap="outerHTML">
+      HS / Item Code
+    </button>
+
+    <button type="button" class="btn btn-outline-secondary btn-sm {% if ui.description %}active{% endif %}"
+            hx-post="{% url 'purchasing:purchase_column_pref' %}"
+            hx-vals='{"col":"description"}'
+            hx-include="#purchase-form"
+            hx-target="#items-wrap"
+            hx-swap="outerHTML">
+      Description
+    </button>
+
+    <button type="button" class="btn btn-outline-secondary btn-sm {% if ui.discount %}active{% endif %}"
+            hx-post="{% url 'purchasing:purchase_column_pref' %}"
+            hx-vals='{"col":"discount"}'
+            hx-include="#purchase-form"
+            hx-target="#items-wrap"
+            hx-swap="outerHTML">
+      Discount
+    </button>
+
+    <button type="button" class="btn btn-outline-secondary btn-sm {% if ui.net_rate %}active{% endif %}"
+            hx-post="{% url 'purchasing:purchase_column_pref' %}"
+            hx-vals='{"col":"net_rate"}'
+            hx-include="#purchase-form"
+            hx-target="#items-wrap"
+            hx-swap="outerHTML">
+      Net Rate
+    </button>
+
+  </div>
+</div>

@@ -1,0 +1,8 @@
+<div class="text-muted small mb-3" id="in-words">
+  <i class="bi bi-text-paragraph"></i>
+  {% if totals.grand_total %}
+    In Words: <strong>{{ totals.grand_total|floatformat:2|safe }}</strong>
+  {% else %}
+    In Words: <em>Zero Dollars</em>
+  {% endif %}
+</div>

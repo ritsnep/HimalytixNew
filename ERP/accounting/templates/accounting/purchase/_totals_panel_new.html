@@ -1,0 +1,102 @@
+{% load widget_tweaks %}
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-3">
+    
+    <div class="fw-semibold mb-2 pb-2 border-bottom">
+      <i class="bi bi-calculator"></i> Summary
+    </div>
+
+    <!-- Sub Total Row -->
+    <div class="d-flex justify-content-between py-1 small">
+      <div class="text-muted">Subtotal</div>
+      <div class="money" id="calc-subtotal">0.00</div>
+    </div>
+
+    <!-- Discount Section -->
+    <div class="d-flex justify-content-between align-items-center py-1 small mb-2 pb-2 border-bottom">
+      <div class="text-muted">Discount</div>
+      <div class="d-flex gap-1" style="max-width: 180px;">
+        {% if form.discount_value %}
+          {{ form.discount_value|add_class:"recalc" }}
+        {% endif %}
+        {% if form.discount_type %}
+          {{ form.discount_type|add_class:"recalc" }}
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Non-Vatable Section -->
+    <div class="small mb-2">
+      <div class="d-flex justify-content-between py-1">
+        <div class="text-muted">Non-Vatable Items</div>
+        <div class="money" id="calc-nonvatable">0.00</div>
+      </div>
+      <div class="d-flex justify-content-between py-1">
+        <div class="text-muted">Non-Vatable Discount</div>
+        <div class="money" id="calc-nonvatable-disc">0.00</div>
+      </div>
+      <div class="d-flex justify-content-between py-1 fw-semibold">
+        <div>Total Non-Vatable</div>
+        <div class="money" id="calc-total-nonvatable">0.00</div>
+      </div>
+    </div>
+
+    <!-- Vatable Section -->
+    <div class="small mb-2 pb-2 border-bottom">
+      <div class="d-flex justify-content-between py-1">
+        <div class="text-muted">Vatable Items</div>
+        <div class="money" id="calc-vatable">0.00</div>
+      </div>
+      <div class="d-flex justify-content-between py-1">
+        <div class="text-muted">Vatable Discount</div>
+        <div class="money" id="calc-vatable-disc">0.00</div>
+      </div>
+      <div class="d-flex justify-content-between py-1 fw-semibold">
+        <div>Taxable Amount</div>
+        <div class="money" id="calc-taxable">0.00</div>
+      </div>
+    </div>
+
+    <!-- VAT Section -->
+    <div class="small mb-2 pb-2 border-bottom">
+      <div class="d-flex justify-content-between py-1">
+        <div class="text-muted">VAT @ 13%</div>
+        <div class="money" id="calc-vat">0.00</div>
+      </div>
+    </div>
+
+    <!-- Rounding -->
+    <div class="d-flex justify-content-between align-items-center py-1 small mb-2 pb-2 border-bottom">
+      <div class="text-muted">Bill Rounding</div>
+      <div class="d-flex gap-1">
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="rounding-minus">
+          <i class="bi bi-dash"></i>
+        </button>
+        {% if form.bill_rounding %}
+          {{ form.bill_rounding|add_class:"recalc" }}
+        {% endif %}
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="rounding-plus">
+          <i class="bi bi-plus"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Grand Total (Highlighted) -->
+    <div class="alert alert-info py-2 px-3 mb-0">
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="fw-bold">GRAND TOTAL</div>
+        <div class="money fw-bold h5 mb-0" id="calc-grand-total">0.00</div>
+      </div>
+    </div>
+
+    <!-- In Words Display -->
+    <div class="text-muted small mt-2 pt-2 border-top">
+      <i class="bi bi-text-paragraph"></i>
+      <span id="amount-in-words">Zero only</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- Hidden form fields for organization context -->
+<input type="hidden" id="form-organization" value="{{ form.instance.organization_id|default:'' }}">

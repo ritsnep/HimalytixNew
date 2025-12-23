@@ -1,0 +1,117 @@
+{% extends "voucher_config/base.html" %}
+{% load static %}
+
+{% block extra_css %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'accounting/css/voucher_entry.css' %}">
+{% endblock %}
+
+{% block voucher_config_content %}
+{% include "voucher_config/partials/entry_panel.html" %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/form-base.js' %}"></script>
+<script src="{% static 'accounting/js/voucher_typeahead.js' %}"></script>
+<script src="{% static 'accounting/js/generic_voucher_entry.js' %}"></script>
+<script>
+(function () {
+  const form = document.getElementById("voucher-form");
+  const actionInput = document.getElementById("voucher-action");
+  const linesContainer = document.getElementById("lines-container");
+
+  if (window.FormBase && form) {
+    window.FormBase.mount(form);
+  }
+
+  const parseNumber = (val) => {
+    const num = parseFloat(String(val || "").replace(/,/g, ""));
+    return Number.isFinite(num) ? num : 0;
+  };
+
+  const updateTotals = () => {
+    let debit = 0;
+    let credit = 0;
+    if (linesContainer) {
+      linesContainer.querySelectorAll('input[name$="-debit_amount"], input[name$="-debit"]').forEach((input) => {
+        debit += parseNumber(input.value);
+      });
+      linesContainer.querySelectorAll('input[name$="-credit_amount"], input[name$="-credit"]').forEach((input) => {
+        credit += parseNumber(input.value);
+      });
+    }
+    const debitEl = document.getElementById("summary-total-debit");
+    const creditEl = document.getElementById("summary-total-credit");
+    const diffEl = document.getElementById("summary-total-diff");
+    if (debitEl) debitEl.textContent = debit.toFixed(2);
+    if (creditEl) creditEl.textContent = credit.toFixed(2);
+    if (diffEl) diffEl.textContent = (debit - credit).toFixed(2);
+  };
+
+  if (form) {
+    form.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-action]");
+      if (!btn || !actionInput) return;
+      actionInput.value = btn.dataset.action || "save";
+    });
+  }
+
+  if (linesContainer) {
+    linesContainer.addEventListener("input", updateTotals);
+  }
+
+  document.body.addEventListener("htmx:afterSwap", (evt) => {
+    if (evt.detail && evt.detail.target && evt.detail.target.id === "lines-container") {
+      updateTotals();
+    }
+  });
+
+  updateTotals();
+})();
+</script>
+{% if additional_charges_formset %}
+<script>
+  (function () {
+    const addBtn = document.querySelector('[data-ac-add]');
+    const body = document.getElementById('additional-charges-body');
+    const template = document.getElementById('additional-charge-template');
+    const totalInput = document.getElementById('id_additional_charges-TOTAL_FORMS');
+    if (!addBtn || !body || !template || !totalInput) return;
+
+    const addRow = () => {
+      const index = parseInt(totalInput.value || '0', 10);
+      const html = template.innerHTML.replace(/__prefix__/g, index);
+      const wrapper = document.createElement('tbody');
+      wrapper.innerHTML = html.trim();
+      const row = wrapper.firstElementChild;
+      if (row) {
+        body.appendChild(row);
+        totalInput.value = index + 1;
+      }
+    };
+
+    const markDeleted = (row) => {
+      if (!row) return;
+      const delInput = row.querySelector('input[name$="-DELETE"]');
+      if (delInput) {
+        delInput.value = 'on';
+        row.classList.add('d-none');
+        return true;
+      }
+      return false;
+    };
+
+    addBtn.addEventListener('click', addRow);
+    body.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-ac-remove]');
+      if (!btn) return;
+      const row = btn.closest('tr');
+      if (markDeleted(row)) return;
+      row.remove();
+      const current = parseInt(totalInput.value || '0', 10);
+      totalInput.value = Math.max(0, current - 1);
+    });
+  })();
+</script>
+{% endif %}
+{% endblock %}

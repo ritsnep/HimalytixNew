@@ -2,15 +2,21 @@
 
 ## Overview
 
-The Dynamic Voucher System provides a configuration-driven approach to creating and managing voucher forms across different modules (Accounting, Purchasing, Sales, Inventory). This system allows for flexible form generation based on JSON schemas stored in `VoucherConfiguration` models.
+The Dynamic Voucher System provides a configuration-driven approach to creating and managing voucher forms across different modules (Accounting, Purchasing, Sales, Inventory). This system allows for flexible form generation based on JSON schemas stored in database configurations.
+
+The system has evolved with two implementations:
+
+1. **Legacy Implementation**: Uses `VoucherConfiguration` models in the accounting app
+2. **New Implementation**: Uses the dedicated `voucher_config` app with isolated models and HTMX-powered UI
 
 ## Architecture
 
 ### Core Components
 
-1. **VoucherConfiguration Model**: Stores form schemas, UI configurations, and metadata
-2. **VoucherFormFactory**: Factory class for creating forms and formsets
-3. **Dynamic Form Builder**: Schema-based form generation in `forms_factory.py`
+1. **Configuration Models**: Store form schemas, UI configurations, and metadata
+2. **Schema Builder**: `resolve_ui_schema()` methods generate UI schemas from configurations
+3. **Form Factory**: Schema-based form generation in `forms_factory.py`
+4. **HTMX UI**: Dynamic endpoints for real-time interactions (new implementation)
 
 ### Key Features
 
@@ -18,6 +24,7 @@ The Dynamic Voucher System provides a configuration-driven approach to creating 
 - **Schema-driven Forms**: Forms generated from JSON schemas in `ui_schema` field
 - **Multiple Configuration Support**: Handles multiple configurations per (module, code) pair
 - **Fallback Mechanisms**: Graceful fallbacks for unknown configurations
+- **HTMX Integration**: Real-time UI updates without page reloads (new implementation)
 
 ## Model Mappings
 
@@ -32,7 +39,34 @@ The Dynamic Voucher System provides a configuration-driven approach to creating 
 | inventory | * | Journal | JournalLine |
 | * | * | Journal | JournalLine (fallback) |
 
-## Usage
+## New Implementation (voucher_config App)
+
+### Models
+
+- **VoucherConfigMaster**: Core configuration with schema resolution
+- **InventoryLineConfig**: Line item grid configuration
+- **FooterChargeSetup**: Tax and charge calculations
+- **VoucherUDFConfig**: User-defined fields
+
+### Services
+
+- **DraftService**: Atomic draft save operations
+- **PostingOrchestrator**: Integration with accounting posting workflow
+
+### Views
+
+HTMX-powered endpoints for:
+- Voucher selection (`/voucher-config/select/`)
+- Dynamic form creation (`/voucher-config/new/<code>/`)
+- Real-time validation (`/voucher-config/validate/`)
+- Draft saving (`/voucher-config/draft/`)
+- Line item management (`/voucher-config/add-line/`)
+
+### Templates
+
+Modular HTMX templates in `voucher_config/templates/` supporting partial updates for header, lines, totals, and status tracking.
+
+## Legacy Implementation (Accounting App)
 
 ### Creating Forms
 

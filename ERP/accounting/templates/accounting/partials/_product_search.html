@@ -1,0 +1,26 @@
+{% load static %}
+<div class="product-search-container position-relative">
+  <input type="text"
+         class="form-control form-control-sm product-search-input"
+         data-field="product_search"
+         placeholder="Search products..."
+         autocomplete="off"
+         hx-get="{% url 'accounting:search_products_hx' %}"
+         hx-target="#product-search-results-{{ form_index }}"
+         hx-trigger="input changed delay:300ms"
+         hx-include="[name='csrfmiddlewaretoken']"
+         hx-indicator="#product-search-indicator-{{ form_index }}">
+
+  <div id="product-search-results-{{ form_index }}"
+       class="product-search-results position-absolute bg-white border rounded shadow-sm"
+       style="display: none; z-index: 1000; max-height: 200px; overflow-y: auto; width: 100%;"></div>
+
+  <div id="product-search-indicator-{{ form_index }}"
+       class="htmx-indicator position-absolute top-50 end-0 translate-middle-y me-2">
+    <div class="spinner-border spinner-border-sm text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+  </div>
+
+  <input type="hidden" data-field="item_id" value="">
+</div>

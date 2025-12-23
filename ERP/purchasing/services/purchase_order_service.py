@@ -265,3 +265,23 @@ def post_purchase_order(po: PurchaseOrder, user=None) -> PurchaseOrder:
     # PO status transitions are handled by approve, mark_sent, etc.
     # This is a placeholder for future GL posting if needed
     return po
+
+
+class PurchaseOrderQueryService:
+    """
+    Service for querying purchase orders.
+    """
+
+    @staticmethod
+    def get_pending_orders_for_dropdown(organization):
+        """
+        Get pending/approved purchase orders for dropdown selection.
+        """
+        pending_orders = PurchaseOrder.objects.filter(
+            organization=organization,
+            status__in=['approved', 'sent']  # Orders that can be referenced
+        ).order_by('-order_date')
+        return [
+            {'id': order.id, 'name': f"PO-{order.po_number} ({order.vendor.display_name})"}
+            for order in pending_orders[:50]  # Limit to recent 50
+        ]

@@ -1,0 +1,67 @@
+<div class="card border-0 shadow-sm">
+  <div class="card-body">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <div class="fw-semibold">Totals</div>
+      <span class="badge text-bg-light">VAT @ 13%</span>
+    </div>
+
+    <div class="d-flex justify-content-between py-1">
+      <div class="text-muted small">Sub Total</div>
+      <div class="fw-semibold money">{{ totals.sub_total|default:'0.00' }}</div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center py-1">
+      <div class="text-muted small">Discount</div>
+      <div class="d-flex gap-1" style="max-width:220px;">
+        {% include_form_field form.discount_value class="form-control form-control-sm text-end recalc" %}
+        {% include_form_field form.discount_type class="form-select form-select-sm recalc" %}
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-between py-1"><div class="text-muted small">NonVatable Amount</div><div class="fw-semibold money">{{ totals.non_vatable_amount|default:'0.00' }}</div></div>
+    <div class="d-flex justify-content-between py-1"><div class="text-muted small">NonVatable Disc</div><div class="fw-semibold money">{{ totals.non_vatable_discount|default:'0.00' }}</div></div>
+    <div class="d-flex justify-content-between py-1"><div class="text-muted small">Total NonVatable</div><div class="fw-semibold money">{{ totals.total_non_vatable|default:'0.00' }}</div></div>
+
+    <hr class="my-2" />
+
+    <div class="d-flex justify-content-between py-1"><div class="text-muted small">Vatable Amount</div><div class="fw-semibold money">{{ totals.vatable_amount|default:'0.00' }}</div></div>
+    <div class="d-flex justify-content-between py-1"><div class="text-muted small">Vatable Disc</div><div class="fw-semibold money">{{ totals.vatable_discount|default:'0.00' }}</div></div>
+    <div class="d-flex justify-content-between py-1"><div class="text-muted small">Total Vatable</div><div class="fw-semibold money">{{ totals.total_vatable|default:'0.00' }}</div></div>
+
+    <hr class="my-2" />
+
+    <div class="d-flex justify-content-between py-1"><div class="text-muted small">Taxable Amount</div><div class="fw-semibold money">{{ totals.taxable_amount|default:'0.00' }}</div></div>
+    <div class="d-flex justify-content-between py-1"><div class="text-muted small">VAT @ 13%</div><div class="fw-semibold money">{{ totals.vat_amount|default:'0.00' }}</div></div>
+
+    <div class="d-flex justify-content-between align-items-center py-1">
+      <div class="text-muted small">Bill Rounding</div>
+      <div class="d-flex gap-1" style="max-width:220px;">
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                hx-post="{% url 'purchasing:purchase_rounding' %}"
+                hx-vals='{"dir":"-"}'
+                hx-include="#purchase-form"
+                hx-target="#totals-wrap"
+                hx-swap="outerHTML"><i class="bi bi-dash-lg"></i></button>
+
+        {% include_form_field form.bill_rounding class="form-control form-control-sm text-end recalc" %}
+
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                hx-post="{% url 'purchasing:purchase_rounding' %}"
+                hx-vals='{"dir":"+"}'
+                hx-include="#purchase-form"
+                hx-target="#totals-wrap"
+                hx-swap="outerHTML"><i class="bi bi-plus-lg"></i></button>
+      </div>
+    </div>
+
+    <hr class="my-2" />
+
+    <div class="d-flex justify-content-between py-1">
+      <div class="fw-semibold">Grand Total</div>
+      <div class="fw-semibold money">{{ totals.grand_total|default:'0.00' }}</div>
+    </div>
+
+    <div class="mt-2">{% include "purchase/_in_words.html" %}</div>
+
+  </div>
+</div>

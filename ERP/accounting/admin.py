@@ -20,6 +20,7 @@ from .models import (VoucherUDFConfig,
     AccountType,
     ChartOfAccount,
     Currency,
+    Agent,
     CurrencyExchangeRate,
     JournalType,
     Journal,
@@ -142,6 +143,14 @@ class CurrencyAdmin(admin.ModelAdmin):
     search_fields = ('currency_code', 'currency_name')
     list_display = ('currency_code', 'currency_name', 'symbol', 'is_active')
     list_filter = ('is_active',)
+
+
+@admin.register(Agent)
+class AgentAdmin(admin.ModelAdmin):
+    list_display = ('code', 'name', 'organization', 'area', 'phone', 'email', 'commission_rate', 'is_active')
+    search_fields = ('code', 'name', 'area', 'phone', 'email')
+    list_filter = ('organization', 'is_active')
+    list_select_related = ('organization',)
 
 
 @admin.register(CurrencyExchangeRate)

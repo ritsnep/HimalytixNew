@@ -380,11 +380,33 @@ body.right-bar-enabled .main-content { margin-right: 0; width: calc(100% - 250px
 }
 
 @media (max-width: 768px) {
-  #layout-wrapper { display: block; }
-  .vertical-menu { transform: translateX(-100%); width: 0 !important; }
-  body.sidebar-enable .vertical-menu { transform: translateX(0); width: 240px !important; }
-  .main-content { margin-left: 0 !important; padding: 16px 12px 12px 12px; }
-  .page-content { padding-left: 12px; padding-right: 12px; }
+  #layout-wrapper { display: block !important; }
+  .vertical-menu {
+    display: block !important;
+    transform: translateX(-100%) !important;
+    width: 0 !important;
+    position: fixed !important;
+    top: 56px !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    z-index: 1050 !important;
+    transition: transform 0.3s ease-in-out, width 0.3s ease-in-out !important;
+    background: #23272b !important;
+  }
+  body.sidebar-enable .vertical-menu {
+    display: block !important;
+    transform: translateX(0) !important;
+    width: 240px !important;
+  }
+  .main-content {
+    margin-left: 0 !important;
+    padding: 16px 12px 12px 12px !important;
+    transition: margin-left 0.3s ease-in-out !important;
+  }
+  .page-content {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
 }
 
 /* Respect sidebar toggle states (lg/md/sm) */
@@ -428,6 +450,17 @@ body[data-sidebar-size="md"].right-bar-enabled .main-content {
   min-width: 180px;
   flex: 0 0 auto;
   overflow: hidden;
+}
+
+/* Fix sidebar toggle button positioning - ensure it's always visible */
+#vertical-menu-btn {
+  margin-left: 0 !important;
+  margin-right: 10px !important;
+  position: relative !important;
+  z-index: 1060 !important;
+  display: block !important;
+  visibility: visible !important;
+  cursor: pointer !important;
 }
 .logo {
   line-height: 56px;

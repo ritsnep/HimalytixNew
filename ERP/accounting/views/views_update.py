@@ -7,6 +7,7 @@ from accounting.mixins import AdvancedFormMixin
 from accounting.models import *
 # from accounting.forms import FiscalYearForm, CostCenterForm, VoucherModeConfigForm, VoucherModeDefaultForm, DepartmentForm, ChartOfAccountForm, VoucherUDFConfigForm, AccountTypeForm, CurrencyForm, TaxTypeForm, TaxAuthorityForm, ProjectForm, AccountingPeriodForm, JournalTypeForm, CurrencyExchangeRateForm, JournalForm
 from accounting.forms import (
+    AgentForm,
     FiscalYearForm,
     CostCenterForm,
     VoucherModeConfigForm,
@@ -41,7 +42,6 @@ class FiscalYearUpdateView(PermissionRequiredMixin, UserOrganizationMixin, Updat
     def form_valid(self, form):
         form.instance.updated_by = self.request.user
         return super().form_valid(form)
-
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context.update(
@@ -56,6 +56,37 @@ class FiscalYearUpdateView(PermissionRequiredMixin, UserOrganizationMixin, Updat
         )
         return context
 
+
+
+class AgentUpdateView(LoginRequiredMixin, UpdateView):
+    model = Agent
+    form_class = AgentForm
+    template_name = 'accounting/agent_form.html'
+    success_url = reverse_lazy('accounting:agent_list')
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['organization'] = self.request.user.organization
+        return kwargs
+
+    def get_queryset(self):
+        return Agent.objects.filter(organization=self.request.user.organization)
+
+    def form_valid(self, form):
+        form.instance.organization = self.request.user.organization
+        form.instance.updated_by = self.request.user
+        messages.success(self.request, "Agent updated successfully.")
+        return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['form_title'] = 'Update Agent'
+        context['back_url'] = reverse('accounting:agent_list')
+        context['breadcrumbs'] = [
+            ('Agents', reverse('accounting:agent_list')),
+            ('Update Agent', None)
+        ]
+        return context
 
 class JournalUpdateView(
     PermissionRequiredMixin, LoginRequiredMixin, UserOrganizationMixin, UpdateView

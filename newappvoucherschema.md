@@ -40,13 +40,15 @@ A controlled vocabulary describes permitted field types (e.g., text, number, dat
 
 2 Overview of the New App
 
-The new app (for example, voucher_config) will live alongside accounting and hold all configuration and UI rendering logic. It will not modify the existing VoucherModeConfig but will supply an alternate configuration engine using three tables:
+The new app (for example, voucher_config) will live alongside accounting and hold all configuration and UI rendering logic. It will not modify the existing VoucherModeConfig but will supply an alternate configuration engine using four tables:
 
 VoucherConfigMaster – core template definition
 
 InventoryLineConfig – item (grid) configuration
 
 FooterChargeSetup – footer/tax charge rules
+
+VoucherUDFConfig – user-defined fields for headers and lines
 
 These tables form a blueprint for each voucher type. The app will also provide services to seed baseline voucher definitions, generate forms and views, and orchestrate posting. The goal is to keep all metadata in the database so that the UI can be customised without code changes.
 
@@ -122,9 +124,29 @@ can_edit (Boolean) – whether users can override the auto‑calculated value in
 
 Multiple footer rows can be defined; during voucher entry the UI will add these automatically at the bottom of the grid. When saving, the amounts will be included in the total and posted to the specified ledgers.
 
-2.4 User‑Defined Fields
+2.4 User‑Defined Fields (VoucherUDFConfig)
 
-To remain flexible, keep the existing VoucherUDFConfig model (header/line UDF definitions) or create an analogous model in the new app. UDFs should support field types (text, number, date, select) and validation rules (regex, min/max, etc.), and should be injected into the header or lines at runtime.
+This model manages user-defined fields for custom voucher extensions:
+
+voucher_config (ForeignKey to VoucherConfigMaster).
+
+field_name (CharField) – unique identifier for the field.
+
+field_label (CharField) – human-readable label.
+
+field_type (Choice: text, number, date, select, boolean) – determines the widget type.
+
+is_required (Boolean) – whether the field is mandatory.
+
+default_value (CharField, nullable) – default value for the field.
+
+validation_rules (JSONField) – additional validation like regex, min/max, options for select.
+
+section (Choice: header, lines) – where the field appears in the UI.
+
+order_no (Integer) – display order within the section.
+
+UDFs are injected into the UI schema at runtime and support dynamic customization without code changes.
 
 3 Voucher Type Specialisations
 

@@ -1,0 +1,17 @@
+<div id="supplier-summary-panel">
+    {% if vendor %}
+        <div class="mb-2">
+            <strong>{{ vendor.display_name }}</strong>
+            {% if vendor.code %}<span class="text-muted">({{ vendor.code }})</span>{% endif %}
+        </div>
+        <div class="small">
+            <div>Current Outstanding: <strong>{{ outstanding|default:0 }}</strong></div>
+            <div>Credit Limit: <strong>{{ credit_limit|default:'-' }}</strong></div>
+            {% if last_invoice %}
+                <div>Last Invoice: <strong>{{ last_invoice.invoice_number }}</strong> on {{ last_invoice.invoice_date }}</div>
+            {% endif %}
+        </div>
+    {% else %}
+        <div class="text-muted">No supplier selected.</div>
+    {% endif %}
+</div>

@@ -29,6 +29,12 @@ from .depreciation_service import DepreciationService
 from .workflow_service import WorkflowService
 from .landed_cost_service import LandedCostService
 from .batch_posting import BatchPostingService
+from .vendor_service import VendorService
+from .pricing_service import PricingService
+from .agent_service import AgentService
+from .validation_service import ValidationService
+from .notification_service import NotificationService
+from .document_sequence_service import DocumentSequenceService
 
 __all__ = [
     'post_journal',
@@ -64,4 +70,10 @@ __all__ = [
     'WorkflowService',
     'LandedCostService',
     'BatchPostingService',
+    'VendorService',
+    'PricingService',
+    'AgentService',
+    'ValidationService',
+    'NotificationService',
+    'DocumentSequenceService',
 ]

@@ -1,0 +1,16 @@
+{% extends "partials/base.html" %}
+{% load static %}
+
+{% block title %}Voucher Config{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            {% block voucher_config_content %}
+            <!-- Content goes here -->
+            {% endblock %}
+        </div>
+    </div>
+</div>
+{% endblock %}

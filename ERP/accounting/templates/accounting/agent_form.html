@@ -1,0 +1,60 @@
+{% extends 'accounting/_form_base.html' %}
+
+{% block title %}Agent{% endblock %}
+
+{% block form_content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h4 class="card-title mb-0">{{ form_title }}</h4>
+        <a href="{{ back_url }}" class="btn btn-secondary btn-sm">Back</a>
+    </div>
+    <div class="card-body">
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Code</label>
+                    {{ form.code }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Name</label>
+                    {{ form.name }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Area</label>
+                    {{ form.area }}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Phone</label>
+                    {{ form.phone }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Email</label>
+                    {{ form.email }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Commission Rate (%)</label>
+                    {{ form.commission_rate }}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <div class="form-check mt-4">
+                        {{ form.is_active }}
+                        <label class="form-check-label" for="{{ form.is_active.id_for_label }}">Active</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end">
+                {% include 'partials/_form_actions.html' with save_text='Save Agent' %}
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock form_content %}

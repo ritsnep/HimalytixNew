@@ -1,0 +1,10 @@
+{% extends "voucher_config/base.html" %}
+
+{% block voucher_config_content %}
+<h2>Select Voucher Type</h2>
+<ul>
+{% for config in configs %}
+<li><a href="{% url 'voucher_config:new' config.code %}">{{ config.label }}</a></li>
+{% endfor %}
+</ul>
+{% endblock %}

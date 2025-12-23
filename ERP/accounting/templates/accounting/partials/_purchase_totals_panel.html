@@ -1,0 +1,19 @@
+<div id="purchase-totals-panel" class="card mb-3">
+  <div class="card-body">
+    <div class="row">
+      <div class="col-6">
+        <p class="mb-1">In Words:</p>
+        <div id="in-words">{{ totals.grand_total|default:0 }} only.</div>
+      </div>
+      <div class="col-6 text-end">
+        <p>Sub Total: <strong>{{ totals.subtotal }}</strong></p>
+        <p>Discount: <strong>{{ totals.total_row_discounts }}</strong></p>
+        <p>Header Discount: <strong>{{ totals.header_discount }}</strong></p>
+        <p>Taxable Amount: <strong>{{ totals.taxable_amount }}</strong></p>
+        <p>Vat @13%: <strong>{{ totals.vat_amount }}</strong></p>
+        <p>Rounding: <strong>{{ totals.rounding }}</strong></p>
+        <p class="h5">Grand Total: <strong>{{ totals.grand_total }}</strong></p>
+      </div>
+    </div>
+  </div>
+</div>

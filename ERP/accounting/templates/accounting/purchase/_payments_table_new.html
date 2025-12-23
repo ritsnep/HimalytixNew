@@ -1,0 +1,24 @@
+<div id="purchase-payments-table">
+  {% if payment_formset %}
+    {{ payment_formset.management_form }}
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th>Method</th>
+          <th>Account</th>
+          <th>Due Date</th>
+          <th class="text-end">Amount</th>
+          <th>Remarks</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for form in payment_formset.forms %}
+          {% include 'accounting/purchase/_payment_row_new.html' with form=form form_index=forloop.counter0 %}
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="text-muted">No payments added.</div>
+  {% endif %}
+</div>

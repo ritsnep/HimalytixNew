@@ -387,3 +387,91 @@ class PurchaseInvoiceService:
             },
         )
         return posted_journal
+
+    @staticmethod
+    def calculate_totals(organization, line_items, header_discount=None):
+        """
+        Calculate totals for purchase invoice line items.
+
+        Args:
+            organization: Organization instance
+            line_items: List of line item dictionaries
+            header_discount: Header discount information
+
+        Returns:
+            Dictionary with calculated totals
+        """
+        from decimal import Decimal
+
+        subtotal = Decimal('0.00')
+        total_vat = Decimal('0.00')
+        total_discount = Decimal('0.00')
+
+        for item in line_items:
+            quantity = Decimal(str(item.get('quantity', 0)))
+            rate = Decimal(str(item.get('rate', 0)))
+            discount = Decimal(str(item.get('discount', 0)))
+            vat_rate = Decimal(str(item.get('vat_rate', 0)))
+
+            line_total = quantity * rate
+            line_discount = (line_total * discount / 100) if discount else Decimal('0.00')
+            line_vat = (line_total - line_discount) * vat_rate / 100
+
+            subtotal += line_total
+            total_discount += line_discount
+            total_vat += line_vat
+
+        # Apply header discount if provided
+        header_discount_amount = Decimal('0.00')
+        if header_discount:
+            discount_value = Decimal(str(header_discount.get('value', 0)))
+            discount_type = header_discount.get('type', 'amount')
+
+            if discount_type == 'percentage':
+                header_discount_amount = subtotal * discount_value / 100
+            else:
+                header_discount_amount = discount_value
+
+        grand_total = subtotal - total_discount - header_discount_amount + total_vat
+
+        return {
+            'subtotal': subtotal,
+            'total_discount': total_discount + header_discount_amount,
+            'total_vat': total_vat,
+            'grand_total': grand_total,
+        }
+
+    @staticmethod
+    def get_order_lines_for_invoice(organization, order_id):
+        """
+        Get purchase order lines for applying to invoice.
+
+        Args:
+            organization: Organization instance
+            order_id: Purchase order ID
+
+        Returns:
+            List of order line dictionaries
+        """
+        # This would typically query purchase orders
+        # For now, return empty list as placeholder
+        return []
+
+    @staticmethod
+    def amount_to_words(amount):
+        """
+        Convert amount to words.
+
+        Args:
+            amount: Decimal amount
+
+        Returns:
+            String representation in words
+        """
+        # Simple implementation - could be enhanced
+        try:
+            from num2words import num2words
+            return num2words(amount, to='currency', currency='NPR').title()
+        except ImportError:
+            # Fallback if num2words not available
+            return f"NPR {amount:,.2f}"

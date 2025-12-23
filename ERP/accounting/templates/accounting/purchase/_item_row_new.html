@@ -1,0 +1,93 @@
+{% load widget_tweaks %}
+
+<tr id="item-row-{{ forloop.counter0 }}" class="item-row">
+  <!-- Line Number -->
+  <td class="text-center text-muted small" width="30">{{ forloop.counter }}</td>
+
+  <!-- Product Selection (with hidden product_name field) -->
+  <td width="180">
+    <div class="autocomplete-wrapper">
+      {% if form.product %}
+        {{ form.product }}
+      {% endif %}
+      <input type="hidden" class="product-name-hidden" value="{{ form.instance.product.name|default:'' }}">
+      <div class="autocomplete-results" style="position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #dee2e6; display: none; max-height: 200px; overflow-y: auto; z-index: 1000;"></div>
+    </div>
+  </td>
+
+  <!-- Product Code (searchable) -->
+  <td width="100">
+    {% if form.product_code %}
+      {{ form.product_code }}
+    {% endif %}
+  </td>
+
+  <!-- Description -->
+  <td width="150">
+    {% if form.description %}
+      {{ form.description }}
+    {% endif %}
+  </td>
+
+  <!-- Quantity + Unit -->
+  <td width="120">
+    <div class="input-group input-group-sm">
+      {% if form.quantity %}
+        {{ form.quantity }}
+      {% endif %}
+      <input class="form-control form-control-sm bg-light unit-display" readonly style="max-width: 80px;">
+    </div>
+  </td>
+
+  <!-- Warehouse/Godown -->
+  <td width="120">
+    {% if form.warehouse %}
+      {{ form.warehouse }}
+    {% endif %}
+  </td>
+
+  <!-- Unit Cost / Rate -->
+  <td width="100">
+    {% if form.unit_cost %}
+      {{ form.unit_cost }}
+    {% endif %}
+  </td>
+
+  <!-- VAT Rate % -->
+  <td width="80">
+    {% if form.vat_rate %}
+      {{ form.vat_rate }}
+    {% endif %}
+  </td>
+
+  <!-- Discount Amount -->
+  <td width="90">
+    {% if form.discount_amount %}
+      {{ form.discount_amount }}
+    {% endif %}
+  </td>
+
+  <!-- Net Amount (Readonly) -->
+  <td width="100" class="text-end">
+    <input class="form-control form-control-sm bg-light text-end money" readonly id="net-{{ forloop.counter0 }}" value="0.00">
+  </td>
+
+  <!-- Line Total with VAT (Readonly) -->
+  <td width="100" class="text-end">
+    <input class="form-control form-control-sm bg-light text-end money amount-total" readonly id="total-{{ forloop.counter0 }}" value="0.00">
+  </td>
+
+  <!-- Delete Button -->
+  <td width="40" class="text-center">
+    <button type="button" class="btn btn-outline-danger btn-sm btn-delete-row"
+            data-row-index="{{ forloop.counter0 }}"
+            title="Delete row">
+      <i class="bi bi-trash"></i>
+    </button>
+  </td>
+</tr>
+
+<!-- Hidden management form field for formset updates -->
+{% if form.DELETE %}
+  {{ form.DELETE }}
+{% endif %}
