@@ -1,6 +1,7 @@
 from django import forms
 from accounting.models import Agent, AutoIncrementCodeGenerator
 from accounting.forms_mixin import BootstrapFormMixin
+from locations.models import LocationNode
 
 
 class AgentForm(BootstrapFormMixin, forms.ModelForm):
@@ -16,7 +17,7 @@ class AgentForm(BootstrapFormMixin, forms.ModelForm):
         fields = ('code', 'name', 'area', 'phone', 'email', 'commission_rate', 'is_active')
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'area': forms.TextInput(attrs={'class': 'form-control'}),
+            'area': forms.Select(attrs={'class': 'form-select'}),
             'phone': forms.TextInput(attrs={'class': 'form-control'}),
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
             'commission_rate': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
@@ -28,6 +29,10 @@ class AgentForm(BootstrapFormMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         if self.organization:
             self.instance.organization = self.organization
+        self.fields['area'].queryset = LocationNode.objects.filter(
+            type=LocationNode.Type.AREA,
+            is_active=True,
+        )
         if not self.instance.pk and not self.initial.get('code'):
             code_generator = AutoIncrementCodeGenerator(
                 Agent,

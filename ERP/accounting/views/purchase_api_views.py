@@ -16,8 +16,9 @@ from inventory.models import Warehouse, Product, Unit
 @require_GET
 def api_vendor_summary(request, vendor_id):
     """Get vendor summary with outstanding balance and terms"""
+    organization = request.user.get_active_organization()
     try:
-        vendor = Vendor.objects.get(id=vendor_id)
+        vendor = Vendor.objects.get(vendor_id=vendor_id, organization=organization)
     except Vendor.DoesNotExist:
         return JsonResponse({'error': 'Vendor not found'}, status=404)
     
@@ -42,7 +43,7 @@ def api_vendor_summary(request, vendor_id):
     try:
         from accounting.models import PurchaseInvoice
         last_inv = PurchaseInvoice.objects.filter(
-            vendor=vendor
+            vendor=vendor,
         ).order_by('-invoice_date').first()
         if last_inv:
             last_invoice_date = last_inv.invoice_date.strftime('%d %b %Y')

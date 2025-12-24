@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -96,6 +98,12 @@ class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.organization = kwargs.pop('organization', None)
         super().__init__(*args, **kwargs)
+        self.fields['discount_amount'].required = False
+        self.fields['discount_percentage'].required = False
+        if self.fields['discount_amount'].initial is None:
+            self.fields['discount_amount'].initial = Decimal('0')
+        if self.fields['discount_percentage'].initial is None:
+            self.fields['discount_percentage'].initial = Decimal('0')
         self.fields['invoice_number'].required = False
         self.fields['invoice_number'].widget.attrs.setdefault('placeholder', 'Auto-generated')
         self.fields['invoice_number'].widget.attrs['readonly'] = True
@@ -105,11 +113,19 @@ class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
             self.fields['vendor'].queryset = self.fields['vendor'].queryset.filter(
                 organization=self.organization
             )
-            # Filter warehouses by organization
+        Warehouse = None
+        try:
             from inventory.models import Warehouse
-            self.fields['warehouse'].queryset = Warehouse.objects.filter(
-                organization=self.organization, is_active=True
-            )
+        except Exception:
+            Warehouse = None
+        if Warehouse:
+            if self.organization:
+                warehouse_qs = Warehouse.objects.filter(
+                    organization=self.organization, is_active=True
+                )
+            else:
+                warehouse_qs = Warehouse.objects.none()
+            self.fields['warehouse'].queryset = warehouse_qs
             # Filter GL accounts by organization
             self.fields['grir_account'].queryset = ChartOfAccount.objects.filter(
                 organization=self.organization, is_active=True
@@ -149,12 +165,43 @@ class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
             else:
                 cleaned['discount_amount'] = discount_value
                 cleaned['discount_percentage'] = 0
+        if cleaned.get('discount_amount') is None:
+            cleaned['discount_amount'] = Decimal('0')
+        if cleaned.get('discount_percentage') is None:
+            cleaned['discount_percentage'] = Decimal('0')
         vendor = cleaned.get('vendor') or getattr(self.instance, 'vendor', None)
         payment_term = cleaned.get('payment_term') or getattr(vendor, 'payment_term', None)
         invoice_date = cleaned.get('invoice_date')
         due_date = cleaned.get('due_date')
         if invoice_date and not due_date and payment_term:
             cleaned['due_date'] = payment_term.calculate_due_date(invoice_date)
+
+        default_currency = getattr(self.organization, 'base_currency_code', None)
+        currency = cleaned.get('currency')
+        exchange_rate = cleaned.get('exchange_rate')
+        purchase_account = cleaned.get('purchase_account')
+
+        if not vendor:
+            self.add_error('vendor', 'Please select a supplier.')
+
+        if not invoice_date:
+            self.add_error('invoice_date', 'Invoice date is required.')
+
+        if not currency:
+            self.add_error('currency', 'Currency is required.')
+
+        if purchase_account is None:
+            self.add_error('purchase_account', 'Please choose a purchase account.')
+
+        if invoice_date and due_date and due_date < invoice_date:
+            self.add_error('due_date', 'Due date must be on or after the invoice date.')
+
+        if currency and default_currency and currency != default_currency:
+            if exchange_rate is None or exchange_rate <= 0:
+                self.add_error('exchange_rate', 'Exchange rate must be greater than zero when using a foreign currency.')
+        elif exchange_rate is not None and exchange_rate <= 0:
+            self.add_error('exchange_rate', 'Exchange rate must be greater than zero.')
+
         return cleaned
 
 
@@ -245,6 +292,43 @@ class PurchaseInvoiceLineForm(BootstrapFormMixin, forms.ModelForm):
         # Set VAT rate default
         if 'vat_rate' in self.fields and not self.instance.vat_rate:
             self.fields['vat_rate'].initial = 13.00
+
+    def clean_quantity(self):
+        qty = self.cleaned_data.get('quantity')
+        if qty is None or qty <= 0:
+            raise ValidationError('Quantity must be greater than zero.')
+        return qty
+
+    def clean_unit_cost(self):
+        rate = self.cleaned_data.get('unit_cost')
+        if rate is None or rate < 0:
+            raise ValidationError('Unit cost cannot be negative.')
+        return rate
+
+    def clean(self):
+        cleaned = super().clean()
+        description = cleaned.get('description')
+        product = cleaned.get('product')
+        if not product and not description:
+            self.add_error(None, 'Either a product or description is required.')
+
+        qty = cleaned.get('quantity') or 0
+        rate = cleaned.get('unit_cost') or 0
+        discount_amount = cleaned.get('discount_amount') or 0
+        if discount_amount < 0:
+            self.add_error('discount_amount', 'Discount cannot be negative.')
+        max_discount = qty * rate
+        if discount_amount and max_discount and discount_amount > max_discount:
+            self.add_error('discount_amount', 'Discount cannot exceed the line amount.')
+
+        vat_rate = cleaned.get('vat_rate')
+        if vat_rate is not None and (vat_rate < 0 or vat_rate > 100):
+            self.add_error('vat_rate', 'VAT rate must be between 0 and 100.')
+
+        if product and getattr(product, 'is_inventory_item', False) and not cleaned.get('warehouse'):
+            self.add_error('warehouse', 'Please select a warehouse for an inventory item.')
+
+        return cleaned
 
 
 class VendorStatementFilterForm(BootstrapFormMixin, forms.Form):

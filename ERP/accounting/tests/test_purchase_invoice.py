@@ -2,6 +2,7 @@
 Tests for Purchase Invoice Calculator and HTMX Views
 """
 from decimal import Decimal
+from datetime import timedelta
 from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -9,11 +10,12 @@ from django.utils import timezone
 from accounting.models import (
     Organization, Vendor, Currency, ChartOfAccount,
     PurchaseInvoice, PurchaseInvoiceLine, TaxCode, AccountType,
-    Agent, Area, Pricing, APPayment, APPaymentLine
+    Agent, Pricing, APPayment, APPaymentLine
 )
+from locations.models import LocationNode
 from accounting.services.purchase_calculator import PurchaseCalculator
-from accounting.forms import PurchaseInvoiceForm, PurchaseInvoiceLineForm
-from inventory.models import Product, Unit
+from accounting.forms import PurchaseInvoiceForm, PurchaseInvoiceLineForm, PurchasePaymentForm
+from inventory.models import Product, Unit, Warehouse
 
 User = get_user_model()
 
@@ -250,11 +252,19 @@ class PurchaseInvoiceFormTestCase(TestCase):
             code="TEST",
         )
         # Ensure vendor has an accounts payable account (non-null constraint)
+        self.liability_type = AccountType.objects.create(name="Liability", nature="liability", display_order=2)
+        self.expense_type = AccountType.objects.create(name="Expense", nature="expense", display_order=3)
         self.ap_account = ChartOfAccount.objects.create(
             organization=self.organization,
             account_code="2001",
             account_name="Accounts Payable",
-            account_type=AccountType.objects.create(name="Liability", nature="liability", display_order=2),
+            account_type=self.liability_type,
+        )
+        self.purchase_account = ChartOfAccount.objects.create(
+            organization=self.organization,
+            account_code="5001",
+            account_name="Purchase Expense",
+            account_type=self.expense_type,
         )
         self.vendor = Vendor.objects.create(
             organization=self.organization,
@@ -272,11 +282,12 @@ class PurchaseInvoiceFormTestCase(TestCase):
         """Test valid purchase invoice form"""
         data = {
             "organization": self.organization.id,
-            "vendor": self.vendor.id,
+            "vendor": self.vendor.vendor_id,
             "invoice_number": "PI001",
             "invoice_date": timezone.now().date(),
             "due_date": timezone.now().date(),
-            "currency": self.currency.id,
+            "currency": self.currency.currency_code,
+            "purchase_account": self.purchase_account.account_id,
             "exchange_rate": 1.0,
         }
         form = PurchaseInvoiceForm(data=data, organization=self.organization)
@@ -288,11 +299,173 @@ class PurchaseInvoiceFormTestCase(TestCase):
             "organization": self.organization.id,
             "invoice_number": "PI001",
             "invoice_date": timezone.now().date(),
-            "currency": self.currency.id,
+            "currency": self.currency.currency_code,
+            "purchase_account": self.purchase_account.account_id,
         }
         form = PurchaseInvoiceForm(data=data, organization=self.organization)
         self.assertFalse(form.is_valid())
         self.assertIn("vendor", form.errors)
+
+    def test_purchase_invoice_form_requires_currency_and_purchase_account(self):
+        """Ensure currency and purchase account are validated"""
+        data = {
+            "organization": self.organization.id,
+            "vendor": self.vendor.vendor_id,
+            "invoice_number": "PI002",
+            "invoice_date": timezone.now().date(),
+        }
+        form = PurchaseInvoiceForm(data=data, organization=self.organization)
+        self.assertFalse(form.is_valid())
+        self.assertIn("currency", form.errors)
+        self.assertIn("purchase_account", form.errors)
+
+    def test_purchase_invoice_form_due_date_not_before_invoice_date(self):
+        """Due date cannot be earlier than invoice date"""
+        invoice_date = timezone.now().date()
+        due_date = invoice_date - timedelta(days=1)
+        data = {
+            "organization": self.organization.id,
+            "vendor": self.vendor.vendor_id,
+            "invoice_number": "PI003",
+            "invoice_date": invoice_date,
+            "due_date": due_date,
+            "currency": self.currency.currency_code,
+            "purchase_account": self.purchase_account.account_id,
+            "exchange_rate": 1,
+        }
+        form = PurchaseInvoiceForm(data=data, organization=self.organization)
+        self.assertFalse(form.is_valid())
+        self.assertIn("due_date", form.errors)
+
+
+class PurchaseInvoiceLineFormTestCase(TestCase):
+    """Test validations on the invoice line form"""
+
+    def setUp(self):
+        self.organization = Organization.objects.create(name="Line Org", code="LINE")
+        self.account_type = AccountType.objects.create(name="Expense", nature="expense", display_order=5)
+        self.account = ChartOfAccount.objects.create(
+            organization=self.organization,
+            account_code="5100",
+            account_name="Purchase Expense",
+            account_type=self.account_type,
+        )
+        self.product = Product.objects.create(
+            organization=self.organization,
+            code="PRD001",
+            name="Inventory Item",
+            is_inventory_item=True,
+        )
+        self.warehouse = Warehouse.objects.create(
+            organization=self.organization,
+            code="WH1",
+            name="Main Warehouse",
+            is_active=True,
+        )
+
+    def _base_data(self):
+        return {
+            "quantity": 1,
+            "unit_cost": 100,
+            "account": self.account.account_id,
+        }
+
+    def test_line_form_requires_description_or_product(self):
+        data = self._base_data()
+        form = PurchaseInvoiceLineForm(data=data, organization=self.organization)
+        self.assertFalse(form.is_valid())
+        self.assertIn("__all__", form.errors)
+
+    def test_line_form_discount_not_exceed_line_amount(self):
+        data = self._base_data()
+        data.update({
+            "product": self.product.id,
+            "discount_amount": 250,
+            "description": "Line",
+            "warehouse": self.warehouse.id,
+        })
+        form = PurchaseInvoiceLineForm(data=data, organization=self.organization)
+        self.assertFalse(form.is_valid())
+        self.assertIn("discount_amount", form.errors)
+
+    def test_line_form_requires_warehouse_for_inventory_product(self):
+        data = self._base_data()
+        data.update({
+            "product": self.product.id,
+            "description": "Inventory",
+        })
+        form = PurchaseInvoiceLineForm(data=data, organization=self.organization)
+        self.assertFalse(form.is_valid())
+        self.assertIn("warehouse", form.errors)
+
+    def test_line_form_vat_rate_range(self):
+        data = self._base_data()
+        data.update({
+            "product": self.product.id,
+            "description": "VAT Test",
+            "warehouse": self.warehouse.id,
+            "vat_rate": 150,
+        })
+        form = PurchaseInvoiceLineForm(data=data, organization=self.organization)
+        self.assertFalse(form.is_valid())
+        self.assertIn("vat_rate", form.errors)
+
+
+class PurchasePaymentFormTestCase(TestCase):
+    """Test validations on the payment form"""
+
+    def setUp(self):
+        self.invoice_date = timezone.now().date()
+        self.cash_bank_choices = [('', 'Select account'), ('1', 'Main Cash')]
+
+    def test_payment_form_allows_blank_amount(self):
+        form = PurchasePaymentForm(
+            data={
+                'payment_method': 'cash',
+            },
+            invoice_date=self.invoice_date,
+            cash_bank_choices=self.cash_bank_choices,
+        )
+        self.assertTrue(form.is_valid())
+
+    def test_payment_form_rejects_negative_amount(self):
+        form = PurchasePaymentForm(
+            data={
+                'payment_method': 'cash',
+                'amount': '-10',
+            },
+            invoice_date=self.invoice_date,
+            cash_bank_choices=self.cash_bank_choices,
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn('amount', form.errors)
+
+    def test_payment_form_requires_bank_account_for_bank_methods(self):
+        form = PurchasePaymentForm(
+            data={
+                'payment_method': 'bank',
+                'amount': '100',
+            },
+            invoice_date=self.invoice_date,
+            cash_bank_choices=self.cash_bank_choices,
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn('cash_bank_id', form.errors)
+
+    def test_payment_form_due_date_not_before_invoice(self):
+        due_date = self.invoice_date - timedelta(days=1)
+        form = PurchasePaymentForm(
+            data={
+                'payment_method': 'cash',
+                'amount': '50',
+                'cash_bank_id': '1',
+                'due_date': due_date,
+            },
+            invoice_date=self.invoice_date,
+            cash_bank_choices=self.cash_bank_choices,
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn('due_date', form.errors)
 
 
 class PurchaseInvoiceHTMXViewsTestCase(TestCase):
@@ -451,6 +624,8 @@ class PurchaseInvoiceIntegrationTestCase(TestCase):
         """Integration test: create a purchase invoice with line items and payments"""
         client = Client()
         user = User.objects.create_user(username='user_create', password='pw')
+        user.organization = self.organization
+        user.save()
         client.login(username='user_create', password='pw')
 
         data = {
@@ -460,6 +635,7 @@ class PurchaseInvoiceIntegrationTestCase(TestCase):
             'invoice_date': timezone.now().date(),
             'currency': self.currency.currency_code,
             'exchange_rate': '1',
+            'purchase_account': self.account.account_id,
             # Line items formset
             'items-TOTAL_FORMS': '2',
             'items-INITIAL_FORMS': '0',
@@ -519,6 +695,8 @@ class PurchaseInvoiceIntegrationTestCase(TestCase):
     def test_purchase_invoice_save_invalid_returns_422(self):
         client = Client()
         user = User.objects.create_user(username='user_invalid', password='pw')
+        user.organization = self.organization
+        user.save()
         client.login(username='user_invalid', password='pw')
 
         response = client.post(
@@ -547,7 +725,7 @@ class PurchaseInvoiceEnhancedEndpointsTestCase(TestCase):
         self.organization = Organization.objects.create(name="Enhanced Org", code="ENH")
         self.user.organization = self.organization
         self.user.save()
-        self.client.login(username='enh_user', password='pw')
+        self.client.force_login(self.user)
 
         self.currency = Currency.objects.create(
             currency_code="USD",
@@ -568,17 +746,22 @@ class PurchaseInvoiceEnhancedEndpointsTestCase(TestCase):
             display_name="Vendor X",
             accounts_payable_account=self.ap_account,
         )
+        self.location_area = LocationNode.objects.create(
+            id="AREA001",
+            type=LocationNode.Type.AREA,
+            name_en="Test Area",
+            is_active=True,
+        )
         self.agent = Agent.objects.create(
             organization=self.organization,
             code="A1",
             name="Agent One",
-            area="City",
+            area=self.location_area,
         )
-        self.area = Area.objects.create(
-            organization=self.organization,
-            code="AR1",
-            name="Area One",
-        )
+        # Assign agent and area to vendor
+        self.vendor.agent = self.agent
+        self.vendor.area = self.location_area
+        self.vendor.save()
         self.unit = Unit.objects.create(
             organization=self.organization,
             code="PCS",

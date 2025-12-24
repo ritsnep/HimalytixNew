@@ -1,0 +1,4 @@
+<option value="">-- Select --</option>
+{% for it in items %}
+  <option value="{{ it.id }}">{{ it.name_en }} · {{ it.name_np }}</option>
+{% endfor %}

@@ -25,6 +25,7 @@ from .general_ledger_form import GeneralLedgerForm
 from .journal_import_form import JournalImportForm
 
 from .recurring_journal_forms import RecurringJournalForm, RecurringJournalLineFormSet
+from .payment_forms import PurchasePaymentForm
 from .purchase_invoice_form import (
     PurchaseInvoiceForm,
     PurchaseInvoiceLineForm,

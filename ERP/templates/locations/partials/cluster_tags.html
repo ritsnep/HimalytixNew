@@ -1,0 +1,10 @@
+<div class="d-flex flex-wrap gap-2">
+  {% for t in tags %}
+    <label class="form-check form-check-inline mb-0">
+      <input class="form-check-input" type="checkbox" name="cluster_tags" value="{{ t.id }}">
+      <span class="form-check-label">{{ t.name_en }} · {{ t.name_np }}</span>
+    </label>
+  {% empty %}
+    <div class="text-muted small">No cluster tags configured for this local level.</div>
+  {% endfor %}
+</div>

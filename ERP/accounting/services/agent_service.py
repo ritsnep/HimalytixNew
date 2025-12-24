@@ -1,4 +1,5 @@
-from accounting.models import Vendor, Agent, Area
+from accounting.models import Vendor, Agent
+from locations.models import LocationNode
 from django.core.exceptions import ValidationError
 
 
@@ -19,36 +20,67 @@ class AgentService:
         ]
 
     @staticmethod
-    def get_areas_for_dropdown(organization):
+    def get_areas_for_dropdown(organization=None):
         """
-        Get active areas for dropdown selection filtered by organization.
+        Get active areas for dropdown selection. The organization argument is accepted for
+        future filtering needs even though areas are currently organization-agnostic.
         """
-        areas = Area.objects.filter(organization=organization, is_active=True).order_by('name')
+        areas = LocationNode.objects.filter(type=LocationNode.Type.AREA, is_active=True).order_by('name_en')
         return [
-            {'id': area.area_id, 'name': f"{area.code} - {area.name}"}
+            {'id': area.id, 'name': f"{area.name_en}"}
             for area in areas
         ]
 
     @staticmethod
     def auto_select_agent_for_vendor(organization, vendor_id):
         """
-        Auto-select agent and area based on vendor's location or default settings.
-        Currently uses simple logic - can be enhanced with more complex rules.
+        Auto-select agent and area based on vendor's stored assignments or location.
+        First checks if vendor has assigned agent/area, then matches by area, else defaults.
         """
         try:
             vendor = Vendor.objects.get(organization=organization, vendor_id=vendor_id)
 
-            # Try to find agent by area if vendor has address info
-            # For now, use default agent/area or first active ones
-            agent = Agent.objects.filter(organization=organization, is_active=True).order_by('name').first()
-            area = Area.objects.filter(organization=organization, is_active=True).order_by('name').first()
+            # First, check if vendor has stored agent and area
+            if vendor.agent and vendor.area:
+                return {
+                    'agent_id': vendor.agent.pk,
+                    'area_id': vendor.area.id,
+                    'agent_name': vendor.agent.name,
+                    'area_name': vendor.area.name_en,
+                }
 
-            return {
-                'agent_id': agent.pk if agent else None,
-                'area_id': area.area_id if area else None,
-                'agent_name': agent.name if agent else None,
-                'area_name': area.name if area else None,
-            }
+            # If vendor has area but no agent, find agent for that area
+            if vendor.area:
+                agent = Agent.objects.filter(
+                    organization=organization,
+                    is_active=True,
+                    area=vendor.area
+                ).order_by('name').first()
+                if agent:
+                    return {
+                        'agent_id': agent.pk,
+                        'area_id': vendor.area.id,
+                        'agent_name': agent.name,
+                        'area_name': vendor.area.name_en,
+                    }
+
+            # Fallback: first active agent and its area, or first area
+            agent = Agent.objects.filter(organization=organization, is_active=True).order_by('name').first()
+            if agent and agent.area:
+                return {
+                    'agent_id': agent.pk,
+                    'area_id': agent.area.id,
+                    'agent_name': agent.name,
+                    'area_name': agent.area.name_en,
+                }
+            else:
+                area = LocationNode.objects.filter(type=LocationNode.Type.AREA, is_active=True).order_by('name_en').first()
+                return {
+                    'agent_id': agent.pk if agent else None,
+                    'area_id': area.id if area else None,
+                    'agent_name': agent.name if agent else None,
+                    'area_name': area.name_en if area else None,
+                }
         except Vendor.DoesNotExist:
             return {'agent_id': None, 'area_id': None, 'agent_name': None, 'area_name': None}
 

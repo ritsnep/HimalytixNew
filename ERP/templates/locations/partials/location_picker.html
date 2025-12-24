@@ -1,0 +1,93 @@
+{# Requires htmx loaded globally: <script src="https://unpkg.com/htmx.org@1.9.12"></script> #}
+
+<div class="row g-2">
+  <div class="col-md-4">
+    <label class="form-label">Province (प्रदेश)</label>
+    <select class="form-select"
+            name="province_id"
+            id="loc-province"
+            hx-get="/locations/htmx/options/districts"
+            hx-trigger="change"
+            hx-target="#loc-district"
+            hx-include="#loc-province"
+            hx-params="province_id">
+      <option value="">-- Select --</option>
+      {% for p in provinces %}
+        <option value="{{ p.id }}">{{ p.name_en }} · {{ p.name_np }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="col-md-4">
+    <label class="form-label">District (जिल्ला)</label>
+    <select class="form-select"
+            name="district_id"
+            id="loc-district"
+            hx-get="/locations/htmx/options/local-levels"
+            hx-trigger="change"
+            hx-target="#loc-local-level"
+            hx-include="#loc-district"
+            hx-params="district_id"
+            disabled>
+      <option value="">-- Select Province first --</option>
+    </select>
+  </div>
+
+  <div class="col-md-4">
+    <label class="form-label">Municipality / Gaupalika (स्थानीय तह) <span class="text-danger">*</span></label>
+    <select class="form-select"
+            name="local_level_id"
+            id="loc-local-level"
+            hx-get="/locations/htmx/options/areas"
+            hx-trigger="change"
+            hx-target="#loc-area"
+            hx-include="#loc-local-level"
+            hx-params="local_level_id"
+            disabled
+            required>
+      <option value="">-- Select District first --</option>
+    </select>
+  </div>
+
+  <div class="col-md-6">
+    <label class="form-label">Area/Tole (टोल/क्षेत्र)</label>
+    <select class="form-select" name="area_id" id="loc-area">
+      <option value="">-- Optional --</option>
+    </select>
+    <div class="form-text">If the exact area is not available, keep it blank and use Address Line.</div>
+  </div>
+
+  <div class="col-md-6">
+    <label class="form-label">Cluster Tags (optional)</label>
+    <div id="loc-clusters"
+         hx-get="/locations/htmx/cluster-tags"
+         hx-trigger="change from:#loc-local-level"
+         hx-target="#loc-clusters"
+         hx-include="#loc-local-level"
+         hx-params="local_level_id">
+      <div class="text-muted small">Select a local level to load cluster tags.</div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <label class="form-label">Address Line (घर नं/टोल/मार्ग)</label>
+    <input class="form-control" name="address_line1" maxlength="128" placeholder="House no, street, landmark..." />
+  </div>
+</div>
+
+<script>
+  // Optional micro JS (can be removed if you prefer progressive enhancement elsewhere):
+  // Enable downstream selects after options load.
+  document.body.addEventListener("htmx:afterSwap", function (evt) {
+    if (evt.target && evt.target.id === "loc-district") {
+      evt.target.removeAttribute("disabled");
+      document.getElementById("loc-local-level").setAttribute("disabled", "disabled");
+      document.getElementById("loc-local-level").innerHTML = '<option value="">-- Select District first --</option>';
+      document.getElementById("loc-area").innerHTML = '<option value="">-- Optional --</option>';
+    }
+    if (evt.target && evt.target.id === "loc-local-level") {
+      evt.target.removeAttribute("disabled");
+      document.getElementById("loc-area").innerHTML = '<option value="">-- Optional --</option>';
+    }
+  });
+</script>

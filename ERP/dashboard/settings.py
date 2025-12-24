@@ -141,6 +141,7 @@ INSTALLED_APPS = [
     'crispy_bootstrap4',
     'tenancy',
     'accounting',
+    'locations.apps.LocationsConfig',
     'reporting',
     'api',
     'rest_framework',

@@ -1,16 +1,62 @@
-from django.shortcuts import render, get_object_or_404, redirect
+from decimal import Decimal
+
+from django import forms
+from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.forms import formset_factory
 from django.http import HttpResponse, JsonResponse
-from django.views.decorators.http import require_http_methods
-from django.db import models, transaction
+from django.shortcuts import render, get_object_or_404, redirect
+from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.http import require_http_methods
 
 from accounting.forms_factory import VoucherFormFactory
+from accounting.forms import (
+    PurchaseInvoiceForm,
+    PurchaseInvoiceLineForm,
+    PurchaseInvoiceLineFormSet,
+    PurchasePaymentForm,
+)
 from accounting.models import VoucherModeConfig, PurchaseInvoice, PurchaseInvoiceLine, APPayment, ChartOfAccount, Vendor
+from accounting.services.agent_service import AgentService
 from accounting.services.purchase_calculator import PurchaseCalculator
-from accounting.forms import PurchaseInvoiceForm, APPaymentForm
-from accounting.forms import PurchaseInvoiceLineFormSet
-from inventory.models import Warehouse, Product
+
+
+def _get_cash_bank_choices(organization):
+    from django.db.models import Q
+
+    cash_bank_accounts = ChartOfAccount.objects.filter(
+        Q(organization=organization),
+        Q(account_type__name__in=['Cash', 'Bank']) | Q(is_bank_account=True),
+        is_active=True,
+    ).distinct()
+    account_choices = [('', 'Select account')]
+    account_choices.extend([(str(acct.pk), f"{acct.code} - {acct.name}") for acct in cash_bank_accounts])
+    return account_choices, cash_bank_accounts
+
+
+def _parse_invoice_date(data):
+    raw = data.get('invoice_date')
+    if not raw:
+        return None
+    date_field = forms.DateField(required=False)
+    try:
+        return date_field.clean(raw)
+    except ValidationError:
+        return None
+
+
+def _sum_payment_amounts(payment_formset):
+    total = Decimal('0')
+    for form in payment_formset:
+        data = getattr(form, 'cleaned_data', None)
+        if not data or data.get('DELETE'):
+            continue
+        amount = data.get('amount')
+        if amount:
+            total += Decimal(str(amount))
+    return total
 
 
 @login_required
@@ -20,41 +66,16 @@ def purchase_invoice_new_enhanced(request):
     """Enhanced purchase invoice form with HTMX integration"""
     organization = request.user.get_active_organization()
 
-    def _build_payment_formset(data=None):
-        from django import forms
-        from django.forms import formset_factory
-        from django.db.models import Q
-
-        cash_bank_accounts = ChartOfAccount.objects.filter(
-            Q(organization=organization),
-            Q(account_type__name__in=['Cash', 'Bank']) | Q(is_bank_account=True),
-            is_active=True
-        ).distinct()
-
-        account_choices = [('', 'Select account')]
-        account_choices.extend([(str(acct.pk), f"{acct.code} - {acct.name}") for acct in cash_bank_accounts])
-
-        class _PaymentForm(forms.Form):
-            payment_method = forms.ChoiceField(
-                required=False,
-                choices=[
-                    ('cash', 'Cash'),
-                    ('bank', 'Bank'),
-                    ('bank_transfer', 'Bank Transfer'),
-                    ('cheque', 'Cheque'),
-                    ('wire_transfer', 'Wire Transfer'),
-                ],
-            )
-            cash_bank_id = forms.ChoiceField(required=False, choices=account_choices)
-            due_date = forms.DateField(required=False)
-            amount = forms.DecimalField(required=False, max_digits=19, decimal_places=4)
-            remarks = forms.CharField(required=False)
-            DELETE = forms.BooleanField(required=False)
-
-        PaymentFormSet = formset_factory(_PaymentForm, extra=0)
+    def _build_payment_formset(data=None, invoice_date=None):
+        account_choices, cash_bank_accounts = _get_cash_bank_choices(organization)
+        PaymentFormSet = formset_factory(PurchasePaymentForm, extra=0, can_delete=True)
+        form_kwargs = {
+            'invoice_date': invoice_date,
+            'cash_bank_choices': account_choices,
+        }
         if data is None:
-            return PaymentFormSet(prefix='payments'), cash_bank_accounts
-        return PaymentFormSet(data, prefix='payments'), cash_bank_accounts
+            return PaymentFormSet(prefix='payments', form_kwargs=form_kwargs), cash_bank_accounts, account_choices
+        return PaymentFormSet(data, prefix='payments', form_kwargs=form_kwargs), cash_bank_accounts, account_choices
 
     if request.method == 'GET':
         form = PurchaseInvoiceForm(organization=organization)
@@ -66,7 +87,8 @@ def purchase_invoice_new_enhanced(request):
         line_formset = PurchaseInvoiceLineFormSet(prefix='items', form_kwargs={'organization': organization})
 
         # Prepare payments formset (simple formset) for management form
-        payments_formset, cash_bank_accounts = _build_payment_formset()
+        invoice_date = timezone.now().date()
+        payments_formset, cash_bank_accounts, _ = _build_payment_formset(invoice_date=invoice_date)
 
         context = {
             'form': form,
@@ -82,7 +104,8 @@ def purchase_invoice_new_enhanced(request):
     elif request.method == 'POST':
         form = PurchaseInvoiceForm(request.POST, organization=organization)
 
-        payments_formset, cash_bank_accounts = _build_payment_formset(request.POST)
+        invoice_date_value = _parse_invoice_date(request.POST)
+        payments_formset, cash_bank_accounts, _ = _build_payment_formset(request.POST, invoice_date=invoice_date_value)
 
         invoice_stub = PurchaseInvoice(organization=organization)
         line_formset = PurchaseInvoiceLineFormSet(
@@ -106,7 +129,6 @@ def purchase_invoice_new_enhanced(request):
                 form_valid = False
 
         if form_valid and lines_valid and payments_valid:
-            from decimal import Decimal
             from accounting.services.validation_service import ValidationService
 
             header_discount_value = form.cleaned_data.get('discount_value') or 0
@@ -146,20 +168,30 @@ def purchase_invoice_new_enhanced(request):
                 bill_rounding=bill_rounding,
             )
             totals = calc.compute()
-            total_amount = totals.get('totals', {}).get('grand_total', 0)
+            total_amount = totals.get('totals', {}).get('grand_total') or Decimal('0')
 
-            validation_errors = ValidationService.validate_purchase_invoice_data(
-                organization,
-                {
-                    'vendor_id': form.cleaned_data['vendor'].pk if form.cleaned_data.get('vendor') else None,
-                    'line_items': validation_lines,
-                    'total_amount': total_amount,
-                },
-            )
-            if validation_errors:
-                for key, err in validation_errors.items():
-                    form.add_error(None, f"{key}: {err}")
+            payment_sum = _sum_payment_amounts(payments_formset)
+            if payment_sum > total_amount:
+                form.add_error(None, 'Payment total exceeds invoice total.')
                 form_valid = False
+
+            if form_valid:
+                validation_errors = ValidationService.validate_purchase_invoice_data(
+                    organization,
+                    {
+                        'vendor_id': form.cleaned_data['vendor'].pk if form.cleaned_data.get('vendor') else None,
+                        'line_items': validation_lines,
+                        'total_amount': total_amount,
+                        'calculated_total': total_amount,
+                        'expected_total': total_amount,
+                        'grand_total': total_amount,
+                        'payments_total': payment_sum,
+                    },
+                )
+                if validation_errors:
+                    for key, err in validation_errors.items():
+                        form.add_error(None, f"{key}: {err}")
+                    form_valid = False
 
         if form_valid and lines_valid and payments_valid:
             try:
@@ -404,37 +436,16 @@ def purchase_add_payment_hx(request):
 
     variant = request.GET.get('variant') or request.POST.get('variant') or 'default'
     # Simple payment form rendering uses existing widgets; prefix 'payments'
-    from django import forms
 
     template_name = 'accounting/partials/_purchase_payment_row.html'
     if variant == 'enhanced':
-        from django.db.models import Q
-        cash_bank_accounts = ChartOfAccount.objects.filter(
-            Q(organization=organization),
-            Q(account_type__name__in=['Cash', 'Bank']) | Q(is_bank_account=True),
-            is_active=True
-        ).distinct()
-        account_choices = [('', 'Select account')]
-        account_choices.extend([(str(acct.pk), f"{acct.code} - {acct.name}") for acct in cash_bank_accounts])
-
-        class _PaymentForm(forms.Form):
-            payment_method = forms.ChoiceField(
-                required=False,
-                choices=[
-                    ('cash', 'Cash'),
-                    ('bank', 'Bank'),
-                    ('bank_transfer', 'Bank Transfer'),
-                    ('cheque', 'Cheque'),
-                    ('wire_transfer', 'Wire Transfer'),
-                ],
-            )
-            cash_bank_id = forms.ChoiceField(required=False, choices=account_choices)
-            due_date = forms.DateField(required=False)
-            amount = forms.DecimalField(required=False, max_digits=19, decimal_places=4)
-            remarks = forms.CharField(required=False)
-            DELETE = forms.BooleanField(required=False)
-
-        PaymentForm = _PaymentForm(prefix=f'payments-{form_index}')
+        invoice_date = timezone.now().date()
+        cash_bank_choices, _ = _get_cash_bank_choices(organization)
+        PaymentForm = PurchasePaymentForm(
+            prefix=f'payments-{form_index}',
+            invoice_date=invoice_date,
+            cash_bank_choices=cash_bank_choices,
+        )
         template_name = 'accounting/purchase/_payment_row_new.html'
     else:
         class _PaymentForm(forms.Form):

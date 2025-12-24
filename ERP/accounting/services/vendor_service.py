@@ -9,48 +9,51 @@ class VendorService:
     """
 
     @staticmethod
-    @staticmethod
     def get_vendor_details(organization, vendor_id):
         """
         Retrieve detailed vendor information including balance, credit limit, PAN, etc.
         """
-        try:
-            vendor = Vendor.objects.get(organization=organization, vendor_id=vendor_id)
-            balance = 0.0  # TODO: Calculate actual balance from transactions
-            credit_limit = vendor.credit_limit or 0.0
+        vendor_qs = Vendor.objects.filter(vendor_id=vendor_id)
+        vendor = None
+        if organization:
+            vendor = vendor_qs.filter(organization=organization).first()
+        if not vendor:
+            vendor = vendor_qs.first()
 
-            # Get primary address
-            primary_address = vendor.primary_address()
-            address_str = ""
-            if primary_address:
-                address_parts = [primary_address.line1]
-                if primary_address.line2:
-                    address_parts.append(primary_address.line2)
-                if primary_address.city:
-                    address_parts.append(primary_address.city)
-                if primary_address.state_province:
-                    address_parts.append(primary_address.state_province)
-                address_str = ", ".join(address_parts)
-
-            # Get payment term name
-            payment_term_name = ""
-            if vendor.payment_term:
-                payment_term_name = vendor.payment_term.name
-
-            return {
-                'id': vendor.vendor_id,
-                'name': vendor.display_name,
-                'pan': vendor.tax_id or '',
-                'address': address_str,
-                'phone': vendor.phone_number or '',
-                'email': vendor.email or '',
-                'balance': balance,
-                'credit_limit': credit_limit,
-                'payment_terms': payment_term_name,
-                'is_active': vendor.is_active,
-            }
-        except Vendor.DoesNotExist:
+        if not vendor:
             raise ValidationError(f"Vendor with ID {vendor_id} does not exist.")
+
+        balance = 0.0  # TODO: Calculate actual balance from transactions
+        credit_limit = vendor.credit_limit or 0.0
+
+        primary_address = vendor.primary_address()
+        address_str = ""
+        if primary_address:
+            address_parts = [primary_address.line1]
+            if primary_address.line2:
+                address_parts.append(primary_address.line2)
+            if primary_address.city:
+                address_parts.append(primary_address.city)
+            if primary_address.state_province:
+                address_parts.append(primary_address.state_province)
+            address_str = ", ".join(address_parts)
+
+        payment_term_name = ""
+        if vendor.payment_term:
+            payment_term_name = vendor.payment_term.name
+
+        return {
+            'id': vendor.vendor_id,
+            'name': vendor.display_name,
+            'pan': vendor.tax_id or '',
+            'address': address_str,
+            'phone': vendor.phone_number or '',
+            'email': vendor.email or '',
+            'balance': balance,
+            'credit_limit': credit_limit,
+            'payment_terms': payment_term_name,
+            'is_active': vendor.is_active,
+        }
 
     @staticmethod
     def get_vendors_for_dropdown(organization):

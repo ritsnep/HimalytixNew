@@ -662,6 +662,22 @@
     }
   });
 
+  document.body.addEventListener('htmx:responseError', (event) => {
+    const triggerElement = event.detail?.requestConfig?.elt;
+    if (!triggerElement || triggerElement.id !== 'purchase-form') return;
+    const panel = document.getElementById('purchase-form-panel');
+    if (!panel) return;
+    const html = event.detail?.xhr?.response;
+    if (!html) return;
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const replacement = doc.getElementById('purchase-form-panel');
+    if (replacement) {
+      panel.replaceWith(replacement);
+      refreshFormState();
+    }
+  });
+
   refreshFormState();
 })();
 </script>

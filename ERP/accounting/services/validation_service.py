@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.core.exceptions import ValidationError
 from accounting.services.vendor_service import VendorService
 from inventory.services.product_service import ProductService
@@ -46,8 +48,16 @@ class ValidationService:
 
         # Validate totals
         if 'calculated_total' in data and 'expected_total' in data:
-            if abs(data['calculated_total'] - data['expected_total']) > 0.01:
+            calculated = Decimal(data['calculated_total'])
+            expected = Decimal(data['expected_total'])
+            if abs(calculated - expected) > Decimal('0.01'):
                 errors['totals'] = 'Calculated total does not match expected total'
+
+        if 'grand_total' in data and 'payments_total' in data:
+            grand_total = Decimal(data['grand_total'])
+            payments_total = Decimal(data['payments_total'])
+            if payments_total > grand_total:
+                errors['payments'] = 'Payment total exceeds invoice total'
 
         return errors
 

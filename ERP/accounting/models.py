@@ -17,6 +17,7 @@ from django.db import transaction
 import re
 from django.db.models import JSONField  # If using Django 3.1+, else use from django.contrib.postgres.fields import JSONField
 from django.conf import settings
+from locations.models import LocationNode
 
 logger = logging.getLogger(__name__)
 
@@ -1016,7 +1017,15 @@ class Agent(models.Model):
     )
     code = models.CharField(max_length=30)
     name = models.CharField(max_length=255)
-    area = models.CharField(max_length=128, blank=True, help_text="Geographic area covered by the agent")
+    area = models.ForeignKey(
+        LocationNode,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='agents',
+        limit_choices_to={'type': LocationNode.Type.AREA},
+        help_text="Geographic area covered by the agent"
+    )
     phone = models.CharField(max_length=50, blank=True)
     email = models.EmailField(blank=True)
     commission_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0, help_text="Default commission %")
@@ -1658,6 +1667,21 @@ class Vendor(models.Model):
         null=True,
         blank=True,
         related_name='vendors_expense_account',
+    )
+    agent = models.ForeignKey(
+        'Agent',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='vendors',
+    )
+    area = models.ForeignKey(
+        LocationNode,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='vendors',
+        limit_choices_to={'type': LocationNode.Type.AREA},
     )
     email = models.EmailField(blank=True)
     phone_number = models.CharField(max_length=50, blank=True)
@@ -4273,6 +4297,21 @@ class Customer(models.Model):
         null=True,
         blank=True,
         related_name='customers_revenue_account',
+    )
+    agent = models.ForeignKey(
+        'Agent',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='customers',
+    )
+    area = models.ForeignKey(
+        LocationNode,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='customers',
+        limit_choices_to={'type': LocationNode.Type.AREA},
     )
     email = models.EmailField(blank=True)
     phone_number = models.CharField(max_length=50, blank=True)

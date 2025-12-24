@@ -4,6 +4,7 @@ from accounting.forms_mixin import BootstrapFormMixin
 from accounting.models import (
     APPayment,
     APPaymentLine,
+    Agent,
     ChartOfAccount,
     Currency,
     Customer,
@@ -15,6 +16,7 @@ from accounting.models import (
     ARReceipt,
     ARReceiptLine,
 )
+from locations.models import LocationNode
 
 
 def get_active_currency_choices():
@@ -300,6 +302,8 @@ class VendorForm(BootstrapFormMixin, forms.ModelForm):
             "default_currency",
             "accounts_payable_account",
             "expense_account",
+            "agent",
+            "area",
             "email",
             "phone_number",
             "website",
@@ -318,6 +322,8 @@ class VendorForm(BootstrapFormMixin, forms.ModelForm):
             "default_currency": forms.Select(attrs={"class": "form-select"}),
             "accounts_payable_account": forms.Select(attrs={"class": "form-select"}),
             "expense_account": forms.Select(attrs={"class": "form-select"}),
+            "agent": forms.Select(attrs={"class": "form-select"}),
+            "area": forms.Select(attrs={"class": "form-select"}),
             "email": forms.EmailInput(attrs={"class": "form-control"}),
             "phone_number": forms.TextInput(attrs={"class": "form-control"}),
             "website": forms.URLInput(attrs={"class": "form-control"}),
@@ -340,6 +346,13 @@ class VendorForm(BootstrapFormMixin, forms.ModelForm):
             self.fields["expense_account"].queryset = ChartOfAccount.objects.filter(
                 organization=self.organization,
             )
+            self.fields["agent"].queryset = Agent.objects.filter(
+                organization=self.organization,
+            )
+            self.fields["area"].queryset = LocationNode.objects.filter(
+                type=LocationNode.Type.AREA,
+                is_active=True,
+            )
 
 
 class CustomerForm(BootstrapFormMixin, forms.ModelForm):
@@ -355,6 +368,8 @@ class CustomerForm(BootstrapFormMixin, forms.ModelForm):
             "default_currency",
             "accounts_receivable_account",
             "revenue_account",
+            "agent",
+            "area",
             "email",
             "phone_number",
             "website",
@@ -375,6 +390,8 @@ class CustomerForm(BootstrapFormMixin, forms.ModelForm):
             "default_currency": forms.Select(attrs={"class": "form-select"}),
             "accounts_receivable_account": forms.Select(attrs={"class": "form-select"}),
             "revenue_account": forms.Select(attrs={"class": "form-select"}),
+            "agent": forms.Select(attrs={"class": "form-select"}),
+            "area": forms.Select(attrs={"class": "form-select"}),
             "email": forms.EmailInput(attrs={"class": "form-control"}),
             "phone_number": forms.TextInput(attrs={"class": "form-control"}),
             "website": forms.URLInput(attrs={"class": "form-control"}),
@@ -397,3 +414,10 @@ class CustomerForm(BootstrapFormMixin, forms.ModelForm):
                 self.fields[field_name].queryset = ChartOfAccount.objects.filter(
                     organization=self.organization,
                 )
+            self.fields["agent"].queryset = Agent.objects.filter(
+                organization=self.organization,
+            )
+            self.fields["area"].queryset = LocationNode.objects.filter(
+                type=LocationNode.Type.AREA,
+                is_active=True,
+            )
