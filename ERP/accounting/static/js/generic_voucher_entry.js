@@ -74,53 +74,7 @@
         costcenter: () => window.open('/accounting/cost-centers/create/', '_blank'),
         department: () => window.open('/accounting/departments/create/', '_blank'),
         project: () => window.open('/accounting/projects/create/', '_blank'),
-        taxcode: () => window.open('/accounting/tax-codes/create/', '_blank'),
-        vendor: () => window.open('/accounting/vendors/new/', '_blank'),
-        supplier: () => window.open('/accounting/vendors/new/', '_blank'),
-        customer: () => window.open('/accounting/customers/new/', '_blank'),
-        client: () => window.open('/accounting/customers/new/', '_blank'),
-        product: () => window.open('/inventory/products/create/', '_blank'),
-        item: () => window.open('/inventory/products/create/', '_blank'),
-        service: () => window.open('/inventory/products/create/', '_blank'),
-        inventoryitem: () => window.open('/inventory/products/create/', '_blank'),
     };
-
-    const AccountSuggest = (() => {
-        let container;
-        let listEl;
-        let anchor = null;
-        let activeIndex = 0;
-        let items = [];
-        let onSelect = null;
-        let onAddNew = null;
-
-        const ensure = () => {
-            if (container) return;
-            container = document.createElement('div');
-            container.className = 've-suggest';
-            container.innerHTML = '<div class="ve-suggest-list"></div>';
-            listEl = container.querySelector('.ve-suggest-list');
-            document.body.appendChild(container);
-        };
-
-        const position = () => {
-            if (!container || !anchor) return;
-            const rect = anchor.getBoundingClientRect();
-            container.style.minWidth = `${Math.max(260, rect.width)}px`;
-            container.style.left = `${window.scrollX + rect.left}px`;
-            container.style.top = `${window.scrollY + rect.bottom + 6}px`;
-        };
-
-        const close = () => {
-            if (!container) return;
-            container.classList.remove('open');
-            items = [];
-            anchor = null;
-            activeIndex = 0;
-            window.removeEventListener('resize', position);
-            window.removeEventListener('scroll', position, true);
-            document.removeEventListener('click', outsideHandler, true);
-        };
 
         const outsideHandler = (evt) => {
             if (!container || !anchor) return;
@@ -1132,6 +1086,169 @@
         initHeaderHkeys();
         if (e.detail && e.detail.target) {
             initSuggestInputs(e.detail.target);
+        }
+    });
+    
+    /*
+     * When server returns 422 (validation failed) HTMX fires `htmx:responseError`.
+     * By default HTMX will not swap the response into the DOM for error statuses.
+     * Here we handle 422 responses and inject the server-rendered panel HTML
+     * into `#generic-voucher-panel`, re-initialize relevant behaviours and
+     * focus/scroll the first invalid field so the user sees validation feedback.
+     */
+    const focusFirstInvalidPanel = () => {
+        try {
+            const panel = document.getElementById('generic-voucher-panel');
+            if (!panel) return false;
+
+            // Prefer explicit field-level feedback
+            const feedback = panel.querySelector('.invalid-feedback.d-block');
+            if (feedback) {
+                // 1) try to find a nearby visible input/select/textarea
+                let field = feedback.closest('div')?.querySelector('input, select, textarea');
+                // 2) previous sibling fallback
+                if (!field) {
+                    const prev = feedback.previousElementSibling;
+                    if (prev && ['INPUT', 'SELECT', 'TEXTAREA'].includes(prev.tagName)) field = prev;
+                }
+                // 3) try to find a display input and resolve to hidden input (typeahead/display patterns)
+                if (!field) {
+                    const display = feedback.closest('.form-group, .grid-cell, .header-card')?.querySelector('input[name$="_display"], input[data-hidden-name], .dual-calendar__ad, .dual-calendar__bs');
+                    if (display) {
+                        // if display found, try to get the hidden real input
+                        const hidden = getHiddenInput(display) || display;
+                        field = hidden || display;
+                        // if display is a dual-calendar visible input, focus that instead
+                        if (display.classList && (display.classList.contains('dual-calendar__ad') || display.classList.contains('dual-calendar__bs'))) {
+                            field = display;
+                        }
+                    }
+                }
+                // 4) fallback to any already-marked invalid field or first input
+                if (!field) {
+                    field = panel.querySelector('input.is-invalid, select.is-invalid, textarea.is-invalid') || panel.querySelector('input, select, textarea');
+                }
+
+                if (field) {
+                    try { field.focus({ preventScroll: false }); } catch (e) { field.focus(); }
+                    try { field.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+                    field.classList.add('is-invalid');
+                    field.setAttribute('aria-invalid', 'true');
+                    return true;
+                }
+            }
+
+            // If there are line-level errors, focus first offending row
+            const errRow = panel.querySelector('.table-danger, .error-row');
+            if (errRow) {
+                const field = errRow.querySelector('input, select, textarea');
+                if (field) {
+                    try { field.focus({ preventScroll: false }); } catch (e) { field.focus(); }
+                    try { field.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+                    return true;
+                }
+            }
+
+            // Finally, scroll to and highlight the top alert if present
+            const alert = panel.querySelector('.alert-danger, .alert-warning');
+            if (alert) {
+                try { alert.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+                return true;
+            }
+        } catch (err) {
+            console.warn('focusFirstInvalidPanel failed', err);
+        }
+        return false;
+    };
+
+    const applyInvalidFeedbackClasses = (panel) => {
+        try {
+            if (!panel) panel = document.getElementById('generic-voucher-panel');
+            if (!panel) return;
+            const feedbacks = Array.from(panel.querySelectorAll('.invalid-feedback.d-block'));
+            feedbacks.forEach((fb) => {
+                // find associated field and mark invalid + aria
+                const findField = () => {
+                    // 1. try immediate previous input/select/textarea
+                    let prev = fb.previousElementSibling;
+                    for (let i = 0; i < 6 && prev; i += 1) {
+                        if (['INPUT', 'SELECT', 'TEXTAREA'].includes(prev.tagName)) return prev;
+                        const inner = prev.querySelector('input, select, textarea');
+                        if (inner) return inner;
+                        prev = prev.previousElementSibling;
+                    }
+                    // 2. look for display inputs (typeahead) in same group and resolve hidden
+                    const group = fb.closest('.form-group, .grid-cell, .header-card');
+                    if (group) {
+                        const display = group.querySelector('input[name$="_display"], input[data-hidden-name]');
+                        if (display) {
+                            const hidden = getHiddenInput(display) || display;
+                            return hidden || display;
+                        }
+                        // dual-calendar special case
+                        const dual = group.querySelector('.dual-calendar__ad, .dual-calendar__bs');
+                        if (dual) return dual;
+                    }
+                    // 3. search parent container for any input/select/textarea
+                    const p = fb.parentElement;
+                    if (p) {
+                        const inner = p.querySelector('input, select, textarea');
+                        if (inner) return inner;
+                    }
+                    // 4. walk up ancestors and look for inputs nearby
+                    let anc = fb.parentElement;
+                    for (let depth = 0; depth < 6 && anc; depth += 1) {
+                        const inner = anc.querySelector('input, select, textarea');
+                        if (inner) return inner;
+                        anc = anc.parentElement;
+                    }
+                    return null;
+                };
+                const field = findField();
+                if (field) {
+                    field.classList.add('is-invalid');
+                    field.setAttribute('aria-invalid', 'true');
+                    if (!fb.id) fb.id = `fv_err_${Math.random().toString(36).slice(2, 9)}`;
+                    try { field.setAttribute('aria-describedby', fb.id); } catch (e) {}
+                    // if we marked a hidden input, also mark its visible display counterpart
+                    try {
+                        if (field.type === 'hidden') {
+                            const display = panel.querySelector(`input[name="${CSS.escape(field.name + '_display')}"]`) || panel.querySelector(`input[data-hidden-name='${CSS.escape(field.name)}']`);
+                            if (display) display.classList.add('is-invalid');
+                        }
+                    } catch (e) {}
+                }
+            });
+        } catch (err) {
+            console.warn('applyInvalidFeedbackClasses failed', err);
+        }
+    };
+
+    document.body.addEventListener('htmx:responseError', (evt) => {
+        try {
+            const xhr = evt.detail && evt.detail.xhr;
+            if (!xhr) return;
+            // Treat 422 as validation response and swap into panel
+            if (xhr.status === 422) {
+                const panel = document.getElementById('generic-voucher-panel');
+                if (!panel) return;
+                panel.innerHTML = xhr.responseText;
+
+                // re-init behaviours for swapped content
+                reindexRows();
+                updateSummary();
+                initColumnResizers();
+                initSuggestInputs(panel);
+                initHeaderHkeys();
+
+                // apply server-rendered invalid-feedback mapping (adds is-invalid, aria attributes)
+                try { applyInvalidFeedbackClasses(panel); } catch (e) { /* non-fatal */ }
+
+                // focus first invalid control
+                setTimeout(() => focusFirstInvalidPanel(), 50);
+            }
+        } catch (err) {
+            console.warn('htmx responseError handler failed', err);
         }
     });
 })();

@@ -220,7 +220,7 @@ def configure_form_date_fields(
         form_instance: ModelForm instance
         organization: Organization instance for calendar mode detection
     """
-    model = type(form_instance.Meta.model)
+    model = getattr(form_instance.Meta, 'model', None)
     date_fields = get_date_fields_for_model(model)
     
     # Store organization for widget access

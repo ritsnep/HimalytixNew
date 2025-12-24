@@ -18,6 +18,8 @@ from accounting.models import (
     Vendor,
     Customer,
 )
+from utils.calendars import maybe_coerce_bs_date
+from utils.widgets import dual_date_widget
 
 
 class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
@@ -153,9 +155,84 @@ class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
             else:
                 self.fields['discount_type'].initial = 'amount'
                 self.fields['discount_value'].initial = self.instance.discount_amount
+        # Apply dual calendar widget for invoice and due dates so BS/AD toggle submits AD ISO value
+        try:
+            if 'invoice_date' in self.fields:
+                self.fields['invoice_date'].widget = dual_date_widget(organization=self.organization, default_view='DUAL')
+            if 'due_date' in self.fields:
+                self.fields['due_date'].widget = dual_date_widget(organization=self.organization, default_view='DUAL')
+        except Exception:
+            # Fallback: leave existing widget if widget factory fails
+            pass
+
+    def _tolerant_date_field(self, cleaned, field_name):
+        """Try to coerce multiple incoming date formats into a date on `cleaned`.
+
+        Handles:
+        - Already-cleaned date objects
+        - Explicit BS field submitted via DualCalendarWidget (`<field>_bs`)
+        - Nepali numerals and BS strings via `maybe_coerce_bs_date`
+        - Common AD formats: ISO, MM/DD/YYYY, DD-MM-YYYY, DD/MM/YYYY
+        """
+        if field_name in cleaned and cleaned[field_name]:
+            return cleaned[field_name]
+
+        # 1) Prefer widget-submitted AD value (already bound) or BS companion
+        raw = self.data.get(field_name)
+        if not raw:
+            # Try BS companion field produced by DualCalendarWidget
+            raw = self.data.get(f"{field_name}_bs") or self.data.get(f"{field_name}-bs")
+
+        if not raw:
+            return None
+
+        s = str(raw).strip()
+
+        # 2) If it looks like a BS string, try coercion
+        bs_coerced = maybe_coerce_bs_date(s)
+        if bs_coerced:
+            cleaned[field_name] = bs_coerced
+            # clear any previous field errors
+            if getattr(self, '_errors', None) and field_name in self._errors:
+                del self._errors[field_name]
+            return bs_coerced
+
+        # 3) Try common AD formats
+        from datetime import datetime
+        candidates = [
+            '%Y-%m-%d',
+            '%m/%d/%Y',
+            '%d-%m-%Y',
+            '%d/%m/%Y',
+        ]
+        for fmt in candidates:
+            try:
+                dt = datetime.strptime(s, fmt).date()
+                cleaned[field_name] = dt
+                if getattr(self, '_errors', None) and field_name in self._errors:
+                    del self._errors[field_name]
+                return dt
+            except Exception:
+                continue
+
+        # 4) As a last resort, try Django's parse_date
+        from django.utils.dateparse import parse_date
+        parsed = parse_date(s)
+        if parsed:
+            cleaned[field_name] = parsed
+            if getattr(self, '_errors', None) and field_name in self._errors:
+                del self._errors[field_name]
+            return parsed
+
+        # 5) Give a clear field error
+        label = (self.fields.get(field_name).label if self.fields.get(field_name) else field_name).replace('_', ' ')
+        self.add_error(field_name, f"Invalid {label} format; please use YYYY-MM-DD, DD-MM-YYYY, MM/DD/YYYY, or toggle AD/BS.")
+        return None
 
     def clean(self):
         cleaned = super().clean()
+        self._tolerant_date_field(cleaned, 'invoice_date')
+        self._tolerant_date_field(cleaned, 'due_date')
         discount_value = cleaned.get('discount_value')
         discount_type = cleaned.get('discount_type') or 'amount'
         if discount_value is not None:

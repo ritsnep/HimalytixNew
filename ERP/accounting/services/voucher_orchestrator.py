@@ -45,7 +45,7 @@ class VoucherOrchestrator:
                 if not txn.get("cogs_account_id"):
                     raise VoucherProcessError("INV-008", f"Inventory transaction {idx} missing cogs_account_id.")
 
-    def create_and_process(self, config, header_data, lines_data, action: str, *, idempotency_key: str | None = None):
+    def create_and_process(self, config, header_data, lines_data, action: str, *, idempotency_key: str | None = None, last_modified_at: str | None = None):
         commit_type = "save"
         if action == "submit_voucher":
             commit_type = "submit"
@@ -59,6 +59,7 @@ class VoucherOrchestrator:
             lines_data=lines_data,
             commit_type=commit_type,
             idempotency_key=idempotency_key,
+            last_modified_at=last_modified_at,
         )
 
     def process(

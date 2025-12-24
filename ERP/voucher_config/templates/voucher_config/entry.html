@@ -43,9 +43,24 @@
     const debitEl = document.getElementById("summary-total-debit");
     const creditEl = document.getElementById("summary-total-credit");
     const diffEl = document.getElementById("summary-total-diff");
+    const balanceIndicator = document.getElementById("balance-indicator");
     if (debitEl) debitEl.textContent = debit.toFixed(2);
     if (creditEl) creditEl.textContent = credit.toFixed(2);
-    if (diffEl) diffEl.textContent = (debit - credit).toFixed(2);
+    if (diffEl) {
+      const diff = debit - credit;
+      diffEl.textContent = Math.abs(diff).toFixed(2);
+      diffEl.className = diff === 0 ? 'text-success' : 'text-danger';
+    }
+    if (balanceIndicator) {
+      const diff = debit - credit;
+      if (diff === 0) {
+        balanceIndicator.className = 'badge bg-success ms-2';
+        balanceIndicator.textContent = 'Balanced';
+      } else {
+        balanceIndicator.className = 'badge bg-danger ms-2';
+        balanceIndicator.textContent = `Out of Balance: ${Math.abs(diff).toFixed(2)}`;
+      }
+    }
   };
 
   if (form) {
@@ -63,10 +78,87 @@
   document.body.addEventListener("htmx:afterSwap", (evt) => {
     if (evt.detail && evt.detail.target && evt.detail.target.id === "lines-container") {
       updateTotals();
+      validateRequiredFields();
+    }
+  });
+
+  // Add input validation for amount fields
+  document.addEventListener('input', (e) => {
+    if (e.target.classList.contains('amount-field')) {
+      const value = parseFloat(e.target.value);
+      if (isNaN(value) || value < 0) {
+        e.target.classList.add('is-invalid');
+      } else {
+        e.target.classList.remove('is-invalid');
+      }
+    }
+  });
+
+  // Add validation on input and change events
+  document.addEventListener('input', validateRequiredFields);
+  document.addEventListener('change', validateRequiredFields);
+
+  // Validate before form submission
+  if (form) {
+    form.addEventListener('submit', (e) => {
+      validateRequiredFields();
+      const hasInvalid = form.querySelectorAll('.is-invalid').length > 0;
+      if (hasInvalid) {
+        e.preventDefault();
+        const firstInvalid = form.querySelector('.is-invalid');
+        if (firstInvalid) {
+          firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          firstInvalid.focus();
+        }
+        return false;
+      }
+    });
+  }
+
+  const validateRequiredFields = () => {
+    // Validate header required fields
+    document.querySelectorAll('#header-fields input[required], #header-fields select[required], #header-fields textarea[required]').forEach(field => {
+      const indicator = field.parentElement.querySelector('[data-required-indicator]');
+      if (indicator) {
+        if (!field.value.trim()) {
+          indicator.style.display = 'block';
+          field.classList.add('is-invalid');
+        } else {
+          indicator.style.display = 'none';
+          field.classList.remove('is-invalid');
+        }
+      }
+    });
+
+    // Validate line required fields
+    document.querySelectorAll('#lines-container input[required], #lines-container select[required]').forEach(field => {
+      const indicator = field.parentElement.querySelector('[data-required-indicator]');
+      if (indicator) {
+        if (!field.value.trim()) {
+          indicator.style.display = 'block';
+          field.classList.add('is-invalid');
+        } else {
+          indicator.style.display = 'none';
+          field.classList.remove('is-invalid');
+        }
+      }
+    });
+  };
+
+  // Add input validation for amount fields
+  document.addEventListener('input', (e) => {
+    if (e.target.classList.contains('amount-field')) {
+      const value = parseFloat(e.target.value);
+      if (isNaN(value) || value < 0) {
+        e.target.classList.add('is-invalid');
+      } else {
+        e.target.classList.remove('is-invalid');
+      }
     }
   });
 
   updateTotals();
+  validateRequiredFields();
 })();
 </script>
 {% if additional_charges_formset %}

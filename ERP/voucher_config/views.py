@@ -53,6 +53,19 @@ class VoucherEntryView(ConfigVoucherCreateView):
         context = super().get_context_data(**kwargs)
         context["change_type_url"] = reverse("voucher_config:select")
         context["line_endpoint"] = reverse("voucher_config:lines_add")
+        
+        # Add journal context for concurrency control
+        idempotency_key = context.get("idempotency_key")
+        if idempotency_key:
+            from accounting.models import Journal
+            organization = self.get_organization()
+            journal = Journal.objects.filter(
+                organization=organization,
+                idempotency_key=idempotency_key,
+            ).first()
+            if journal:
+                context["journal"] = journal
+        
         return context
 
     def get(self, request, *args, **kwargs):
@@ -189,6 +202,7 @@ class VoucherEntryView(ConfigVoucherCreateView):
                     lines_data=lines_data,
                     action=action,
                     idempotency_key=idempotency_key,
+                    last_modified_at=request.POST.get("last_modified_at"),
                 )
 
                 voucher_number = (

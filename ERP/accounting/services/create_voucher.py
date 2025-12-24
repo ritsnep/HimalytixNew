@@ -17,6 +17,7 @@ from ..models import (
 )
 from accounting.extensions.hooks import HookRunner
 from accounting.services.voucher_errors import VoucherProcessError
+from usermanagement.utils import PermissionUtils
 
 logger = logging.getLogger(__name__)
 
@@ -136,6 +137,7 @@ def create_voucher_transaction(
     udf_header=None,
     udf_lines=None,
     idempotency_key: str | None = None,
+    last_modified_at: str | None = None,
 ):
     """
     Orchestrates voucher creation with full rollback guarantees.
@@ -157,12 +159,36 @@ def create_voucher_transaction(
         )
         raise VoucherProcessError("VCH-001", "Invalid Voucher Configuration.") from exc
 
+    # Check permissions
+    if not PermissionUtils.has_codename(user, user_org, "accounting_voucher_add"):
+        raise VoucherProcessError("VCH-PERM", "You don't have permission to create vouchers.")
+
     hook_runner = HookRunner(user_org)
     hook_runner.run(
         "before_voucher_save",
         {"header": header_data, "lines": lines_data},
         raise_on_error=True,
     )
+
+    # Validate header data
+    from accounting.services.validation_service import ValidationService
+    header_errors = ValidationService.validate_voucher_header(header_data, config, user_org)
+    if header_errors:
+        error_messages = [f"{field}: {msg}" for field, msg in header_errors.items()]
+        raise VoucherProcessError("VCH-VAL", f"Header validation failed: {'; '.join(error_messages)}")
+
+    # Validate line data
+    for idx, line_data in enumerate(lines_data or [], start=1):
+        line_errors = ValidationService.validate_voucher_line(line_data, config, user_org, idx)
+        if line_errors:
+            error_messages = [f"{field}: {msg}" for field, msg in line_errors.items()]
+            raise VoucherProcessError("VCH-VAL", f"Line {idx} validation failed: {'; '.join(error_messages)}")
+
+    # Validate cross-field dependencies
+    cross_errors = ValidationService.validate_cross_field_dependencies(header_data, lines_data, config)
+    if cross_errors:
+        error_messages = [f"{field}: {msg}" for field, msg in cross_errors.items()]
+        raise VoucherProcessError("VCH-VAL", f"Cross-field validation failed: {'; '.join(error_messages)}")
 
     journal_date = (
         header_data.get("journal_date")
@@ -219,6 +245,19 @@ def create_voucher_transaction(
                     idempotency_key=idempotency_key,
                 )
             else:
+                # Check change permission for existing vouchers
+                if not PermissionUtils.has_codename(user, user_org, "accounting_voucher_change"):
+                    raise VoucherProcessError("VCH-PERM", "You don't have permission to modify vouchers.")
+                # Concurrency control: Check if journal was modified since client last saw it
+                if last_modified_at:
+                    from datetime import datetime
+                    try:
+                        client_modified_at = datetime.fromisoformat(last_modified_at.replace('Z', '+00:00'))
+                        if voucher.modified_at and voucher.modified_at.replace(microsecond=0) > client_modified_at.replace(microsecond=0):
+                            raise VoucherProcessError("VCH-409", "Journal was modified by another user. Please refresh and try again.")
+                    except (ValueError, AttributeError) as exc:
+                        logger.warning("Invalid last_modified_at format: %s", last_modified_at)
+                        raise VoucherProcessError("VCH-410", "Invalid modification timestamp format.") from exc
                 voucher.journal_type = config.journal_type
                 voucher.period = period
                 voucher.journal_date = journal_date
@@ -584,7 +623,7 @@ def create_voucher_transaction(
     return voucher
 
 
-def create_voucher(user, config_id: int, header_data: dict, lines_data: list, udf_header=None, udf_lines=None):
+def create_voucher(user, config_id: int, header_data: dict, lines_data: list, udf_header=None, udf_lines=None, last_modified_at: str | None = None):
     """
     Backwards-compatible wrapper for draft save.
     """
@@ -596,4 +635,5 @@ def create_voucher(user, config_id: int, header_data: dict, lines_data: list, ud
         commit_type="save",
         udf_header=udf_header,
         udf_lines=udf_lines,
+        last_modified_at=last_modified_at,
     )

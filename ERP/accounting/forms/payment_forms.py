@@ -2,6 +2,8 @@ from decimal import Decimal
 
 from django import forms
 
+from utils.widgets import dual_date_widget
+
 PAYMENT_METHOD_CHOICES = [
     ('cash', 'Cash'),
     ('bank', 'Bank'),
@@ -29,10 +31,7 @@ class PurchasePaymentForm(forms.Form):
         choices=[],
         widget=forms.Select(attrs={'class': 'form-select form-select-sm'}),
     )
-    due_date = forms.DateField(
-        required=False,
-        widget=forms.TextInput(attrs={'class': 'form-control form-control-sm datepicker'}),
-    )
+    due_date = forms.DateField(required=False)
     amount = forms.DecimalField(
         required=False,
         max_digits=19,
@@ -45,10 +44,16 @@ class PurchasePaymentForm(forms.Form):
     )
     DELETE = forms.BooleanField(required=False)
 
-    def __init__(self, *args, invoice_date=None, cash_bank_choices=None, **kwargs):
+    def __init__(self, *args, invoice_date=None, cash_bank_choices=None, organization=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.invoice_date = invoice_date
+        self.organization = organization
         self.fields['cash_bank_id'].choices = cash_bank_choices or [('', 'Select account')]
+        self.fields['due_date'].widget = dual_date_widget(
+            attrs={'class': 'form-control form-control-sm'},
+            organization=organization,
+            default_view='DUAL',
+        )
 
     def clean(self):
         cleaned = super().clean()

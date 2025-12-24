@@ -560,7 +560,8 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
                     context["summary"] = _compute_summary_from_post(request)
                     context["alert_message"] = payload["voucher:message"]
                     context["alert_level"] = "danger"
-                    response = _render_generic_panel(request, context, status=500)
+                    # Return 200 so HTMX will swap the returned panel and show the error UI
+                    response = _render_generic_panel(request, context, status=200)
                     response["HX-Trigger"] = json.dumps(payload)
                     return response
                 messages.error(

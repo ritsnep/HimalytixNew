@@ -16,6 +16,7 @@ from locations.models import LocationNode
 from accounting.services.purchase_calculator import PurchaseCalculator
 from accounting.forms import PurchaseInvoiceForm, PurchaseInvoiceLineForm, PurchasePaymentForm
 from inventory.models import Product, Unit, Warehouse
+from utils.calendars import maybe_coerce_bs_date
 
 User = get_user_model()
 
@@ -336,6 +337,41 @@ class PurchaseInvoiceFormTestCase(TestCase):
         form = PurchaseInvoiceForm(data=data, organization=self.organization)
         self.assertFalse(form.is_valid())
         self.assertIn("due_date", form.errors)
+
+    def test_purchase_invoice_form_invalid_date_format(self):
+        """Invalid invoice dates show a helpful message"""
+        data = {
+            "organization": self.organization.id,
+            "vendor": self.vendor.vendor_id,
+            "invoice_number": "PI005",
+            "invoice_date": "invalid-date",
+            "currency": self.currency.currency_code,
+            "purchase_account": self.purchase_account.account_id,
+            "exchange_rate": 1,
+        }
+        form = PurchaseInvoiceForm(data=data, organization=self.organization)
+        self.assertFalse(form.is_valid())
+        self.assertIn("invoice_date", form.errors)
+        self.assertIn("Invalid", form.errors["invoice_date"][0])
+        self.assertIn("YYYY-MM-DD", form.errors["invoice_date"][0])
+
+    def test_purchase_invoice_form_accepts_bs_date(self):
+        """Bikram Sambat strings convert to AD before validation"""
+        bs_value = "2082-08-30"
+        expected_date = maybe_coerce_bs_date(bs_value)
+        self.assertIsNotNone(expected_date)
+        data = {
+            "organization": self.organization.id,
+            "vendor": self.vendor.vendor_id,
+            "invoice_number": "PI006",
+            "invoice_date": bs_value,
+            "currency": self.currency.currency_code,
+            "purchase_account": self.purchase_account.account_id,
+            "exchange_rate": 1,
+        }
+        form = PurchaseInvoiceForm(data=data, organization=self.organization)
+        self.assertTrue(form.is_valid(), form.errors.as_text())
+        self.assertEqual(form.cleaned_data["invoice_date"], expected_date)
 
 
 class PurchaseInvoiceLineFormTestCase(TestCase):

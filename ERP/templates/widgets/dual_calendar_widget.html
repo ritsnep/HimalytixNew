@@ -12,7 +12,7 @@
          value="{{ widget.bs_value|default_if_none:'' }}"
          {% if widget.mode == 'AD' %}hidden{% endif %}>
 
-  <input {% include "django/forms/widgets/attrs.html" %}
+  <input name="{{ widget.name }}" {% include "django/forms/widgets/attrs.html" %}
          value="{{ widget.ad_value|default_if_none:'' }}"
          data-role="ad-input"
          class="{{ widget.attrs.class }}{% if widget.mode == 'BS' %} d-none{% endif %}"

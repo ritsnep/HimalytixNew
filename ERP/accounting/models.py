@@ -4845,6 +4845,7 @@ class Journal(models.Model):
     )
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
+    modified_at = models.DateTimeField(auto_now=True, help_text="Timestamp for optimistic concurrency control")
     created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_journals')
     updated_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='updated_journals')
     header_udf_data = models.JSONField(default=dict, blank=True)

@@ -14,6 +14,7 @@
   .autocomplete-results { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #dee2e6; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; }
   .autocomplete-results.show { display: block; }
 </style>
+{{ form.media }}
 {% endblock %}
 
 {% block content %}
@@ -54,6 +55,23 @@
       {% if form.non_field_errors %}
         <div class="alert alert-danger small mb-3">
           {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+        </div>
+      {% endif %}
+      {% if debug_info %}
+        <div class="alert alert-warning small mb-3">
+          <strong>Debug info (validation):</strong>
+          <div class="mt-2">
+            <details>
+              <summary>Posted payload &amp; errors (click to expand)</summary>
+              <pre style="white-space:pre-wrap;word-break:break-word;">{{ debug_info.posted|safe }}</pre>
+              <strong>Form errors:</strong>
+              <pre>{{ debug_info.form_errors }}</pre>
+              <strong>Line formset errors:</strong>
+              <pre>{{ debug_info.line_errors }}</pre>
+              <strong>Payment formset errors:</strong>
+              <pre>{{ debug_info.payment_errors }}</pre>
+            </details>
+          </div>
         </div>
       {% endif %}
       {% if line_formset.non_form_errors %}
@@ -653,6 +671,15 @@
     recalcTotals();
   }
 
+  function focusFirstInvalidField() {
+    const invalidField = document.querySelector('#purchase-form .is-invalid');
+    if (!invalidField) return;
+    invalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (typeof invalidField.focus === 'function') {
+      invalidField.focus({ preventScroll: true });
+    }
+  }
+
   document.body.addEventListener('htmx:afterSwap', (evt) => {
     if (evt.target && evt.target.id === 'purchase-form-panel') {
       refreshFormState();
@@ -675,6 +702,7 @@
     if (replacement) {
       panel.replaceWith(replacement);
       refreshFormState();
+      focusFirstInvalidField();
     }
   });
 

@@ -28,6 +28,7 @@
     {% csrf_token %}
     <input type="hidden" name="action" id="voucher-action" value="save">
     <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
+    <input type="hidden" name="last_modified_at" id="last_modified_at" value="{{ journal.modified_at|date:'c' }}">
 
     <div id="header-panel" class="card mb-3">
       <div class="card-header">

@@ -427,6 +427,7 @@ class VoucherFormFactory:
 
     def __init__(self, configuration, model=None, organization=None, user_perms=None, prefix=None,
                  phase=None, initial=None, disabled_fields=None, normalized=False, **kwargs):
+        self.original_configuration = configuration  # Store original config object
         self.configuration = configuration
         if hasattr(configuration, 'resolve_ui_schema'):
             self.schema = configuration.resolve_ui_schema()
@@ -1065,6 +1066,45 @@ class VoucherFormFactory:
                 for f_name in self.form_factory.disabled_fields:
                     if f_name in self.fields:
                         self.fields[f_name].disabled = True
+
+            def clean(self):
+                """Validate form data including cross-field validations."""
+                cleaned_data = super().clean()
+                
+                # Header-level validations
+                if hasattr(self.form_factory, 'configuration') and hasattr(self.form_factory, 'organization'):
+                    from accounting.services.validation_service import ValidationService
+                    
+                    # For header forms
+                    if not getattr(self.form_factory, 'phase', None) or self.form_factory.phase == 'header':
+                        errors = ValidationService.validate_voucher_header(
+                            cleaned_data, 
+                            self.form_factory.original_configuration, 
+                            self.form_factory.organization
+                        )
+                        for field, error in errors.items():
+                            if field in self.fields:
+                                self.add_error(field, error)
+                    
+                    # For line forms
+                    elif self.form_factory.phase == 'lines':
+                        line_index = getattr(self, 'line_index', 1)
+                        errors = ValidationService.validate_voucher_line(
+                            cleaned_data,
+                            self.form_factory.original_configuration,
+                            self.form_factory.organization,
+                            line_index
+                        )
+                        for field, error in errors.items():
+                            if field in self.fields:
+                                self.add_error(field, error)
+                    
+                    # For additional charges
+                    elif self.form_factory.phase == 'additional_charges':
+                        # Additional charges validation would be handled at formset level
+                        pass
+                
+                return cleaned_data
             
             def save(self, commit=True):
                 if self.form_factory.model:
@@ -1311,6 +1351,40 @@ class VoucherFormFactory:
                         for f_name in disabled_fields:
                             if f_name in form.fields:
                                 form.fields[f_name].disabled = True
+
+            def clean(self):
+                """Validate formset data including cross-formset validations."""
+                super().clean()
+                
+                # Check that at least one form is valid and not deleted
+                if hasattr(self.form_factory, 'configuration') and hasattr(self.form_factory, 'organization'):
+                    from accounting.services.validation_service import ValidationService
+                    
+                    # For line formsets
+                    if getattr(self.form_factory, 'phase', None) == 'lines':
+                        valid_forms = 0
+                        for form in self.forms:
+                            if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                                valid_forms += 1
+                        
+                        if valid_forms == 0:
+                            raise forms.ValidationError("At least one voucher line is required.")
+                    
+                    # For additional charges formsets
+                    elif getattr(self.form_factory, 'phase', None) == 'additional_charges':
+                        charges_data = []
+                        for form in self.forms:
+                            if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                                charges_data.append(form.cleaned_data)
+                        
+                        if charges_data:
+                            errors = ValidationService.validate_additional_charges(
+                                charges_data,
+                                self.form_factory.original_configuration,
+                                self.form_factory.organization
+                            )
+                            for field, error in errors.items():
+                                self.add_error(field, error)
         
         return DynamicFormSet
 
@@ -1444,6 +1518,120 @@ class VoucherFormFactory:
             can_delete=True,
         )
         return formset_cls
+
+    @staticmethod
+    def get_payment_receipt_formset(organization, *, data=None, files=None, **kwargs):
+        """
+        Create a formset for payment receipts integrated with vouchers.
+        """
+        payment_schema = {
+            'header': {
+                'payment_date': {
+                    'label': 'Payment Date',
+                    'type': 'date',
+                    'required': True,
+                    'order_no': 1
+                },
+                'exchange_rate': {
+                    'label': 'Exchange Rate',
+                    'type': 'decimal',
+                    'required': False,
+                    'order_no': 2,
+                    'step': '0.01',
+                    'min': '0.01'
+                },
+                'account': {
+                    'label': 'Payment Account',
+                    'type': 'lookup',
+                    'lookup_kind': 'account',
+                    'required': True,
+                    'order_no': 3
+                },
+                'payment_method': {
+                    'label': 'Payment Method',
+                    'type': 'select',
+                    'required': True,
+                    'order_no': 4,
+                    'choices': [
+                        ('cash', 'Cash'),
+                        ('bank_transfer', 'Bank Transfer'),
+                        ('cheque', 'Cheque'),
+                        ('credit_card', 'Credit Card'),
+                        ('other', 'Other')
+                    ]
+                },
+                'amount': {
+                    'label': 'Amount',
+                    'type': 'decimal',
+                    'required': True,
+                    'order_no': 5,
+                    'step': '0.01',
+                    'min': '0.01'
+                },
+                'currency': {
+                    'label': 'Currency',
+                    'type': 'select',
+                    'required': False,
+                    'order_no': 6
+                },
+                'reference': {
+                    'label': 'Reference',
+                    'type': 'char',
+                    'required': False,
+                    'order_no': 7,
+                    'max_length': 50
+                }
+            }
+        }
+
+        # Create a config object for the payment formset
+        class PaymentConfig:
+            def __init__(self, schema):
+                self.schema_definition = schema
+
+            def resolve_ui_schema(self):
+                return self.schema_definition
+
+        payment_config = PaymentConfig(payment_schema)
+
+        factory = VoucherFormFactory(
+            configuration=payment_config,
+            organization=organization,
+            prefix='payments',
+            phase='payments',
+        )
+        form_cls = factory.build_form()
+
+        # Create a formset from this form class
+        from django.forms import formset_factory
+        formset_cls = formset_factory(
+            form_cls,
+            extra=1,
+            can_delete=True,
+        )
+
+        class PaymentFormSet(formset_cls):
+            def clean(self):
+                """Validate payment formset data."""
+                super().clean()
+
+                if hasattr(self, 'voucher_total'):
+                    from accounting.services.validation_service import ValidationService
+                    payments_data = []
+                    for form in self.forms:
+                        if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                            payments_data.append(form.cleaned_data)
+
+                    if payments_data:
+                        errors = ValidationService.validate_payment_receipt(
+                            payments_data,
+                            self.voucher_total,
+                            factory.organization
+                        )
+                        for field, error in errors.items():
+                            self.add_error(field, error)
+
+        return PaymentFormSet
 
     @staticmethod
     def get_generic_voucher_formset(voucher_config, organization, instance=None, data=None, files=None, **kwargs):

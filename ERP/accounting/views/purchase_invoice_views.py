@@ -21,6 +21,13 @@ from accounting.forms import (
 from accounting.models import VoucherModeConfig, PurchaseInvoice, PurchaseInvoiceLine, APPayment, ChartOfAccount, Vendor
 from accounting.services.agent_service import AgentService
 from accounting.services.purchase_calculator import PurchaseCalculator
+from utils.date_field_utils import configure_form_date_fields
+from utils.calendars import maybe_coerce_bs_date
+from django.utils.dateparse import parse_date
+from datetime import datetime
+import logging
+from django.conf import settings
+logger = logging.getLogger(__name__)
 
 
 def _get_cash_bank_choices(organization):
@@ -34,17 +41,6 @@ def _get_cash_bank_choices(organization):
     account_choices = [('', 'Select account')]
     account_choices.extend([(str(acct.pk), f"{acct.code} - {acct.name}") for acct in cash_bank_accounts])
     return account_choices, cash_bank_accounts
-
-
-def _parse_invoice_date(data):
-    raw = data.get('invoice_date')
-    if not raw:
-        return None
-    date_field = forms.DateField(required=False)
-    try:
-        return date_field.clean(raw)
-    except ValidationError:
-        return None
 
 
 def _sum_payment_amounts(payment_formset):
@@ -72,6 +68,7 @@ def purchase_invoice_new_enhanced(request):
         form_kwargs = {
             'invoice_date': invoice_date,
             'cash_bank_choices': account_choices,
+            'organization': organization,
         }
         if data is None:
             return PaymentFormSet(prefix='payments', form_kwargs=form_kwargs), cash_bank_accounts, account_choices
@@ -79,6 +76,7 @@ def purchase_invoice_new_enhanced(request):
 
     if request.method == 'GET':
         form = PurchaseInvoiceForm(organization=organization)
+        configure_form_date_fields(form, organization=organization)
         # Get empty queryset for display (HTMX will handle adding items)
         line_items = PurchaseInvoiceLine.objects.none()
 
@@ -102,20 +100,103 @@ def purchase_invoice_new_enhanced(request):
         return render(request, 'accounting/purchase/new_enhanced.html', context)
     
     elif request.method == 'POST':
-        form = PurchaseInvoiceForm(request.POST, organization=organization)
+        # Make a mutable copy of POST so we can coerce BS or non-ISO AD dates
+        data = request.POST.copy()
+        # Ensure organization is present in POST so the ModelForm doesn't require it
+        try:
+            if not data.get('organization'):
+                data['organization'] = str(getattr(organization, 'id', getattr(organization, 'pk', '')))
+        except Exception:
+            data['organization'] = ''
 
-        invoice_date_value = _parse_invoice_date(request.POST)
-        payments_formset, cash_bank_accounts, _ = _build_payment_formset(request.POST, invoice_date=invoice_date_value)
+        def _coerce_field(post_dict, name):
+            # If AD value already present, leave it
+            if post_dict.get(name):
+                return
+            # Prefer BS companion field
+            bs_key = f"{name}_bs"
+            raw = post_dict.get(bs_key) or post_dict.get(f"{name}-bs")
+            if raw:
+                coerced = maybe_coerce_bs_date(str(raw))
+                if coerced:
+                    post_dict[name] = coerced.isoformat()
+                    return
+            # Try common AD formats
+            raw = post_dict.get(name) or raw
+            if raw:
+                s = str(raw).strip()
+                # Try parse_date first (ISO-ish)
+                pd = parse_date(s)
+                if pd:
+                    post_dict[name] = pd.isoformat()
+                    return
+                # Try common US/UK formats
+                for fmt in ('%m/%d/%Y', '%d-%m-%Y', '%d/%m/%Y'):
+                    try:
+                        dt = datetime.strptime(s, fmt).date()
+                        post_dict[name] = dt.isoformat()
+                        return
+                    except Exception:
+                        continue
+
+        _coerce_field(data, 'invoice_date')
+        _coerce_field(data, 'due_date')
+
+        # Debug: log keys present in data before validation
+        logger.debug('PurchaseInvoice POST keys before validation: %s', list(data.keys()))
+        form = PurchaseInvoiceForm(data, organization=organization)
+        configure_form_date_fields(form, organization=organization)
+
+        form_valid = form.is_valid()
+        invoice_date_value = form.cleaned_data.get('invoice_date')
+        payments_formset, cash_bank_accounts, _ = _build_payment_formset(
+            data,
+            invoice_date=invoice_date_value,
+        )
+
+        # Populate missing line descriptions from product master when possible
+        try:
+            from inventory.models import Product
+            total_forms = int(data.get('items-TOTAL_FORMS', '0') or 0)
+            for i in range(total_forms):
+                prod_key = f'items-{i}-product'
+                desc_key = f'items-{i}-description'
+                unit_display_key = f'items-{i}-unit_display'
+                unit_cost_key = f'items-{i}-unit_cost'
+                prod_val = data.get(prod_key)
+                desc_val = data.get(desc_key)
+                if prod_val and (not desc_val or str(desc_val).strip() == ''):
+                    try:
+                        pid = int(prod_val)
+                    except Exception:
+                        pid = None
+                    if pid:
+                        prod = Product.objects.filter(pk=pid, organization=organization).first()
+                        if prod:
+                            data[desc_key] = prod.description or prod.name
+                            # populate unit display if missing
+                            try:
+                                if prod.base_unit and not data.get(unit_display_key):
+                                    data[unit_display_key] = prod.base_unit.name or ''
+                            except Exception:
+                                pass
+                            # populate unit cost if missing or zero
+                            try:
+                                if (not data.get(unit_cost_key) or str(data.get(unit_cost_key)).strip() == '0') and prod.cost_price:
+                                    data[unit_cost_key] = str(prod.cost_price)
+                            except Exception:
+                                pass
+        except Exception:
+            logger.exception('Failed to auto-populate product descriptions')
 
         invoice_stub = PurchaseInvoice(organization=organization)
         line_formset = PurchaseInvoiceLineFormSet(
-            request.POST,
+            data,
             prefix='items',
             instance=invoice_stub,
             form_kwargs={'organization': organization},
         )
 
-        form_valid = form.is_valid()
         lines_valid = line_formset.is_valid()
         payments_valid = payments_formset.is_valid()
 
@@ -206,9 +287,9 @@ def purchase_invoice_new_enhanced(request):
                         invoice.agent_area = area.name if area else str(agent_area_id)
                     invoice.save()
 
-                    # Re-bind line formset with actual invoice for saving
+                    # Re-bind line formset with actual invoice for saving (use coerced/augmented data)
                     line_formset = PurchaseInvoiceLineFormSet(
-                        request.POST,
+                        data,
                         prefix='items',
                         instance=invoice,
                         form_kwargs={'organization': organization},
@@ -294,6 +375,24 @@ def purchase_invoice_new_enhanced(request):
 
         # Re-display form with errors
         line_items = PurchaseInvoiceLine.objects.none()
+        # Log detailed debug info to help trace why validation failed
+        try:
+            if not form_valid:
+                logger.error("Purchase invoice form invalid: %s", getattr(form, 'errors', None))
+            if not lines_valid:
+                logger.error("Purchase invoice lines invalid: %s", getattr(line_formset, 'errors', None))
+            if not payments_valid:
+                logger.error("Purchase invoice payments invalid: %s", getattr(payments_formset, 'errors', None))
+            # Also log coerced date values from posted data (if available)
+            try:
+                posted_invoice = (request.POST.get('invoice_date') or request.POST.get('invoice_date_bs') or request.POST.get('invoice_date_ad'))
+                posted_due = (request.POST.get('due_date') or request.POST.get('due_date_bs') or request.POST.get('due_date_ad'))
+                logger.debug('Posted invoice_date raw=%s coerced=%s', posted_invoice, invoice_date_value)
+                logger.debug('Posted due_date raw=%s', posted_due)
+            except Exception:
+                logger.exception('Error while logging posted dates')
+        except Exception:
+            logger.exception('Error while logging purchase invoice validation details')
         context = {
             'form': form,
             'line_items': line_items,
@@ -445,6 +544,7 @@ def purchase_add_payment_hx(request):
             prefix=f'payments-{form_index}',
             invoice_date=invoice_date,
             cash_bank_choices=cash_bank_choices,
+            organization=organization,
         )
         template_name = 'accounting/purchase/_payment_row_new.html'
     else:
