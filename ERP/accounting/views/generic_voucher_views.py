@@ -297,6 +297,12 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
                     )
                 else:
                     additional_charges_formset = additional_charges_formset_cls(prefix='additional_charges')
+            
+            # Build payment formset if affects_payments
+            payment_formset = None
+            if getattr(config, 'affects_payments', False):
+                from accounting.forms.voucher_payment_forms import VoucherPaymentFormSet
+                payment_formset = VoucherPaymentFormSet(prefix='payments', organization=organization)
                 
         except VoucherProcessError as exc:
             context = self.get_context_data(
@@ -318,6 +324,7 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
             header_form=header_form,
             line_formset=line_formset,
             additional_charges_formset=additional_charges_formset,
+            payment_formset=payment_formset,
             is_create=True,
             line_section_title=line_section_title,
             idempotency_key=_resolve_idempotency_key(request),
@@ -327,6 +334,14 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
         logger.debug(f"GenericVoucherCreateView GET - Config: {config.code}")
 
         return _render_generic_panel(request, context)
+
+    def summary(self, request, *args, **kwargs):
+        """HTMX endpoint for real-time summary calculation."""
+        lines_data = json.loads(request.POST.get('lines', '[]'))
+        charges_data = json.loads(request.POST.get('charges', '[]')) if request.POST.get('charges') else None
+        from accounting.services.voucher_summary_service import VoucherSummaryService
+        summary = VoucherSummaryService.compute_from_lines(lines_data, charges_data)
+        return JsonResponse(summary)
 
     def post(self, request, *args, **kwargs) -> HttpResponse:
         """Handle form submission."""
@@ -377,8 +392,38 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
                 prefix='additional_charges',
             )
 
+        # Build payment formset if affects_payments
+        payment_formset = None
+        if getattr(config, 'affects_payments', False):
+            from accounting.forms.voucher_payment_forms import VoucherPaymentFormSet
+            payment_formset = VoucherPaymentFormSet(
+                data=request.POST,
+                files=request.FILES,
+                prefix='payments',
+                organization=organization
+            )
+
         idempotency_key = _resolve_idempotency_key(request)
-        if header_form.is_valid() and line_formset.is_valid():
+        all_valid = header_form.is_valid() and line_formset.is_valid()
+        if additional_charges_formset:
+            all_valid = all_valid and additional_charges_formset.is_valid()
+        if payment_formset:
+            all_valid = all_valid and payment_formset.is_valid()
+            # Additional: validate payment sum equals voucher total
+            if all_valid:
+                from decimal import Decimal
+                voucher_total = sum(
+                    (l.get('debit_amount', 0) or 0) - (l.get('credit_amount', 0) or 0) 
+                    for l in line_formset.cleaned_data if not l.get('DELETE')
+                )
+                payment_total = sum(
+                    (p.get('amount', 0) or 0) 
+                    for p in payment_formset.cleaned_data if not p.get('DELETE')
+                )
+                if abs(voucher_total - payment_total) > Decimal('0.01'):
+                    raise VoucherProcessError('Payment total must match voucher balance.', code='PAY-BALANCE')
+        
+        if all_valid:
             try:
                 header_data = header_form.cleaned_data
                 lines_data = line_formset.cleaned_data
@@ -404,6 +449,22 @@ class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
                     commit_type = "save"
 
                 from accounting.services.voucher_orchestrator import VoucherOrchestrator
+                # Check concurrency
+                modified_at = request.POST.get('modified_at')
+                if modified_at:
+                    from accounting.models import Voucher  # Assuming Voucher model
+                    existing_voucher = Voucher.objects.filter(
+                        organization=organization, 
+                        voucher_type=config.code, 
+                        modified_at__gt=modified_at
+                    ).first()
+                    if existing_voucher:
+                        return _render_generic_panel(request, {
+                            'config': config,
+                            'alert_message': 'Voucher modified by another user.',
+                            'alert_level': 'danger'
+                        }, status=409)
+                
                 voucher = VoucherOrchestrator(request.user).create_and_process(
                     config=config,
                     header_data=header_data,

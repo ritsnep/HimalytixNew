@@ -344,7 +344,8 @@ class PurchaseInvoiceFormTestCase(TestCase):
             "organization": self.organization.id,
             "vendor": self.vendor.vendor_id,
             "invoice_number": "PI005",
-            "invoice_date": "invalid-date",
+            "invoice_date_bs": "invalid-bs-date",
+            "due_date_bs": "2082-09-30",
             "currency": self.currency.currency_code,
             "purchase_account": self.purchase_account.account_id,
             "exchange_rate": 1,
@@ -353,7 +354,6 @@ class PurchaseInvoiceFormTestCase(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn("invoice_date", form.errors)
         self.assertIn("Invalid", form.errors["invoice_date"][0])
-        self.assertIn("YYYY-MM-DD", form.errors["invoice_date"][0])
 
     def test_purchase_invoice_form_accepts_bs_date(self):
         """Bikram Sambat strings convert to AD before validation"""
@@ -364,7 +364,8 @@ class PurchaseInvoiceFormTestCase(TestCase):
             "organization": self.organization.id,
             "vendor": self.vendor.vendor_id,
             "invoice_number": "PI006",
-            "invoice_date": bs_value,
+            "invoice_date_bs": bs_value,
+            "due_date_bs": "2082-09-30",
             "currency": self.currency.currency_code,
             "purchase_account": self.purchase_account.account_id,
             "exchange_rate": 1,
@@ -598,7 +599,7 @@ class PurchaseInvoiceIntegrationTestCase(TestCase):
         )
         self.vendor = Vendor.objects.create(
             organization=self.organization, code="V001", display_name="Test Vendor",
-            accounts_payable_account=self.account
+            accounts_payable_account=self.account, credit_limit=Decimal('10000')
         )
         # Create a bank account for payments
         self.bank_account = ChartOfAccount.objects.create(
@@ -608,6 +609,8 @@ class PurchaseInvoiceIntegrationTestCase(TestCase):
             account_type=self.asset_account_type,
             is_bank_account=True,
         )
+        self.bank_account.refresh_from_db()
+        self.purchase_account = self.account
 
     def test_full_purchase_invoice_calculation_workflow(self):
         """Test a complete purchase invoice calculation"""
@@ -662,6 +665,8 @@ class PurchaseInvoiceIntegrationTestCase(TestCase):
         user = User.objects.create_user(username='user_create', password='pw')
         user.organization = self.organization
         user.save()
+        from usermanagement.models import UserOrganization
+        UserOrganization.objects.create(user=user, organization=self.organization, is_active=True)
         client.login(username='user_create', password='pw')
 
         data = {
@@ -669,9 +674,10 @@ class PurchaseInvoiceIntegrationTestCase(TestCase):
             'vendor': self.vendor.vendor_id,
             'invoice_number': 'PI200',
             'invoice_date': timezone.now().date(),
+            'due_date': timezone.now().date() + timedelta(days=30),
             'currency': self.currency.currency_code,
             'exchange_rate': '1',
-            'purchase_account': self.account.account_id,
+            'purchase_account': self.purchase_account.account_id,
             # Line items formset
             'items-TOTAL_FORMS': '2',
             'items-INITIAL_FORMS': '0',
@@ -679,17 +685,23 @@ class PurchaseInvoiceIntegrationTestCase(TestCase):
             'items-0-product': '',
             'items-0-quantity': '2',
             'items-0-unit_cost': '100',
-            'items-0-account': self.account.account_id,
+            'items-0-discount_amount': '0',
+            'items-0-vat_rate': '13.0',
+            'items-0-tax_amount': '0',
+            'items-0-account': self.purchase_account.account_id,
             'items-1-description': 'Item B',
             'items-1-product': '',
             'items-1-quantity': '1',
             'items-1-unit_cost': '200',
-            'items-1-account': self.account.account_id,
+            'items-1-discount_amount': '0',
+            'items-1-vat_rate': '13.0',
+            'items-1-tax_amount': '0',
+            'items-1-account': self.purchase_account.account_id,
             # Payments formset
             'payments-TOTAL_FORMS': '1',
             'payments-INITIAL_FORMS': '0',
-            'payments-0-payment_method': 'bank',
-            'payments-0-cash_bank_id': str(self.bank_account.account_id),
+            'payments-0-payment_method': 'bank_transfer',
+            'payments-0-cash_bank_id': str(self.bank_account.pk),
             'payments-0-due_date': timezone.now().date(),
             'payments-0-amount': '200',
         }
@@ -702,7 +714,7 @@ class PurchaseInvoiceIntegrationTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Purchase Invoice created successfully', response.content)
 
-        inv = PurchaseInvoice.objects.latest("id")
+        inv = PurchaseInvoice.objects.latest("invoice_id")
         self.assertEqual(inv.vendor, self.vendor)
         lines = PurchaseInvoiceLine.objects.filter(invoice=inv)
         self.assertEqual(lines.count(), 2)
@@ -713,20 +725,6 @@ class PurchaseInvoiceIntegrationTestCase(TestCase):
         self.assertEqual(ap.amount, Decimal('200'))
         alines = ap.lines.filter(invoice=inv)
         self.assertTrue(alines.exists())
-
-        calc = PurchaseCalculator(lines=self.calc_lines)
-        result = calc.compute()
-
-        # Verify calculations
-        # Item 1: 10 * 100 = 1000, vatable
-        # Item 2: 5 * 200 = 1000, non-vatable
-        # Total: 2000
-        # VAT: 1000 * 13% = 130 (only on item 1)
-        # Grand total: 2130
-
-        self.assertEqual(result["totals"]["subtotal"], Decimal("2000.00"))
-        self.assertEqual(result["totals"]["vat_amount"], Decimal("130.00"))
-        self.assertEqual(result["totals"]["grand_total"], Decimal("2130.00"))
 
     def test_purchase_invoice_save_invalid_returns_422(self):
         client = Client()

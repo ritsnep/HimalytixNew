@@ -5,6 +5,7 @@
 {% block table_head %}
 <thead>
   <tr>
+    <th style="width: 40px;"><input type="checkbox" id="select-all" class="form-check-input"></th>
     <th style="width: 140px;">Invoice #</th>
     <th>Supplier</th>
     <th>Invoice Date</th>
@@ -32,16 +33,17 @@
 <tbody>
   {% for invoice in invoices %}
   <tr>
+    <td><input type="checkbox" name="selected_invoices" value="{{ invoice.pk }}" class="form-check-input invoice-checkbox"></td>
     <td class="fw-semibold">PI-{{ invoice.number|default:invoice.pk }}</td>
-    <td>{{ invoice.supplier.display_name }}</td>
+    <td>{{ invoice.vendor.display_name }}</td>
     <td>{{ invoice.invoice_date }}</td>
     <td>{{ invoice.due_date|default:"-" }}</td>
     <td><span class="badge bg-light text-dark text-uppercase">{{ invoice.status }}</span></td>
-    <td class="text-end">{{ invoice.currency.currency_code }} {{ invoice.total_amount }}</td>
+    <td class="text-end">{{ invoice.currency.currency_code }} {{ invoice.total }}</td>
     <td class="text-end">
       <div class="btn-group btn-group-sm">
         <a href="{% url 'purchasing:invoice-detail' invoice.pk %}" class="btn btn-light">View</a>
-        {% if invoice.status == invoice.Status.DRAFT %}
+        {% if invoice.status == 'draft' %}
         <a href="{% url 'purchasing:invoice-edit' invoice.pk %}" class="btn btn-outline-secondary">Edit</a>
         <form method="post" action="{% url 'purchasing:invoice-delete' invoice.pk %}" class="d-inline" onsubmit="return confirm('Delete this draft invoice?');">
           {% csrf_token %}
@@ -67,8 +69,33 @@
   </tr>
   {% empty %}
   <tr>
-    <td colspan="6" class="text-center text-muted py-3">No purchase invoices found.</td>
+    <td colspan="7" class="text-center text-muted py-3">No purchase invoices found.</td>
   </tr>
   {% endfor %}
 </tbody>
 {% endblock table_body %}
+
+{% block extra_content %}
+<form method="post" id="bulk-action-form" class="mt-3">
+  {% csrf_token %}
+  <div class="row g-2 align-items-end">
+    <div class="col-auto">
+      <select name="action" class="form-select form-select-sm" required>
+        <option value="">Choose action...</option>
+        <option value="post">Post Selected</option>
+        <option value="delete">Delete Selected (Drafts only)</option>
+      </select>
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('Apply bulk action to selected invoices?');">Apply</button>
+    </div>
+  </div>
+</form>
+
+<script>
+document.getElementById('select-all').addEventListener('change', function() {
+  const checkboxes = document.querySelectorAll('.invoice-checkbox');
+  checkboxes.forEach(cb => cb.checked = this.checked);
+});
+</script>
+{% endblock extra_content %}

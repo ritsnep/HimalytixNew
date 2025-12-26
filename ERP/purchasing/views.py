@@ -120,8 +120,8 @@ def invoice_list(request):
     search = request.GET.get("q", "").strip()
     invoices = (
         PurchaseInvoice.objects.filter(organization=organization)
-        .select_related("supplier", "currency")
-        .order_by("-invoice_date", "-id")
+        .select_related("vendor", "currency")
+        .order_by("-invoice_date", "-invoice_id")
     )
     if search:
         invoices = invoices.filter(
@@ -135,20 +135,47 @@ def invoice_list(request):
     return render(request, "purchasing/partials/invoice_list.html", context)
 
 
+
 @login_required
 @permission_required(("purchasing", "purchaseinvoice", "view"))
 def invoice_list_page(request):
     organization = _organization(request)
+    if request.method == "POST":
+        # Example: handle bulk actions or advanced filtering
+        action = request.POST.get("action")
+        selected_ids = request.POST.getlist("selected_invoices")
+        if action and selected_ids:
+            updated = 0
+            for pk in selected_ids:
+                try:
+                    invoice = PurchaseInvoice.objects.get(pk=pk, organization=organization)
+                    if action == "delete" and invoice.status == 'draft':
+                        invoice.delete()
+                        updated += 1
+                    elif action == "post":
+                        try:
+                            post_purchase_invoice(invoice)
+                            updated += 1
+                        except ProcurementPostingError as exc:
+                            messages.error(request, f"Invoice {invoice.invoice_number}: {exc}")
+                except PurchaseInvoice.DoesNotExist:
+                    messages.error(request, f"Invoice with ID {pk} not found.")
+            if updated:
+                messages.success(request, f"{updated} invoice(s) processed.")
+            return redirect("purchasing:invoice-table")
+        else:
+            messages.error(request, "No action or invoices selected.")
+            return redirect("purchasing:invoice-table")
     search = request.GET.get("q", "").strip()
     invoices = (
         PurchaseInvoice.objects.filter(organization=organization)
-        .select_related("supplier", "currency")
-        .order_by("-invoice_date", "-id")
+        .select_related("vendor", "currency")
+        .order_by("-invoice_date", "-invoice_id")
     )
     if search:
         invoices = invoices.filter(
             Q(number__icontains=search)
-            | Q(supplier__display_name__icontains=search)
+            | Q(vendor_display_name__icontains=search)
         )
     context = {
         "page_title": "Purchase Invoices",
@@ -166,7 +193,7 @@ def invoice_list_page(request):
 def invoice_detail(request, pk: int):
     organization = _organization(request)
     invoice = get_object_or_404(
-        PurchaseInvoice.objects.select_related("supplier", "currency"),
+        PurchaseInvoice.objects.select_related("vendor", "currency"),
         pk=pk,
         organization=organization,
     )
@@ -210,7 +237,7 @@ def invoice_form(request, pk: Optional[int] = None):
             with transaction.atomic():
                 invoice = form.save(commit=False)
                 invoice.organization = organization
-                invoice.status = PurchaseInvoice.Status.DRAFT
+                invoice.status = 'draft'
                 invoice.save(skip_recalc=True)
                 formset.instance = invoice
                 formset.save()
@@ -224,6 +251,7 @@ def invoice_form(request, pk: Optional[int] = None):
                 )
                 response["HX-Trigger"] = "purchaseInvoiceChanged"
                 return response
+            messages.success(request, "Invoice saved successfully.")
             return redirect("purchasing:invoice-table")
         if getattr(request, "htmx", False):
             context = {
@@ -264,19 +292,25 @@ def invoice_post(request, pk: int):
     try:
         post_purchase_invoice(invoice)
     except ProcurementPostingError as exc:
-        return _render_invoice_detail(
+        if getattr(request, "htmx", False):
+            return _render_invoice_detail(
+                request,
+                invoice,
+                alert=str(exc),
+                alert_level="danger",
+            )
+        messages.error(request, str(exc))
+        return redirect("purchasing:invoice-detail", pk=pk)
+    if getattr(request, "htmx", False):
+        response = _render_invoice_detail(
             request,
             invoice,
-            alert=str(exc),
-            alert_level="danger",
+            alert="Invoice posted successfully.",
         )
-    response = _render_invoice_detail(
-        request,
-        invoice,
-        alert="Invoice posted successfully.",
-    )
-    response["HX-Trigger"] = "purchaseInvoiceChanged"
-    return response
+        response["HX-Trigger"] = "purchaseInvoiceChanged"
+        return response
+    messages.success(request, "Invoice posted successfully.")
+    return redirect("purchasing:invoice-table")
 
 
 @login_required
@@ -285,7 +319,7 @@ def invoice_post(request, pk: int):
 def invoice_delete(request, pk: int):
     organization = _organization(request)
     invoice = get_object_or_404(PurchaseInvoice, pk=pk, organization=organization)
-    if invoice.status != PurchaseInvoice.Status.DRAFT:
+    if invoice.status != 'draft':
         return _render_invoice_detail(
             request,
             invoice,
@@ -317,19 +351,25 @@ def invoice_reverse(request, pk: int):
     try:
         reverse_purchase_invoice(invoice, user=request.user)
     except ProcurementPostingError as exc:
-        return _render_invoice_detail(
+        if getattr(request, "htmx", False):
+            return _render_invoice_detail(
+                request,
+                invoice,
+                alert=str(exc),
+                alert_level="danger",
+            )
+        messages.error(request, str(exc))
+        return redirect("purchasing:invoice-detail", pk=pk)
+    if getattr(request, "htmx", False):
+        response = _render_invoice_detail(
             request,
             invoice,
-            alert=str(exc),
-            alert_level="danger",
+            alert="Invoice reversed and moved to draft.",
         )
-    response = _render_invoice_detail(
-        request,
-        invoice,
-        alert="Invoice reversed and moved to draft.",
-    )
-    response["HX-Trigger"] = "purchaseInvoiceChanged"
-    return response
+        response["HX-Trigger"] = "purchaseInvoiceChanged"
+        return response
+    messages.success(request, "Invoice reversed and moved to draft.")
+    return redirect("purchasing:invoice-table")
 
 
 @login_required
@@ -387,19 +427,25 @@ def invoice_return(request, pk: int):
     try:
         reverse_purchase_invoice(invoice, user=request.user)
     except ProcurementPostingError as exc:
-        return _render_invoice_detail(
+        if getattr(request, "htmx", False):
+            return _render_invoice_detail(
+                request,
+                invoice,
+                alert=str(exc),
+                alert_level="danger",
+            )
+        messages.error(request, str(exc))
+        return redirect("purchasing:invoice-detail", pk=pk)
+    if getattr(request, "htmx", False):
+        response = _render_invoice_detail(
             request,
             invoice,
-            alert=str(exc),
-            alert_level="danger",
+            alert="Invoice returned and reversal posted.",
         )
-    response = _render_invoice_detail(
-        request,
-        invoice,
-        alert="Invoice returned and reversal posted.",
-    )
-    response["HX-Trigger"] = "purchaseInvoiceChanged"
-    return response
+        response["HX-Trigger"] = "purchaseInvoiceChanged"
+        return response
+    messages.success(request, "Invoice returned and reversal posted.")
+    return redirect("purchasing:invoice-table")
 
 
 @login_required
@@ -505,10 +551,10 @@ def reports(request):
             "posted": gr_qs.filter(status=GoodsReceipt.Status.POSTED).count(),
         },
         "invoice_totals": {
-            "draft": inv_qs.filter(status=PurchaseInvoice.Status.DRAFT).count(),
-            "posted": inv_qs.filter(status=PurchaseInvoice.Status.POSTED).count(),
-            "sum_total": inv_qs.aggregate(total=Sum("total_amount"))["total"] or 0,
-            "sum_posted": inv_qs.filter(status=PurchaseInvoice.Status.POSTED).aggregate(total=Sum("total_amount"))["total"] or 0,
+            "draft": inv_qs.filter(status='draft').count(),
+            "posted": inv_qs.filter(status='posted').count(),
+            "sum_total": inv_qs.aggregate(total=Sum("total"))["total"] or 0,
+            "sum_posted": inv_qs.filter(status='posted').aggregate(total=Sum("total"))["total"] or 0,
         },
         "po_sum_total": po_qs.aggregate(total=Sum("total_amount"))["total"] or 0,
         "gr_posted_count": gr_qs.filter(status=GoodsReceipt.Status.POSTED).count(),

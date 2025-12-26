@@ -75,11 +75,11 @@ def configure_widget_for_schema(field_name, field_schema, widget):
         lookup_url = field_schema.get('lookup_url')
         endpoint = None
         lookup_endpoints = {
-            'account': '/accounting/journal-entry/lookup/accounts/',
-            'vendor': '/accounting/journal-entry/lookup/vendors/',
-            'customer': '/accounting/journal-entry/lookup/customers/',
+            'account': '/accounting/vouchers/htmx/account-lookup/',
+            'vendor': '/accounting/generic-voucher/htmx/vendor-lookup/',
+            'customer': '/accounting/generic-voucher/htmx/customer-lookup/',
             'agent': '/accounting/journal-entry/lookup/agents/',
-            'product': '/accounting/journal-entry/lookup/products/',
+            'product': '/accounting/generic-voucher/htmx/product-lookup/',
             'warehouse': '/accounting/journal-entry/lookup/warehouses/',
             'tax_code': '/accounting/journal-entry/lookup/tax-codes/',
             'cost_center': '/accounting/journal-entry/lookup/cost-centers/',
@@ -657,11 +657,11 @@ class VoucherFormFactory:
             return None
 
         lookup_endpoints = {
-            'account': '/accounting/journal-entry/lookup/accounts/',
-            'vendor': '/accounting/journal-entry/lookup/vendors/',
-            'customer': '/accounting/journal-entry/lookup/customers/',
+            'account': '/accounting/vouchers/htmx/account-lookup/',
+            'vendor': '/accounting/generic-voucher/htmx/vendor-lookup/',
+            'customer': '/accounting/generic-voucher/htmx/customer-lookup/',
             'agent': '/accounting/journal-entry/lookup/agents/',
-            'product': '/accounting/journal-entry/lookup/products/',
+            'product': '/accounting/generic-voucher/htmx/product-lookup/',
             'warehouse': '/accounting/journal-entry/lookup/warehouses/',
             'tax_code': '/accounting/journal-entry/lookup/tax-codes/',
             'cost_center': '/accounting/journal-entry/lookup/cost-centers/',

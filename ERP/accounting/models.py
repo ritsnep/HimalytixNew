@@ -2247,15 +2247,20 @@ class PurchaseInvoiceLine(models.Model):
     
     @property
     def line_subtotal(self):
-        """Calculate line subtotal before tax."""
-        return (self.quantity * self.unit_cost).quantize(Decimal('0.01'))
+        """Calculate line subtotal before tax and after line-level discount."""
+        net = (self.quantity * self.unit_cost) - (self.discount_amount or Decimal('0'))
+        return net.quantize(Decimal('0.0001'))
     
     @property
     def line_tax_amount(self):
         """Calculate line tax amount."""
-        if self.vat_rate:
-            return (self.line_subtotal * (self.vat_rate / Decimal('100'))).quantize(Decimal('0.01'))
-        return self.tax_amount or Decimal('0')
+        if self.tax_amount not in (None, '') and Decimal(self.tax_amount) != Decimal('0'):
+            return Decimal(self.tax_amount).quantize(Decimal('0.01'))
+        vat_pct = self.vat_rate or Decimal('0')
+        if vat_pct:
+            net = self.line_subtotal
+            return (net * (vat_pct / Decimal('100'))).quantize(Decimal('0.01'))
+        return (self.tax_amount or Decimal('0')).quantize(Decimal('0.01'))
     
     @property
     def line_total_with_tax(self):
@@ -2270,7 +2275,8 @@ class PurchaseInvoiceLine(models.Model):
         super().clean()
 
     def save(self, *args, **kwargs):
-        self.line_total = (self.quantity * self.unit_cost) - (self.discount_amount or Decimal('0'))
+        net = (self.quantity * self.unit_cost) - (self.discount_amount or Decimal('0'))
+        self.line_total = net.quantize(Decimal('0.0001'))
         super().save(*args, **kwargs)
 
 

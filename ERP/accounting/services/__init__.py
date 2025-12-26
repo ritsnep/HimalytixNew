@@ -35,6 +35,7 @@ from .agent_service import AgentService
 from .validation_service import ValidationService
 from .notification_service import NotificationService
 from .document_sequence_service import DocumentSequenceService
+from .voucher_summary_service import VoucherSummaryService
 
 __all__ = [
     'post_journal',
@@ -76,4 +77,5 @@ __all__ = [
     'ValidationService',
     'NotificationService',
     'DocumentSequenceService',
+    'VoucherSummaryService',
 ]

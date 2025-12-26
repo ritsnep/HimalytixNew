@@ -123,8 +123,46 @@ def journal_entry_grid_save(request):
 def account_lookup(request):
     q = (request.GET.get('q') or '').strip()
     qs = ChartOfAccount.active_accounts.filter(organization=request.organization)
+    
+    # Apply journal config-based filtering if journal_id is provided
+    journal_id = request.GET.get('journal_id')
+    if journal_id:
+        try:
+            journal = Journal.objects.get(pk=journal_id, organization=request.organization)
+            if journal.journal_type:
+                # Get voucher configs for this journal type
+                from accounting.models import VoucherModeConfig
+                voucher_configs = VoucherModeConfig.objects.filter(
+                    organization=request.organization,
+                    journal_type=journal.journal_type,
+                    is_active=True
+                )
+                
+                # Check if any config defines account restrictions
+                allowed_account_types = set()
+                for config in voucher_configs:
+                    schema = config.schema_definition or {}
+                    line_fields = schema.get('line_fields', [])
+                    for field in line_fields:
+                        if field.get('key') == 'account':
+                            # Check for account type restrictions in field config
+                            restrictions = field.get('restrictions', {})
+                            if 'account_types' in restrictions:
+                                allowed_account_types.update(restrictions['account_types'])
+                            elif 'account_natures' in restrictions:
+                                # Filter by account nature (asset, liability, etc.)
+                                natures = restrictions['account_natures']
+                                qs = qs.filter(account_type__nature__in=natures)
+                
+                # If specific account types are defined, filter by them
+                if allowed_account_types:
+                    qs = qs.filter(account_type__code__in=allowed_account_types)
+        except (Journal.DoesNotExist, ValueError):
+            pass  # Ignore invalid journal_id
+    
     if q:
         qs = qs.filter(account_code__icontains=q)[:20]
+    
     # Check if it's an HTMX request
     if request.headers.get('HX-Request'):
         html = render_to_string('accounting/partials/account_select_options.html', {'accounts': qs})

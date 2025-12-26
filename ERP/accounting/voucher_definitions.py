@@ -13,14 +13,17 @@ def _amount_field(key: str, label: str) -> Dict:
     }
 
 
-def _account_field(key: str = "account", label: str = "Account") -> Dict:
-    return {
+def _account_field(key: str = "account", label: str = "Account", restrictions: Dict = None) -> Dict:
+    field = {
         "key": key,
         "label": label,
         "field_type": "typeahead",
         "required": True,
         "lookup": {"model": "ChartOfAccount", "kind": "account"},
     }
+    if restrictions:
+        field["restrictions"] = restrictions
+    return field
 
 
 def _party_field(key: str, label: str, kind: str) -> Dict:
@@ -151,6 +154,130 @@ def _base_line_fields() -> List[Dict]:
     ]
 
 
+def _cash_receipt_line_fields() -> List[Dict]:
+    """Line fields for cash receipts - restrict to cash/bank accounts."""
+    return [
+        _account_field(restrictions={"account_natures": ["asset"]}),
+        {"key": "description", "label": "Description", "field_type": "char", "required": False},
+        _amount_field("debit_amount", "Debit"),
+        _amount_field("credit_amount", "Credit"),
+        {
+            "key": "cost_center",
+            "label": "Cost Center",
+            "field_type": "typeahead",
+            "required": False,
+            "lookup": {"model": "CostCenter", "kind": "costcenter"},
+        },
+        {
+            "key": "department",
+            "label": "Department",
+            "field_type": "typeahead",
+            "required": False,
+            "lookup": {"model": "Department", "kind": "department"},
+        },
+        {
+            "key": "project",
+            "label": "Project",
+            "field_type": "typeahead",
+            "required": False,
+            "lookup": {"model": "Project", "kind": "project"},
+        },
+    ]
+
+
+def _cash_payment_line_fields() -> List[Dict]:
+    """Line fields for cash payments - restrict to cash/bank accounts."""
+    return [
+        _account_field(restrictions={"account_natures": ["asset"]}),
+        {"key": "description", "label": "Description", "field_type": "char", "required": False},
+        _amount_field("debit_amount", "Debit"),
+        _amount_field("credit_amount", "Credit"),
+        {
+            "key": "cost_center",
+            "label": "Cost Center",
+            "field_type": "typeahead",
+            "required": False,
+            "lookup": {"model": "CostCenter", "kind": "costcenter"},
+        },
+        {
+            "key": "department",
+            "label": "Department",
+            "field_type": "typeahead",
+            "required": False,
+            "lookup": {"model": "Department", "kind": "department"},
+        },
+        {
+            "key": "project",
+            "label": "Project",
+            "field_type": "typeahead",
+            "required": False,
+            "lookup": {"model": "Project", "kind": "project"},
+        },
+    ]
+
+
+def _bank_receipt_line_fields() -> List[Dict]:
+    """Line fields for bank receipts - restrict to bank accounts."""
+    return [
+        _account_field(restrictions={"account_natures": ["asset"]}),
+        {"key": "description", "label": "Description", "field_type": "char", "required": False},
+        _amount_field("debit_amount", "Debit"),
+        _amount_field("credit_amount", "Credit"),
+        {
+            "key": "cost_center",
+            "label": "Cost Center",
+            "field_type": "typeahead",
+            "required": False,
+            "lookup": {"model": "CostCenter", "kind": "costcenter"},
+        },
+        {
+            "key": "department",
+            "label": "Department",
+            "field_type": "typeahead",
+            "required": False,
+            "lookup": {"model": "Department", "kind": "department"},
+        },
+        {
+            "key": "project",
+            "label": "Project",
+            "field_type": "typeahead",
+            "required": False,
+            "lookup": {"model": "Project", "kind": "project"},
+        },
+    ]
+
+
+def _bank_payment_line_fields() -> List[Dict]:
+    """Line fields for bank payments - restrict to bank accounts."""
+    return [
+        _account_field(restrictions={"account_natures": ["asset"]}),
+        {"key": "description", "label": "Description", "field_type": "char", "required": False},
+        _amount_field("debit_amount", "Debit"),
+        _amount_field("credit_amount", "Credit"),
+        {
+            "key": "cost_center",
+            "label": "Cost Center",
+            "field_type": "typeahead",
+            "required": False,
+            "lookup": {"model": "CostCenter", "kind": "costcenter"},
+        },
+        {
+            "key": "department",
+            "label": "Department",
+            "field_type": "typeahead",
+            "required": False,
+            "lookup": {"model": "Department", "kind": "department"},
+        },
+        {
+            "key": "project",
+            "label": "Project",
+            "field_type": "typeahead",
+            "required": False,
+            "lookup": {"model": "Project", "kind": "project"},
+        },
+    ]
+
+
 DEFAULT_WORKFLOW = {
     "states": ["draft", "pending_approval", "posted", "failed"],
     "transitions": {
@@ -187,7 +314,7 @@ VOUCHER_DEFINITIONS: List[Dict] = [
         "requires_approval": False,
         "schema": {
             "header_fields": _base_header_fields() + [_party_field("customer", "Customer", "customer")],
-            "line_fields": _base_line_fields(),
+            "line_fields": _cash_receipt_line_fields(),
         },
         "workflow": DEFAULT_WORKFLOW,
     },
@@ -201,7 +328,7 @@ VOUCHER_DEFINITIONS: List[Dict] = [
         "requires_approval": False,
         "schema": {
             "header_fields": _base_header_fields() + [_party_field("vendor", "Vendor", "vendor")],
-            "line_fields": _base_line_fields(),
+            "line_fields": _cash_payment_line_fields(),
         },
         "workflow": DEFAULT_WORKFLOW,
     },
@@ -215,7 +342,7 @@ VOUCHER_DEFINITIONS: List[Dict] = [
         "requires_approval": False,
         "schema": {
             "header_fields": _base_header_fields() + [_party_field("customer", "Customer", "customer")],
-            "line_fields": _base_line_fields(),
+            "line_fields": _bank_receipt_line_fields(),
         },
         "workflow": DEFAULT_WORKFLOW,
     },
@@ -229,7 +356,7 @@ VOUCHER_DEFINITIONS: List[Dict] = [
         "requires_approval": False,
         "schema": {
             "header_fields": _base_header_fields() + [_party_field("vendor", "Vendor", "vendor")],
-            "line_fields": _base_line_fields(),
+            "line_fields": _bank_payment_line_fields(),
         },
         "workflow": DEFAULT_WORKFLOW,
     },

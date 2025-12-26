@@ -13,6 +13,7 @@ class PurchaseCalculator:
 
     Assumptions:
     - VAT default 13% (0.13) applied on net amount when `vat_applicable` is True.
+      A per-line `vat_rate` (percent) overrides the default when provided.
     - Row discount may be `amount` or `percent`.
     - Header discount may be `amount` or `percent`; applied after row discounts.
     - Bill rounding is a numeric value added/subtracted to reach final total.
@@ -21,11 +22,23 @@ class PurchaseCalculator:
 
     VAT_RATE = Decimal('0.13')
 
-    def __init__(self, lines, header_discount_value=0, header_discount_type='amount', bill_rounding=0):
+    def __init__(
+        self,
+        lines,
+        header_discount_value=0,
+        header_discount_type='amount',
+        bill_rounding=0,
+        default_vat_rate=None,
+    ):
         self.lines = lines or []
         self.header_discount_value = _to_decimal(header_discount_value)
         self.header_discount_type = header_discount_type
         self.bill_rounding = _to_decimal(bill_rounding)
+        self.default_vat_rate = (
+            _to_decimal(default_vat_rate)
+            if default_vat_rate is not None
+            else self.VAT_RATE
+        )
 
     def _round(self, val):
         val = _to_decimal(val)
@@ -53,8 +66,18 @@ class PurchaseCalculator:
                 row_discount = rd_val
 
             net = gross - row_discount
-            vat_app = bool(r.get('vat_applicable'))
-            vat_amount = net * self.VAT_RATE if vat_app else Decimal('0')
+            vat_pct = r.get('vat_rate')
+            vat_rate = self.default_vat_rate
+            try:
+                vat_rate_candidate = _to_decimal(vat_pct)
+                if vat_rate_candidate and vat_rate_candidate > 0:
+                    vat_rate = vat_rate_candidate / Decimal('100')
+                elif vat_rate_candidate == 0:
+                    vat_rate = Decimal('0')
+            except Exception:
+                vat_rate = self.default_vat_rate
+            vat_app = bool(r.get('vat_applicable')) or vat_rate > 0
+            vat_amount = net * vat_rate if vat_app else Decimal('0')
             amount = net + vat_amount
 
             subtotal += gross

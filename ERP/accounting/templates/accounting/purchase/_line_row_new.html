@@ -3,12 +3,27 @@
   <td class="text-center text-muted small" width="30">{{ form_index|add:1 }}</td>
   <td class="col-particulars">
     {{ form.product|add_class:"form-select form-select-sm product-select recalc" }}
+    {% if form.product.errors %}
+      <div class="invalid-feedback d-block small">
+        {% for error in form.product.errors %}<div>{{ error }}</div>{% endfor %}
+      </div>
+    {% endif %}
   </td>
   <td class="col-code">
     {{ form.product_code|add_class:"form-control form-control-sm product-code" }}
   </td>
   <td class="col-description">
     {{ form.description|add_class:"form-control form-control-sm" }}
+    {% if form.description.errors %}
+      <div class="invalid-feedback d-block small">
+        {% for error in form.description.errors %}<div>{{ error }}</div>{% endfor %}
+      </div>
+    {% endif %}
+    {% if form.non_field_errors %}
+      <div class="invalid-feedback d-block small">
+        {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+      </div>
+    {% endif %}
   </td>
   <td class="col-qty">
     <div class="input-group input-group-sm">
@@ -24,6 +39,14 @@
   </td>
   <td class="col-vat">
     {{ form.vat_rate|add_class:"form-control form-control-sm text-end line-vat recalc" }}
+  </td>
+  <td class="col-vat-account">
+    {{ form.input_vat_account|add_class:"form-select form-select-sm vat-account-select" }}
+    {% if form.input_vat_account.errors %}
+      <div class="invalid-feedback d-block small">
+        {% for error in form.input_vat_account.errors %}<div>{{ error }}</div>{% endfor %}
+      </div>
+    {% endif %}
   </td>
   <td class="col-discount">
     {{ form.discount_amount|add_class:"form-control form-control-sm text-end line-discount recalc" }}

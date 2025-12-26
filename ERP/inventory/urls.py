@@ -1,3 +1,4 @@
+from inventory.views import VendorPriceHistoryListView, CustomerPriceHistoryListView
 from django.urls import path
 from inventory import views as views_module
 from inventory.views import (
@@ -19,6 +20,9 @@ from inventory.views import (
 app_name = 'inventory'
 
 urlpatterns = [
+        # Price History URLs
+        path('vendor-price-history/', VendorPriceHistoryListView.as_view(), name='vendor_price_history_list'),
+        path('customer-price-history/', CustomerPriceHistoryListView.as_view(), name='customer_price_history_list'),
     # Inventory Dashboard
     path('', views_module.inventory_dashboard, name='dashboard'),
     path('overview/products/', views_module.products, name='products'),

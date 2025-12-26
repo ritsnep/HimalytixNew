@@ -292,7 +292,7 @@ class TestUnifiedPurchasingFlow(TestCase):
             number='PI-2025-001',
             invoice_date=date.today(),
             currency=self.currency,
-            status=PurchaseInvoice.Status.POSTED
+            status='posted'
         )
         
         # Add invoice line

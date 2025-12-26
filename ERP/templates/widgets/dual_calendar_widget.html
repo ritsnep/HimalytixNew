@@ -1,7 +1,8 @@
 <div class="input-group dual-calendar-picker"
-     data-dual-calendar
-     data-calendar-mode="{{ widget.mode }}"
-     data-initial-view="{{ widget.start_view }}">
+       data-dual-calendar
+       data-calendar-mode="{{ widget.mode }}"
+       data-initial-view="{{ widget.start_view }}">
+  <small class="form-text text-muted mb-1">You can enter either a Nepali (BS) or Gregorian (AD) date. If you use BS, it will be converted automatically.</small>
   <input type="text"
          id="{{ widget.bs_input_id }}"
          name="{{ widget.bs_name }}"
@@ -18,9 +19,33 @@
          class="{{ widget.attrs.class }}{% if widget.mode == 'BS' %} d-none{% endif %}"
          {% if widget.mode == 'BS' %}hidden{% endif %}>
 
-  <button type="button"
-          class="btn btn-outline-secondary dual-calendar__toggle {% if widget.mode != 'DUAL' %}d-none{% endif %}"
-          data-role="toggle">
-    {% if widget.start_view == 'BS' %}AD{% else %}BS{% endif %}
-  </button>
+       {% if widget.mode == 'DUAL' %}
+       <input type="hidden" name="{{ widget.name }}_ad" value="{{ widget.ad_value|default_if_none:'' }}" id="{{ widget.ad_input_id }}_hidden">
+       {% endif %}
+
+
+       <button type="button"
+                                   class="btn btn-outline-secondary dual-calendar__toggle {% if widget.mode != 'DUAL' %}d-none{% endif %}"
+                                   data-role="toggle">
+              {% if widget.start_view == 'BS' %}AD{% else %}BS{% endif %}
+       </button>
+
+       <script>
+              // If BS input changes, convert to AD and update hidden AD field
+              document.addEventListener('DOMContentLoaded', function() {
+                     var bsInput = document.getElementById('{{ widget.bs_input_id }}');
+                     var adHidden = document.getElementById('{{ widget.ad_input_id }}_hidden');
+                     if (bsInput && adHidden) {
+                            bsInput.addEventListener('change', function() {
+                                   var bsVal = bsInput.value;
+                                   if (window.bsToAd && bsVal) {
+                                          var adVal = window.bsToAd(bsVal); // expects a global bsToAd function
+                                          if (adVal) {
+                                                 adHidden.value = adVal;
+                                          }
+                                   }
+                            });
+                     }
+              });
+       </script>
 </div>

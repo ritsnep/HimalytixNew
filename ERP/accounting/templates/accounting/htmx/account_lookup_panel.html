@@ -18,7 +18,7 @@
                                class="form-control"
                                id="account-search-input"
                                placeholder="Search by account code or name..."
-                               hx-get="{% url 'accounting:voucher_account_lookup_hx' %}"
+                               hx-get="{% url 'accounting:voucher_account_lookup' %}"
                                hx-trigger="input changed delay:300ms, keyup[key=='Enter']"
                                hx-target="#account-results-container"
                                hx-vals='{"q": this.value, "limit": "50"}'>
@@ -32,42 +32,42 @@
                 <div class="mb-3">
                     <div class="btn-group btn-group-sm" role="group" aria-label="Account type filters">
                         <input type="radio" class="btn-check" name="account-type-filter" id="filter-all" autocomplete="off" checked
-                               hx-get="{% url 'accounting:voucher_account_lookup_hx' %}"
+                               hx-get="{% url 'accounting:voucher_account_lookup' %}"
                                hx-trigger="change"
                                hx-target="#account-results-container"
                                hx-vals='{"q": document.getElementById("account-search-input").value, "type": ""}'>
                         <label class="btn btn-outline-primary" for="filter-all">All</label>
 
                         <input type="radio" class="btn-check" name="account-type-filter" id="filter-assets" autocomplete="off"
-                               hx-get="{% url 'accounting:voucher_account_lookup_hx' %}"
+                               hx-get="{% url 'accounting:voucher_account_lookup' %}"
                                hx-trigger="change"
                                hx-target="#account-results-container"
                                hx-vals='{"q": document.getElementById("account-search-input").value, "type": "asset"}'>
                         <label class="btn btn-outline-primary" for="filter-assets">Assets</label>
 
                         <input type="radio" class="btn-check" name="account-type-filter" id="filter-liabilities" autocomplete="off"
-                               hx-get="{% url 'accounting:voucher_account_lookup_hx' %}"
+                               hx-get="{% url 'accounting:voucher_account_lookup' %}"
                                hx-trigger="change"
                                hx-target="#account-results-container"
                                hx-vals='{"q": document.getElementById("account-search-input").value, "type": "liability"}'>
                         <label class="btn btn-outline-primary" for="filter-liabilities">Liabilities</label>
 
                         <input type="radio" class="btn-check" name="account-type-filter" id="filter-equity" autocomplete="off"
-                               hx-get="{% url 'accounting:voucher_account_lookup_hx' %}"
+                               hx-get="{% url 'accounting:voucher_account_lookup' %}"
                                hx-trigger="change"
                                hx-target="#account-results-container"
                                hx-vals='{"q": document.getElementById("account-search-input").value, "type": "equity"}'>
                         <label class="btn btn-outline-primary" for="filter-equity">Equity</label>
 
                         <input type="radio" class="btn-check" name="account-type-filter" id="filter-revenue" autocomplete="off"
-                               hx-get="{% url 'accounting:voucher_account_lookup_hx' %}"
+                               hx-get="{% url 'accounting:voucher_account_lookup' %}"
                                hx-trigger="change"
                                hx-target="#account-results-container"
                                hx-vals='{"q": document.getElementById("account-search-input").value, "type": "revenue"}'>
                         <label class="btn btn-outline-primary" for="filter-revenue">Revenue</label>
 
                         <input type="radio" class="btn-check" name="account-type-filter" id="filter-expenses" autocomplete="off"
-                               hx-get="{% url 'accounting:voucher_account_lookup_hx' %}"
+                               hx-get="{% url 'accounting:voucher_account_lookup' %}"
                                hx-trigger="change"
                                hx-target="#account-results-container"
                                hx-vals='{"q": document.getElementById("account-search-input").value, "type": "expense"}'>

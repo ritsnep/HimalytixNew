@@ -46,3 +46,9 @@ from .commerce_forms import (
 )
 from .sales_order_form import SalesOrderForm, SalesOrderLineForm
 from .scheduled_task_forms import AccountingPeriodCloseForm, ScheduledReportForm
+
+# Generic Voucher Forms
+from .dynamic_header_forms import GenericVoucherHeaderForm
+from .dynamic_line_forms import GenericVoucherLineForm
+from .additional_charges_forms import AdditionalChargeForm
+from .voucher_payment_forms import VoucherPaymentForm

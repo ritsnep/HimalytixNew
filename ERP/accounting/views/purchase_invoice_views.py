@@ -139,6 +139,21 @@ def purchase_invoice_new_enhanced(request):
                     except Exception:
                         continue
 
+        def _parse_invoice_date(data):
+            # first try the AD field
+            raw = data.get('invoice_date')
+            if raw:
+                date_field = forms.DateField(required=False)
+                try:
+                    return date_field.clean(raw)
+                except ValidationError:
+                    pass
+            # fall back to BS field
+            bs_raw = data.get('invoice_date_bs')
+            if bs_raw:
+                return maybe_coerce_bs_date(bs_raw)
+            return None
+
         _coerce_field(data, 'invoice_date')
         _coerce_field(data, 'due_date')
 
@@ -199,6 +214,7 @@ def purchase_invoice_new_enhanced(request):
 
         lines_valid = line_formset.is_valid()
         payments_valid = payments_formset.is_valid()
+        calc_totals = {}
 
         if form_valid and lines_valid and payments_valid:
             valid_lines = [
@@ -217,6 +233,7 @@ def purchase_invoice_new_enhanced(request):
             bill_rounding = form.cleaned_data.get('bill_rounding') or 0
             calc_lines = []
             validation_lines = []
+            calc_source_forms = []
             for line_form in line_formset.forms:
                 if not line_form.cleaned_data or line_form.cleaned_data.get('DELETE'):
                     continue
@@ -227,9 +244,11 @@ def purchase_invoice_new_enhanced(request):
                     'qty': qty,
                     'rate': rate,
                     'vat_applicable': Decimal(str(vat_rate)) > 0,
+                    'vat_rate': vat_rate,
                     'row_discount_value': line_form.cleaned_data.get('discount_amount') or 0,
                     'row_discount_type': 'amount',
                 })
+                calc_source_forms.append(line_form)
                 product = line_form.cleaned_data.get('product')
                 warehouse = line_form.cleaned_data.get('warehouse')
                 validation_line = {
@@ -249,7 +268,14 @@ def purchase_invoice_new_enhanced(request):
                 bill_rounding=bill_rounding,
             )
             totals = calc.compute()
-            total_amount = totals.get('totals', {}).get('grand_total') or Decimal('0')
+            calc_totals = totals.get('totals', {}) or {}
+            total_amount = calc_totals.get('grand_total') or Decimal('0')
+            calc_rows = totals.get('rows', []) or []
+            for idx, row in enumerate(calc_rows):
+                try:
+                    calc_source_forms[idx].cleaned_data['tax_amount'] = row.get('vat_amount') or Decimal('0')
+                except Exception:
+                    continue
 
             payment_sum = _sum_payment_amounts(payments_formset)
             if payment_sum > total_amount:
@@ -257,21 +283,25 @@ def purchase_invoice_new_enhanced(request):
                 form_valid = False
 
             if form_valid:
-                validation_errors = ValidationService.validate_purchase_invoice_data(
-                    organization,
-                    {
-                        'vendor_id': form.cleaned_data['vendor'].pk if form.cleaned_data.get('vendor') else None,
-                        'line_items': validation_lines,
-                        'total_amount': total_amount,
-                        'calculated_total': total_amount,
-                        'expected_total': total_amount,
-                        'grand_total': total_amount,
-                        'payments_total': payment_sum,
-                    },
-                )
-                if validation_errors:
-                    for key, err in validation_errors.items():
-                        form.add_error(None, f"{key}: {err}")
+                try:
+                    validation_errors = ValidationService.validate_purchase_invoice_data(
+                        organization,
+                        {
+                            'vendor_id': form.cleaned_data['vendor'].pk if form.cleaned_data.get('vendor') else None,
+                            'line_items': validation_lines,
+                            'total_amount': total_amount,
+                            'calculated_total': total_amount,
+                            'expected_total': total_amount,
+                            'grand_total': total_amount,
+                            'payments_total': payment_sum,
+                        },
+                    )
+                    if validation_errors:
+                        for key, err in validation_errors.items():
+                            form.add_error(None, f"{key}: {err}")
+                        form_valid = False
+                except Exception as exc:
+                    form.add_error(None, f"Validation failed: {exc}")
                     form_valid = False
 
         if form_valid and lines_valid and payments_valid:
@@ -280,6 +310,24 @@ def purchase_invoice_new_enhanced(request):
                     invoice = form.save(commit=False)
                     invoice.organization = organization
                     invoice.created_by = request.user
+                    invoice.invoice_date = form.cleaned_data.get('invoice_date') or invoice.invoice_date
+                    invoice.due_date = form.cleaned_data.get('due_date') or invoice.due_date
+                    invoice.invoice_date_bs = form.cleaned_data.get('invoice_date_bs') or invoice.invoice_date_bs
+                    invoice.rounding_adjustment = Decimal(str(bill_rounding or 0)).quantize(Decimal('0.01'))
+                    invoice.discount_amount = Decimal(
+                        calc_totals.get('header_discount') or Decimal('0')
+                    ).quantize(Decimal('0.01'))
+                    if header_discount_type == 'percent':
+                        invoice.discount_percentage = Decimal(str(header_discount_value or 0))
+                    else:
+                        invoice.discount_percentage = Decimal('0')
+                    vendor_obj = form.cleaned_data.get('vendor')
+                    if vendor_obj:
+                        invoice.vendor_display_name = (
+                            getattr(vendor_obj, 'display_name', None)
+                            or getattr(vendor_obj, 'name', None)
+                            or str(vendor_obj)
+                        )
                     agent_area_id = request.POST.get('agent_area_id')
                     if agent_area_id:
                         from accounting.models import Area
@@ -297,7 +345,8 @@ def purchase_invoice_new_enhanced(request):
                     if line_formset.is_valid():
                         # Save lines
                         line_objects = line_formset.save(commit=False)
-                        for obj in line_objects:
+                        for i, obj in enumerate(line_objects, start=1):
+                            obj.line_number = i
                             obj.invoice = invoice
                             obj.save()
                         # Handle deletions
@@ -355,6 +404,9 @@ def purchase_invoice_new_enhanced(request):
                         invoice.metadata['agent_id'] = agent_id
                         invoice.save(update_fields=['metadata'])
 
+                    # Recompute totals from persisted lines to keep GL/posting in sync
+                    invoice.recompute_totals(save=True)
+
                     # Success
                     context = {
                         'form': form,
@@ -401,9 +453,19 @@ def purchase_invoice_new_enhanced(request):
             'cash_bank_accounts': cash_bank_accounts,
             'agents': AgentService.get_agents_for_dropdown(organization),
             'areas': AgentService.get_areas_for_dropdown(organization),
+            'alert_message': 'Please correct the errors highlighted in the form.',
+            'alert_level': 'danger',
+            'debug_info': {
+                'form_errors': getattr(form, 'errors', None),
+                'line_errors': getattr(line_formset, 'errors', None),
+                'payment_errors': getattr(payments_formset, 'errors', None),
+            },
         }
-        status = 422 if _is_htmx(request) else 200
-        return render(request, 'accounting/purchase/new_enhanced.html', context, status=status)
+        status = 422
+        response = render(request, 'accounting/purchase/new_enhanced.html', context, status=status)
+        if _is_htmx(request):
+            response['HX-Trigger'] = 'purchaseInvoiceSaveFailed'
+        return response
 
 
 @require_http_methods(["GET", "POST"])

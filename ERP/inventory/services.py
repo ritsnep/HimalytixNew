@@ -1,3 +1,6 @@
+from .models import VendorPriceHistory, CustomerPriceHistory
+from accounting.models import Vendor, Customer
+from usermanagement.models import CustomUser
 import logging
 from decimal import Decimal
 from typing import List, Dict, Optional, Tuple
@@ -19,6 +22,51 @@ _utils_spec.loader.exec_module(inventory_utils)
 from accounting import services as accounting_services  # Assuming accounting app has services
 
 logger = logging.getLogger(__name__)
+
+
+class PriceHistoryService:
+    @staticmethod
+    def record_vendor_price_history(vendor, product, unit_price, doc_date, organization, created_by=None, document_type=None, document_id=None):
+        """Record a vendor purchase rate history entry."""
+        return VendorPriceHistory.objects.create(
+            organization=organization,
+            vendor=vendor,
+            product=product,
+            purchase_rate=unit_price,
+            doc_date=doc_date,
+            created_by=created_by,
+            document_type=document_type,
+            document_id=document_id
+        )
+
+    @staticmethod
+    def record_customer_price_history(customer, product, unit_price, doc_date, organization, created_by=None, document_type=None, document_id=None):
+        """Record a customer sales rate history entry."""
+        return CustomerPriceHistory.objects.create(
+            organization=organization,
+            customer=customer,
+            product=product,
+            sales_rate=unit_price,
+            doc_date=doc_date,
+            created_by=created_by,
+            document_type=document_type,
+            document_id=document_id
+        )
+
+    @staticmethod
+    def get_vendor_price_history(organization, product, vendor=None, limit=20):
+        qs = VendorPriceHistory.objects.filter(organization=organization, product=product)
+        if vendor:
+            qs = qs.filter(vendor=vendor)
+        return qs.order_by('-doc_date')[:limit]
+
+    @staticmethod
+    def get_customer_price_history(organization, product, customer=None, limit=20):
+        qs = CustomerPriceHistory.objects.filter(organization=organization, product=product)
+        if customer:
+            qs = qs.filter(customer=customer)
+        return qs.order_by('-doc_date')[:limit]
+
 
 class InventoryService:
     @staticmethod
@@ -184,12 +232,18 @@ class PurchaseReceiptService:
             location = Location.objects.get(warehouse=warehouse, code=location_code)
 
         # Assuming 'lines' is an iterable of objects/dicts with product, qty, cost, batch_number, serial_number
+
+        user = getattr(purchase_order, 'created_by', None)
+        vendor = getattr(purchase_order, 'vendor', None)
+        doc_date = getattr(purchase_order, 'order_date', timezone.now().date())
+        doc_ref = getattr(purchase_order, 'number', None)
+
         for line in lines:
             product = Product.objects.get(organization=organization, code=line['product_code'])
             batch, _ = Batch.objects.get_or_create(
                 organization=organization,
                 product=product,
-                batch_number=line.get('batch_number', 'N/A'), # Use 'N/A' or generate default if not provided
+                batch_number=line.get('batch_number', 'N/A'),
                 serial_number=line.get('serial_number', '')
             )
 
@@ -200,10 +254,25 @@ class PurchaseReceiptService:
                 location=location,
                 batch=batch,
                 txn_type="purchase",
-                reference_id=purchase_order.number, # Assuming PO has a 'number' field
+                reference_id=purchase_order.number,
                 qty_in=line['qty'],
                 unit_cost=line['cost']
             )
+
+            # Record vendor price history
+            if vendor:
+                from .services import PriceHistoryService
+                PriceHistoryService.record_vendor_price_history(
+                    organization=organization,
+                    vendor=vendor,
+                    product=product,
+                    rate=line['cost'],
+                    currency=getattr(purchase_order, 'currency', 'USD'),
+                    quantity=line['qty'],
+                    doc_ref=doc_ref,
+                    doc_date=doc_date,
+                    user=user
+                )
 
         # Call accounting service (placeholder)
         # accounting_services.grir_to_inventory(purchase_order)

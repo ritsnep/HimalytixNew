@@ -320,7 +320,7 @@ function autoBalanceLines() {
 
 function bulkSetAccount() {
     // Load accounts for bulk selection
-    htmx.ajax('GET', '{% url "accounting:voucher_account_lookup_hx" %}', {
+    htmx.ajax('GET', '{% url "accounting:voucher_account_lookup" %}', {
         target: '#bulk-account-select',
         swap: 'innerHTML'
     });

@@ -33,7 +33,7 @@
           <div class="col-md-6">
             <label class="form-label small text-uppercase text-muted">Invoice Total</label>
             <div class="form-control form-control-sm bg-light text-end" readonly>
-              <strong>{{ invoice.total_amount|floatformat:2 }} {{ invoice.currency.currency_code }}</strong>
+              <strong>{{ invoice.total|floatformat:2 }} {{ invoice.currency.currency_code }}</strong>
             </div>
           </div>
         </div>
@@ -70,7 +70,7 @@
                 </tr>
                 <tr class="table-light fw-bold border-top">
                   <td colspan="3" class="text-end">TOTAL:</td>
-                  <td class="text-end">{{ invoice.total_amount|floatformat:2 }}</td>
+                  <td class="text-end">{{ invoice.total|floatformat:2 }}</td>
                 </tr>
               </tbody>
             </table>

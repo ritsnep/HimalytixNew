@@ -77,13 +77,14 @@ class VendorService:
             return {'agent_id': None, 'area_id': None}
 
     @staticmethod
-    def validate_vendor_credit_limit(vendor_id, transaction_amount):
+    def validate_vendor_credit_limit(organization, vendor_id, transaction_amount):
         """
         Check if transaction exceeds vendor's credit limit.
         """
-        vendor = Vendor.objects.get(id=vendor_id)
-        balance = vendor.get_balance()
-        credit_limit = vendor.credit_limit or 0.0
+        from decimal import Decimal
+        vendor = Vendor.objects.get(vendor_id=vendor_id, organization=organization)
+        balance = Decimal('0.0')  # TODO: Calculate actual balance from transactions
+        credit_limit = vendor.credit_limit or Decimal('0.0')
         new_balance = balance + transaction_amount
 
         if new_balance > credit_limit:

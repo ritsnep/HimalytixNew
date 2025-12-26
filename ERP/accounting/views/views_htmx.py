@@ -88,3 +88,38 @@ class AccountTypeDependentFieldsHXView(LoginRequiredMixin, View):
         # Ensure dynamic choices are configured based on current values
         form.is_valid()  # harmless; needed so cleaned_data exists in some cases; choices set in __init__ anyway
         return render(request, self.template_name, {"form": form})
+
+
+class VoucherAccountLookupJsonView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        from django.db.models import Q
+        from accounting.models import ChartOfAccount
+        
+        queryset = ChartOfAccount.objects.all()
+        organization = request.user.get_active_organization()
+        
+        if organization:
+            org_queryset = queryset.filter(organization=organization)
+            if org_queryset.exists():
+                queryset = org_queryset
+            # If no accounts in organization, fall back to all accounts
+        
+        q = request.GET.get('q', '').strip()
+        if q:
+            queryset = queryset.filter(
+                Q(account_code__icontains=q) | 
+                Q(account_name__icontains=q)
+            )
+        
+        results = []
+        for account in queryset[:20]:  # Limit to 20 results
+            results.append({
+                'id': account.id,
+                'text': f"{account.account_code} - {account.account_name}",
+                'code': account.account_code,
+                'name': account.account_name,
+                'type': account.account_type,
+                'balance': str(account.balance) if hasattr(account, 'balance') else '0.00'
+            })
+        
+        return JsonResponse({'results': results})

@@ -7,7 +7,49 @@ from django.utils import timezone
 from mptt.models import MPTTModel, TreeForeignKey          # pip install django-mptt
 from accounting.models import ChartOfAccount, Vendor
 from usermanagement.models import Organization               # your multi-tenant app
-# from accounting.models import ChartOfAccount               # GL integration
+
+# --- Price History Models ---
+from accounting.models import Customer
+from usermanagement.models import CustomUser
+# --- Vendor Purchase Rate History ---
+class VendorPriceHistory(models.Model):
+    organization = models.ForeignKey(Organization, on_delete=models.PROTECT)
+    vendor = models.ForeignKey(Vendor, on_delete=models.PROTECT)
+    product = models.ForeignKey('Product', on_delete=models.PROTECT)
+    purchase_rate = models.DecimalField(max_digits=19, decimal_places=4)
+    currency = models.CharField(max_length=8)
+    quantity = models.DecimalField(max_digits=15, decimal_places=4)
+    doc_ref = models.CharField(max_length=64, blank=True, null=True)
+    doc_date = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['organization', 'vendor', 'product', 'doc_date'])]
+        ordering = ['-doc_date']
+
+    def __str__(self):
+        return f"{self.organization} | {self.vendor} | {self.product} @ {self.purchase_rate} {self.currency} on {self.doc_date}"
+
+# --- Customer Sales Rate History ---
+class CustomerPriceHistory(models.Model):
+    organization = models.ForeignKey(Organization, on_delete=models.PROTECT)
+    customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
+    product = models.ForeignKey('Product', on_delete=models.PROTECT)
+    sales_rate = models.DecimalField(max_digits=19, decimal_places=4)
+    currency = models.CharField(max_length=8)
+    quantity = models.DecimalField(max_digits=15, decimal_places=4)
+    doc_ref = models.CharField(max_length=64, blank=True, null=True)
+    doc_date = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['organization', 'customer', 'product', 'doc_date'])]
+        ordering = ['-doc_date']
+
+    def __str__(self):
+        return f"{self.organization} | {self.customer} | {self.product} @ {self.sales_rate} {self.currency} on {self.doc_date}"
 
 # ---------- Master data ----------
 class Unit(models.Model):

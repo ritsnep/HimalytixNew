@@ -29,7 +29,7 @@ from django.forms import inlineformset_factory, BaseInlineFormSet
 from django.utils.translation import gettext_lazy as _
 
 from accounting.models import Journal, JournalLine, ChartOfAccount, Currency, Department
-from accounting.models import Project, CostCenter, TaxCode
+from accounting.models import Project, CostCenter, TaxCode, VoucherModeConfig
 from accounting.forms_mixin import BootstrapFormMixin
 
 logger = logging.getLogger(__name__)
@@ -182,10 +182,50 @@ class JournalLineForm(BootstrapFormMixin, forms.ModelForm):
 
         # Filter accounts by organization and active status
         if self.organization:
-            self.fields['account'].queryset = ChartOfAccount.objects.filter(
+            base_queryset = ChartOfAccount.objects.filter(
                 organization=self.organization,
                 is_active=True
             ).select_related('account_type')
+            
+            # Apply journal config-based filtering if journal is provided
+            if self.journal and self.journal.journal_type:
+                # Get voucher configs for this journal type
+                voucher_configs = VoucherModeConfig.objects.filter(
+                    organization=self.organization,
+                    journal_type=self.journal.journal_type,
+                    is_active=True
+                )
+                
+                # Check if any config defines account restrictions
+                allowed_account_types = set()
+                for config in voucher_configs:
+                    schema = config.schema_definition or {}
+                    line_fields = schema.get('line_fields', [])
+                    for field in line_fields:
+                        if field.get('key') == 'account':
+                            # Check for account type restrictions in field config
+                            restrictions = field.get('restrictions', {})
+                            if 'account_types' in restrictions:
+                                allowed_account_types.update(restrictions['account_types'])
+                            elif 'account_natures' in restrictions:
+                                # Filter by account nature (asset, liability, etc.)
+                                natures = restrictions['account_natures']
+                                nature_accounts = ChartOfAccount.objects.filter(
+                                    organization=self.organization,
+                                    account_type__nature__in=natures,
+                                    is_active=True
+                                )
+                                base_queryset = base_queryset.filter(
+                                    account_type__nature__in=natures
+                                )
+                
+                # If specific account types are defined, filter by them
+                if allowed_account_types:
+                    base_queryset = base_queryset.filter(
+                        account_type__account_type__in=allowed_account_types
+                    )
+            
+            self.fields['account'].queryset = base_queryset
 
             # Filter dimensions by organization
             self.fields['department'].queryset = Department.objects.filter(

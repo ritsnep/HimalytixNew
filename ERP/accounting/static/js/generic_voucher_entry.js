@@ -409,45 +409,18 @@
 
     const updateSummary = () => {
         const rows = Array.from(linesContainer.querySelectorAll('.generic-line-row'));
-        const total = rows.length;
-        let completed = 0;
-        let totalDebit = 0;
-        let totalCredit = 0;
-        let totalQty = 0;
-        let totalLine = 0;
-
-        const placeholder = document.getElementById('no-lines-placeholder');
-        if (placeholder) {
-            placeholder.classList.toggle('d-none', total > 0);
-        }
-
-        rows.forEach(row => {
-            const inputs = row.querySelectorAll('input:not([type="hidden"]), select, textarea');
-            const hasValue = Array.from(inputs).some(input => input.value && input.value.toString().trim() !== '');
-            if (hasValue) {
-                completed += 1;
-            }
-
-            const debit = row.querySelector('input[name$="-debit_amount"], input[name$="-debit"]');
-            const credit = row.querySelector('input[name$="-credit_amount"], input[name$="-credit"]');
-            const qty = row.querySelector('input[name$="-quantity"], input[name$="-qty"]');
-            const lineTotal = row.querySelector('input[name$="-line_total"], input[name$="-amount"], input[name$="-total"]');
-            totalDebit += parseNumber(debit?.value);
-            totalCredit += parseNumber(credit?.value);
-            totalQty += parseNumber(qty?.value);
-            totalLine += parseNumber(lineTotal?.value);
+        const linesData = rows.map(row => ({
+            debit_amount: row.querySelector('input[name$="-debit_amount"]')?.value || '0',
+            credit_amount: row.querySelector('input[name$="-credit_amount"]')?.value || '0',
+            quantity: row.querySelector('input[name$="-quantity"]')?.value || '0',
+            DELETE: row.querySelector('input[name$="-DELETE"]')?.checked || false
+        }));
+        const chargesData = []; // If charges are present, collect them
+        htmx.ajax('POST', `/accounting/generic-voucher/${voucherCode}/summary/`, {
+            values: { lines: JSON.stringify(linesData), charges: JSON.stringify(chargesData) },
+            target: '#summary-container' // Assume a container for summary
         });
-
-        const incomplete = Math.max(0, total - completed);
-
-        const totalLinesEl = document.getElementById('summary-total-lines');
-        const completedLinesEl = document.getElementById('summary-completed-lines');
-        const incompleteLinesEl = document.getElementById('summary-incomplete-lines');
-        if (totalLinesEl) totalLinesEl.textContent = total;
-        if (completedLinesEl) completedLinesEl.textContent = completed;
-        if (incompleteLinesEl) incompleteLinesEl.textContent = incomplete;
-
-        const countLabel = document.getElementById('lines-count');
+    };
         if (countLabel) {
             countLabel.textContent = `Showing ${total} line${total === 1 ? '' : 's'}`;
         }
@@ -1252,3 +1225,51 @@
         }
     });
 })();
+
+// New enhancements
+// Set attributes on load
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('input[type="number"]').forEach(input => {
+        input.setAttribute('min', '0.01');
+        input.setAttribute('step', '0.01');
+    });
+});
+
+// Inline validation
+document.addEventListener('blur', (e) => {
+    if (e.target.classList.contains('required') && !e.target.value) {
+        e.target.classList.add('is-invalid');
+    }
+});
+
+// Toasts
+function showToast(message, type) {
+    const toast = document.getElementById(`${type}-toast`);
+    if (toast) {
+        toast.textContent = message;
+        toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', 3000);
+    }
+}
+
+// Confirmations
+function confirmAction(action, url) {
+    const modal = document.getElementById('confirm-delete-modal');
+    if (modal) {
+        modal.style.display = 'block';
+        document.getElementById('confirm-delete-btn').onclick = () => {
+            // Perform action
+            modal.style.display = 'none';
+        };
+    }
+}
+
+// beforeUnload
+window.addEventListener('beforeunload', (e) => {
+    if (hasUnsavedChanges()) e.preventDefault();
+});
+
+function hasUnsavedChanges() {
+    // Check if form has changes
+    return false; // Placeholder
+}

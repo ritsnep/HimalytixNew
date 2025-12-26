@@ -43,6 +43,27 @@ class SalesInvoiceService:
         self.ird_submission_service = IRDSubmissionService(user)
         self.logger = logging.getLogger(__name__)
 
+    def _record_customer_price_history(self, invoice: SalesInvoice):
+        """Record customer price history for all lines in the invoice."""
+        from inventory.services.price_history_service import PriceHistoryService
+        for line in invoice.lines.all():
+            product = None
+            try:
+                product = Product.objects.get(organization=invoice.organization, code=line.product_code)
+            except Product.DoesNotExist:
+                continue
+            PriceHistoryService.record_customer_price_history(
+                customer=invoice.customer,
+                product=product,
+                unit_price=line.unit_price,
+                doc_date=invoice.invoice_date,
+                organization=invoice.organization,
+                created_by=self.user,
+                currency=getattr(invoice.currency, "currency_code", None),
+                quantity=line.quantity,
+                doc_ref=f"SI-{invoice.invoice_number}",
+            )
+
     def _calculate_due_date(self, customer, payment_term, invoice_date):
         payment_term = payment_term or getattr(customer, 'payment_term', None)
         if payment_term and invoice_date:
@@ -358,11 +379,15 @@ class SalesInvoiceService:
             created_by=self.user,
         )
 
+
         posted_journal = self.posting_service.post(journal)
         invoice.status = 'posted'
         invoice.journal = posted_journal
         invoice.updated_by = self.user
         invoice.save(update_fields=['status', 'journal', 'updated_by', 'updated_at'])
+
+        # Record customer price history (UI/API)
+        self._record_customer_price_history(invoice)
 
         if self._should_submit_to_ird(submit_to_ird):
             self._enqueue_ird_submission(invoice)

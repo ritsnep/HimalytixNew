@@ -12,7 +12,7 @@
             <div class="position-relative">
                 <select name="lines-{{ forloop.counter0 }}-account"
                         class="form-select account-select"
-                        hx-get="{% url 'accounting:voucher_account_lookup_hx' %}"
+                        hx-get="{% url 'accounting:voucher_account_lookup' %}"
                         hx-trigger="input changed delay:300ms, focus"
                         hx-target="#account-results-{{ line.id|default:forloop.counter }}"
                         hx-vals='{"q": this.value}'

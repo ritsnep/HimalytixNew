@@ -65,10 +65,15 @@ class ProductService:
                     product=product,
                     warehouse_id=warehouse_id
                 ).first()
-                if inventory and inventory.quantity < quantity:
+                available = None
+                if inventory:
+                    available = getattr(inventory, "quantity_on_hand", None)
+                    if available is None:
+                        available = getattr(inventory, "quantity", None)
+                if available is not None and available < quantity:
                     return {
                         'valid': False,
-                        'message': f"Insufficient stock. Available: {inventory.quantity}"
+                        'message': f"Insufficient stock. Available: {available}"
                     }
             return {'valid': True, 'message': 'OK'}
         except Product.DoesNotExist:
@@ -82,7 +87,8 @@ class ProductService:
         with transaction.atomic():
             product = Product.objects.get(id=product_id)
             if new_standard_price is not None:
-                product.standard_price = new_standard_price
+                # Product model doesn't expose `standard_price`; use cost_price as standard baseline.
+                product.cost_price = new_standard_price
             product.save()
 
             # Update party prices if provided (assuming a related model)

@@ -4,6 +4,8 @@ from decimal import Decimal
 
 from django.db import transaction
 from django.utils.timezone import now
+from django.conf import settings
+from django.utils import timezone
 
 from inventory.models import InventoryItem, StockLedger
 from accounting.models import (
@@ -61,20 +63,30 @@ def _get_purchase_journal_type(organization):
     return jt
 
 
+def _resolve_journal_date(invoice_date):
+    """
+    Decide journal date based on configuration.
+    Default: invoice date. Optional override: posting date (today) via PURCHASE_JOURNAL_DATE_MODE.
+    """
+    mode = str(getattr(settings, "PURCHASE_JOURNAL_DATE_MODE", "invoice_date")).lower()
+    if mode == "posting_date":
+        return timezone.localdate()
+    return invoice_date
+
+
 @transaction.atomic
 def post_purchase_invoice(pi: PurchaseInvoice) -> PurchaseInvoice:
     """Post a purchase invoice into inventory and the general ledger."""
 
-    if pi.status == PurchaseInvoice.Status.POSTED:
+    if pi.status == 'posted':
         return pi
 
     if not pi.lines.exists():
         raise ProcurementPostingError("Purchase invoice must have at least one line before posting.")
 
-    pi.recalc_totals()
+    pi.recompute_totals(save=False)
     pi.save(
-        update_fields=["subtotal", "tax_amount", "total_amount", "base_total_amount", "updated_at"],
-        skip_recalc=True,
+        update_fields=["subtotal", "tax_total", "total", "base_currency_total", "updated_at"],
     )
 
     organization = pi.organization
@@ -85,9 +97,9 @@ def post_purchase_invoice(pi: PurchaseInvoice) -> PurchaseInvoice:
         organization=organization,
         journal_type=journal_type,
         period=period,
-        journal_date=pi.invoice_date,
+        journal_date=_resolve_journal_date(pi.invoice_date),
         reference=f"PI-{pi.number}",
-        description=f"Purchase invoice {pi.number} - {pi.supplier}",
+        description=f"Purchase invoice {pi.number} - {pi.vendor_display_name}",
         currency_code=pi.currency.currency_code,
         exchange_rate=pi.exchange_rate,
         status="draft",
@@ -97,16 +109,40 @@ def post_purchase_invoice(pi: PurchaseInvoice) -> PurchaseInvoice:
     total_debit = Decimal("0")
     total_credit = Decimal("0")
 
-    for line in pi.lines.select_related(
-        "product",
-        "product__inventory_account",
-        "product__expense_account",
-        "warehouse",
-        "expense_account",
-        "input_vat_account",
-    ):
-        line_value = line.line_subtotal
+    lines = list(
+        pi.lines.select_related(
+            "product",
+            "product__inventory_account",
+            "product__expense_account",
+            "warehouse",
+            "input_vat_account",
+        )
+    )
+    subtotal_before_discount = sum((ln.line_subtotal for ln in lines), Decimal("0"))
+    header_discount = pi.discount_amount or Decimal("0")
+    remaining_discount = header_discount
+    if header_discount < 0:
+        raise ProcurementPostingError("Header discount cannot be negative during posting.")
+    if header_discount > subtotal_before_discount:
+        raise ProcurementPostingError("Header discount exceeds line subtotal; cannot post journal.")
+
+    for idx, line in enumerate(lines):
+        discount_share = Decimal("0")
+        if header_discount and subtotal_before_discount > 0:
+            if idx == (len(lines) - 1):
+                discount_share = remaining_discount
+            else:
+                factor = (line.line_subtotal / subtotal_before_discount)
+                discount_share = (header_discount * factor).quantize(Decimal("0.01"))
+                remaining_discount -= discount_share
+        line_value = (line.line_subtotal - discount_share).quantize(Decimal("0.01"))
+        if line_value <= 0:
+            line_value = Decimal("0")
+        if line_value == 0:
+            continue
         line_tax = line.line_tax_amount
+        if line_tax <= 0:
+            line_tax = Decimal("0")
 
         if line.product.is_inventory_item:
             inventory_account = getattr(line.product, "inventory_account", None)
@@ -124,7 +160,7 @@ def post_purchase_invoice(pi: PurchaseInvoice) -> PurchaseInvoice:
             line_number += 1
             total_debit += line_value
         else:
-            expense_account = line.expense_account or getattr(line.product, "expense_account", None)
+            expense_account = line.account or getattr(line.product, "expense_account", None)
             if not expense_account:
                 raise ProcurementPostingError(
                     f"Purchase line for {line.product} is missing an expense account."
@@ -140,10 +176,10 @@ def post_purchase_invoice(pi: PurchaseInvoice) -> PurchaseInvoice:
             total_debit += line_value
 
         if line_tax and line_tax != Decimal("0"):
-            tax_account = line.input_vat_account
+            tax_account = line.input_vat_account or getattr(line.tax_code, "purchase_account", None)
             if not tax_account:
                 raise ProcurementPostingError(
-                    f"VAT account missing for line {line.id} with tax amount {line_tax}."
+                    f"VAT account missing for line {getattr(line, 'pk', None) or line.line_number} with tax amount {line_tax}."
                 )
             JournalLine.objects.create(
                 journal=journal,
@@ -155,25 +191,48 @@ def post_purchase_invoice(pi: PurchaseInvoice) -> PurchaseInvoice:
             line_number += 1
             total_debit += line_tax
 
-    ap_account = getattr(pi.supplier, "accounts_payable_account", None)
+    ap_account = getattr(pi.vendor, "accounts_payable_account", None)
     if not ap_account:
-        raise ProcurementPostingError(f"Supplier {pi.supplier} has no Accounts Payable account.")
+        raise ProcurementPostingError(f"Supplier {pi.vendor_display_name} has no Accounts Payable account.")
+
+    rounding = getattr(pi, "rounding_adjustment", None) or Decimal("0")
+    if rounding:
+        rounding_account = pi.purchase_account or ap_account
+        if not rounding_account:
+            raise ProcurementPostingError("No account available to book rounding adjustment for purchase invoice.")
+        debit_amt = rounding if rounding > 0 else Decimal("0")
+        credit_amt = abs(rounding) if rounding < 0 else Decimal("0")
+        JournalLine.objects.create(
+            journal=journal,
+            line_number=line_number,
+            account=rounding_account,
+            description="Rounding adjustment",
+            debit_amount=debit_amt,
+            credit_amount=credit_amt,
+        )
+        total_debit += debit_amt
+        total_credit += credit_amt
+        line_number += 1
+
+    ap_amount = (pi.total or Decimal("0")).quantize(Decimal("0.01"))
+    if ap_amount <= 0:
+        raise ProcurementPostingError("Invoice total must be greater than zero to post journal.")
 
     JournalLine.objects.create(
         journal=journal,
         line_number=line_number,
         account=ap_account,
-        description=f"Accounts Payable - {pi.supplier}",
-        credit_amount=pi.total_amount,
+        description=f"Accounts Payable - {pi.vendor_display_name}",
+        credit_amount=ap_amount,
     )
-    total_credit += pi.total_amount
+    total_credit += ap_amount
 
     if total_debit.quantize(Decimal("0.01")) != total_credit.quantize(Decimal("0.01")):
         raise ProcurementPostingError(
             f"Journal is not balanced: debit={total_debit}, credit={total_credit}"
         )
 
-    for line in pi.lines.select_related("product", "warehouse"):
+    for line in lines:
         if not line.product.is_inventory_item:
             continue
         unit_cost = line.unit_price
@@ -208,9 +267,25 @@ def post_purchase_invoice(pi: PurchaseInvoice) -> PurchaseInvoice:
 
     post_journal(journal)
 
-    pi.status = PurchaseInvoice.Status.POSTED
+    pi.status = 'posted'
     pi.journal = journal
     PurchaseInvoice.objects.filter(pk=pi.pk).update(status=pi.status, journal=journal)
+
+    # Record vendor price history
+    from inventory.services.price_history_service import PriceHistoryService
+    price_service = PriceHistoryService()
+    for line in pi.lines.select_related('product'):
+        price_service.record_vendor_price_history(
+            vendor=pi.vendor,
+            product=line.product,
+            unit_price=line.unit_price,
+            doc_date=pi.invoice_date,
+            organization=pi.organization,
+            created_by=pi.created_by,
+            currency=getattr(pi.currency, "currency_code", None),
+            quantity=line.quantity,
+            doc_ref=f"PI-{pi.number}",
+        )
 
     return pi
 
@@ -223,7 +298,7 @@ def reverse_purchase_invoice(pi: PurchaseInvoice, *, user=None) -> PurchaseInvoi
     - Pushes negative stock movements for inventory lines and updates InventoryItem
     - Marks the invoice back to draft and detaches the posted journal
     """
-    if pi.status != PurchaseInvoice.Status.POSTED:
+    if pi.status != 'posted':
         raise ProcurementPostingError("Only posted purchase invoices can be reversed.")
     if not pi.journal:
         raise ProcurementPostingError("Posted purchase invoice is missing its journal; cannot reverse.")
@@ -279,7 +354,7 @@ def reverse_purchase_invoice(pi: PurchaseInvoice, *, user=None) -> PurchaseInvoi
 
     # Move invoice back to draft and detach journal
     PurchaseInvoice.objects.filter(pk=pi.pk).update(
-        status=PurchaseInvoice.Status.DRAFT,
+        status='draft',
         journal=None,
     )
     pi.refresh_from_db()
@@ -294,7 +369,7 @@ def apply_landed_cost_document(doc: LandedCostDocument) -> LandedCostDocument:
         return doc
 
     pi = doc.purchase_invoice
-    if pi.status != PurchaseInvoice.Status.POSTED:
+    if pi.status != 'posted':
         raise ProcurementPostingError("Landed cost can only be applied once the invoice is posted.")
     if doc.organization_id != pi.organization_id:
         raise ProcurementPostingError("Landed cost document and invoice organization mismatch.")

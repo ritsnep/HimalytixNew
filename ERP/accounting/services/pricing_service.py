@@ -5,12 +5,28 @@ from django.utils import timezone
 from django.db import models
 
 
+def _resolve_standard_price(product):
+    """
+    Safely resolve a product's standard price, falling back to cost/standard cost/sale price.
+    Avoids attribute errors on models that don't expose `standard_price`.
+    """
+    candidates = (
+        getattr(product, "standard_price", None),
+        getattr(product, "cost_price", None),
+        getattr(product, "standard_cost", None),
+        getattr(product, "sale_price", None),
+    )
+    for val in candidates:
+        if val is not None:
+            return float(val)
+    return 0.0
+
+
 class PricingService:
     """
     Service for managing pricing logic, including standard and party-specific prices.
     """
 
-    @staticmethod
     @staticmethod
     def get_pricing_for_party(organization, product_id, party_id):
         """
@@ -19,7 +35,7 @@ class PricingService:
         """
         try:
             product = Product.objects.get(organization=organization, id=product_id)
-            standard_price = product.standard_price or 0.0
+            standard_price = _resolve_standard_price(product)
 
             party_price = standard_price
             discount_percentage = 0.0
@@ -118,7 +134,9 @@ class PricingService:
         Get pricing for multiple products for a party.
         """
         product_ids = [p['id'] for p in products]
-        standard_prices = {p.id: p.standard_price for p in Product.objects.filter(id__in=product_ids)}
+        standard_prices = {
+            p.id: _resolve_standard_price(p) for p in Product.objects.filter(id__in=product_ids)
+        }
 
         result = []
         for prod in products:

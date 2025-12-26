@@ -66,6 +66,13 @@ class PurchasePaymentForm(forms.Form):
         if method in BANK_ACCOUNT_METHODS and not cleaned.get('cash_bank_id'):
             self.add_error('cash_bank_id', 'Please select a cash or bank account.')
         due_date = cleaned.get('due_date')
-        if due_date and self.invoice_date and due_date < self.invoice_date:
-            self.add_error('due_date', 'Payment due date cannot be before the invoice date.')
+        if due_date and self.invoice_date:
+            # Ensure invoice_date is a date object
+            if isinstance(self.invoice_date, str):
+                from django.utils.dateparse import parse_date
+                invoice_date = parse_date(self.invoice_date)
+            else:
+                invoice_date = self.invoice_date
+            if invoice_date and due_date < invoice_date:
+                self.add_error('due_date', 'Payment due date cannot be before the invoice date.')
         return cleaned

@@ -1,11 +1,10 @@
-"""
-Consolidated Inventory app views.
+from .models import VendorPriceHistory, CustomerPriceHistory
+# Vendor Price History List View
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views.generic import ListView
 
-This file merges all views from the previous `views.py` and the
-modular `views/` package (base_views, views_list, views_create,
-views_update, views_detail, reports).
-"""
 
+from usermanagement.mixins import UserOrganizationMixin
 from decimal import Decimal
 
 from django.contrib import messages
@@ -24,7 +23,6 @@ from django.views.generic import (
 )
 
 from accounting.models import AutoIncrementCodeGenerator
-from usermanagement.mixins import UserOrganizationMixin
 from usermanagement.utils import PermissionUtils
 from utils.calendars import (
     CalendarMode,
@@ -76,7 +74,33 @@ from .models import (
 from enterprise.models import BillOfMaterial
 from .services import InventoryService, TransferOrderService
 
+class VendorPriceHistoryListView(LoginRequiredMixin,  ListView):
+    model = VendorPriceHistory
+    template_name = 'Inventory/vendor_price_history_list.html'
+    context_object_name = 'vendor_price_history'
+    paginate_by = 50
 
+    def get_queryset(self):
+        org = self.get_organization()
+        return VendorPriceHistory.objects.filter(organization=org).select_related('vendor', 'product', 'created_by').order_by('-doc_date')
+
+# Customer Price History List View
+class CustomerPriceHistoryListView(LoginRequiredMixin,  ListView):
+    model = CustomerPriceHistory
+    template_name = 'Inventory/customer_price_history_list.html'
+    context_object_name = 'customer_price_history'
+    paginate_by = 50
+
+    def get_queryset(self):
+        org = self.get_organization()
+        return CustomerPriceHistory.objects.filter(organization=org).select_related('customer', 'product', 'created_by').order_by('-doc_date')
+"""
+Consolidated Inventory app views.
+
+This file merges all views from the previous `views.py` and the
+modular `views/` package (base_views, views_list, views_create,
+views_update, views_detail, reports).
+"""
 def _get_request_organization(request):
     """Helper to get organization from request (for FBVs)."""
     return getattr(request, 'organization', None) or getattr(

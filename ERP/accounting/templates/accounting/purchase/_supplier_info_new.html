@@ -134,14 +134,8 @@
       </div>
     </div>
 
-    <!-- Row 5: Invoice Date (BS), Due Days -->
+    <!-- Row 5: Due Days -->
     <div class="row g-2 mb-2">
-      <div class="col-md-3">
-        <label class="form-label small text-muted">Invoice Date (BS)</label>
-        {% if form.invoice_date_bs %}
-          {{ form.invoice_date_bs|add_class:"form-control form-control-sm" }}
-        {% endif %}
-      </div>
       <div class="col-md-3">
         <label class="form-label small text-muted">Due Days</label>
         <input type="number" class="form-control form-control-sm" id="due_days" name="due_days" min="0" value="0">
@@ -164,13 +158,13 @@
       </div>
       <div class="col-md-3">
         <label class="form-label small text-muted">Warehouse</label>
-        {% if form.warehouse %}
+        {% if form.warehouse and form.warehouse.field.queryset %}
           {{ form.warehouse|add_class:"form-select form-select-sm" }}
         {% endif %}
       </div>
       <div class="col-md-3">
         <label class="form-label small text-muted">GR/IR Account</label>
-        {% if form.grir_account %}
+        {% if form.grir_account and form.grir_account.field.queryset %}
           {{ form.grir_account|add_class:"form-select form-select-sm" }}
         {% endif %}
       </div>

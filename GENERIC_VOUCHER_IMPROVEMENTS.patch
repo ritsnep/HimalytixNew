@@ -1,0 +1,472 @@
+GENERIC_VOUCHER_IMPROVEMENTS.patch
+====================================
+
+This patch file summarizes the changes for Generic Voucher Entry Validation, UI, and Testing Improvements.
+Each section shows the file path, followed by diff-style changes (+ for additions, - for removals).
+For new files, the entire content is shown as additions.
+For modified files, only changed sections are shown with context.
+
+1. accounting/forms/dynamic_header_forms.py (modified)
+   - Added clean() method to GenericVoucherHeaderForm class for validations.
+
+   ```diff
+   class GenericVoucherHeaderForm(DynamicForm):
+       # ... existing fields and methods ...
+   +    
+   +    def clean(self):
+   +        cleaned = super().clean()
+   +        config = self.form_factory.configuration
+   +        organization = self.form_factory.organization  # Enforce tenant scope
+   +        
+   +        # Require vendor/customer based on module
+   +        module = getattr(config, 'module', 'accounting')
+   +        if module == 'purchasing' and not cleaned.get('vendor'):
+   +            raise ValidationError({'vendor': 'Supplier is required.'}, code='VCH-VENDOR')
+   +        if module == 'sales' and not cleaned.get('customer'):
+   +            raise ValidationError({'customer': 'Customer is required.'}, code='VCH-CUSTOMER')
+   +        
+   +        # Date order checks
+   +        voucher_date = cleaned.get('voucher_date') or cleaned.get('transaction_date') or cleaned.get('receipt_date')
+   +        due_date = cleaned.get('due_date')
+   +        delivery_date = cleaned.get('delivery_date')
+   +        order_date = cleaned.get('order_date')
+   +        if voucher_date and due_date and due_date < voucher_date:
+   +            raise ValidationError({'due_date': 'Due date cannot be earlier than voucher date.'}, code='VCH-DATE')
+   +        if order_date and delivery_date and delivery_date < order_date:
+   +            raise ValidationError({'delivery_date': 'Delivery date cannot be earlier than order date.'}, code='VCH-DATE')
+   +        
+   +        # Currency/exchange rate
+   +        currency = cleaned.get('currency')
+   +        if currency and currency not in organization.active_currencies:
+   +            raise ValidationError({'currency': 'Invalid currency for organization.'}, code='VCH-CURRENCY')
+   +        exchange_rate = cleaned.get('exchange_rate')
+   +        if exchange_rate is not None and exchange_rate <= 0:
+   +            raise ValidationError({'exchange_rate': 'Exchange rate must be greater than zero.'}, code='VCH-RATE')
+   +        
+   +        # Reference uniqueness (optional, within type)
+   +        reference = cleaned.get('reference')
+   +        if reference and Voucher.objects.filter(organization=organization, voucher_type=config.code, reference=reference).exists():
+   +            raise ValidationError({'reference': 'Reference must be unique within voucher type.'}, code='VCH-REF')
+   +        
+   +        # UDF validations
+   +        for field_name, field_value in cleaned.items():
+   +            if field_name.startswith('udf_'):
+   +                udf_config = config.get_udf_config(field_name)
+   +                if udf_config:
+   +                    pattern = udf_config.get('pattern')
+   +                    if pattern and not re.match(pattern, str(field_value or '')):
+   +                        raise ValidationError({field_name: f'Invalid format for {field_name}.'}, code='UDF-PATTERN')
+   +                    min_length = udf_config.get('min_length')
+   +                    if min_length and len(str(field_value or '')) < min_length:
+   +                        raise ValidationError({field_name: f'Minimum length {min_length} for {field_name}.'}, code='UDF-LENGTH')
+   +        
+   +        return cleaned
+   ```
+
+2. accounting/forms/dynamic_line_forms.py (modified)
+   - Enhanced clean() method in GenericVoucherLineForm class.
+
+   ```diff
+   class GenericVoucherLineForm(DynamicForm):
+       # ... existing fields and methods ...
+   +    
+   +    def clean(self):
+   +        cleaned = super().clean()
+   +        config = self.form_factory.configuration
+   +        organization = self.form_factory.organization  # Tenant scope
+   +        
+   +        debit = cleaned.get('debit_amount')
+   +        credit = cleaned.get('credit_amount')
+   +        amount = cleaned.get('amount')  # For single amount fields
+   +        
+   +        # Debit/Credit rules
+   +        if debit is not None and debit < 0:
+   +            raise ValidationError({'debit_amount': 'Debit must be positive.'}, code='VCH-AMOUNT')
+   +        if credit is not None and credit < 0:
+   +            raise ValidationError({'credit_amount': 'Credit must be positive.'}, code='VCH-AMOUNT')
+   +        if debit and credit:
+   +            raise ValidationError('Provide either debit or credit, not both.', code='VCH-DEBIT-CREDIT')
+   +        if not (debit or credit or amount):
+   +            raise ValidationError('Either debit, credit, or amount is required.', code='VCH-AMOUNT')
+   +        
+   +        # Quantity for inventory
+   +        quantity = cleaned.get('quantity')
+   +        if config.affects_inventory and quantity is not None and quantity <= 0:
+   +            raise ValidationError({'quantity': 'Quantity must be greater than zero.'}, code='INV-005')
+   +        
+   +        # Decimal places
+   +        for field in ['debit_amount', 'credit_amount', 'amount']:
+   +            value = cleaned.get(field)
+   +            if value and value.as_tuple().exponent < -2:  # More than 2 decimals
+   +                raise ValidationError({field: 'Maximum 2 decimal places allowed.'}, code='VCH-DECIMAL')
+   +        
+   +        # Cross-field: account or item
+   +        account = cleaned.get('account')
+   +        product = cleaned.get('product')
+   +        if config.module == 'accounting' and not account:
+   +            raise ValidationError({'account': 'Account is required.'}, code='VCH-004')
+   +        if config.affects_inventory and not (product or account):
+   +            raise ValidationError('Product or account is required for inventory.', code='INV-001')
+   +        
+   +        # Inventory details
+   +        warehouse = cleaned.get('warehouse')
+   +        uom = cleaned.get('uom')
+   +        unit_cost = cleaned.get('unit_cost')
+   +        grir_account = cleaned.get('grir_account')
+   +        cogs_account = cleaned.get('cogs_account')
+   +        if product:
+   +            if not warehouse:
+   +                raise ValidationError({'warehouse': 'Warehouse required for product.'}, code='INV-002')
+   +            if not uom:
+   +                raise ValidationError({'uom': 'UoM required for product.'}, code='INV-003')
+   +            if config.code in ['receipt'] and not (unit_cost and grir_account):
+   +                raise ValidationError('Unit cost and GRIR account required for receipts.', code='INV-004')
+   +            if config.code in ['issue'] and not cogs_account:
+   +                raise ValidationError({'cogs_account': 'COGS account required for issues.'}, code='INV-006')
+   +        
+   +        # Dimensions
+   +        cost_centre = cleaned.get('cost_centre')
+   +        department = cleaned.get('department')
+   +        project = cleaned.get('project')
+   +        if any([cost_centre, department, project]) and not all([cost_centre, department, project]):
+   +            raise ValidationError('All dimensions (cost centre, department, project) required if any is provided.', code='VCH-DIM')
+   +        
+   +        return cleaned
+   ```
+
+3. accounting/forms/additional_charges_forms.py (created)
+   - New file for additional charges form.
+
+   ```diff
+   +from django import forms
+   +from decimal import Decimal
+   +from accounting.models import ChartOfAccount
+   +
+   +class AdditionalChargeForm(forms.Form):
+   +    description = forms.CharField(required=True, max_length=200)
+   +    amount = forms.DecimalField(required=True, min_value=Decimal('0.01'), max_digits=18, decimal_places=2)
+   +    gl_account = forms.CharField(required=True)  # Code or name
+   +    
+   +    def __init__(self, *args, organization=None, **kwargs):
+   +        self.organization = organization
+   +        super().__init__(*args, **kwargs)
+   +    
+   +    def clean_gl_account(self):
+   +        account_str = self.cleaned_data['gl_account']
+   +        # Resolve by code or name, scoped to org
+   +        account = ChartOfAccount.objects.filter(
+   +            organization=self.organization,
+   +            account_code=account_str
+   +        ).first() or ChartOfAccount.objects.filter(
+   +            organization=self.organization,
+   +            account_name__icontains=account_str
+   +        ).first()
+   +        if not account:
+   +            raise forms.ValidationError('Invalid GL account.', code='VCH-CHG')
+   +        return account.pk
+   +    
+   +    def clean(self):
+   +        cleaned = super().clean()
+   +        amount = cleaned.get('amount')
+   +        if amount and amount <= 0:
+   +            raise forms.ValidationError({'amount': 'Charge amount must be positive.'}, code='VCH-CHG')
+   +        return cleaned
+   +
+   +AdditionalChargeFormSet = forms.formset_factory(AdditionalChargeForm, extra=1, can_delete=True)
+   ```
+
+4. accounting/forms/voucher_payment_forms.py (created)
+   - New file for payment forms.
+
+   ```diff
+   +from django import forms
+   +from decimal import Decimal
+   +from accounting.models import ChartOfAccount
+   +
+   +class VoucherPaymentForm(forms.Form):
+   +    payment_date = forms.DateField(required=True, widget=forms.DateInput(attrs={'type': 'date'}))
+   +    payment_method = forms.ChoiceField(choices=[('cash', 'Cash'), ('bank', 'Bank'), ('card', 'Card')], required=True)
+   +    account = forms.ModelChoiceField(queryset=ChartOfAccount.objects.none(), required=True)
+   +    amount = forms.DecimalField(required=True, min_value=Decimal('0.01'), max_digits=18, decimal_places=2)
+   +    currency = forms.CharField(required=False, max_length=3)
+   +    reference = forms.CharField(required=False, max_length=100)
+   +    
+   +    def __init__(self, *args, organization=None, **kwargs):
+   +        super().__init__(*args, **kwargs)
+   +        self.fields['account'].queryset = ChartOfAccount.objects.filter(organization=organization)
+   +    
+   +    def clean(self):
+   +        cleaned = super().clean()
+   +        currency = cleaned.get('currency')
+   +        if currency and currency not in self.organization.active_currencies:
+   +            raise forms.ValidationError({'currency': 'Invalid currency.'}, code='PAY-CURRENCY')
+   +        return cleaned
+   +
+   +VoucherPaymentFormSet = forms.formset_factory(VoucherPaymentForm, extra=1, can_delete=True)
+   ```
+
+5. accounting/services/voucher_summary_service.py (created)
+   - New file for centralized summary calculations.
+
+   ```diff
+   +from decimal import Decimal
+   +
+   +class VoucherSummaryService:
+   +    @staticmethod
+   +    def compute_from_lines(lines, charges=None):
+   +        total_debit = sum(Decimal(str(l.get('debit_amount') or '0')) for l in lines if not l.get('DELETE'))
+   +        total_credit = sum(Decimal(str(l.get('credit_amount') or '0')) for l in lines if not l.get('DELETE'))
+   +        total_quantity = sum(Decimal(str(l.get('quantity') or '0')) for l in lines if not l.get('DELETE'))
+   +        count = sum(1 for l in lines if not l.get('DELETE'))
+   +        total_charges = sum(Decimal(str(c.get('amount') or '0')) for c in (charges or []) if not c.get('DELETE'))
+   +        balance_diff = total_debit - total_credit
+   +        return {
+   +            'total_lines': count,
+   +            'total_debit': total_debit,
+   +            'total_credit': total_credit,
+   +            'balance_diff': balance_diff,
+   +            'total_quantity': total_quantity,
+   +            'total_charges': total_charges,
+   +        }
+   ```
+
+6. accounting/views/generic_voucher_create_view.py (modified)
+   - Updated get/post methods and added HTMX endpoint.
+
+   ```diff
+   class GenericVoucherCreateView(PermissionRequiredMixin, BaseVoucherView):
+       # ... existing attributes ...
+       
+       def get(self, request, *args, **kwargs):
+   -        # ... existing code ...
+   +        build_result = VoucherFormFactory.build(voucher_config=config, organization=organization)
+   +        header_form = build_result['header_form']
+   +        line_formset = build_result['line_formset']
+   +        charge_formset = AdditionalChargeFormSet(organization=organization) if config.additional_charges else None
+   +        payment_formset = VoucherPaymentFormSet(organization=organization) if config.affects_payments else None
+   +        # ... render with additional formsets ...
+       
+       def post(self, request, *args, **kwargs):
+   -        # ... existing code ...
+   +        header_form = ...  # Build as before
+   +        line_formset = ...
+   +        charge_formset = AdditionalChargeFormSet(request.POST, organization=organization) if config.additional_charges else None
+   +        payment_formset = VoucherPaymentFormSet(request.POST, organization=organization) if config.affects_payments else None
+   +        
+   +        all_valid = header_form.is_valid() and line_formset.is_valid()
+   +        if charge_formset:
+   +            all_valid = all_valid and charge_formset.is_valid()
+   +        if payment_formset:
+   +            all_valid = all_valid and payment_formset.is_valid()
+   +            # Additional: validate payment sum equals voucher total
+   +            if all_valid:
+   +                voucher_total = sum(l.cleaned_data.get('debit_amount', 0) - l.cleaned_data.get('credit_amount', 0) for l in line_formset if not l.cleaned_data.get('DELETE'))
+   +                payment_total = sum(p.cleaned_data.get('amount', 0) for p in payment_formset if not p.cleaned_data.get('DELETE'))
+   +                if abs(voucher_total - payment_total) > Decimal('0.01'):  # Tolerance
+   +                    raise VoucherProcessError('Payment total must match voucher balance.', code='PAY-BALANCE')
+   +        
+   +        if all_valid:
+   +            try:
+   +                # Check concurrency
+   +                modified_at = request.POST.get('modified_at')
+   +                if modified_at and Voucher.objects.filter(pk=existing_voucher.pk, modified_at__gt=modified_at).exists():
+   +                    return self._render_generic_panel(request, status=409, message='Voucher modified by another user.', code='VCH-409')
+   +                result = VoucherOrchestrator.create_voucher_transaction(
+   +                    config, header_form.cleaned_data, line_formset.cleaned_data, action, 
+   +                    idempotency_key=request.POST.get('idempotency_key'), organization=organization
+   +                )
+   +                # Success response with HX-Trigger
+   +                response = self._render_generic_panel(request, voucher=result['voucher'])
+   +                response['HX-Trigger'] = json.dumps({'voucher:save': 'success', 'voucher:message': 'Voucher saved successfully.'})
+   +                return response
+   +            except VoucherProcessError as e:
+   +                return self._render_generic_panel(request, status=422, message=str(e), code=e.code)
+   +        else:
+   +            # Invalid: return 422 with errors
+   +            return self._render_generic_panel(request, status=422, header_form=header_form, line_formset=line_formset, 
+   +                                              charge_formset=charge_formset, payment_formset=payment_formset, 
+   +                                              message='Validation failed.', code='VCH-VALIDATION')
+   +    
+   +    # New HTMX endpoint for summary
+   +    def summary(self, request, *args, **kwargs):
+   +        lines_data = json.loads(request.POST.get('lines', '[]'))
+   +        charges_data = json.loads(request.POST.get('charges', '[]')) if request.POST.get('charges') else None
+   +        summary = VoucherSummaryService.compute_from_lines(lines_data, charges_data)
+   +        return JsonResponse(summary)
+   ```
+
+7. accounting/templates/accounting/generic_dynamic_voucher_entry.html (modified)
+   - Added UI indicators, toasts, modals.
+
+   ```diff
+   {% block extra_css %}
+   <!-- ... existing ... -->
+   +<style>
+   +.required::after { content: '*'; color: red; }
+   +.is-invalid { border-color: red; }
+   +.invalid-feedback { display: block; color: red; }
+   +.toast { position: fixed; top: 10px; right: 10px; z-index: 9999; }
+   +</style>
+   +{% endblock %}
+   +
+   +<!-- In form fields -->
+   +<input type="text" class="form-control {% if field.errors %}is-invalid{% endif %} {% if field.field.required %}required{% endif %}" ...>
+   +<div class="invalid-feedback">{{ field.errors.0 }}</div>
+   +
+   +<!-- Sticky summary -->
+   +<div class="sticky-summary">
+   +    <span>Total Debit: <span id="total-debit">{{ summary.total_debit }}</span></span>
+   +    <span class="{% if summary.balance_diff != 0 %}text-danger{% endif %}">Balance: {{ summary.balance_diff }}</span>
+   +</div>
+   +
+   +<!-- Toasts -->
+   +<div class="toast" id="success-toast" ...>Success!</div>
+   +
+   +<!-- Modals -->
+   +<div class="modal" id="confirm-delete-modal">
+   +    <div class="modal-body">Are you sure you want to delete this line?</div>
+   +    <button class="btn btn-danger" hx-post="/delete-line/" ...>Yes</button>
+   +</div>
+   +
+   +<!-- ... existing HTMX and JS ... -->
+   ```
+
+8. accounting/static/js/generic_voucher_entry.js (modified)
+   - Added listeners, HTMX calls.
+
+   ```diff
+   // ... existing code ...
+   
+   +// Set attributes on load
+   +document.querySelectorAll('input[type="number"]').forEach(input => {
+   +    input.setAttribute('min', '0.01');
+   +    input.setAttribute('step', '0.01');
+   +});
+   +
+   +// Inline validation
+   +document.addEventListener('blur', (e) => {
+   +    if (e.target.classList.contains('required') && !e.target.value) {
+   +        e.target.classList.add('is-invalid');
+   +    }
+   +});
+   +
+   +// Replace updateSummary with HTMX
+   +function updateSummary() {
+   +    const lines = Array.from(document.querySelectorAll('.generic-line-row')).map(row => ({
+   +        debit_amount: row.querySelector('[name*="debit_amount"]').value,
+   +        // ... other fields
+   +    }));
+   +    htmx.ajax('POST', '/accounting/generic-voucher/summary/', { values: { lines: JSON.stringify(lines) } });
+   +}
+   +
+   +// Toasts
+   +function showToast(message, type) {
+   +    const toast = document.getElementById(`${type}-toast`);
+   +    toast.textContent = message;
+   +    toast.classList.add('show');
+   +    setTimeout(() => toast.classList.remove('show'), 3000);
+   +}
+   +
+   +// Confirmations
+   +function confirmAction(action, url) {
+   +    document.getElementById('confirm-delete-modal').style.display = 'block';
+   +    // Bind to yes button
+   +}
+   +
+   +// beforeUnload
+   +window.addEventListener('beforeunload', (e) => {
+   +    if (hasUnsavedChanges()) e.preventDefault();
+   +});
+   ```
+
+9. accounting/services/validation_service.py (modified)
+   - Extended methods.
+
+   ```diff
+   class ValidationService:
+       # ... existing methods ...
+   +    
+   +    @staticmethod
+   +    def validate_rounding(total_lines, total_charges, header_amount, tolerance=Decimal('0.01')):
+   +        computed = total_lines + total_charges
+   +        if abs(computed - header_amount) > tolerance:
+   +            raise VoucherProcessError('Rounding difference exceeds tolerance.', code='VCH-ROUND')
+   +    
+   +    # Standardize codes in existing methods, e.g., add code='INV-005' to quantity checks
+   ```
+
+10. accounting/tests/test_generic_voucher_validations.py (created)
+    - Unit tests for validations.
+
+    ```diff
+    +from django.test import TestCase
+    +from accounting.forms import GenericVoucherHeaderForm, GenericVoucherLineForm, AdditionalChargeForm, VoucherPaymentForm
+    +from accounting.models import Organization
+    +
+    +class VoucherValidationTests(TestCase):
+    +    def setUp(self):
+    +        self.org = Organization.objects.create(name='Test Org')
+    +    
+    +    def test_header_clean_required_vendor(self):
+    +        form = GenericVoucherHeaderForm(data={}, organization=self.org, module='purchasing')
+    +        self.assertFalse(form.is_valid())
+    +        self.assertIn('vendor', form.errors)
+    +    
+    +    def test_line_clean_debit_credit(self):
+    +        form = GenericVoucherLineForm(data={'debit_amount': 100, 'credit_amount': 50})
+    +        self.assertFalse(form.is_valid())
+    +        self.assertIn('debit_amount', form.errors)  # Custom message
+    +    
+    +    # ... more tests for dates, amounts, UDFs, charges, payments ...
+    ```
+
+11. accounting/tests/test_generic_voucher_integration.py (created)
+    - Integration tests.
+
+    ```diff
+    +from django.test import TestCase, Client
+    +from django.urls import reverse
+    +
+    +class VoucherIntegrationTests(TestCase):
+    +    def setUp(self):
+    +        self.client = Client()
+    +        # Setup org, config, user
+    +    
+    +    def test_htmx_validate_invalid_line(self):
+    +        response = self.client.post(reverse('generic_voucher_validate'), data={'lines': '[{"debit_amount": -10}]'}, 
+    +                                    HTTP_HX_REQUEST='true')
+    +        self.assertEqual(response.status_code, 422)
+    +        self.assertIn('Amount must be positive', response.content.decode())
+    +    
+    +    def test_concurrency_409(self):
+    +        # Modify voucher, then post with old modified_at
+    +        response = self.client.post(reverse('generic_voucher_create'), data={'modified_at': 'old_timestamp'})
+    +        self.assertEqual(response.status_code, 409)
+    +    
+    +    # ... more for idempotency, full post flow ...
+    ```
+
+12. accounting/tests/test_generic_voucher_ui.py (created)
+    - E2E UI tests.
+
+    ```diff
+    +from selenium import webdriver
+    +
+    +class VoucherUITests:
+    +    def setUp(self):
+    +        self.driver = webdriver.Chrome()
+    +    
+    +    def test_required_field_indicator(self):
+    +        self.driver.get('/accounting/generic-voucher/')
+    +        required_input = self.driver.find_element_by_css_selector('.required')
+    +        self.assertIn('*', required_input.get_attribute('class'))
+    +    
+    +    def test_inline_error_on_invalid(self):
+    +        # Fill invalid, blur
+    +        input_field = self.driver.find_element_by_name('debit_amount')
+        input_field.send_keys('-10')
+        input_field.send_keys(Keys.TAB)  # Blur
+        self.assertTrue(self.driver.find_element_by_css_selector('.is-invalid'))
+    
+    +    # ... more for toasts, modals, totals ...
+    ```

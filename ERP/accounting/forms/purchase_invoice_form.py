@@ -1,4 +1,5 @@
 from decimal import Decimal
+import datetime
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -47,6 +48,8 @@ class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
         decimal_places=4,
         widget=forms.NumberInput(attrs={'class': 'form-control text-end', 'step': '0.01'})
     )
+    invoice_date = forms.DateField(required=False)
+    due_date = forms.DateField(required=False)
     
     class Meta:
         model = PurchaseInvoice
@@ -111,11 +114,33 @@ class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
         self.fields['invoice_number'].widget.attrs['readonly'] = True
         self.fields['grir_account'].required = False
         self.fields['grir_account'].help_text = 'GR/IR clearing account for inventory receipts'
+        self.fields['invoice_date'].required = False
+        self.fields['due_date'].required = False
+        try:
+            invoice_dual_widget = dual_date_widget(organization=self.organization, default_view='DUAL')
+            due_dual_widget = dual_date_widget(organization=self.organization, default_view='DUAL')
+            self.fields['invoice_date'].widget = invoice_dual_widget
+            self.fields['due_date'].widget = due_dual_widget
+        except Exception:
+            pass
         if self.organization:
             self.fields['vendor'].queryset = self.fields['vendor'].queryset.filter(
                 organization=self.organization
             )
-        Warehouse = None
+            self.fields['purchase_account'].queryset = ChartOfAccount.objects.filter(
+                organization=self.organization, is_active=True
+            )
+            self.fields['grir_account'].queryset = ChartOfAccount.objects.filter(
+                organization=self.organization, is_active=True
+            )
+
+    def _post_clean(self):
+        # Set default dates to avoid model validation errors when form has date errors
+        if (not self.is_bound) and not self.instance.invoice_date:
+            self.instance.invoice_date = timezone.now().date()
+        if (not self.is_bound) and not self.instance.due_date:
+            self.instance.due_date = timezone.now().date()
+        super()._post_clean()
         try:
             from inventory.models import Warehouse
         except Exception:
@@ -128,10 +153,6 @@ class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
             else:
                 warehouse_qs = Warehouse.objects.none()
             self.fields['warehouse'].queryset = warehouse_qs
-            # Filter GL accounts by organization
-            self.fields['grir_account'].queryset = ChartOfAccount.objects.filter(
-                organization=self.organization, is_active=True
-            )
             # Purchase-order and purchase account support
             try:
                 from purchasing.models import PurchaseOrder
@@ -139,10 +160,6 @@ class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
             except Exception:
                 # If purchasing app not present, leave as empty queryset
                 self.fields['purchase_order'].queryset = self.fields.get('purchase_order').queryset
-
-            self.fields['purchase_account'].queryset = ChartOfAccount.objects.filter(
-                organization=self.organization, is_active=True
-            )
             # payment_mode is on model with choices; no queryset needed
             # Set default values if missing
             if 'payment_mode' in self.fields and not self.fields['payment_mode'].initial:
@@ -155,16 +172,6 @@ class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
             else:
                 self.fields['discount_type'].initial = 'amount'
                 self.fields['discount_value'].initial = self.instance.discount_amount
-        # Apply dual calendar widget for invoice and due dates so BS/AD toggle submits AD ISO value
-        try:
-            if 'invoice_date' in self.fields:
-                self.fields['invoice_date'].widget = dual_date_widget(organization=self.organization, default_view='DUAL')
-            if 'due_date' in self.fields:
-                self.fields['due_date'].widget = dual_date_widget(organization=self.organization, default_view='DUAL')
-        except Exception:
-            # Fallback: leave existing widget if widget factory fails
-            pass
-
     def _tolerant_date_field(self, cleaned, field_name):
         """Try to coerce multiple incoming date formats into a date on `cleaned`.
 
@@ -174,8 +181,9 @@ class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
         - Nepali numerals and BS strings via `maybe_coerce_bs_date`
         - Common AD formats: ISO, MM/DD/YYYY, DD-MM-YYYY, DD/MM/YYYY
         """
-        if field_name in cleaned and cleaned[field_name]:
-            return cleaned[field_name]
+        current_value = cleaned.get(field_name)
+        if isinstance(current_value, (datetime.date, datetime.datetime)):
+            return current_value
 
         # 1) Prefer widget-submitted AD value (already bound) or BS companion
         raw = self.data.get(field_name)
@@ -198,7 +206,6 @@ class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
             return bs_coerced
 
         # 3) Try common AD formats
-        from datetime import datetime
         candidates = [
             '%Y-%m-%d',
             '%m/%d/%Y',
@@ -207,7 +214,7 @@ class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
         ]
         for fmt in candidates:
             try:
-                dt = datetime.strptime(s, fmt).date()
+                dt = datetime.datetime.strptime(s, fmt).date()
                 cleaned[field_name] = dt
                 if getattr(self, '_errors', None) and field_name in self._errors:
                     del self._errors[field_name]
@@ -225,14 +232,34 @@ class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
             return parsed
 
         # 5) Give a clear field error
-        label = (self.fields.get(field_name).label if self.fields.get(field_name) else field_name).replace('_', ' ')
+        field = self.fields.get(field_name)
+        label = field.label if field and field.label else field_name.replace('_', ' ')
         self.add_error(field_name, f"Invalid {label} format; please use YYYY-MM-DD, DD-MM-YYYY, MM/DD/YYYY, or toggle AD/BS.")
         return None
 
     def clean(self):
         cleaned = super().clean()
+
+        # Convert BS dates to AD if AD fields are missing
+        if not cleaned.get('invoice_date') and self.data.get('invoice_date_bs'):
+            ad_date = maybe_coerce_bs_date(str(self.data.get('invoice_date_bs')))
+            if ad_date:
+                cleaned['invoice_date'] = ad_date
+            else:
+                self.add_error('invoice_date', 'Invalid Bikram Sambat date.')
+
+        if not cleaned.get('due_date') and self.data.get('due_date_bs'):
+            ad_date = maybe_coerce_bs_date(str(self.data.get('due_date_bs')))
+            if ad_date:
+                cleaned['due_date'] = ad_date
+            else:
+                self.add_error('due_date', 'Invalid Bikram Sambat date.')
+
         self._tolerant_date_field(cleaned, 'invoice_date')
         self._tolerant_date_field(cleaned, 'due_date')
+
+        invoice_date = cleaned.get('invoice_date')
+        due_date = cleaned.get('due_date')
         discount_value = cleaned.get('discount_value')
         discount_type = cleaned.get('discount_type') or 'amount'
         if discount_value is not None:
@@ -248,10 +275,15 @@ class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
             cleaned['discount_percentage'] = Decimal('0')
         vendor = cleaned.get('vendor') or getattr(self.instance, 'vendor', None)
         payment_term = cleaned.get('payment_term') or getattr(vendor, 'payment_term', None)
-        invoice_date = cleaned.get('invoice_date')
-        due_date = cleaned.get('due_date')
         if invoice_date and not due_date and payment_term:
             cleaned['due_date'] = payment_term.calculate_due_date(invoice_date)
+            due_date = cleaned['due_date']
+        elif invoice_date and not due_date:
+            cleaned['due_date'] = invoice_date
+            due_date = cleaned['due_date']
+
+        if not invoice_date:
+            self.add_error('invoice_date', 'Invoice date is required.')
 
         default_currency = getattr(self.organization, 'base_currency_code', None)
         currency = cleaned.get('currency')
@@ -261,16 +293,17 @@ class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
         if not vendor:
             self.add_error('vendor', 'Please select a supplier.')
 
-        if not invoice_date:
-            self.add_error('invoice_date', 'Invoice date is required.')
-
         if not currency:
             self.add_error('currency', 'Currency is required.')
 
         if purchase_account is None:
             self.add_error('purchase_account', 'Please choose a purchase account.')
 
-        if invoice_date and due_date and due_date < invoice_date:
+        if (
+            invoice_date
+            and due_date
+            and due_date < invoice_date
+        ):
             self.add_error('due_date', 'Due date must be on or after the invoice date.')
 
         if currency and default_currency and currency != default_currency:
@@ -300,6 +333,7 @@ class PurchaseInvoiceLineForm(BootstrapFormMixin, forms.ModelForm):
             'tax_amount',
             'warehouse',
             'vat_rate',
+            'input_vat_account',
             'cost_center',
             'department',
             'project',
@@ -319,6 +353,7 @@ class PurchaseInvoiceLineForm(BootstrapFormMixin, forms.ModelForm):
             'tax_amount': forms.NumberInput(attrs={'class': 'form-control form-control-sm text-end', 'step': '0.01'}),
             'warehouse': forms.Select(attrs={'class': 'form-select form-select-sm'}),
             'vat_rate': forms.NumberInput(attrs={'class': 'form-control form-control-sm text-end', 'step': '0.01'}),
+            'input_vat_account': forms.Select(attrs={'class': 'form-select form-select-sm vat-account-select'}),
             'cost_center': forms.Select(attrs={'class': 'form-select form-select-sm'}),
             'department': forms.Select(attrs={'class': 'form-select form-select-sm'}),
             'project': forms.Select(attrs={'class': 'form-select form-select-sm'}),
@@ -348,6 +383,9 @@ class PurchaseInvoiceLineForm(BootstrapFormMixin, forms.ModelForm):
             self.fields['tax_code'].queryset = TaxCode.objects.filter(
                 organization=self.organization
             )
+            self.fields['input_vat_account'].queryset = ChartOfAccount.objects.filter(
+                organization=self.organization, is_active=True
+            )
             self.fields['cost_center'].queryset = CostCenter.objects.filter(
                 organization=self.organization
             )
@@ -362,7 +400,7 @@ class PurchaseInvoiceLineForm(BootstrapFormMixin, forms.ModelForm):
             )
         
         # Make optional fields not required
-        for field_name in ['product', 'warehouse', 'tax_code', 'cost_center', 'department', 'project', 'dimension_value', 'product_name', 'unit_display']:
+        for field_name in ['product', 'warehouse', 'tax_code', 'cost_center', 'department', 'project', 'dimension_value', 'product_name', 'unit_display', 'input_vat_account']:
             if field_name in self.fields:
                 self.fields[field_name].required = False
         
@@ -401,6 +439,25 @@ class PurchaseInvoiceLineForm(BootstrapFormMixin, forms.ModelForm):
         vat_rate = cleaned.get('vat_rate')
         if vat_rate is not None and (vat_rate < 0 or vat_rate > 100):
             self.add_error('vat_rate', 'VAT rate must be between 0 and 100.')
+
+        net_amount = (qty * rate) - (discount_amount or 0)
+        vat_rate_decimal = Decimal(str(vat_rate or 0))
+        line_tax = cleaned.get('tax_amount') or Decimal('0')
+        if vat_rate_decimal > 0:
+            net = net_amount if net_amount > 0 else Decimal('0')
+            line_tax = (net * (vat_rate_decimal / Decimal('100'))).quantize(Decimal('0.01'))
+            cleaned['tax_amount'] = line_tax
+        elif line_tax:
+            cleaned['tax_amount'] = Decimal(str(line_tax)).quantize(Decimal('0.01'))
+
+        if (vat_rate_decimal > 0) or (line_tax and line_tax > 0):
+            if not cleaned.get('input_vat_account'):
+                tax_code = cleaned.get('tax_code')
+                auto_account = getattr(tax_code, 'purchase_account', None) if tax_code else None
+                if auto_account:
+                    cleaned['input_vat_account'] = auto_account
+                else:
+                    self.add_error('input_vat_account', 'Input VAT account is required when VAT is applied.')
 
         if product and getattr(product, 'is_inventory_item', False) and not cleaned.get('warehouse'):
             self.add_error('warehouse', 'Please select a warehouse for an inventory item.')

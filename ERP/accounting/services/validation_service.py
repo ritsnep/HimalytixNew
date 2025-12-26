@@ -1,5 +1,6 @@
 from decimal import Decimal, ROUND_HALF_UP
 from datetime import date, datetime
+import re
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.utils import timezone
@@ -103,6 +104,25 @@ class ValidationService:
                     errors['exchange_rate'] = 'Exchange rate must be positive'
             except (ValueError, TypeError):
                 errors['exchange_rate'] = 'Invalid exchange rate format'
+
+        # Reference uniqueness (optional, within type)
+        reference = header_data.get('reference')
+        if reference:
+            from accounting.models import Voucher  # Assuming Voucher model exists
+            if Voucher.objects.filter(organization=organization, voucher_type=getattr(voucher_config, 'code', ''), reference=reference).exists():
+                errors['reference'] = 'Reference must be unique within voucher type.'
+        
+        # UDF validations
+        for field_name, field_value in header_data.items():
+            if field_name.startswith('udf_'):
+                udf_config = voucher_config.get_udf_config(field_name) if hasattr(voucher_config, 'get_udf_config') else None
+                if udf_config:
+                    pattern = udf_config.get('pattern')
+                    if pattern and not re.match(pattern, str(field_value or '')):
+                        errors[field_name] = f'Invalid format for {field_name}.'
+                    min_length = udf_config.get('min_length')
+                    if min_length and len(str(field_value or '')) < min_length:
+                        errors[field_name] = f'Minimum length {min_length} for {field_name}.'
 
         return errors
 
@@ -250,6 +270,13 @@ class ValidationService:
             if schema.get('settings', {}).get('enforce_unique_reference', False):
                 # Check uniqueness within this voucher (would need voucher context)
                 pass
+
+        # Dimensions validation
+        cost_centre = line_data.get('cost_centre')
+        department = line_data.get('department')
+        project = line_data.get('project')
+        if any([cost_centre, department, project]) and not all([cost_centre, department, project]):
+            errors['dimensions'] = f'Line {line_index}: All dimensions (cost centre, department, project) required if any is provided.'
 
         return errors
 
@@ -449,11 +476,14 @@ class ValidationService:
 
         # Validate stock if warehouse specified
         if 'product_id' in item_data and 'quantity' in item_data and 'warehouse_id' in item_data:
-            stock_check = ProductService.validate_product_for_transaction(
-                item_data['product_id'], item_data['quantity'], item_data['warehouse_id']
-            )
-            if not stock_check['valid']:
-                errors['stock'] = stock_check['message']
+            try:
+                stock_check = ProductService.validate_product_for_transaction(
+                    item_data['product_id'], item_data['quantity'], item_data['warehouse_id']
+                )
+                if not stock_check['valid']:
+                    errors['stock'] = stock_check['message']
+            except Exception as exc:  # Defensive: never let stock validation crash entry
+                errors['stock'] = f"Stock validation failed: {exc}"
 
         return errors
 
@@ -508,3 +538,11 @@ class ValidationService:
                         errors.append(f'Product {item["product_id"]} requires quality check')
 
         return errors
+
+    @staticmethod
+    def validate_rounding(total_lines, total_charges, header_amount, tolerance=Decimal('0.01')):
+        computed = total_lines + total_charges
+        if abs(computed - header_amount) > tolerance:
+            raise VoucherProcessError('Rounding difference exceeds tolerance.', code='VCH-ROUND')
+    
+    # Standardize codes in existing methods, e.g., add code='INV-005' to quantity checks

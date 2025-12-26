@@ -11,7 +11,7 @@
     inputs.forEach(input => {
       if (input._initialized) return;
       input._initialized = true;
-      const endpoint = input.dataset.endpoint || '/accounting/journal-entry/lookup/accounts/';
+      const endpoint = input.dataset.endpoint || input.dataset.searchUrl || '/accounting/journal-entry/lookup/accounts/';
       const listId = input.dataset.listId || input.getAttribute('list') || (input.id ? `${input.id}__list` : `typeahead-${Math.random().toString(36).slice(2)}`);
       let datalist = document.getElementById(listId);
       if (!datalist) {
@@ -33,7 +33,14 @@
         }
         if (q === lastQuery) return;
         lastQuery = q;
-        fetch(`${endpoint}?q=${encodeURIComponent(q)}&limit=10`, {credentials: 'same-origin', headers: {'Accept': 'application/json', 'HX-Request': 'true'}})
+        fetch(`${endpoint}?q=${encodeURIComponent(q)}&limit=10`, {
+          credentials: 'same-origin',
+          headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'HX-Request': 'true'
+          }
+        })
           .then(r => {
             const ct = (r.headers.get('content-type') || '').toLowerCase();
             if (!r.ok || ct.includes('text/html')) {
