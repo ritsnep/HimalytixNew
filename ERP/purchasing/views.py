@@ -563,7 +563,7 @@ def reports(request):
         "landed_applied_total": lc_qs.filter(is_applied=True).aggregate(total=Sum("cost_lines__amount"))["total"] or 0,
         "recent_pos": po_qs.select_related("vendor").order_by("-created_at")[:10],
         "recent_grs": gr_qs.select_related("purchase_order").order_by("-receipt_date")[:10],
-        "recent_invoices": inv_qs.select_related("supplier").order_by("-invoice_date")[:10],
+        "recent_invoices": inv_qs.select_related("vendor").order_by("-invoice_date")[:10],
     }
 
     return render(request, "purchasing/reports.html", context)
@@ -575,13 +575,13 @@ def landed_cost_list_page(request):
     organization = _organization(request)
     docs = (
         LandedCostDocument.objects.filter(organization=organization)
-        .select_related("purchase_invoice__supplier")
+        .select_related("purchase_invoice__vendor")
         .prefetch_related("cost_lines")
         .annotate(
             cost_total=Sum("cost_lines__amount"),
             cost_count=Count("cost_lines"),
         )
-        .order_by("-document_date", "-id")
+        .order_by("-document_date", "-landed_cost_id")
     )
     context = {
         "page_title": "Landed Cost Documents",

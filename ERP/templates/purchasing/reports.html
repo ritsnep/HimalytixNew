@@ -147,7 +147,7 @@
                     {% for inv in recent_invoices %}
                     <tr>
                       <td>{{ inv.number|default:inv.pk }}</td>
-                      <td>{{ inv.supplier.display_name }}</td>
+                      <td>{{ inv.vendor.display_name }}</td>
                       <td><span class="badge bg-light text-dark text-uppercase">{{ inv.status }}</span></td>
                     </tr>
                     {% empty %}
@@ -180,7 +180,7 @@
                 {% for lc in landed_backlog %}
                 <tr>
                   <td>PI-{{ lc.purchase_invoice.number|default:lc.purchase_invoice.pk }}</td>
-                  <td>{{ lc.purchase_invoice.supplier.display_name }}</td>
+                  <td>{{ lc.purchase_invoice.vendor.display_name }}</td>
                   <td class="text-end">{{ lc.cost_lines.count }}</td>
                 </tr>
                 {% empty %}
