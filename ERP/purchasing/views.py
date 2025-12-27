@@ -8,6 +8,7 @@ from django.core.exceptions import PermissionDenied
 from django.utils import timezone
 from django.db.models import Q, Sum, Count
 from django.contrib import messages
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -221,6 +222,14 @@ def invoice_form(request, pk: Optional[int] = None):
         request.user, organization, "purchasing", "purchaseinvoice", required_action
     ):
         raise PermissionDenied("You do not have permission to edit or create purchase invoices.")
+    if pk:
+        # Redirect edits to the enhanced accounting form so list->edit flows land on the new UI
+        target_url = reverse("accounting:purchase_invoice_edit_enhanced", args=[pk])
+        if getattr(request, "htmx", False):
+            response = HttpResponse(status=204)
+            response["HX-Redirect"] = target_url
+            return response
+        return redirect(target_url)
     form = PurchaseInvoiceForm(
         request.POST or None,
         instance=invoice,

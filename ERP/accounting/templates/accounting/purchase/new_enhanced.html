@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load widget_tweaks %}
 
-{% block title %}Create Purchase Invoice{% endblock %}
+{% block title %}{{ page_title|default:"Create Purchase Invoice" }}{% endblock %}
 
 {% block head %}
 <style>
@@ -24,7 +24,7 @@
 
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-      <h2 class="mb-0"><i class="bi bi-file-earmark-arrow-up"></i> Create Purchase Invoice</h2>
+      <h2 class="mb-0"><i class="bi bi-file-earmark-arrow-up"></i> {{ page_title|default:"Create Purchase Invoice" }}</h2>
       <div>
         <a href="javascript:history.back();" class="btn btn-outline-secondary btn-sm">
           <i class="bi bi-arrow-left"></i> Back to Previous
@@ -242,6 +242,11 @@
         if (newRow) {
           setAccountDefaults(newRow);
           applyColumnVisibility(state.prefs);
+          // Auto-focus product select for faster keyboard entry
+          const productSelect = newRow.querySelector('.product-select');
+          if (productSelect) {
+            productSelect.focus({ preventScroll: false });
+          }
         }
         updateLineNumbers();
         recalcTotals();
@@ -423,12 +428,99 @@
     }
   }
 
+  function getFocusableElements(scope) {
+    const root = scope || state.form || document;
+    return [...root.querySelectorAll('input, select, textarea, button')].filter((el) => {
+      return !el.disabled && el.offsetParent !== null && el.getAttribute('tabindex') !== '-1';
+    });
+  }
+
+  function moveFocus(delta) {
+    const focusables = getFocusableElements(state.form);
+    const current = document.activeElement;
+    const idx = focusables.indexOf(current);
+    const nextIdx = idx === -1 ? 0 : Math.min(Math.max(idx + delta, 0), focusables.length - 1);
+    const target = focusables[nextIdx];
+    if (target) {
+      target.focus({ preventScroll: false });
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  function deleteCurrentRow() {
+    const row = document.activeElement?.closest?.('.item-row');
+    if (!row) return;
+    const confirmDelete = window.confirm('Delete this line item?');
+    if (!confirmDelete) return;
+    const delInput = row.querySelector('input[name$="-DELETE"]');
+    if (delInput) {
+      delInput.checked = true;
+      delInput.value = 'on';
+    }
+    row.classList.add('d-none');
+    updateLineNumbers();
+    recalcTotals();
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (!state.form || !state.form.contains(e.target)) return;
+    const isEnter = e.key === 'Enter';
+    const isCtrl = e.ctrlKey || e.metaKey;
+    const isAlt = e.altKey;
+    if (isEnter && !e.shiftKey && !isCtrl && !isAlt) {
+      e.preventDefault();
+      moveFocus(1);
+      return;
+    }
+    if (isEnter && e.shiftKey && !isCtrl && !isAlt) {
+      e.preventDefault();
+      moveFocus(-1);
+      return;
+    }
+    if (isEnter && isCtrl) {
+      e.preventDefault();
+      addLineRow();
+      return;
+    }
+    if (e.key === 'Backspace' && isCtrl) {
+      e.preventDefault();
+      deleteCurrentRow();
+      return;
+    }
+    if (isAlt) {
+      if (e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        el('btn-add-line')?.focus();
+        return;
+      }
+      if (e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        el('btn-add-payment')?.focus();
+        return;
+      }
+      if (e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        state.form.querySelector('button[type="submit"]')?.click();
+        return;
+      }
+      if (e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        const gridFirst = document.querySelector('#items-tbody .item-row input, #items-tbody .item-row select');
+        if (gridFirst) {
+          gridFirst.focus({ preventScroll: false });
+        }
+        return;
+      }
+    }
+  });
+
   document.body.addEventListener('htmx:afterSwap', (evt) => {
     if (evt.target && swapZoneIds.has(evt.target.id)) {
       refreshFormState();
       if (state.form && window.pristineInstances?.has(state.form)) {
         window.pristineInstances.get(state.form).validate();
       }
+      focusFirstInvalidField();
     }
   });
 

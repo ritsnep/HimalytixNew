@@ -177,24 +177,8 @@ class VendorUpdateView(PermissionRequiredMixin, VendorFormMixin, UpdateView):
         return context
 
 
-class APPaymentListView(PermissionRequiredMixin, UserOrganizationMixin, ListView):
-    model = APPayment
-    template_name = "accounting/ap_payment_list.html"
-    context_object_name = "payments"
-    permission_required = ("accounting", "appayment", "view")
-
-    def get_queryset(self):
-        organization = self.get_organization()
-        if not organization:
-            return APPayment.objects.none()
-        return APPayment.objects.filter(organization=organization).select_related("vendor")
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["create_url"] = reverse("accounting:ap_payment_create")
-        context["create_button_text"] = "New AP Payment"
-        context.setdefault("page_title", "AP Payments")
-        return context
+# APPaymentListView has been replaced with EnhancedAPPaymentListView
+# See commerce_enhanced.py for the enhanced implementation with filtering, bulk actions, and more features.
 
 
 class APPaymentFormView(PermissionRequiredMixin, UserOrganizationMixin, View):

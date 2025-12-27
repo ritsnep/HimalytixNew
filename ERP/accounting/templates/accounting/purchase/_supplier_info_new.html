@@ -43,7 +43,7 @@
       </div>
       <div class="col-md-2">
         <label class="form-label small text-muted">Due Days</label>
-        <input type="number" class="form-control form-control-sm" id="due_days" name="due_days" min="0" value="0">
+        <input type="number" class="form-control form-control-sm" id="due_days" name="due_days" min="0" value="{{ due_days|default:0 }}">
       </div>
       <div class="col-md-2">
         <label class="form-label small text-muted">Due Date</label>
@@ -80,6 +80,7 @@
         <div class="col-md-4"><small class="text-muted">Available Credit:</small><div id="vendor-available">-</div></div>
       </div>
     </div>
+
     <!-- Row 3: Supplier Invoice No, Supplier Ref, Purchase Order -->
     <div class="row g-2 mb-2">
       <div class="col-md-3">
@@ -116,67 +117,68 @@
       </div>
     </div>
 
-    <!-- Row 4: Purchase Account, Agent Area, Invoice Date (BS) -->
-    <div class="row g-2 mb-2">
-      <div class="col-md-3">
-        <label class="form-label small text-muted">Purchase Account</label>
-        {% if form.purchase_account %}
-          {{ form.purchase_account|add_class:"form-select form-select-sm" }}
-        {% endif %}
-      </div>
-      <div class="col-md-3">
-        <label class="form-label small text-muted">Agent</label>
-        <select class="form-select form-select-sm" name="agent_id" id="agent_id">
-          <option value="">- Select Agent -</option>
-          {% for agent in agents %}
-            <option value="{{ agent.id }}">{{ agent.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label small text-muted">Agent Area</label>
-        <select class="form-select form-select-sm" name="agent_area_id" id="agent_area_id">
-          <option value="">- Select Area -</option>
-          {% for area in areas %}
-            <option value="{{ area.id }}">{{ area.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
+    <!-- More Options (collapsible) -->
+    <div class="d-flex justify-content-end mb-2">
+      <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#pi-more-options" aria-expanded="false" aria-controls="pi-more-options">
+        <i class="bi bi-sliders"></i> More options
+      </button>
     </div>
 
-    <!-- Row 5: Due Days -->
-    <div class="row g-2 mb-2">
-      <div class="col-md-3">
-        <label class="form-label small text-muted">Due Days</label>
-        <input type="number" class="form-control form-control-sm" id="due_days" name="due_days" min="0" value="0">
-      </div>
-    </div>
+    <div class="collapse" id="pi-more-options">
+      <div class="card card-body border-0 p-3 shadow-sm">
+        <div class="row g-3 mb-2">
+          <div class="col-md-3">
+            <label class="form-label small text-muted">Purchase Account</label>
+            {% if form.purchase_account %}
+              {{ form.purchase_account|add_class:"form-select form-select-sm" }}
+            {% endif %}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-muted">Agent</label>
+            <select class="form-select form-select-sm" name="agent_id" id="agent_id">
+              <option value="">- Select Agent -</option>
+              {% for agent in agents %}
+                <option value="{{ agent.id }}" {% if selected_agent_id|stringformat:"s" == agent.id|stringformat:"s" %}selected{% endif %}>{{ agent.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-muted">Agent Area</label>
+            <select class="form-select form-select-sm" name="agent_area_id" id="agent_area_id">
+              <option value="">- Select Area -</option>
+              {% for area in areas %}
+                <option value="{{ area.id }}" {% if selected_area_id|stringformat:"s" == area.id|stringformat:"s" %}selected{% endif %}>{{ area.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
 
-    <!-- Row 6: Currency, Exchange Rate, Warehouse, GR/IR Account -->
-    <div class="row g-2">
-      <div class="col-md-3">
-        <label class="form-label small text-muted">Currency</label>
-        {% if form.currency %}
-          {{ form.currency|add_class:"form-select form-select-sm" }}
-        {% endif %}
-      </div>
-      <div class="col-md-3">
-        <label class="form-label small text-muted">Exchange Rate</label>
-        {% if form.exchange_rate %}
-          {{ form.exchange_rate|add_class:"form-control form-control-sm text-end" }}
-        {% endif %}
-      </div>
-      <div class="col-md-3">
-        <label class="form-label small text-muted">Warehouse</label>
-        {% if form.warehouse and form.warehouse.field.queryset %}
-          {{ form.warehouse|add_class:"form-select form-select-sm" }}
-        {% endif %}
-      </div>
-      <div class="col-md-3">
-        <label class="form-label small text-muted">GR/IR Account</label>
-        {% if form.grir_account and form.grir_account.field.queryset %}
-          {{ form.grir_account|add_class:"form-select form-select-sm" }}
-        {% endif %}
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label small text-muted">Currency</label>
+            {% if form.currency %}
+              {{ form.currency|add_class:"form-select form-select-sm" }}
+            {% endif %}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-muted">Exchange Rate</label>
+            {% if form.exchange_rate %}
+              {{ form.exchange_rate|add_class:"form-control form-control-sm text-end" }}
+            {% endif %}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-muted">Warehouse</label>
+            {% if form.warehouse and form.warehouse.field.queryset %}
+              {{ form.warehouse|add_class:"form-select form-select-sm" }}
+            {% endif %}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-muted">GR/IR Account</label>
+            {% if form.grir_account and form.grir_account.field.queryset %}
+              {{ form.grir_account|add_class:"form-select form-select-sm" }}
+            {% endif %}
+          </div>
+        </div>
       </div>
     </div>
 
@@ -189,6 +191,12 @@
   if (window.purchaseVendorSummaryInit) return;
   window.purchaseVendorSummaryInit = true;
   const vendorSummaryUrlTemplate = "{{ vendor_summary_url_template|default:''|escapejs }}";
+  const dueDaysField = document.getElementById('due_days');
+  const invoiceDateField = document.getElementById('id_invoice_date');
+  const dueDateField = document.getElementById('id_due_date');
+  const dueDateBsField = document.getElementById('id_due_date_bs');
+  let bsSyncAttempts = 0;
+  const maxBsSyncAttempts = 4;
 
   document.addEventListener('change', function(e) {
     if (e.target.classList.contains('vendor-select')) {
@@ -202,27 +210,17 @@
           .then(data => {
             if (data.success) {
               if (supplierInfoDiv) {
-                supplierInfoDiv.textContent = data.supplier_info || '';
-                supplierInfoDiv.style.display = data.supplier_info ? 'block' : 'none';
+                const infoText = data.supplier_info || '';
+                supplierInfoDiv.innerHTML = infoText || '- Supplier details unavailable -';
+                supplierInfoDiv.style.display = infoText ? 'block' : 'block';
               }
               const agentSelect = document.getElementById('agent_id');
               if (agentSelect && data.agent_id) agentSelect.value = String(data.agent_id);
               const areaSelect = document.getElementById('agent_area_id');
               if (areaSelect && data.area_id) areaSelect.value = String(data.area_id);
-              const dueDaysInput = document.getElementById('due_days');
-              if (dueDaysInput && data.due_days) dueDaysInput.value = data.due_days;
-              const invoiceDateInput = document.getElementById('id_invoice_date');
-              const dueDateInput = document.getElementById('id_due_date');
-              if (invoiceDateInput && dueDateInput && data.due_days) {
-                const baseDate = new Date(invoiceDateInput.value);
-                if (!isNaN(baseDate.getTime())) {
-                  baseDate.setDate(baseDate.getDate() + parseInt(data.due_days, 10));
-                  if (dueDateInput.type === 'date') {
-                    dueDateInput.valueAsDate = baseDate;
-                  } else {
-                    dueDateInput.value = baseDate.toISOString().slice(0, 10);
-                  }
-                }
+              if (dueDaysField && data.due_days !== undefined && data.due_days !== null) {
+                dueDaysField.value = data.due_days;
+                recalcDueDate();
               }
             }
           })
@@ -267,53 +265,107 @@
         }
       } else {
         summaryDiv.style.display = 'none';
-        if (supplierInfoDiv) supplierInfoDiv.style.display = 'none';
+        if (supplierInfoDiv) {
+          supplierInfoDiv.innerHTML = '- Select a vendor to view credit summary -';
+          supplierInfoDiv.style.display = 'block';
+        }
       }
     }
   });
 
-  function recalcDueDate() {
-    const daysInput = document.getElementById('due_days');
-    const invInput = document.getElementById('id_invoice_date');
-    const dueInput = document.getElementById('id_due_date');
-    if (!daysInput || !invInput || !dueInput) return;
-    const days = parseInt(daysInput.value, 10);
-    const base = new Date(invInput.value);
-    if (Number.isNaN(days) || Number.isNaN(base.getTime())) return;
-    const dt = new Date(base);
-    dt.setDate(dt.getDate() + days);
-    const iso = dt.toISOString().slice(0, 10);
-    if (dueInput.type === 'date') {
-      dueInput.valueAsDate = dt;
-    } else {
-      dueInput.value = iso;
+  const toIsoDateString = (value) => {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    if (value instanceof Date) {
+      return value.toISOString().slice(0, 10);
+    }
+    if (typeof value === 'object' && 'year' in value && 'month' in value && 'day' in value) {
+      const pad = (num) => String(num).padStart(2, '0');
+      return `${value.year}-${pad(value.month)}-${pad(value.day)}`;
+    }
+    return '';
+  };
+
+  function setDueDateFromDate(date) {
+    if (!date || Number.isNaN(date.getTime())) return;
+    const isoValue = toIsoDateString(date);
+    if (!isoValue) return;
+    if (dueDateField) {
+      if (dueDateField.type === 'date' && typeof dueDateField.valueAsDate !== 'undefined') {
+        dueDateField.valueAsDate = date;
+      } else {
+        dueDateField.value = isoValue;
+      }
+      const changeEvent = new Event('change', { bubbles: true });
+      const inputEvent = new Event('input', { bubbles: true });
+      dueDateField.dispatchEvent(changeEvent);
+      dueDateField.dispatchEvent(inputEvent);
+    }
+    syncBsField(date);
+    }
+
+  function syncBsField(date) {
+    if (!dueDateBsField) return;
+    const isoValue = toIsoDateString(date);
+    if (!isoValue) return;
+    if (!window.NepaliFunctions || typeof window.NepaliFunctions.AD2BS !== 'function') {
+      if (bsSyncAttempts < maxBsSyncAttempts) {
+        bsSyncAttempts += 1;
+        setTimeout(() => syncBsField(date), 250);
+      }
+      return;
+    }
+    try {
+      const converted = window.NepaliFunctions.AD2BS(isoValue);
+      const bsString = toIsoDateString(converted);
+      if (bsString) {
+        dueDateBsField.value = bsString;
+        bsSyncAttempts = 0;
+      }
+    } catch (err) {
+      console.warn('Failed to convert AD to BS date', err);
     }
   }
 
-  const dueDaysField = document.getElementById('due_days');
-  const invoiceDateField = document.getElementById('id_invoice_date');
+  function recalcDueDate() {
+    if (!dueDaysField || !invoiceDateField || !dueDateField) return;
+    const days = parseInt(dueDaysField.value, 10);
+    const base = new Date(invoiceDateField.value);
+    if (Number.isNaN(days) || Number.isNaN(base.getTime())) return;
+    const dt = new Date(base);
+    dt.setDate(dt.getDate() + days);
+    setDueDateFromDate(dt);
+  }
+
+  function updateDueDaysFromDueDate() {
+    if (!dueDaysField || !invoiceDateField || !dueDateField) return;
+    const invDate = new Date(invoiceDateField.value);
+    const dueDate = new Date(dueDateField.value);
+    if (Number.isNaN(invDate.getTime()) || Number.isNaN(dueDate.getTime())) return;
+    const diffMs = dueDate - invDate;
+    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    dueDaysField.value = diffDays >= 0 ? diffDays : 0;
+  }
+
   if (dueDaysField) {
     dueDaysField.addEventListener('input', recalcDueDate);
     dueDaysField.addEventListener('change', recalcDueDate);
+    dueDaysField.addEventListener('keydown', function(evt) {
+      if (evt.key === 'Enter' || evt.key === 'NumpadEnter') {
+        evt.preventDefault();
+        recalcDueDate();
+      }
+    });
   }
   if (invoiceDateField) {
     invoiceDateField.addEventListener('change', recalcDueDate);
     invoiceDateField.addEventListener('blur', recalcDueDate);
+    invoiceDateField.addEventListener('input', recalcDueDate);
   }
 
-  const dueInput = document.getElementById('id_due_date');
-  if (dueInput) {
-    dueInput.addEventListener('change', function() {
-      const invInput = document.getElementById('id_invoice_date');
-      const daysInput = document.getElementById('due_days');
-      if (!invInput || !daysInput) return;
-      const invDate = new Date(invInput.value);
-      const dueDate = new Date(dueInput.value);
-      if (Number.isNaN(invDate.getTime()) || Number.isNaN(dueDate.getTime())) return;
-      const diffMs = dueDate - invDate;
-      const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-      daysInput.value = diffDays >= 0 ? diffDays : 0;
-    });
+  if (dueDateField) {
+    dueDateField.addEventListener('change', updateDueDaysFromDueDate);
+    dueDateField.addEventListener('input', updateDueDaysFromDueDate);
   }
 })();
 </script>

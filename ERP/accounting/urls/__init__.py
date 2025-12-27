@@ -98,7 +98,7 @@ from ..views import views_htmx
 from ..views import debug_views
 from ..views.views_htmx import AccountTypeDependentFieldsHXView, VoucherAccountLookupJsonView
 from ..views import wizard
-from ..views import purchase_invoice_views, payment_scheduler_views, vendor_statement_views, customer_statement_views, sales_invoice_views, ar_receipt_views, commerce_views, sales_order_views, expense_views
+from ..views import purchase_invoice_views, payment_scheduler_views, vendor_statement_views, customer_statement_views, sales_invoice_views, ar_receipt_views, commerce_views, commerce_enhanced, sales_order_views, expense_views
 from ..views import sales_invoice_views, ar_receipt_views, commerce_views, sales_order_views
 from ..views import delivery_note_views
 from ..views.manual_journal_view import (
@@ -435,6 +435,7 @@ urlpatterns = [
 
     # New HTMX endpoints for purchase invoice form integration
     path('purchase-invoice/new-enhanced/', purchase_invoice_views.purchase_invoice_new_enhanced, name='purchase_invoice_new_enhanced'),
+    path('purchase-invoice/<int:invoice_id>/edit-enhanced/', purchase_invoice_views.purchase_invoice_edit_enhanced, name='purchase_invoice_edit_enhanced'),
     path('purchase/add-line/', purchase_invoice_views.purchase_add_line_hx, name='purchase_add_line_hx'),
     path('purchase/remove-line/', purchase_invoice_views.purchase_remove_line_hx, name='purchase_remove_line_hx'),
     path('purchase/recalc/', purchase_invoice_views.purchase_recalc_hx, name='purchase_recalc_hx'),
@@ -467,9 +468,14 @@ urlpatterns = [
     path('sales-orders/availability/', sales_order_views.SalesOrderAvailabilityHXView.as_view(), name='sales_order_availability'),
     path('ar-receipts/', ar_receipt_views.ARReceiptListView.as_view(), name='ar_receipt_list'),
     path('ar-receipts/new/', ar_receipt_views.ARReceiptCreateView.as_view(), name='ar_receipt_create'),
-    path('ap-payments/', commerce_views.APPaymentListView.as_view(), name='ap_payment_list'),
+    # Enhanced AP Payment URLs (with full filtering, bulk actions, and advanced features)
+    path('ap-payments/', commerce_enhanced.EnhancedAPPaymentListView.as_view(), name='ap_payment_list'),
     path('ap-payments/new/', commerce_views.APPaymentCreateView.as_view(), name='ap_payment_create'),
     path('ap-payments/<int:pk>/edit/', commerce_views.APPaymentUpdateView.as_view(), name='ap_payment_edit'),
+    path('ap-payments/bulk-action/', commerce_enhanced.APPaymentBulkActionView.as_view(), name='ap_payment_bulk_action'),
+    path('ap-payments/status-update/', commerce_enhanced.APPaymentStatusUpdateView.as_view(), name='ap_payment_status_update'),
+    path('ap-payments/summary-ajax/', commerce_enhanced.APPaymentSummaryAjaxView.as_view(), name='ap_payment_summary_ajax'),
+    
     path('customers/', commerce_views.CustomerListView.as_view(), name='customer_list'),
     path('customers/new/', commerce_views.CustomerCreateView.as_view(), name='customer_create'),
     path('customers/<int:pk>/edit/', commerce_views.CustomerUpdateView.as_view(), name='customer_edit'),

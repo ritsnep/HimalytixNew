@@ -3,9 +3,11 @@ from decimal import Decimal
 from django import forms
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import F, Sum
 from django.forms import formset_factory
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect
@@ -49,22 +51,78 @@ def _sum_payment_amounts(payment_formset):
         data = getattr(form, 'cleaned_data', None)
         if not data or data.get('DELETE'):
             continue
+        if data.get('locked'):
+            continue
         amount = data.get('amount')
         if amount:
             total += Decimal(str(amount))
     return total
 
 
+def _prefill_payments_from_invoice(invoice, organization):
+    if not invoice:
+        return [], Decimal('0'), []
+    locked_total = Decimal('0')
+    draft_payment_records = []
+    initial = []
+    payment_lines = invoice.payment_lines.select_related('payment__bank_account')
+    for pl in payment_lines:
+        payment = getattr(pl, 'payment', None)
+        if not payment:
+            continue
+        if payment.organization_id != getattr(organization, 'id', None):
+            continue
+        is_locked = bool(payment.status and payment.status != 'draft')
+        if is_locked:
+            try:
+                locked_total += Decimal(pl.applied_amount or 0)
+            except Exception:
+                locked_total += Decimal('0')
+        else:
+            draft_payment_records.append((pl, payment))
+        remarks = ''
+        try:
+            remarks = (payment.metadata or {}).get('remarks', '')
+        except Exception:
+            remarks = ''
+        initial.append({
+            'payment_method': payment.payment_method or 'bank',
+            'cash_bank_id': str(payment.bank_account_id or ''),
+            'due_date': payment.payment_date,
+            'amount': pl.applied_amount or payment.amount,
+            'remarks': remarks,
+            'locked': is_locked,
+            'payment_id': getattr(payment, 'payment_id', None) or getattr(payment, 'pk', None),
+        })
+    return initial, locked_total, draft_payment_records
+
+
+def _compute_due_days(invoice):
+    if not invoice or not getattr(invoice, 'invoice_date', None) or not getattr(invoice, 'due_date', None):
+        return 0
+    try:
+        delta = invoice.due_date - invoice.invoice_date
+        return max(delta.days, 0)
+    except Exception:
+        return 0
+
+
 @login_required
 @require_http_methods(["GET", "POST"])
 @csrf_protect
-def purchase_invoice_new_enhanced(request):
+def purchase_invoice_new_enhanced(request, invoice=None):
     """Enhanced purchase invoice form with HTMX integration"""
     organization = request.user.get_active_organization()
+    if invoice and invoice.organization_id != getattr(organization, 'id', None):
+        return redirect('accounting:dashboard')
     can_post_invoice = (
         request.user.has_perm('accounting.post_purchase_invoice') or
         request.user.has_perm('purchasing.post_purchase_invoice')
     )
+    is_edit_mode = invoice is not None
+    action_url = reverse('accounting:purchase_invoice_edit_enhanced', args=[invoice.pk]) if is_edit_mode else reverse('accounting:purchase_invoice_new_enhanced')
+    page_title = "Edit Purchase Invoice" if is_edit_mode else "Create Purchase Invoice"
+    submit_label = "Update Invoice" if is_edit_mode else "Save Invoice"
 
     def _mark_empty_purchase_lines_for_delete(data, prefix="items"):
         """Auto-mark truly empty item rows so validation doesn't drop PO-applied lines.
@@ -129,7 +187,7 @@ def purchase_invoice_new_enhanced(request):
                 return True
         return False
 
-    def _build_payment_formset(data=None, invoice_date=None):
+    def _build_payment_formset(data=None, invoice_date=None, initial=None):
         account_choices, cash_bank_accounts = _get_cash_bank_choices(organization)
         PaymentFormSet = formset_factory(PurchasePaymentForm, extra=0, can_delete=True)
         form_kwargs = {
@@ -138,22 +196,27 @@ def purchase_invoice_new_enhanced(request):
             'organization': organization,
         }
         if data is None:
-            return PaymentFormSet(prefix='payments', form_kwargs=form_kwargs), cash_bank_accounts, account_choices
-        return PaymentFormSet(data, prefix='payments', form_kwargs=form_kwargs), cash_bank_accounts, account_choices
+            return PaymentFormSet(prefix='payments', form_kwargs=form_kwargs, initial=initial or []), cash_bank_accounts, account_choices
+        return PaymentFormSet(data, prefix='payments', form_kwargs=form_kwargs, initial=initial or []), cash_bank_accounts, account_choices
 
     if request.method == 'GET':
-        form = PurchaseInvoiceForm(organization=organization)
+        form = PurchaseInvoiceForm(organization=organization, instance=invoice)
         configure_form_date_fields(form, organization=organization)
-        # Get empty queryset for display (HTMX will handle adding items)
-        line_items = PurchaseInvoiceLine.objects.none()
+        line_items = PurchaseInvoiceLine.objects.none() if not invoice else invoice.lines.select_related('product').all()
 
-        # Prepare empty inline formset for items so management form fields exist
-        # Use unbound formset (no instance) to avoid BaseFormSet __init__ errors
-        line_formset = PurchaseInvoiceLineFormSet(prefix='items', form_kwargs={'organization': organization})
+        # Prepare inline formset; use real instance for edit to preload values
+        formset_instance = invoice or PurchaseInvoice(organization=organization)
+        line_formset = PurchaseInvoiceLineFormSet(prefix='items', instance=formset_instance, form_kwargs={'organization': organization})
 
-        # Prepare payments formset (simple formset) for management form
-        invoice_date = timezone.now().date()
-        payments_formset, cash_bank_accounts, _ = _build_payment_formset(invoice_date=invoice_date)
+        # Prepare payments formset (simple formset) with initial values when editing
+        invoice_date = getattr(invoice, 'invoice_date', None) or timezone.now().date()
+        payments_initial, locked_total, draft_payments = _prefill_payments_from_invoice(invoice, organization)
+        payments_formset, cash_bank_accounts, _ = _build_payment_formset(invoice_date=invoice_date, initial=payments_initial)
+
+        metadata = getattr(invoice, 'metadata', {}) or {}
+        selected_agent_id = metadata.get('agent_id')
+        selected_area_id = metadata.get('agent_area_id') or metadata.get('area_id')
+        due_days = _compute_due_days(invoice)
 
         context = {
             'form': form,
@@ -164,12 +227,21 @@ def purchase_invoice_new_enhanced(request):
             'agents': AgentService.get_agents_for_dropdown(organization),
             'areas': AgentService.get_areas_for_dropdown(organization),
             'can_post_invoice': can_post_invoice,
+            'selected_agent_id': selected_agent_id,
+            'selected_area_id': selected_area_id,
+            'due_days': due_days,
+            'action_url': action_url,
+            'page_title': page_title,
+            'submit_label': submit_label,
+            'existing_invoice': invoice,
         }
         return render(request, 'accounting/purchase/new_enhanced.html', context)
     
     elif request.method == 'POST':
+        payment_messages = []
         # Make a mutable copy of POST so we can coerce BS or non-ISO AD dates
         data = request.POST.copy()
+        status_locked = is_edit_mode and invoice and invoice.status in ('posted', 'paid', 'cancelled')
         # Ensure organization is present in POST so the ModelForm doesn't require it
         try:
             if not data.get('organization'):
@@ -262,14 +334,22 @@ def purchase_invoice_new_enhanced(request):
 
         # Debug: log keys present in data before validation
         logger.debug('PurchaseInvoice POST keys before validation: %s', list(data.keys()))
-        form = PurchaseInvoiceForm(data, organization=organization)
+        payments_initial, locked_payment_total, draft_payment_records = _prefill_payments_from_invoice(invoice, organization)
+        if locked_payment_total:
+            payment_messages.append("Processed payments linked to this invoice are locked and retained.")
+
+        form = PurchaseInvoiceForm(data, organization=organization, instance=invoice)
         configure_form_date_fields(form, organization=organization)
 
         form_valid = form.is_valid()
+        if status_locked:
+            form_valid = False
+            form.add_error(None, 'Posted, paid, or cancelled invoices cannot be edited.')
         invoice_date_value = form.cleaned_data.get('invoice_date')
         payments_formset, cash_bank_accounts, _ = _build_payment_formset(
             data,
             invoice_date=invoice_date_value,
+            initial=payments_initial,
         )
 
         # Populate missing line descriptions from product master when possible
@@ -307,7 +387,7 @@ def purchase_invoice_new_enhanced(request):
         except Exception:
             logger.exception('Failed to auto-populate product descriptions')
 
-        invoice_stub = PurchaseInvoice(organization=organization)
+        invoice_stub = invoice or PurchaseInvoice(organization=organization)
         line_formset = PurchaseInvoiceLineFormSet(
             data,
             prefix='items',
@@ -388,7 +468,7 @@ def purchase_invoice_new_enhanced(request):
                 except Exception:
                     continue
 
-            payment_sum = _sum_payment_amounts(payments_formset)
+            payment_sum = locked_payment_total + _sum_payment_amounts(payments_formset)
             if payment_sum > total_amount:
                 form.add_error(None, 'Payment total exceeds invoice total.')
                 form_valid = False
@@ -420,7 +500,9 @@ def purchase_invoice_new_enhanced(request):
                 with transaction.atomic():
                     invoice = form.save(commit=False)
                     invoice.organization = organization
-                    invoice.created_by = request.user
+                    if not getattr(invoice, 'pk', None):
+                        invoice.created_by = request.user
+                    invoice.updated_by = request.user
                     invoice.invoice_date = form.cleaned_data.get('invoice_date') or invoice.invoice_date
                     invoice.due_date = form.cleaned_data.get('due_date') or invoice.due_date
                     invoice.invoice_date_bs = form.cleaned_data.get('invoice_date_bs') or invoice.invoice_date_bs
@@ -457,6 +539,7 @@ def purchase_invoice_new_enhanced(request):
                     if line_formset.is_valid():
                         # Save lines
                         line_objects = line_formset.save(commit=False)
+                        po_line_ids = set()
                         # Fallback: if line account is missing, default to header purchase account
                         header_account = form.cleaned_data.get('purchase_account')
                         header_account_id = getattr(header_account, 'pk', None) or header_account
@@ -465,10 +548,38 @@ def purchase_invoice_new_enhanced(request):
                             obj.invoice = invoice
                             if not getattr(obj, 'account_id', None) and header_account_id:
                                 obj.account_id = header_account_id
+                            try:
+                                po_ref = getattr(obj, 'po_reference', None)
+                                if po_ref and str(po_ref).strip().isdigit():
+                                    po_line_ids.add(int(str(po_ref).strip()))
+                            except Exception:
+                                pass
                             obj.save()
                         # Handle deletions
                         for obj in line_formset.deleted_objects:
                             obj.delete()
+                        # Update PO invoiced quantities based on all invoices to date to avoid double counting
+                        if po_line_ids:
+                            try:
+                                from purchasing.models import PurchaseOrderLine, PurchaseOrder
+                                polines = PurchaseOrderLine.objects.filter(id__in=list(po_line_ids))
+                                for pl in polines:
+                                    total_invoiced = (
+                                        PurchaseInvoiceLine.objects.filter(po_reference=str(pl.id))
+                                        .aggregate(total=Sum('quantity'))['total'] or Decimal('0')
+                                    )
+                                    pl.quantity_invoiced = min(pl.quantity_ordered, total_invoiced)
+                                    pl.save(update_fields=['quantity_invoiced'])
+                                    try:
+                                        po = pl.purchase_order
+                                        # If all lines invoiced, mark status closed
+                                        if not po.lines.filter(quantity_invoiced__lt=F('quantity_ordered')).exists():
+                                            po.status = getattr(po.Status, 'CLOSED', 'closed')
+                                            po.save(update_fields=['status'])
+                                    except Exception:
+                                        pass
+                            except Exception:
+                                logger.exception("Failed to update PO invoiced quantities after PI save.")
                     else:
                         raise ValueError(f"Line items invalid: {line_formset.errors}")
 
@@ -476,8 +587,31 @@ def purchase_invoice_new_enhanced(request):
                     if payments_formset.is_valid():
                         from accounting.models import APPayment, APPaymentLine, Currency
                         saved_payments = []
+                        removed_drafts = 0
+                        if invoice and draft_payment_records:
+                            for pl, payment in draft_payment_records:
+                                try:
+                                    pl.delete()
+                                    removed_drafts += 1
+                                except Exception:
+                                    logger.exception("Failed to remove draft payment line for invoice %s", invoice.pk)
+                                try:
+                                    if payment and not payment.lines.exclude(invoice=invoice).exists():
+                                        payment.delete()
+                                    elif payment:
+                                        remaining_total = payment.lines.aggregate(total=Sum('applied_amount'))['total'] or payment.amount
+                                        payment.amount = remaining_total
+                                        payment.save(update_fields=['amount', 'updated_at'])
+                                except Exception:
+                                    logger.exception("Failed to tidy up draft payment for invoice %s", invoice.pk)
+                        if removed_drafts:
+                            payment_messages.append(f"Replaced {removed_drafts} existing draft payment(s).")
+                        if locked_payment_total:
+                            payment_messages.append("Locked payments remain unchanged; new payments will be added separately.")
                         for idx, pform in enumerate(payments_formset.cleaned_data):
                             if not pform or pform.get('DELETE'):
+                                continue
+                            if pform.get('locked'):
                                 continue
                             amount = pform.get('amount') or 0
                             if float(amount) <= 0:
@@ -535,27 +669,62 @@ def purchase_invoice_new_enhanced(request):
                             logger.exception("Auto-post purchase invoice failed: %s", exc)
 
                     # Success
-                    success_form = PurchaseInvoiceForm(organization=organization)
-                    configure_form_date_fields(success_form, organization=organization)
-                    empty_line_formset = PurchaseInvoiceLineFormSet(prefix='items', form_kwargs={'organization': organization})
-                    invoice_date = timezone.now().date()
-                    empty_payments_formset, cash_bank_accounts, _ = _build_payment_formset(invoice_date=invoice_date)
-                    success_message = 'Purchase Invoice created successfully.'
-                    if posted_invoice:
-                        success_message = 'Purchase Invoice created and posted successfully.'
-                    elif auto_post_error:
-                        success_message = f'Invoice saved, but auto-post failed: {auto_post_error}'
+                    refreshed_invoice = PurchaseInvoice.objects.get(pk=invoice.pk, organization=organization)
+                    if is_edit_mode:
+                        success_form = PurchaseInvoiceForm(organization=organization, instance=refreshed_invoice)
+                        configure_form_date_fields(success_form, organization=organization)
+                        line_formset = PurchaseInvoiceLineFormSet(prefix='items', instance=refreshed_invoice, form_kwargs={'organization': organization})
+                        payments_initial, locked_payment_total, draft_payment_records = _prefill_payments_from_invoice(refreshed_invoice, organization)
+                        payments_formset, cash_bank_accounts, _ = _build_payment_formset(invoice_date=refreshed_invoice.invoice_date, initial=payments_initial)
+                        success_message = 'Purchase Invoice updated successfully.'
+                        if posted_invoice:
+                            success_message = 'Purchase Invoice updated and posted successfully.'
+                        elif auto_post_error:
+                            success_message = f'Invoice updated, but auto-post failed: {auto_post_error}'
+                        page_title = "Edit Purchase Invoice"
+                        submit_label = "Update Invoice"
+                        action_url = reverse('accounting:purchase_invoice_edit_enhanced', args=[refreshed_invoice.pk])
+                        metadata = refreshed_invoice.metadata or {}
+                        selected_agent_id = metadata.get('agent_id')
+                        selected_area_id = metadata.get('agent_area_id') or metadata.get('area_id')
+                        due_days = _compute_due_days(refreshed_invoice)
+                    else:
+                        success_form = PurchaseInvoiceForm(organization=organization)
+                        configure_form_date_fields(success_form, organization=organization)
+                        line_formset = PurchaseInvoiceLineFormSet(prefix='items', form_kwargs={'organization': organization})
+                        invoice_date = timezone.now().date()
+                        payments_formset, cash_bank_accounts, _ = _build_payment_formset(invoice_date=invoice_date)
+                        success_message = 'Purchase Invoice created successfully.'
+                        if posted_invoice:
+                            success_message = 'Purchase Invoice created and posted successfully.'
+                        elif auto_post_error:
+                            success_message = f'Invoice saved, but auto-post failed: {auto_post_error}'
+                        page_title = "Create Purchase Invoice"
+                        submit_label = "Save Invoice"
+                        action_url = reverse('accounting:purchase_invoice_new_enhanced')
+                        selected_agent_id = None
+                        selected_area_id = None
+                        due_days = 0
+                    if payment_messages:
+                        success_message = success_message + " " + " ".join(payment_messages)
                     context = {
                         'form': success_form,
-                        'line_items': PurchaseInvoiceLine.objects.none(),
-                        'line_formset': empty_line_formset,
-                        'payments_formset': empty_payments_formset,
+                        'line_items': refreshed_invoice.lines.select_related('product').all() if is_edit_mode else PurchaseInvoiceLine.objects.none(),
+                        'line_formset': line_formset,
+                        'payments_formset': payments_formset,
                         'cash_bank_accounts': cash_bank_accounts,
                         'agents': AgentService.get_agents_for_dropdown(organization),
                         'areas': AgentService.get_areas_for_dropdown(organization),
                         'alert_message': success_message,
                         'alert_level': 'success' if not auto_post_error else 'warning',
                         'can_post_invoice': can_post_invoice,
+                        'action_url': action_url,
+                        'page_title': page_title,
+                        'submit_label': submit_label,
+                        'selected_agent_id': selected_agent_id,
+                        'selected_area_id': selected_area_id,
+                        'due_days': due_days,
+                        'existing_invoice': refreshed_invoice if is_edit_mode else None,
                     }
                     template_name = 'accounting/purchase/_purchase_form_panel.html' if _is_htmx(request) else 'accounting/purchase/new_enhanced.html'
                     response = render(request, template_name, context)
@@ -587,7 +756,7 @@ def purchase_invoice_new_enhanced(request):
             logger.exception('Error while logging purchase invoice validation details')
         context = {
             'form': form,
-            'line_items': line_items,
+            'line_items': invoice.lines.all() if invoice else line_items,
             'line_formset': line_formset,
             'payments_formset': payments_formset,
             'cash_bank_accounts': cash_bank_accounts,
@@ -601,6 +770,13 @@ def purchase_invoice_new_enhanced(request):
                 'line_errors': getattr(line_formset, 'errors', None),
                 'payment_errors': getattr(payments_formset, 'errors', None),
             },
+            'action_url': action_url,
+            'page_title': page_title,
+            'submit_label': submit_label,
+            'selected_agent_id': data.get('agent_id') or (getattr(invoice, 'metadata', {}).get('agent_id') if invoice else None),
+            'selected_area_id': data.get('agent_area_id') or (getattr(invoice, 'metadata', {}).get('agent_area_id') if invoice else None),
+            'due_days': data.get('due_days') or _compute_due_days(invoice),
+            'existing_invoice': invoice,
         }
         status = 422
         template_name = 'accounting/purchase/_purchase_form_panel.html' if _is_htmx(request) else 'accounting/purchase/new_enhanced.html'
@@ -608,6 +784,15 @@ def purchase_invoice_new_enhanced(request):
         if _is_htmx(request):
             response['HX-Trigger'] = 'purchaseInvoiceSaveFailed'
         return response
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+@csrf_protect
+def purchase_invoice_edit_enhanced(request, invoice_id):
+    organization = request.user.get_active_organization()
+    invoice = get_object_or_404(PurchaseInvoice, pk=invoice_id, organization=organization)
+    return purchase_invoice_new_enhanced(request, invoice=invoice)
 
 
 @require_http_methods(["GET", "POST"])

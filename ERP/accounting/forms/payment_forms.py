@@ -43,6 +43,8 @@ class PurchasePaymentForm(forms.Form):
         widget=forms.TextInput(attrs={'class': 'form-control form-control-sm'}),
     )
     DELETE = forms.BooleanField(required=False)
+    locked = forms.BooleanField(required=False, initial=False, widget=forms.HiddenInput())
+    payment_id = forms.CharField(required=False, widget=forms.HiddenInput())
 
     def __init__(self, *args, invoice_date=None, cash_bank_choices=None, organization=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -54,9 +56,16 @@ class PurchasePaymentForm(forms.Form):
             organization=organization,
             default_view='DUAL',
         )
+        if self.initial.get('locked'):
+            for name in ('payment_method', 'cash_bank_id', 'due_date', 'amount', 'remarks'):
+                if name in self.fields:
+                    self.fields[name].widget.attrs['disabled'] = True
 
     def clean(self):
         cleaned = super().clean()
+        if cleaned.get('locked'):
+            # Preserve the original locked payment as-is
+            return cleaned
         amount = cleaned.get('amount')
         if amount in (None, Decimal('0')):
             return cleaned

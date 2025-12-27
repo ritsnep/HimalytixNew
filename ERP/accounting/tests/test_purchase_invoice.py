@@ -845,3 +845,211 @@ class PurchaseInvoiceEnhancedEndpointsTestCase(TestCase):
         self.assertEqual(payload.get("code"), self.product.code)
         self.assertEqual(payload.get("unit"), self.unit.name)
         self.assertEqual(Decimal(str(payload.get("rate"))), Decimal("75.00"))
+
+
+class PurchaseInvoiceEnhancedEditFlowTestCase(TestCase):
+    """Exercise enhanced edit route end-to-end with payments and HTMX."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='edit_user', password='pw')
+        self.organization = Organization.objects.create(name="Edit Org", code="EDIT")
+        self.user.organization = self.organization
+        self.user.save()
+        self.client.force_login(self.user)
+
+        self.currency = Currency.objects.create(
+            currency_code="USD",
+            currency_name="US Dollar",
+            symbol="$",
+            is_active=True,
+        )
+        self.account_type_asset = AccountType.objects.create(name="Asset", nature="asset", display_order=1)
+        self.account_type_liab = AccountType.objects.create(name="Liability", nature="liability", display_order=2)
+        self.expense_account = ChartOfAccount.objects.create(
+            organization=self.organization,
+            account_code="5000",
+            account_name="Purchases",
+            account_type=self.account_type_asset,
+            is_active=True,
+        )
+        self.bank_account = ChartOfAccount.objects.create(
+            organization=self.organization,
+            account_code="1001",
+            account_name="Bank",
+            account_type=self.account_type_asset,
+            is_bank_account=True,
+            is_active=True,
+        )
+        self.ap_account = ChartOfAccount.objects.create(
+            organization=self.organization,
+            account_code="2001",
+            account_name="AP",
+            account_type=self.account_type_liab,
+            is_active=True,
+        )
+        self.vendor = Vendor.objects.create(
+            organization=self.organization,
+            code="V200",
+            display_name="Vendor Edit",
+            accounts_payable_account=self.ap_account,
+        )
+        self.unit = Unit.objects.create(
+            organization=self.organization,
+            code="PCS",
+            name="Pieces",
+        )
+        self.product = Product.objects.create(
+            organization=self.organization,
+            code="P200",
+            name="Editable Widget",
+            base_unit=self.unit,
+            cost_price=Decimal("40.00"),
+        )
+        self.warehouse = Warehouse.objects.create(
+            organization=self.organization,
+            code="W1",
+            name="Main",
+            is_active=True,
+        )
+
+        today = timezone.now().date()
+        self.invoice = PurchaseInvoice.objects.create(
+            organization=self.organization,
+            vendor=self.vendor,
+            vendor_display_name=self.vendor.display_name,
+            invoice_number="PI-EDIT-1",
+            invoice_date=today,
+            due_date=today + timedelta(days=5),
+            currency=self.currency,
+            exchange_rate=Decimal("1.0"),
+            subtotal=Decimal("50"),
+            tax_total=Decimal("0"),
+            total=Decimal("50"),
+            base_currency_total=Decimal("50"),
+            status="draft",
+            payment_mode="credit",
+            metadata={"agent_id": "", "agent_area_id": ""},
+        )
+        self.line = PurchaseInvoiceLine.objects.create(
+            invoice=self.invoice,
+            line_number=1,
+            description="Editable line",
+            product=self.product,
+            product_code=self.product.code,
+            quantity=Decimal("1"),
+            unit_cost=Decimal("50"),
+            discount_amount=Decimal("0"),
+            line_total=Decimal("50"),
+            account=self.expense_account,
+            warehouse=self.warehouse,
+            vat_rate=Decimal("0"),
+            tax_amount=Decimal("0"),
+        )
+
+        # Existing locked payment (approved) should be retained
+        self.locked_payment = APPayment.objects.create(
+            organization=self.organization,
+            vendor=self.vendor,
+            payment_number="PAY-LOCKED",
+            payment_date=today + timedelta(days=2),
+            payment_method="bank",
+            bank_account=self.bank_account,
+            currency=self.currency,
+            exchange_rate=Decimal("1.0"),
+            amount=Decimal("20"),
+            discount_taken=Decimal("0"),
+            status="approved",
+        )
+        APPaymentLine.objects.create(
+            payment=self.locked_payment,
+            invoice=self.invoice,
+            applied_amount=Decimal("20"),
+            discount_taken=Decimal("0"),
+        )
+
+    def test_edit_get_and_post_preserves_locked_payment_and_sets_hx_trigger(self):
+        url = f"/accounting/purchase-invoice/{self.invoice.pk}/edit-enhanced/"
+
+        # GET should preload invoice data and locked payment flag
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Edit Purchase Invoice", response.content)
+        self.assertIn(b'value="5"', response.content)  # due_days prefill
+        self.assertIn(b"Locked", response.content)
+
+        today = self.invoice.invoice_date
+        post_data = {
+            "organization": str(self.organization.id),
+            "vendor": str(self.vendor.vendor_id),
+            "invoice_number": self.invoice.invoice_number,
+            "invoice_date": today.isoformat(),
+            "due_date": (today + timedelta(days=5)).isoformat(),
+            "payment_mode": "credit",
+            "currency": str(self.currency.currency_code),
+            "exchange_rate": "1",
+            "purchase_account": str(self.expense_account.pk),
+            "discount_type": "amount",
+            "discount_value": "0",
+            "bill_rounding": "0",
+            # Line formset management
+            "items-TOTAL_FORMS": "1",
+            "items-INITIAL_FORMS": "1",
+            "items-MIN_NUM_FORMS": "0",
+            "items-MAX_NUM_FORMS": "1000",
+            # Line fields
+            "items-0-id": str(self.line.pk),
+            "items-0-product": str(self.product.pk),
+            "items-0-description": "Editable line",
+            "items-0-product_code": self.product.code,
+            "items-0-quantity": "1",
+            "items-0-unit_cost": "50",
+            "items-0-discount_amount": "0",
+            "items-0-account": str(self.expense_account.pk),
+            "items-0-warehouse": str(self.warehouse.pk),
+            "items-0-vat_rate": "0",
+            "items-0-tax_amount": "0",
+            "items-0-DELETE": "",
+            # Payments formset management: one locked + one new
+            "payments-TOTAL_FORMS": "2",
+            "payments-INITIAL_FORMS": "1",
+            "payments-MIN_NUM_FORMS": "0",
+            "payments-MAX_NUM_FORMS": "1000",
+            # Locked payment (index 0)
+            "payments-0-payment_method": "bank",
+            "payments-0-cash_bank_id": str(self.bank_account.pk),
+            "payments-0-due_date": (today + timedelta(days=2)).isoformat(),
+            "payments-0-amount": "20",
+            "payments-0-remarks": "",
+            "payments-0-locked": "True",
+            "payments-0-payment_id": str(self.locked_payment.payment_id),
+            "payments-0-DELETE": "",
+            # New payment (index 1)
+            "payments-1-payment_method": "bank",
+            "payments-1-cash_bank_id": str(self.bank_account.pk),
+            "payments-1-due_date": (today + timedelta(days=3)).isoformat(),
+            "payments-1-amount": "25",
+            "payments-1-remarks": "New payment",
+            "payments-1-locked": "",
+            "payments-1-payment_id": "",
+            "payments-1-DELETE": "",
+        }
+
+        post_response = self.client.post(
+            url,
+            data=post_data,
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(post_response.status_code, 200)
+        self.assertEqual(post_response.headers.get("HX-Trigger"), "purchaseInvoiceSaved")
+
+        # Ensure locked payment is preserved and a new payment line is added
+        refreshed_invoice = PurchaseInvoice.objects.get(pk=self.invoice.pk)
+        lines = APPaymentLine.objects.filter(invoice=refreshed_invoice).select_related("payment")
+        self.assertEqual(lines.count(), 2)
+        locked_line = lines.filter(payment__payment_number="PAY-LOCKED").first()
+        self.assertIsNotNone(locked_line)
+        self.assertEqual(locked_line.payment.status, "approved")
+        new_line = lines.exclude(payment__payment_number="PAY-LOCKED").first()
+        self.assertIsNotNone(new_line)
+        self.assertEqual(new_line.applied_amount, Decimal("25"))
