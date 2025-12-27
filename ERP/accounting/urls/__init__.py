@@ -95,6 +95,7 @@ from ..views import views_actions
 from ..views import views_api
 from ..views import recurring_journal_views
 from ..views import views_htmx
+from ..views import debug_views
 from ..views.views_htmx import AccountTypeDependentFieldsHXView, VoucherAccountLookupJsonView
 from ..views import wizard
 from ..views import purchase_invoice_views, payment_scheduler_views, vendor_statement_views, customer_statement_views, sales_invoice_views, ar_receipt_views, commerce_views, sales_order_views, expense_views
@@ -530,7 +531,7 @@ urlpatterns += [
     path('api/v1/journals/suggest/', api_views.suggest_journal_entries, name='suggest_journal_entries'),
     path('api/v1/journals/line-suggest/', api_views.get_line_suggestions, name='get_line_suggestions'),
     path('api/v1/validate-field/', api_views.validate_field, name='validate_field'),
-    path('vouchers/htmx/account-lookup/', VoucherAccountLookupJsonView.as_view(), name='voucher_account_lookup'),
+    path('debug/typeahead/', debug_views.TypeaheadDebugView.as_view(), name='debug_typeahead'),
 ]
 urlpatterns += [
     path('api/v1/journals/bulk-action/', api_views.JournalBulkActionView.as_view(), name='journal_bulk_action'),

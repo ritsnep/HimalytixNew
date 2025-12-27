@@ -1,0 +1,24 @@
+<div id="vendor-credit-banner" hx-swap-oob="true">
+  {% if vendor %}
+    <div class="alert {% if credit_limit and available_credit is not None and available_credit < 0 %}alert-danger{% else %}alert-info{% endif %} d-flex align-items-center justify-content-between py-2 px-3 mb-3">
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-secondary">{{ vendor.code }}</span>
+        <span class="fw-semibold">{{ vendor.display_name }}</span>
+        <span class="text-muted small">Outstanding: {{ outstanding|default:"0.00" }}</span>
+        {% if credit_limit %}
+          <span class="text-muted small">Limit: {{ credit_limit }}</span>
+          <span class="badge {% if available_credit is not None and available_credit < 0 %}bg-danger{% else %}bg-success{% endif %}">
+            Available {{ available_credit|floatformat:2 }}
+          </span>
+        {% endif %}
+      </div>
+      {% if credit_limit and available_credit is not None and available_credit < 0 %}
+        <span class="text-danger small fw-semibold">Over credit — review before posting.</span>
+      {% endif %}
+    </div>
+  {% else %}
+    <div class="alert alert-light border py-2 px-3 mb-3">
+      Select a vendor to view credit and outstanding balance.
+    </div>
+  {% endif %}
+</div>

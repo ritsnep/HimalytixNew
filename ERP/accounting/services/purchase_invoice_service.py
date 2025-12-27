@@ -25,6 +25,27 @@ from accounting.services.inventory_posting_service import InventoryPostingServic
 from inventory.models import Product, Warehouse
 
 
+def _enforce_vendor_credit(invoice: PurchaseInvoice, *, user=None):
+    """Raise if posting/validating would breach vendor credit limit (credit mode only)."""
+    vendor = invoice.vendor
+    if not vendor or vendor.credit_limit is None:
+        return
+    if getattr(invoice, "payment_mode", None) and invoice.payment_mode != "credit":
+        return
+    # Optionally allow override via metadata flag
+    meta = invoice.metadata or {}
+    if meta.get("allow_credit_override"):
+        return
+    if user and user.has_perm("accounting.override_credit_limit"):
+        return
+    current = vendor.recompute_outstanding_balance()
+    projected = current + (invoice.total or Decimal("0"))
+    if projected > vendor.credit_limit:
+        raise ValidationError(
+            f"Credit limit exceeded: outstanding {current:.2f} + invoice {invoice.total:.2f} > limit {vendor.credit_limit:.2f}."
+        )
+
+
 @dataclass
 class PurchaseOrderLineSnapshot:
     reference: str
@@ -91,6 +112,7 @@ class PurchaseInvoiceService:
         lines: Iterable[dict],
         payment_term=None,
         due_date=None,
+        payment_mode: Optional[str] = None,
         metadata: Optional[dict] = None,
     ) -> PurchaseInvoice:
         if vendor.accounts_payable_account_id is None:
@@ -100,6 +122,7 @@ class PurchaseInvoiceService:
         due_date = due_date or self._calculate_due_date(vendor, payment_term, invoice_date)
         metadata = metadata or {}
         exchange_rate = exchange_rate or self._resolve_exchange_rate(organization, currency, invoice_date)
+        payment_mode = payment_mode or 'credit'
 
         invoice = PurchaseInvoice.objects.create(
             organization=organization,
@@ -109,6 +132,7 @@ class PurchaseInvoiceService:
             invoice_date=invoice_date,
             due_date=due_date,
             payment_term=payment_term,
+            payment_mode=payment_mode,
             currency=currency,
             exchange_rate=exchange_rate,
             status='draft',
@@ -148,6 +172,10 @@ class PurchaseInvoiceService:
         invoice.recompute_totals(save=True)
         if invoice.total <= 0:
             raise ValidationError("Purchase invoice total must be greater than zero.")
+        if invoice.vendor and invoice.vendor.default_currency and invoice.currency != invoice.vendor.default_currency:
+            if not self.user.has_perm("accounting.override_currency_mismatch"):
+                raise ValidationError("Invoice currency must match vendor default currency or require override permission.")
+        _enforce_vendor_credit(invoice, user=self.user)
         invoice.status = 'validated'
         invoice.updated_by = self.user
         invoice.save(update_fields=['status', 'updated_by', 'updated_at', 'subtotal', 'tax_total', 'total', 'base_currency_total'])
@@ -163,50 +191,123 @@ class PurchaseInvoiceService:
         purchase_order_lines: Optional[Iterable[PurchaseOrderLineSnapshot | dict]] = None,
         receipt_lines: Optional[Iterable[ReceiptLineSnapshot | dict]] = None,
     ) -> PurchaseInvoice:
+        """
+        Allow multiple invoice lines to reference the same PO line by tracking remaining quantities.
+        """
         purchase_order_lines = purchase_order_lines or []
         receipt_lines = receipt_lines or []
 
-        po_map = {
-            getattr(line, 'reference', line.get('reference')): line
-            for line in purchase_order_lines
-        }
-        receipt_map = {
-            getattr(line, 'reference', line.get('reference')): line
+        # Build PO and receipt lookup maps by reference and PK (if provided)
+        po_by_ref = {}
+        po_by_id = {}
+        for line in purchase_order_lines:
+            ref = getattr(line, "reference", None) or getattr(line, "po_reference", None) or getattr(line, "pk", None) or getattr(line, "id", None)
+            if ref is not None:
+                po_by_ref[str(ref)] = line
+            try:
+                pk_val = getattr(line, "pk", None) or getattr(line, "id", None)
+                if pk_val is not None:
+                    po_by_id[int(pk_val)] = line
+            except Exception:
+                pass
+
+        receipt_by_ref = {
+            str(getattr(line, "reference", None) or getattr(line, "receipt_reference", None) or getattr(line, "pk", None) or getattr(line, "id", None)): line
             for line in receipt_lines
         }
+
+        # Track remaining expected qty per PO line so multiple invoice lines can share
+        remaining_expected = {}
+        for ref, line in po_by_ref.items():
+            try:
+                qty = getattr(line, "quantity", None) or getattr(line, "quantity_ordered", None) or getattr(line, "ordered_quantity", None) or 0
+                remaining_expected[ref] = Decimal(str(qty))
+            except Exception:
+                remaining_expected[ref] = Decimal("0")
 
         invoice.match_results.all().delete()
 
         all_matched = True
         summary = []
+
         for line in invoice.lines.all():
-            reference_key = line.po_reference or line.product_code or f"LINE-{line.line_number}"
-            po_snapshot = po_map.get(reference_key)
-            receipt_snapshot = receipt_map.get(reference_key)
+            # Resolve the PO line reference; prefer numeric id if present in po_reference
+            po_ref_raw = line.po_reference or ""
+            po_line_obj = None
+            reference_key = po_ref_raw or line.product_code or f"LINE-{line.line_number}"
+            try:
+                ref_id = int(po_ref_raw)
+                po_line_obj = po_by_id.get(ref_id)
+            except Exception:
+                po_line_obj = None
+            if po_line_obj is None:
+                po_line_obj = po_by_ref.get(str(reference_key))
 
-            expected_qty = Decimal(str(getattr(po_snapshot, 'quantity', po_snapshot.get('quantity', 0)))) if po_snapshot else Decimal('0')
-            received_qty = Decimal(str(getattr(receipt_snapshot, 'quantity_received', receipt_snapshot.get('quantity_received', 0)))) if receipt_snapshot else Decimal('0')
+            receipt_snapshot = receipt_by_ref.get(str(line.receipt_reference or reference_key))
+
+            expected_qty = Decimal("0")
+            unit_cost_expected = line.unit_cost
+            if po_line_obj:
+                try:
+                    expected_qty = remaining_expected.get(str(reference_key), Decimal("0"))
+                except Exception:
+                    expected_qty = Decimal("0")
+                try:
+                    unit_cost_expected = Decimal(
+                        str(
+                            getattr(po_line_obj, "unit_cost", None)
+                            or getattr(po_line_obj, "unit_price", None)
+                            or line.unit_cost
+                        )
+                    )
+                except Exception:
+                    unit_cost_expected = line.unit_cost
+
+            received_qty = Decimal("0")
+            if receipt_snapshot:
+                try:
+                    received_qty = Decimal(
+                        str(
+                            getattr(receipt_snapshot, "quantity_received", None)
+                            or getattr(receipt_snapshot, "qty_received", None)
+                            or getattr(receipt_snapshot, "quantity", None)
+                            or 0
+                        )
+                    )
+                except Exception:
+                    received_qty = Decimal("0")
+
             invoiced_qty = line.quantity
-            unit_cost_expected = Decimal(str(getattr(po_snapshot, 'unit_cost', po_snapshot.get('unit_cost', line.unit_cost)))) if po_snapshot else line.unit_cost
-            unit_variance = (line.unit_cost - unit_cost_expected).quantize(Decimal('0.0001'))
+            unit_variance = (line.unit_cost - unit_cost_expected).quantize(Decimal("0.0001"))
 
-            if invoiced_qty > received_qty:
-                status = 'over_receipt'
-            elif invoiced_qty < expected_qty:
-                status = 'short_receipt'
-            elif unit_variance != Decimal('0.0000'):
-                status = 'price_variance'
+            # Determine status considering remaining expected quantity
+            status = "matched"
+            if po_line_obj:
+                if expected_qty <= 0 and invoiced_qty > 0:
+                    status = "over_receipt"
+                elif invoiced_qty < expected_qty:
+                    status = "short_receipt"
+                elif invoiced_qty > expected_qty:
+                    status = "over_receipt"
+                elif unit_variance != Decimal("0.0000"):
+                    status = "price_variance"
             else:
-                status = 'matched'
+                # No PO reference; fall back to receipt comparison if present
+                if invoiced_qty > received_qty:
+                    status = "over_receipt"
+                elif invoiced_qty < received_qty:
+                    status = "short_receipt"
+                elif unit_variance != Decimal("0.0000"):
+                    status = "price_variance"
 
-            if status != 'matched':
+            if status != "matched":
                 all_matched = False
 
             PurchaseInvoiceMatch.objects.create(
                 invoice=invoice,
                 invoice_line=line,
-                po_reference=reference_key,
-                receipt_reference=line.receipt_reference or reference_key,
+                po_reference=str(reference_key),
+                receipt_reference=line.receipt_reference or str(reference_key),
                 expected_quantity=expected_qty,
                 received_quantity=received_qty,
                 invoiced_quantity=invoiced_qty,
@@ -215,7 +316,7 @@ class PurchaseInvoiceService:
             )
             summary.append(
                 {
-                    "reference": reference_key,
+                    "reference": str(reference_key),
                     "status": status,
                     "expected_quantity": str(expected_qty),
                     "received_quantity": str(received_qty),
@@ -223,6 +324,16 @@ class PurchaseInvoiceService:
                     "unit_variance": str(unit_variance),
                 }
             )
+
+            # Reduce remaining expected qty for this PO line so subsequent lines see the residual
+            if po_line_obj:
+                try:
+                    remaining_expected[str(reference_key)] = max(
+                        Decimal("0"),
+                        remaining_expected.get(str(reference_key), Decimal("0")) - invoiced_qty,
+                    )
+                except Exception:
+                    pass
 
         invoice.match_status = 'matched' if all_matched else 'variance'
         if all_matched and invoice.status in {'validated', 'draft'}:
@@ -267,6 +378,7 @@ class PurchaseInvoiceService:
             raise ValidationError("Warehouse is required for inventory receipts when use_grir is True.")
 
         invoice.recompute_totals(save=True)
+        _enforce_vendor_credit(invoice, user=self.user)
         organization = invoice.organization
         period = AccountingPeriod.get_current_period(organization)
         if not period:

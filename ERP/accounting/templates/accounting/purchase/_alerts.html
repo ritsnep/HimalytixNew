@@ -1,0 +1,37 @@
+{% if alert_message %}
+  <div class="alert alert-{{ alert_level|default:'info' }} small mb-3">
+    {{ alert_message }}
+  </div>
+{% endif %}
+{% if form.errors or line_formset.errors or line_formset.non_form_errors or payments_formset.errors %}
+  <div class="alert alert-danger small mb-3">
+    Please correct the errors highlighted in the form.
+  </div>
+{% endif %}
+{% if form.non_field_errors %}
+  <div class="alert alert-danger small mb-3">
+    {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+  </div>
+{% endif %}
+{% if debug_info %}
+  <div class="alert alert-warning small mb-3">
+    <strong>Debug info (validation):</strong>
+    <div class="mt-2">
+      <details>
+        <summary>Posted payload &amp; errors (click to expand)</summary>
+        <pre style="white-space:pre-wrap;word-break:break-word;">{{ debug_info.posted|safe }}</pre>
+        <strong>Form errors:</strong>
+        <pre>{{ debug_info.form_errors }}</pre>
+        <strong>Line formset errors:</strong>
+        <pre>{{ debug_info.line_errors }}</pre>
+        <strong>Payment formset errors:</strong>
+        <pre>{{ debug_info.payment_errors }}</pre>
+      </details>
+    </div>
+  </div>
+{% endif %}
+{% if line_formset.non_form_errors %}
+  <div class="alert alert-danger small mb-3">
+    {% for error in line_formset.non_form_errors %}<div>{{ error }}</div>{% endfor %}
+  </div>
+{% endif %}

@@ -4,15 +4,31 @@
 <div class="card border-0 shadow-sm mb-3">
   <div class="card-body p-3">
     
-    <!-- Row 1: Vendor, Invoice Date, Due Date -->
+    <!-- Row 1: Invoice Number, Vendor, Payment Mode -->
     <div class="row g-2 mb-2">
-      <div class="col-md-4">
+      <div class="col-md-2">
+        <label class="form-label small text-muted">Invoice Number</label>
+        {% if form.invoice_number %}
+          {{ form.invoice_number|add_class:"form-control form-control-sm" }}
+        {% endif %}
+      </div>
+      <div class="col-md-3">
         <label class="form-label small text-muted">Vendor <span class="text-danger">*</span></label>
         {% if form.vendor %}
           {{ form.vendor|add_class:"form-select form-select-sm vendor-select" }}
         {% endif %}
       </div>
-      <div class="col-md-4">
+      <div class="col-md-2">
+        <label class="form-label small text-muted">Payment Mode</label>
+        {% if form.payment_mode %}
+          {{ form.payment_mode|add_class:"form-select form-select-sm" }}
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Row 2: Invoice Date, Due Days, Due Date, Payment Term -->
+    <div class="row g-2 mb-2">
+      <div class="col-md-2">
         <label class="form-label small text-muted">Invoice Date <span class="text-danger">*</span></label>
         {% if form.invoice_date %}
           {% with invoice_class=form.invoice_date.errors|yesno:"form-control form-control-sm is-invalid,form-control form-control-sm" %}
@@ -25,7 +41,11 @@
           {% endif %}
         {% endif %}
       </div>
-      <div class="col-md-4">
+      <div class="col-md-2">
+        <label class="form-label small text-muted">Due Days</label>
+        <input type="number" class="form-control form-control-sm" id="due_days" name="due_days" min="0" value="0">
+      </div>
+      <div class="col-md-2">
         <label class="form-label small text-muted">Due Date</label>
         {% if form.due_date %}
           {% with due_class=form.due_date.errors|yesno:"form-control form-control-sm is-invalid,form-control form-control-sm" %}
@@ -38,6 +58,12 @@
           {% endif %}
         {% endif %}
       </div>
+      <div class="col-md-3">
+        <label class="form-label small text-muted">Payment Term</label>
+        {% if form.payment_term %}
+          {{ form.payment_term|add_class:"form-select form-select-sm" }}
+        {% endif %}
+      </div>
     </div>
 
     <!-- Row 2: Vendor Summary (Dynamic, loaded via HTMX) -->
@@ -48,66 +74,50 @@
         <div class="col-md-3"><small class="text-muted">Last Invoice:</small><div id="vendor-last-inv">-</div></div>
         <div class="col-md-3"><small class="text-muted">Status:</small><div id="vendor-status">-</div></div>
       </div>
+      <div class="row g-2 mt-1">
+        <div class="col-md-4"><small class="text-muted">Tax/PAN No:</small><div id="vendor-pan">-</div></div>
+        <div class="col-md-4"><small class="text-muted">Credit Limit:</small><div id="vendor-limit">-</div></div>
+        <div class="col-md-4"><small class="text-muted">Available Credit:</small><div id="vendor-available">-</div></div>
+      </div>
     </div>
-    <div id="supplier-info" class="alert alert-info small py-2 px-3 mb-2" style="display: none;"></div>
-
     <!-- Row 3: Supplier Invoice No, Supplier Ref, Purchase Order -->
     <div class="row g-2 mb-2">
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label small text-muted">Supplier Invoice #</label>
         {% if form.supplier_invoice_number %}
-          {{ form.supplier_invoice_number }}
+          {{ form.supplier_invoice_number|add_class:"form-control form-control-sm" }}
         {% endif %}
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label small text-muted">External Reference</label>
         {% if form.external_reference %}
-          {{ form.external_reference }}
+          {{ form.external_reference|add_class:"form-control form-control-sm" }}
         {% endif %}
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label small text-muted">Purchase Order</label>
         <div class="d-flex gap-1">
           {% if form.purchase_order %}
-            {{ form.purchase_order }}
+            {{ form.purchase_order|add_class:"form-select form-select-sm" }}
           {% endif %}
           <button type="button" class="btn btn-sm btn-outline-primary" 
             hx-post="{% url 'accounting:purchase_apply_order_hx' %}" 
             hx-include="#purchase-form" 
+            hx-vals='{"prefix":"items","variant":"enhanced"}'
             hx-target="#items-tbody" 
             hx-swap="beforeend">Apply</button>
         </div>
       </div>
-    </div>
-    <div class="row g-2 mb-2">
-      <div class="col-md-4">
-        <label class="form-label small text-muted">Invoice Number</label>
-        {% if form.invoice_number %}
-          {{ form.invoice_number }}
-        {% endif %}
-      </div>
-      <div class="col-md-4">
-        <label class="form-label small text-muted">External Reference</label>
-        {% if form.external_reference %}
-          {{ form.external_reference }}
-        {% endif %}
-      </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label small text-muted">PO Number</label>
         {% if form.po_number %}
-          {{ form.po_number }}
+          {{ form.po_number|add_class:"form-control form-control-sm" }}
         {% endif %}
       </div>
     </div>
 
-    <!-- Row 4: Payment Mode, Purchase Account, Agent Area, Invoice Date (BS) -->
+    <!-- Row 4: Purchase Account, Agent Area, Invoice Date (BS) -->
     <div class="row g-2 mb-2">
-      <div class="col-md-3">
-        <label class="form-label small text-muted">Payment Mode</label>
-        {% if form.payment_mode %}
-          {{ form.payment_mode|add_class:"form-select form-select-sm" }}
-        {% endif %}
-      </div>
       <div class="col-md-3">
         <label class="form-label small text-muted">Purchase Account</label>
         {% if form.purchase_account %}
@@ -227,10 +237,28 @@
               return r.json();
             })
             .then(data => {
-              document.getElementById('vendor-balance').textContent = data.outstanding_balance || '0.00';
-              document.getElementById('vendor-terms').textContent = data.payment_terms || '-';
-              document.getElementById('vendor-last-inv').textContent = data.last_invoice_date || '-';
-              document.getElementById('vendor-status').textContent = data.status || '-';
+              const asMoney = (v) => {
+                const n = parseFloat(v);
+                return Number.isFinite(n) ? n.toFixed(2) : '-';
+              };
+              const orDash = (v) => (v === null || v === undefined || v === '' ? '-' : v);
+
+              document.getElementById('vendor-balance').textContent = asMoney(data.outstanding_balance);
+              document.getElementById('vendor-terms').textContent = orDash(data.payment_terms);
+              document.getElementById('vendor-last-inv').textContent = orDash(data.last_invoice_date);
+              const statusText = orDash(data.status);
+              const holdFlag = data.on_hold ? ' (On Hold)' : '';
+              document.getElementById('vendor-status').textContent = statusText + holdFlag;
+              document.getElementById('vendor-pan').textContent = orDash(data.tax_id);
+              document.getElementById('vendor-limit').textContent = data.credit_limit === null ? '-' : asMoney(data.credit_limit);
+              document.getElementById('vendor-available').textContent = data.available_credit === null ? '-' : asMoney(data.available_credit);
+              // Auto-select payment term if available
+              if (data.payment_term_id) {
+                const ptSelect = document.getElementById('{{ form.payment_term.id_for_label|default:"id_payment_term" }}');
+                if (ptSelect && !ptSelect.value) {
+                  ptSelect.value = String(data.payment_term_id);
+                }
+              }
               summaryDiv.style.display = 'block';
             })
             .catch(() => summaryDiv.style.display = 'none');
@@ -243,5 +271,49 @@
       }
     }
   });
+
+  function recalcDueDate() {
+    const daysInput = document.getElementById('due_days');
+    const invInput = document.getElementById('id_invoice_date');
+    const dueInput = document.getElementById('id_due_date');
+    if (!daysInput || !invInput || !dueInput) return;
+    const days = parseInt(daysInput.value, 10);
+    const base = new Date(invInput.value);
+    if (Number.isNaN(days) || Number.isNaN(base.getTime())) return;
+    const dt = new Date(base);
+    dt.setDate(dt.getDate() + days);
+    const iso = dt.toISOString().slice(0, 10);
+    if (dueInput.type === 'date') {
+      dueInput.valueAsDate = dt;
+    } else {
+      dueInput.value = iso;
+    }
+  }
+
+  const dueDaysField = document.getElementById('due_days');
+  const invoiceDateField = document.getElementById('id_invoice_date');
+  if (dueDaysField) {
+    dueDaysField.addEventListener('input', recalcDueDate);
+    dueDaysField.addEventListener('change', recalcDueDate);
+  }
+  if (invoiceDateField) {
+    invoiceDateField.addEventListener('change', recalcDueDate);
+    invoiceDateField.addEventListener('blur', recalcDueDate);
+  }
+
+  const dueInput = document.getElementById('id_due_date');
+  if (dueInput) {
+    dueInput.addEventListener('change', function() {
+      const invInput = document.getElementById('id_invoice_date');
+      const daysInput = document.getElementById('due_days');
+      if (!invInput || !daysInput) return;
+      const invDate = new Date(invInput.value);
+      const dueDate = new Date(dueInput.value);
+      if (Number.isNaN(invDate.getTime()) || Number.isNaN(dueDate.getTime())) return;
+      const diffMs = dueDate - invDate;
+      const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+      daysInput.value = diffDays >= 0 ? diffDays : 0;
+    });
+  }
 })();
 </script>

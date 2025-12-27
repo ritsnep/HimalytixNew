@@ -1,4 +1,22 @@
 <div id="purchase-remaining-balance" class="small text-end">
     <div>Payments Total: <strong>{{ totals.payments_total|default:0 }}</strong></div>
-    <div class="h5">Remaining Balance: <strong>{{ remaining|floatformat:2 }}</strong></div>
+    <div class="h6 mb-1">Invoice Remaining: <strong>{{ remaining|floatformat:2 }}</strong></div>
+    {% if vendor %}
+        <div>Vendor Outstanding: <strong>{{ vendor_outstanding|default:"0.00" }}</strong></div>
+        {% if projected_outstanding is not None %}
+            <div>
+                After Save: <strong>{{ projected_outstanding|floatformat:2 }}</strong>
+                {% if vendor.credit_limit %}
+                    {% with avail=vendor.credit_limit|add:"-"|add:projected_outstanding %}
+                        <span class="badge ms-1 {% if avail < 0 %}bg-danger{% else %}bg-success{% endif %}">
+                            Available {{ avail|floatformat:2 }}
+                        </span>
+                    {% endwith %}
+                {% endif %}
+            </div>
+            {% if vendor.credit_limit and projected_outstanding > vendor.credit_limit %}
+                <div class="text-danger fw-semibold">Warning: This invoice would exceed credit limit.</div>
+            {% endif %}
+        {% endif %}
+    {% endif %}
 </div>

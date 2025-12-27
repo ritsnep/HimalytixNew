@@ -144,6 +144,11 @@ def post_purchase_invoice(pi: PurchaseInvoice) -> PurchaseInvoice:
         if line_tax <= 0:
             line_tax = Decimal("0")
 
+        if not line.product:
+            raise ProcurementPostingError(
+                f"Purchase line {line.line_number} is missing a product reference."
+            )
+
         if line.product.is_inventory_item:
             inventory_account = getattr(line.product, "inventory_account", None)
             if not inventory_account:
@@ -233,7 +238,7 @@ def post_purchase_invoice(pi: PurchaseInvoice) -> PurchaseInvoice:
         )
 
     for line in lines:
-        if not line.product.is_inventory_item:
+        if not line.product or not line.product.is_inventory_item:
             continue
         unit_cost = line.unit_price
         StockLedger.objects.create(
@@ -310,7 +315,7 @@ def reverse_purchase_invoice(pi: PurchaseInvoice, *, user=None) -> PurchaseInvoi
 
     # Reverse inventory movements
     for line in pi.lines.select_related("product", "warehouse"):
-        if not line.product.is_inventory_item:
+        if not line.product or not line.product.is_inventory_item:
             continue
 
         try:

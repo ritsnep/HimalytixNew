@@ -3,4 +3,8 @@
     {% include 'accounting/partials/_purchase_line_row.html' with form=it.form form_index=it.form_index %}
 {% endfor %}
 
+{% if prefix and new_total %}
+<input type="hidden" name="{{ prefix }}-TOTAL_FORMS" value="{{ new_total }}" hx-swap-oob="true">
+{% endif %}
+
 <div hx-post="{% url 'accounting:purchase_recalc_hx' %}" hx-trigger="load" hx-include="#purchase-invoice-form" hx-target="#purchase-recalc-region" hx-swap="innerHTML"></div>

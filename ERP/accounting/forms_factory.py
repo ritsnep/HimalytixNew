@@ -6,7 +6,7 @@ from django.forms import modelform_factory, modelformset_factory
 from utils.calendars import CalendarMode, get_calendar_mode
 from utils.widgets import DualCalendarWidget
 from .forms_mixin import BootstrapFormMixin
-from .widgets import DatePicker, AccountChoiceWidget
+from .widgets import DatePicker, AccountChoiceWidget, TypeaheadInput
 from .forms.journal_form import JournalForm
 from .forms.journal_line_form import JournalLineForm, JournalLineFormSet
 from .models import Journal, JournalLine
@@ -19,8 +19,10 @@ logger = logging.getLogger(__name__)
 def configure_widget_for_schema(field_name, field_schema, widget):
     """
     Inject HTML data attributes for dynamic UI behavior (typeahead, date, etc.).
+    Uses TypeaheadInput for lookup fields to ensure data-* attributes persist.
     """
-    field_type = (field_schema or {}).get('type')
+    field_type = (field_schema or {}).get('type') or (field_schema or {}).get('field_type')
+    logger.debug(f"configure_widget_for_schema: field_name={field_name}, field_type={field_type}, widget_class={widget.__class__.__name__}")
     lookup_aliases = {
         'account': 'account',
         'party': 'party',
@@ -92,19 +94,32 @@ def configure_widget_for_schema(field_name, field_schema, widget):
             endpoint = lookup_endpoints[lookup_kind]
         elif field_type in ('lookup', 'typeahead', 'autocomplete'):
             endpoint = f"/accounting/api/{lookup_kind}/search/"
+        
+        logger.debug(f"configure_widget_for_schema: Before typeahead modification - widget_class={widget.__class__.__name__}, widget.attrs={widget.attrs}")
+
+        # Replace widget with TypeaheadInput to ensure data attributes persist
+        if not isinstance(widget, TypeaheadInput):
+            # Preserve existing attributes when replacing widget
+            old_attrs = widget.attrs.copy() if hasattr(widget, 'attrs') else {}
+            widget = TypeaheadInput(attrs=old_attrs)
+        
         base_classes = widget.attrs.get('class', '').strip()
         for cls in ('generic-typeahead', 've-suggest-input', 'typeahead-input'):
             if cls not in base_classes:
                 base_classes = f"{base_classes} {cls}".strip()
+        
         widget.attrs.update({
             'class': base_classes,
             'data-lookup-kind': str(lookup_kind),
             'autocomplete': 'off',
         })
         if endpoint:
-            widget.attrs.setdefault('data-endpoint', endpoint)
+            widget.attrs['data-endpoint'] = endpoint  # Use direct assignment for TypeaheadInput
         if field_name:
-            widget.attrs.setdefault('data-hidden-name', field_name)
+            widget.attrs['data-hidden-name'] = field_name  # Use direct assignment for TypeaheadInput
+        
+        logger.debug(f"Configured typeahead widget for {field_name}: kind={lookup_kind}, endpoint={endpoint}, final_attrs={widget.attrs}")
+    
     elif field_type == 'date':
         widget.attrs.setdefault('type', 'date')
         base_classes = widget.attrs.get('class', '').strip()
@@ -493,7 +508,7 @@ class VoucherFormFactory:
 
     def _create_field_from_schema(self, config, field_name=None):
         """Create a form field from a schema definition."""
-        field_type = config.get('type', 'char')
+        field_type = config.get('type') or config.get('field_type', 'char')
         field_class = self._map_type_to_field(field_type)
         
         field_kwargs = {
@@ -689,7 +704,7 @@ class VoucherFormFactory:
             base_classes = attrs.get('class', '').strip()
             if 've-suggest-input' not in base_classes:
                 attrs['class'] = f"{base_classes} ve-suggest-input generic-typeahead".strip()
-            field_kwargs['widget'] = forms.TextInput(attrs=attrs)
+            field_kwargs['widget'] = TypeaheadInput(attrs=attrs)
 
         # Filter out None values
         field_kwargs = {k: v for k, v in field_kwargs.items() if v is not None}
@@ -955,7 +970,7 @@ class VoucherFormFactory:
             # Schema provided as ordered list -> preserve order, but prefer explicit 'order_no' if present
             list_items = list(schema)
             display_configs = {
-                it.get('name'): it for it in list_items if isinstance(it, dict) and it.get('name')
+                it.get('name') or it.get('key'): it for it in list_items if isinstance(it, dict) and (it.get('name') or it.get('key'))
             }
             if any(isinstance(it, dict) and 'order_no' in it for it in list_items):
                 try:
@@ -963,7 +978,7 @@ class VoucherFormFactory:
                 except Exception:
                     pass
             for field_config in list_items:
-                field_name = field_config.get('name')
+                field_name = field_config.get('name') or field_config.get('key')
                 if not field_name:
                     continue
                 if field_name in skip_fields:

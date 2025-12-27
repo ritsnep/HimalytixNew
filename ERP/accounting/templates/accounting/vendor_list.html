@@ -6,6 +6,33 @@
     {% csrf_token %}
 </form>
 
+<div class="row row-cols-1 row-cols-md-3 g-3 mb-3">
+    <div class="col">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <div class="text-muted small mb-1">Total AP Outstanding</div>
+                <div class="h5 mb-0">{{ total_outstanding|default:"0.00" }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <div class="text-muted small mb-1">Vendors Over Credit</div>
+                <div class="h5 mb-0">{{ over_credit_count|default:0 }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <div class="text-muted small mb-1">On Hold</div>
+                <div class="h5 mb-0">{{ on_hold_count|default:0 }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% block table_head %}
 <thead>
     <tr>
@@ -23,7 +50,9 @@
         <th data-default-visible="false">AP Account</th>
         <th data-default-visible="false">Expense Account</th>
         <th data-default-visible="false">Tax ID</th>
+        <th>AP Outstanding</th>
         <th data-default-visible="false">Credit Limit</th>
+        <th data-default-visible="false">Available Credit</th>
         <th data-default-visible="false">Notes</th>
         <th data-default-visible="false">Created At</th>
         <th data-default-visible="false">Updated At</th>
@@ -37,7 +66,8 @@
 {% block table_body %}
 <tbody>
     {% for vendor in vendors %}
-    <tr>
+    {% with available=vendor.credit_limit|add:"-"|add:vendor.ap_outstanding_balance %}
+    <tr data-on-hold="{{ vendor.on_hold|yesno:'1,0' }}" data-over-credit="{% if vendor.credit_limit and available < 0 %}1{% else %}0{% endif %}" data-status="{{ vendor.status }}" data-term="{{ vendor.payment_term_id }}" data-currency="{{ vendor.default_currency.currency_code|default:'' }}">
         <td><input type="checkbox" class="form-check-input row-select" name="selected_ids" value="{{ vendor.pk }}" form="bulk-action-form"></td>
         <td>{{ vendor.code }}</td>
         <td>{{ vendor.display_name }}</td>
@@ -52,7 +82,29 @@
         <td>{{ vendor.accounts_payable_account }}</td>
         <td>{{ vendor.expense_account }}</td>
         <td>{{ vendor.tax_id }}</td>
+        <td>
+            {% with bal=vendor.ap_outstanding_balance %}
+                {% if bal and bal|floatformat:2 != "0.00" %}
+                    <span class="badge bg-info text-dark">{{ bal }}</span>
+                {% else %}
+                    <span class="text-muted">0</span>
+                {% endif %}
+            {% endwith %}
+        </td>
         <td>{{ vendor.credit_limit }}</td>
+        <td>
+            {% if vendor.credit_limit %}
+                {% with available=vendor.credit_limit|add:"-"|add:vendor.ap_outstanding_balance %}
+                    {% if available < 0 %}
+                        <span class="badge bg-danger">-{{ available|floatformat:2|slice:"1:" }}</span>
+                    {% else %}
+                        <span class="badge bg-success">{{ available|floatformat:2 }}</span>
+                    {% endif %}
+                {% endwith %}
+            {% else %}
+                <span class="text-muted">N/A</span>
+            {% endif %}
+        </td>
         <td>{{ vendor.notes }}</td>
         <td>{{ vendor.created_at }}</td>
         <td>{{ vendor.updated_at }}</td>
@@ -60,6 +112,7 @@
         <td>{{ vendor.updated_by }}</td>
         <td><a class="btn btn-sm btn-primary" href="{% url 'accounting:vendor_edit' vendor.pk %}">Edit</a></td>
     </tr>
+    {% endwith %}
     {% empty %}
     <tr><td colspan="7" class="text-center text-muted">No vendors found.</td></tr>
     {% endfor %}
@@ -71,6 +124,41 @@
     <a href="{% url 'accounting:vendor_create' %}" class="btn btn-success btn-sm ms-2">
         <i class="mdi mdi-plus me-1"></i> New Vendor
     </a>
+    <div class="input-group input-group-sm" style="width: 220px;">
+        <label class="input-group-text" for="filter-flag">Filter</label>
+        <select id="filter-flag" class="form-select form-select-sm">
+            <option value="">All Vendors</option>
+            <option value="over-credit">Over Credit</option>
+            <option value="on-hold">On Hold</option>
+        </select>
+    </div>
+    <div class="input-group input-group-sm" style="width: 220px;">
+        <label class="input-group-text" for="filter-status">Status</label>
+        <select id="filter-status" class="form-select form-select-sm">
+            <option value="">Any</option>
+            {% for code,label in status_choices %}
+            <option value="{{ code }}">{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="input-group input-group-sm" style="width: 220px;">
+        <label class="input-group-text" for="filter-term">Term</label>
+        <select id="filter-term" class="form-select form-select-sm">
+            <option value="">Any</option>
+            {% for term in payment_terms %}
+            <option value="{{ term.pk }}">{{ term.code }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="input-group input-group-sm" style="width: 220px;">
+        <label class="input-group-text" for="filter-currency">Currency</label>
+        <select id="filter-currency" class="form-select form-select-sm">
+            <option value="">Any</option>
+            {% for currency in currency_choices %}
+            <option value="{{ currency.currency_code }}">{{ currency.currency_code }}</option>
+            {% endfor %}
+        </select>
+    </div>
     <div class="input-group input-group-sm" style="width: 320px;">
         <label class="input-group-text" for="bulk-action">Bulk</label>
         <select id="bulk-action" name="action" class="form-select form-select-sm" form="bulk-action-form">
@@ -124,6 +212,35 @@
                 alert('Select at least one vendor.');
             }
         });
+
+        // Simple flag filtering
+        function applyFilters() {
+            var flag = $('#filter-flag').val();
+            var status = $('#filter-status').val();
+            var term = $('#filter-term').val();
+            var currency = $('#filter-currency').val();
+            var rows = $('tbody tr');
+            rows.each(function() {
+                var row = $(this);
+                var overCredit = row.data('over-credit') === 1 || row.data('over-credit') === "1";
+                var onHold = row.data('on-hold') === 1 || row.data('on-hold') === "1";
+                var rowStatus = row.data('status') ? String(row.data('status')) : '';
+                var rowTerm = row.data('term') ? String(row.data('term')) : '';
+                var rowCurrency = row.data('currency') ? String(row.data('currency')) : '';
+
+                var show = true;
+                if (flag === 'over-credit' && !overCredit) show = false;
+                if (flag === 'on-hold' && !onHold) show = false;
+                if (status && status !== rowStatus) show = false;
+                if (term && term !== rowTerm) show = false;
+                if (currency && currency !== rowCurrency) show = false;
+
+                row.toggle(show);
+            });
+        }
+
+        $('#filter-flag, #filter-status, #filter-term, #filter-currency').on('change', applyFilters);
+        applyFilters();
     });
 </script>
 {% endblock %}

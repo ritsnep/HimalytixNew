@@ -300,6 +300,7 @@
         if (!endpoint || !term) return [];
         if (shouldBackoff(endpoint)) return [];
         try {
+            console.debug(`Fetching suggestions for "${term}" from ${endpoint}`);
             const resp = await fetch(
                 `${endpoint}?q=${encodeURIComponent(term)}&limit=10`,
                 {
@@ -310,10 +311,14 @@
                     },
                 },
             );
-            if (!resp.ok && resp.status !== 429) return [];
+            if (!resp.ok && resp.status !== 429) {
+                console.debug(`Endpoint ${endpoint} returned status ${resp.status}`);
+                return [];
+            }
             const data = await parseJsonResponse(resp, endpoint);
-            if (Array.isArray(data?.results)) return data.results;
-            return [];
+            const results = Array.isArray(data?.results) ? data.results : [];
+            console.debug(`Received ${results.length} suggestions from ${endpoint}`);
+            return results;
         } catch (err) {
             console.warn('lookup fetch failed', err);
             return [];
@@ -361,13 +366,17 @@
     const bindSuggestInput = (inputEl) => {
         if (!inputEl || inputEl._suggestBound) return;
         inputEl._suggestBound = true;
+        const endpoint = inputEl.dataset.endpoint;
+        if (!endpoint) {
+            console.debug(`Input ${inputEl.name || inputEl.id} has no data-endpoint attribute`);
+        }
         const runSuggest = debounce(async () => {
             const term = (inputEl.value || '').trim();
             if (!term) {
                 AccountSuggest.close();
                 return;
             }
-            const endpoint = inputEl.dataset.endpoint;
+            console.debug(`bindSuggestInput: Initiating suggest for "${term}" on ${inputEl.name || inputEl.id}`);
             const suggestions = await fetchSuggestions(term, endpoint);
             if (!suggestions.length && !buildAddNewMeta(inputEl)) {
                 AccountSuggest.close();
@@ -403,8 +412,32 @@
     };
 
     const initSuggestInputs = (scope = document) => {
-        const candidates = scope.querySelectorAll('.account-typeahead, .generic-typeahead, .ve-suggest-input');
-        candidates.forEach(bindSuggestInput);
+        const candidates = scope.querySelectorAll('.account-typeahead, .generic-typeahead, .ve-suggest-input, [data-endpoint]');
+        console.debug(`initSuggestInputs: Found ${candidates.length} suggest inputs in ${scope.id || scope.className || 'document'}`);
+        
+        // For inputs without data-endpoint, infer it from data-lookup-kind or field name
+        candidates.forEach((input) => {
+            if (!input.dataset.endpoint && input.dataset.lookupKind) {
+                const lookupKind = input.dataset.lookupKind;
+                const lookup_endpoints = {
+                    'account': '/accounting/vouchers/htmx/account-lookup/',
+                    'vendor': '/accounting/generic-voucher/htmx/vendor-lookup/',
+                    'customer': '/accounting/generic-voucher/htmx/customer-lookup/',
+                    'agent': '/accounting/journal-entry/lookup/agents/',
+                    'product': '/accounting/generic-voucher/htmx/product-lookup/',
+                    'warehouse': '/accounting/journal-entry/lookup/warehouses/',
+                    'tax_code': '/accounting/journal-entry/lookup/tax-codes/',
+                    'cost_center': '/accounting/journal-entry/lookup/cost-centers/',
+                    'department': '/accounting/journal-entry/lookup/departments/',
+                    'project': '/accounting/journal-entry/lookup/projects/',
+                };
+                if (lookup_endpoints[lookupKind]) {
+                    input.dataset.endpoint = lookup_endpoints[lookupKind];
+                    console.debug(`Auto-assigned endpoint for ${input.name || input.id}: ${lookup_endpoints[lookupKind]}`);
+                }
+            }
+            bindSuggestInput(input);
+        });
     };
 
     const updateSummary = () => {
@@ -420,7 +453,10 @@
             values: { lines: JSON.stringify(linesData), charges: JSON.stringify(chargesData) },
             target: '#summary-container' // Assume a container for summary
         });
-    };
+
+        // Update line counter
+        const countLabel = document.getElementById('line-count-label');
+        const total = rows.length;
         if (countLabel) {
             countLabel.textContent = `Showing ${total} line${total === 1 ? '' : 's'}`;
         }
@@ -428,6 +464,19 @@
         if (totalFormsInput) {
             totalFormsInput.value = total;
         }
+
+        // Calculate summary totals
+        let totalDebit = 0, totalCredit = 0, totalQty = 0, totalLine = 0;
+        rows.forEach(row => {
+            const debit = parseFloat(row.querySelector('input[name$="-debit_amount"]')?.value || 0);
+            const credit = parseFloat(row.querySelector('input[name$="-credit_amount"]')?.value || 0);
+            const qty = parseFloat(row.querySelector('input[name$="-quantity"]')?.value || 0);
+            const lineAmount = parseFloat(row.querySelector('input[name$="-line_amount"]')?.value || 0);
+            totalDebit += debit;
+            totalCredit += credit;
+            totalQty += qty;
+            totalLine += lineAmount;
+        });
 
         const debitEl = document.getElementById('summary-total-debit');
         const creditEl = document.getElementById('summary-total-credit');
@@ -988,6 +1037,7 @@
 
     document.body.addEventListener('htmx:afterSwap', (event) => {
         if (event.detail && event.detail.target && event.detail.target.id === 'lines-container') {
+            console.debug('HTMX afterSwap: reinitializing suggests in lines-container');
             reindexRows();
             updateSummary();
 
@@ -1201,11 +1251,13 @@
         try {
             const xhr = evt.detail && evt.detail.xhr;
             if (!xhr) return;
+            console.debug(`htmx:responseError: status=${xhr.status}`);
             // Treat 422 as validation response and swap into panel
             if (xhr.status === 422) {
                 const panel = document.getElementById('generic-voucher-panel');
                 if (!panel) return;
                 panel.innerHTML = xhr.responseText;
+                console.debug('Validation error swapped into panel, reinitializing form behaviors');
 
                 // re-init behaviours for swapped content
                 reindexRows();
@@ -1226,50 +1278,3 @@
     });
 })();
 
-// New enhancements
-// Set attributes on load
-document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('input[type="number"]').forEach(input => {
-        input.setAttribute('min', '0.01');
-        input.setAttribute('step', '0.01');
-    });
-});
-
-// Inline validation
-document.addEventListener('blur', (e) => {
-    if (e.target.classList.contains('required') && !e.target.value) {
-        e.target.classList.add('is-invalid');
-    }
-});
-
-// Toasts
-function showToast(message, type) {
-    const toast = document.getElementById(`${type}-toast`);
-    if (toast) {
-        toast.textContent = message;
-        toast.style.display = 'block';
-        setTimeout(() => toast.style.display = 'none', 3000);
-    }
-}
-
-// Confirmations
-function confirmAction(action, url) {
-    const modal = document.getElementById('confirm-delete-modal');
-    if (modal) {
-        modal.style.display = 'block';
-        document.getElementById('confirm-delete-btn').onclick = () => {
-            // Perform action
-            modal.style.display = 'none';
-        };
-    }
-}
-
-// beforeUnload
-window.addEventListener('beforeunload', (e) => {
-    if (hasUnsavedChanges()) e.preventDefault();
-});
-
-function hasUnsavedChanges() {
-    // Check if form has changes
-    return false; // Placeholder
-}

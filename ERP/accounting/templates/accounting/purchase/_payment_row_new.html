@@ -15,10 +15,13 @@
   <td>
     {{ form.remarks|add_class:"form-control form-control-sm" }}
   </td>
-  <td class="text-center" width="40">
-    <button type="button" class="btn btn-sm btn-outline-danger btn-delete-payment" title="Remove" data-payment-index="{{ form_index }}">
-      <i class="bi bi-x-lg"></i>
+  <td class="text-center" width="70">
+    <button type="button" class="btn btn-sm btn-outline-danger btn-delete-payment d-inline-flex align-items-center gap-1"
+            title="Remove payment" data-payment-index="{{ form_index }}">
+      <i class="bi bi-x-lg"></i><span class="d-none d-md-inline">Delete</span>
     </button>
-    {% if form.DELETE %}{{ form.DELETE }}{% endif %}
+    {% if form.DELETE %}{{ form.DELETE }}{% else %}
+      <input type="hidden" name="payments-{{ form_index }}-DELETE" value="">
+    {% endif %}
   </td>
 </tr>

@@ -21,7 +21,7 @@
 <div class="main-content">
 <div class="page-content py-4">
     <div class="container-fluid">
-    
+
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h2 class="mb-0"><i class="bi bi-file-earmark-arrow-up"></i> Create Purchase Invoice</h2>
@@ -33,277 +33,7 @@
     </div>
 
     <!-- Main Form -->
-    <div id="purchase-form-panel">
-    <form id="purchase-form" method="post" action="{% url 'accounting:purchase_invoice_new_enhanced' %}"
-          data-add-line-url="{% url 'accounting:purchase_add_line_hx' %}"
-          data-add-payment-url="{% url 'accounting:purchase_add_payment_hx' %}"
-          data-product-detail-url="{% url 'accounting:load_product_details' 0 %}"
-          hx-post="." hx-target="#purchase-form-panel" hx-swap="outerHTML"
-          novalidate>
-
-      {% csrf_token %}
-      {% if alert_message %}
-        <div class="alert alert-{{ alert_level|default:'info' }} small mb-3">
-          {{ alert_message }}
-        </div>
-      {% endif %}
-      {% if form.errors or line_formset.errors or line_formset.non_form_errors or payments_formset.errors %}
-        <div class="alert alert-danger small mb-3">
-          Please correct the errors highlighted in the form.
-        </div>
-      {% endif %}
-      {% if form.non_field_errors %}
-        <div class="alert alert-danger small mb-3">
-          {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
-        </div>
-      {% endif %}
-      {% if debug_info %}
-        <div class="alert alert-warning small mb-3">
-          <strong>Debug info (validation):</strong>
-          <div class="mt-2">
-            <details>
-              <summary>Posted payload &amp; errors (click to expand)</summary>
-              <pre style="white-space:pre-wrap;word-break:break-word;">{{ debug_info.posted|safe }}</pre>
-              <strong>Form errors:</strong>
-              <pre>{{ debug_info.form_errors }}</pre>
-              <strong>Line formset errors:</strong>
-              <pre>{{ debug_info.line_errors }}</pre>
-              <strong>Payment formset errors:</strong>
-              <pre>{{ debug_info.payment_errors }}</pre>
-            </details>
-          </div>
-        </div>
-      {% endif %}
-      {% if line_formset.non_form_errors %}
-        <div class="alert alert-danger small mb-3">
-          {% for error in line_formset.non_form_errors %}<div>{{ error }}</div>{% endfor %}
-        </div>
-      {% endif %}
-
-      <!-- SUPPLIER INFO SECTION -->
-      {% include "accounting/purchase/_supplier_info_new.html" %}
-
-      <!-- MAIN GRID: Items + Totals -->
-      <div class="row g-3">
-        
-        <!-- Items Section (Left) -->
-        <div class="col-lg-8">
-          <div class="card border-0 shadow-sm">
-            <div class="card-header bg-light border-bottom">
-              <div class="d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><i class="bi bi-list-check"></i> Line Items</h6>
-                <button type="button" class="btn btn-sm btn-outline-primary" id="btn-add-line">
-                  <i class="bi bi-plus-circle"></i> Add Item
-                </button>
-              </div>
-            </div>
-
-            <div class="card-body p-0">
-              {% if line_formset and line_formset.non_form_errors %}
-                <div class="alert alert-danger m-3">
-                  {{ line_formset.non_form_errors }}
-                </div>
-              {% endif %}
-
-              <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 px-3 pt-3">
-                <div class="small text-muted">Columns</div>
-                <div class="btn-group" role="group" aria-label="Column toggles">
-                  <input type="checkbox" class="btn-check" id="chip_code" autocomplete="off">
-                  <label class="btn btn-outline-secondary btn-sm" for="chip_code">Code</label>
-
-                  <input type="checkbox" class="btn-check" id="chip_description" autocomplete="off" checked>
-                  <label class="btn btn-outline-secondary btn-sm" for="chip_description">Description</label>
-
-                  <input type="checkbox" class="btn-check" id="chip_discount" autocomplete="off">
-                  <label class="btn btn-outline-secondary btn-sm" for="chip_discount">Discount</label>
-
-                  <input type="checkbox" class="btn-check" id="chip_net" autocomplete="off">
-                  <label class="btn btn-outline-secondary btn-sm" for="chip_net">Net</label>
-                </div>
-              </div>
-
-              <div class="table-responsive">
-                <table class="table table-sm table-hover mb-0">
-                  <thead class="sticky-header">
-                    <tr class="border-bottom">
-                      <th class="text-muted small" width="30">#</th>
-                      <th class="text-muted small">Product</th>
-                      <th class="text-muted small col-code">Code</th>
-                      <th class="text-muted small col-description">Description</th>
-                      <th class="text-muted small">Qty/Unit</th>
-                      <th class="text-muted small">Warehouse</th>
-                      <th class="text-muted small">Rate</th>
-                      <th class="text-muted small">VAT%</th>
-                      <th class="text-muted small">VAT Acct</th>
-                      <th class="text-muted small col-discount">Discount</th>
-                      <th class="text-muted small text-end col-net">Net</th>
-                      <th class="text-muted small text-end">Total</th>
-                      <th width="40"></th>
-                    </tr>
-                  </thead>
-                  <tbody id="items-tbody">
-                    {% if line_formset and line_formset.forms %}
-                      {% for form in line_formset.forms %}
-                        {% include "accounting/purchase/_line_row_new.html" with form=form form_index=forloop.counter0 %}
-                      {% endfor %}
-                    {% else %}
-                      <tr id="item-row-empty" class="item-row">
-                        <td class="text-center text-muted small" width="30">1</td>
-                        <td colspan="11" class="text-muted small py-3">
-                          <em>No items yet. Add items using the "Add Item" button above</em>
-                        </td>
-                      </tr>
-                    {% endif %}
-                  </tbody>
-                </table>
-              </div>
-              <div style="display:none;">
-                {% if line_formset %}
-                  {% for f in line_formset.management_form %}
-                    {{ f }}
-                  {% endfor %}
-                {% else %}
-                  <input type="hidden" name="items-TOTAL_FORMS" value="0">
-                  <input type="hidden" name="items-INITIAL_FORMS" value="0">
-                  <input type="hidden" name="items-MIN_NUM_FORMS" value="0">
-                  <input type="hidden" name="items-MAX_NUM_FORMS" value="1000">
-                {% endif %}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Totals Section (Right) -->
-        <div class="col-lg-4">
-          <div id="totals-wrap">
-            {% include "accounting/purchase/_totals_panel_new.html" %}
-          </div>
-        </div>
-
-      </div>
-
-      <!-- BOTTOM SECTIONS: Terms + Payments -->
-      <div class="row g-3 mt-2">
-        
-        <!-- Terms Panel -->
-        <div class="col-lg-6">
-          <div class="card border-0 shadow-sm">
-            <div class="card-header bg-light border-bottom">
-              <h6 class="mb-0"><i class="bi bi-file-text"></i> Terms & Conditions</h6>
-            </div>
-            <div class="card-body p-3">
-              <div class="mb-3">
-                <label class="form-label small text-muted">Payment Terms</label>
-                {% if form.payment_term %}
-                  {{ form.payment_term }}
-                {% endif %}
-              </div>
-              <div class="mb-3">
-                <label class="form-label small text-muted">Terms &amp; Conditions</label>
-                {% if form.terms_and_conditions %}
-                  {{ form.terms_and_conditions }}
-                {% endif %}
-              </div>
-              <div class="mb-3">
-                <label class="form-label small text-muted">Notes</label>
-                {% if form.notes %}
-                  {{ form.notes }}
-                {% endif %}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Payments Panel -->
-        <div class="col-lg-6">
-          <div class="card border-0 shadow-sm">
-            <div class="card-header bg-light border-bottom">
-              <div class="d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><i class="bi bi-credit-card"></i> Payment Schedule</h6>
-                <button type="button" class="btn btn-sm btn-outline-primary" id="btn-add-payment">
-                  <i class="bi bi-plus-circle"></i> Add Payment
-                </button>
-              </div>
-            </div>
-
-            <div class="card-body p-0">
-              <div class="table-responsive">
-                <table class="table table-sm mb-0">
-                  <thead class="sticky-header border-bottom">
-                    <tr>
-                      <th class="text-muted small">Method</th>
-                      <th class="text-muted small">Account</th>
-                      <th class="text-muted small">Due Date</th>
-                      <th class="text-muted small text-end">Amount</th>
-                      <th class="text-muted small">Remarks</th>
-                      <th width="40"></th>
-                    </tr>
-                  </thead>
-                  <tbody id="payments-tbody">
-                    {% if payments_formset and payments_formset.forms %}
-                      {% for form in payments_formset.forms %}
-                        {% include "accounting/purchase/_payment_row_new.html" with form=form form_index=forloop.counter0 %}
-                      {% endfor %}
-                    {% else %}
-                      <tr class="payment-row">
-                        <td colspan="6" class="text-muted small py-3">
-                          <em>Add payments using the "Add Payment" button above</em>
-                        </td>
-                      </tr>
-                    {% endif %}
-                  </tbody>
-                </table>
-              </div>
-
-              <div class="p-3 border-top">
-                <small class="text-muted">Remaining Balance:</small>
-                <div class="money fw-bold h6 mb-0" id="remaining-balance">0.00</div>
-              </div>
-
-              <div style="display:none;">
-                {% for form in payments_formset.management_form %}
-                  {{ form }}
-                {% endfor %}
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Narration -->
-      <div class="card mb-3">
-        <div class="card-body">
-          <div class="mb-3">
-            <label class="form-label small text-muted">Narration</label>
-            {% if form.narration %}
-              {{ form.narration }}
-            {% else %}
-              <textarea class="form-control" name="narration" rows="3"></textarea>
-            {% endif %}
-          </div>
-        </div>
-      </div>
-
-      <!-- FOOTER ACTIONS -->
-      <div class="d-flex gap-2 justify-content-between mt-4 pt-3 border-top sticky-bottom bg-white py-3">
-        <div>
-          <a href="javascript:history.back();" class="btn btn-outline-secondary">
-            <i class="bi bi-x-circle"></i> Cancel
-          </a>
-        </div>
-        <div class="d-flex gap-2">
-          <button type="reset" class="btn btn-outline-info" id="btn-clear">
-            <i class="bi bi-arrow-counterclockwise"></i> Clear
-          </button>
-          <button type="submit" class="btn btn-primary" id="btn-save">
-            <i class="bi bi-check-circle"></i> Save Invoice
-          </button>
-        </div>
-      </div>
-
-    </form>
-    </div>
+    {% include "accounting/purchase/_purchase_form_panel.html" %}
 
   </div>
 </div>
@@ -321,6 +51,7 @@
     return Number.isFinite(n) ? n : 0;
   };
   const fmt = (val) => (Math.round((val + Number.EPSILON) * 100) / 100).toFixed(2);
+  const swapZoneIds = new Set(['purchase-form-panel', 'pi-form', 'pi-lines', 'pi-totals', 'pi-supplier-panel', 'items-tbody']);
 
   function numberToWords(n) {
     const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
@@ -566,9 +297,19 @@
       const delInput = row?.querySelector('input[name$="-DELETE"]');
       if (delInput) {
         delInput.checked = true;
+        delInput.value = 'on';
         row.classList.add('d-none');
-      } else {
-        row?.remove();
+      } else if (row) {
+        // If DELETE checkbox is absent (e.g., dynamically added/imported rows), inject one
+        const idx = row.dataset.lineIndex;
+        if (idx !== undefined) {
+          const hidden = document.createElement('input');
+          hidden.type = 'hidden';
+          hidden.name = `items-${idx}-DELETE`;
+          hidden.value = 'on';
+          row.appendChild(hidden);
+        }
+        row.classList.add('d-none');
       }
       updateLineNumbers();
       recalcTotals();
@@ -579,6 +320,7 @@
       const delInput = row?.querySelector('input[name$="-DELETE"]');
       if (delInput) {
         delInput.checked = true;
+        delInput.value = 'on';
         row.classList.add('d-none');
       } else {
         row?.remove();
@@ -682,7 +424,7 @@
   }
 
   document.body.addEventListener('htmx:afterSwap', (evt) => {
-    if (evt.target && evt.target.id === 'purchase-form-panel') {
+    if (evt.target && swapZoneIds.has(evt.target.id)) {
       refreshFormState();
       if (state.form && window.pristineInstances?.has(state.form)) {
         window.pristineInstances.get(state.form).validate();

@@ -4,6 +4,7 @@ import datetime
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.db.models import F
 
 from accounting.forms_mixin import BootstrapFormMixin
 from accounting.models import (
@@ -48,6 +49,7 @@ class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
         decimal_places=4,
         widget=forms.NumberInput(attrs={'class': 'form-control text-end', 'step': '0.01'})
     )
+    allow_credit_override = forms.BooleanField(required=False, help_text="Override credit limit for this invoice")
     invoice_date = forms.DateField(required=False)
     due_date = forms.DateField(required=False)
     
@@ -127,9 +129,15 @@ class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
             self.fields['vendor'].queryset = self.fields['vendor'].queryset.filter(
                 organization=self.organization
             )
-            self.fields['purchase_account'].queryset = ChartOfAccount.objects.filter(
-                organization=self.organization, is_active=True
+            purchase_account_qs = ChartOfAccount.objects.filter(
+                organization=self.organization, 
+                is_active=True,
+                account_type__nature='expense'
             )
+            self.fields['purchase_account'].queryset = purchase_account_qs
+            # Auto-select first expense account if available
+            if purchase_account_qs.exists() and not self.instance.pk:
+                self.fields['purchase_account'].initial = purchase_account_qs.first()
             self.fields['grir_account'].queryset = ChartOfAccount.objects.filter(
                 organization=self.organization, is_active=True
             )
@@ -141,30 +149,7 @@ class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
         if (not self.is_bound) and not self.instance.due_date:
             self.instance.due_date = timezone.now().date()
         super()._post_clean()
-        try:
-            from inventory.models import Warehouse
-        except Exception:
-            Warehouse = None
-        if Warehouse:
-            if self.organization:
-                warehouse_qs = Warehouse.objects.filter(
-                    organization=self.organization, is_active=True
-                )
-            else:
-                warehouse_qs = Warehouse.objects.none()
-            self.fields['warehouse'].queryset = warehouse_qs
-            # Purchase-order and purchase account support
-            try:
-                from purchasing.models import PurchaseOrder
-                self.fields['purchase_order'].queryset = PurchaseOrder.objects.filter(organization=self.organization, status='open')
-            except Exception:
-                # If purchasing app not present, leave as empty queryset
-                self.fields['purchase_order'].queryset = self.fields.get('purchase_order').queryset
-            # payment_mode is on model with choices; no queryset needed
-            # Set default values if missing
-            if 'payment_mode' in self.fields and not self.fields['payment_mode'].initial:
-                self.fields['payment_mode'].initial = 'credit'
-        # Initialize header discount helpers from model values
+
         if self.instance and (self.instance.discount_percentage or self.instance.discount_amount):
             if self.instance.discount_percentage:
                 self.fields['discount_type'].initial = 'percent'
@@ -311,6 +296,14 @@ class PurchaseInvoiceForm(BootstrapFormMixin, forms.ModelForm):
                 self.add_error('exchange_rate', 'Exchange rate must be greater than zero when using a foreign currency.')
         elif exchange_rate is not None and exchange_rate <= 0:
             self.add_error('exchange_rate', 'Exchange rate must be greater than zero.')
+
+        # Flag credit override into metadata for downstream checks
+        if getattr(self.instance, "metadata", None) is None:
+            self.instance.metadata = {}
+        if cleaned.get("allow_credit_override"):
+            self.instance.metadata["allow_credit_override"] = True
+        else:
+            self.instance.metadata.pop("allow_credit_override", None)
 
         return cleaned
 

@@ -1,0 +1,7 @@
+{% for it in import_forms %}
+  {% include 'accounting/purchase/_line_row_new.html' with form=it.form form_index=it.form_index %}
+{% endfor %}
+
+{% if prefix and new_total %}
+<input type="hidden" name="{{ prefix }}-TOTAL_FORMS" value="{{ new_total }}" hx-swap-oob="true">
+{% endif %}

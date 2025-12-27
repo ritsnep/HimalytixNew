@@ -1,0 +1,142 @@
+<form id="purchase-form" method="post" action="{% url 'accounting:purchase_invoice_new_enhanced' %}"
+      data-add-line-url="{% url 'accounting:purchase_add_line_hx' %}"
+      data-add-payment-url="{% url 'accounting:purchase_add_payment_hx' %}"
+      data-product-detail-url="{% url 'accounting:load_product_details' 0 %}"
+      hx-post="." hx-target="#purchase-form-panel" hx-swap="outerHTML"
+      novalidate>
+
+  {% csrf_token %}
+  {% include "accounting/purchase/_supplier_panel.html" %}
+
+  <!-- MAIN GRID: Items + Totals -->
+  <div class="row g-3">
+    {% include "accounting/purchase/_lines.html" %}
+    {% include "accounting/purchase/_totals.html" %}
+  </div>
+
+  <!-- BOTTOM SECTIONS: Terms + Payments -->
+  <div class="row g-3 mt-2">
+
+    <!-- Terms Panel -->
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light border-bottom">
+          <h6 class="mb-0"><i class="bi bi-file-text"></i> Terms &amp; Conditions</h6>
+        </div>
+        <div class="card-body p-3">
+          <div class="mb-3">
+            <label class="form-label small text-muted">Payment Terms</label>
+            {% if form.payment_term %}
+              {{ form.payment_term }}
+            {% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label small text-muted">Terms &amp; Conditions</label>
+            {% if form.terms_and_conditions %}
+              {{ form.terms_and_conditions }}
+            {% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label small text-muted">Notes</label>
+            {% if form.notes %}
+              {{ form.notes }}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payments Panel -->
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light border-bottom">
+          <div class="d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="bi bi-credit-card"></i> Payment Schedule</h6>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="btn-add-payment">
+              <i class="bi bi-plus-circle"></i> Add Payment
+            </button>
+          </div>
+        </div>
+
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm mb-0">
+              <thead class="sticky-header border-bottom">
+                <tr>
+                  <th class="text-muted small">Method</th>
+                  <th class="text-muted small">Account</th>
+                  <th class="text-muted small">Due Date</th>
+                  <th class="text-muted small text-end">Amount</th>
+                  <th class="text-muted small">Remarks</th>
+                  <th width="40"></th>
+                </tr>
+              </thead>
+              <tbody id="payments-tbody">
+                {% if payments_formset and payments_formset.forms %}
+                  {% for form in payments_formset.forms %}
+                    {% include "accounting/purchase/_payment_row_new.html" with form=form form_index=forloop.counter0 %}
+                  {% endfor %}
+                {% else %}
+                  <tr class="payment-row">
+                    <td colspan="6" class="text-muted small py-3">
+                      <em>Add payments using the "Add Payment" button above</em>
+                    </td>
+                  </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="p-3 border-top">
+            <small class="text-muted">Remaining Balance:</small>
+            <div class="money fw-bold h6 mb-0" id="remaining-balance">0.00</div>
+          </div>
+
+          <div style="display:none;">
+            {% for form in payments_formset.management_form %}
+              {{ form }}
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Narration -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="mb-3">
+        <label class="form-label small text-muted">Narration</label>
+        {% if form.narration %}
+          {{ form.narration }}
+        {% else %}
+          <textarea class="form-control" name="narration" rows="3"></textarea>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER ACTIONS -->
+  <div class="d-flex gap-2 justify-content-between mt-4 pt-3 border-top sticky-bottom bg-white py-3">
+    <div>
+      <a href="javascript:history.back();" class="btn btn-outline-secondary">
+        <i class="bi bi-x-circle"></i> Cancel
+      </a>
+    </div>
+    <div class="d-flex gap-2">
+      <div class="form-check form-switch align-self-center">
+        <input class="form-check-input" type="checkbox" id="auto-post-toggle" name="auto_post"
+               value="on" {% if can_post_invoice %}checked{% else %}disabled{% endif %}>
+        <label class="form-check-label small" for="auto-post-toggle">Auto-post</label>
+      </div>
+      <button type="reset" class="btn btn-outline-info" id="btn-clear">
+        <i class="bi bi-arrow-counterclockwise"></i> Clear
+      </button>
+      <button type="submit" class="btn btn-primary" id="btn-save">
+        <i class="bi bi-check-circle"></i> Save Invoice
+      </button>
+    </div>
+  </div>
+
+</form>

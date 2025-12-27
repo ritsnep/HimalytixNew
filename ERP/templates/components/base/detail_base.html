@@ -1,0 +1,168 @@
+{% extends 'partials/base.html' %}
+{% load static i18n %}
+
+{% block title %}
+    {% block page_title %}{{ page_title|default:object|default:"Details" }}{% endblock %}
+{% endblock %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <style>
+        .detail-shell {
+            position: relative;
+        }
+        .detail-shell--expanded {
+            position: fixed;
+            inset: 1rem;
+            z-index: 1080;
+            overflow: auto;
+            box-shadow: 0 0 24px rgba(15, 23, 42, 0.25);
+        }
+        .detail-shell--expanded .card-body {
+            max-height: calc(100vh - 10rem);
+            overflow-y: auto;
+        }
+        .detail-shell .card-header,
+        .detail-shell .card-body {
+            padding: 0.85rem 1rem;
+        }
+        .detail-shell__breadcrumb {
+            font-size: 0.85rem;
+            color: var(--bs-secondary-color);
+        }
+        .detail-field {
+            margin-bottom: 1rem;
+        }
+        .detail-field:last-child {
+            margin-bottom: 0;
+        }
+        .detail-field-label {
+            font-weight: 600;
+            color: var(--bs-secondary-color);
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+        }
+        .detail-field-value {
+            color: var(--bs-body-color);
+        }
+        @media (max-width: 767.98px) {
+            .detail-shell__actions {
+                position: static;
+                border-top: 0;
+                padding-top: 0;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div id="detail-toast-container" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1085"></div>
+<div class="main-content compact-page">
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                <div>
+                    <h4 class="mb-sm-0 font-size-18">
+                        {% block detail_heading %}{{ page_title|default:object|default:"Details" }}{% endblock %}
+                    </h4>
+                    {% if detail_subtitle %}
+                        <p class="text-muted mb-0 small">{{ detail_subtitle }}</p>
+                    {% endif %}
+                </div>
+                <div class="page-title-right">
+                    <ol class="breadcrumb m-0">
+                        {% if breadcrumbs %}
+                            {% for name, url in breadcrumbs %}
+                                {% if not forloop.last %}
+                                    <li class="breadcrumb-item"><a href="{{ url }}">{{ name }}</a></li>
+                                {% else %}
+                                    <li class="breadcrumb-item active">{{ name }}</li>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <li class="breadcrumb-item active">{{ page_title|default:object|default:"Details" }}</li>
+                        {% endif %}
+                    </ol>
+                </div>
+            </div>
+
+            <div class="card detail-shell"
+                 id="{{ detail_shell_id|default:'detail-shell' }}"
+                 data-detail-shell
+                 data-detail-config-id="{{ detail_config_id|default:'detail-config' }}">
+                <div class="card-header py-2 d-flex flex-wrap justify-content-between align-items-center gap-1">
+                    <div>
+                        <div class="d-flex align-items-center gap-1 flex-wrap">
+                            <h4 class="card-title mb-0">
+                                {% block detail_title_text %}{{ object|default:page_title|default:"Details" }}{% endblock %}
+                            </h4>
+                        </div>
+                        {% if detail_description %}
+                            <p class="text-muted small mb-0">{{ detail_description }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex gap-1 align-items-center flex-wrap">
+                        {% block detail_header_extras %}{% endblock %}
+                        <button type="button"
+                                class="btn btn-outline-secondary btn-sm"
+                                data-detail-expand>
+                            <i class="mdi mdi-arrow-expand-all"></i>
+                            <span class="d-none d-md-inline">{% trans "Expand" %}</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% block detail_intro %}{% endblock %}
+                    {% block detail_alerts %}{% endblock %}
+                    {% block detail_content %}
+                        <div class="row">
+                            <div class="col-12">
+                                <p class="text-muted mb-0">Override <code>detail_content</code> to supply detail content.</p>
+                            </div>
+                        </div>
+                    {% endblock %}
+                    <div class="detail-shell__actions d-flex flex-wrap gap-1 justify-content-between align-items-center mt-3"
+                         data-detail-actions>
+                        {% block detail_actions %}
+                            <div class="d-flex gap-1">
+                                {% if cancel_url %}
+                                    <a href="{{ cancel_url }}" class="btn btn-outline-secondary">
+                                        {% trans "Close" %}
+                                    </a>
+                                {% endif %}
+                                {% if edit_url %}
+                                    <a href="{{ edit_url }}" class="btn btn-primary">
+                                        <i class="mdi mdi-pencil"></i>
+                                        {% trans "Edit" %}
+                                    </a>
+                                {% endif %}
+                            </div>
+                        {% endblock %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% include 'partials/footer.html' %}
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    {% with config_id=detail_config_id|default:'detail-config' %}
+        {% if detail_config %}
+            {{ detail_config|json_script:config_id }}
+        {% else %}
+            <script id="{{ config_id }}" type="application/json">{}</script>
+        {% endif %}
+    {% endwith %}
+    <script src="{% static 'js/detail-base.js' %}"></script>
+    {% block detail_extra_js %}{% endblock %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.DetailBase) {
+                window.DetailBase.mount('#{{ detail_shell_id|default:"detail-shell" }}');
+            }
+        });
+    </script>
+{% endblock %}

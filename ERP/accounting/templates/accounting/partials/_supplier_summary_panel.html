@@ -1,12 +1,30 @@
 <div id="supplier-summary-panel">
     {% if vendor %}
-        <div class="mb-2">
-            <strong>{{ vendor.display_name }}</strong>
-            {% if vendor.code %}<span class="text-muted">({{ vendor.code }})</span>{% endif %}
+        <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
+            <div>
+                <strong>{{ vendor.display_name }}</strong>
+                {% if vendor.code %}<span class="text-muted">({{ vendor.code }})</span>{% endif %}
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <span class="badge bg-{% if vendor.is_active %}success{% else %}secondary{% endif %}">{{ vendor.get_status_display }}</span>
+                {% if vendor.on_hold %}<span class="badge bg-warning text-dark">On Hold</span>{% endif %}
+                {% if credit_limit %}
+                    {% if available_credit is not None and available_credit < 0 %}
+                        <span class="badge bg-danger">Over Credit</span>
+                    {% endif %}
+                {% endif %}
+            </div>
         </div>
         <div class="small">
-            <div>Current Outstanding: <strong>{{ outstanding|default:0 }}</strong></div>
-            <div>Credit Limit: <strong>{{ credit_limit|default:'-' }}</strong></div>
+            <div>AP Outstanding: <strong>{{ outstanding|default:"0.00" }}</strong></div>
+            <div>Credit Limit: <strong>{{ credit_limit|default:"-" }}</strong></div>
+            {% if credit_limit %}
+                <div>Available Credit:
+                    <strong class="{% if available_credit is not None and available_credit < 0 %}text-danger{% else %}text-success{% endif %}">
+                        {{ available_credit|floatformat:2 }}
+                    </strong>
+                </div>
+            {% endif %}
             {% if last_invoice %}
                 <div>Last Invoice: <strong>{{ last_invoice.invoice_number }}</strong> on {{ last_invoice.invoice_date }}</div>
             {% endif %}

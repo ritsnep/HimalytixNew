@@ -13,7 +13,7 @@
     </div>
     <div>
       <p class="mb-1"><strong>Selected invoices:</strong> <span id="selected-count">0</span></p>
-      <p class="mb-0"><strong>Total amount:</strong> <span id="selected-total">{{ selected_total|floatformat:2 }}</span></p>
+      <p class="mb-0"><strong>Payment total:</strong> <span id="selected-total">{{ selected_total|floatformat:2 }}</span></p>
     </div>
   </div>
 
@@ -65,7 +65,7 @@
             <h5 class="h6 mb-3">Open Vendor Bills</h5>
             {% if invoices %}
             <div class="table-responsive">
-              <table class="table table-sm table-striped align-middle mb-0">
+              <table class="table table-sm table-striped align-middle mb-0" id="scheduler-table">
                 <thead>
                   <tr>
                     <th scope="col"></th>
@@ -75,6 +75,7 @@
                     <th scope="col">Amount</th>
                     <th scope="col">Paid</th>
                     <th scope="col">Outstanding</th>
+                    <th scope="col">Vendor Balance</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -86,6 +87,9 @@
                         name="selected_invoices"
                         value="{{ invoice.invoice_id }}"
                         data-outstanding="{{ invoice.outstanding }}"
+                        data-vendor-id="{{ invoice.vendor.vendor_id }}"
+                        data-vendor-name="{{ invoice.vendor.display_name }}"
+                        data-vendor-balance="{{ invoice.vendor.ap_outstanding_balance|default:0 }}"
                         {% if invoice.invoice_id|stringformat:"s" in selected_ids %}checked{% endif %}
                       >
                     </td>
@@ -95,6 +99,7 @@
                     <td>{{ invoice.total }}</td>
                     <td>{{ invoice.paid_amount }}</td>
                     <td>{{ invoice.outstanding }}</td>
+                    <td>{{ invoice.vendor.ap_outstanding_balance|default:"0.00" }}</td>
                   </tr>
                   {% endfor %}
                 </tbody>
@@ -108,8 +113,17 @@
       </div>
     </div>
 
-    <div class="mt-3 text-end">
-      <button type="submit" class="btn btn-primary">Create Payment Batch</button>
+    <div class="mt-3 row g-3 align-items-start">
+      <div class="col-lg-6">
+        <div class="card card-body h-100">
+          <h6 class="mb-2">Vendor Impact</h6>
+          <div id="vendor-impact" class="small text-muted">Select invoices to see vendor-level impact.</div>
+        </div>
+      </div>
+      <div class="col-lg-6 d-flex justify-content-end align-items-center">
+        <div class="text-muted small me-3">Payment total equals the sum of invoice outstanding amounts selected.</div>
+        <button id="create-batch-btn" type="submit" class="btn btn-primary">Create Payment Batch</button>
+      </div>
     </div>
   </form>
         </div>
@@ -124,18 +138,39 @@ document.addEventListener("DOMContentLoaded", function () {
   const checkboxes = document.querySelectorAll('input[name="selected_invoices"]');
   const countEl = document.getElementById("selected-count");
   const totalEl = document.getElementById("selected-total");
+  const submitBtn = document.getElementById("create-batch-btn");
+  const impactEl = document.getElementById("vendor-impact");
 
   const updateSummary = () => {
     let total = 0;
     let count = 0;
+    const impact = {};
     checkboxes.forEach((input) => {
       if (!input.checked) return;
       count += 1;
       const outstanding = parseFloat(input.dataset.outstanding) || 0;
+        const vid = input.dataset.vendorId;
+        const vname = input.dataset.vendorName || 'Vendor';
+        const vbal = parseFloat(input.dataset.vendorBalance) || 0;
+        if (!impact[vid]) impact[vid] = { name: vname, current: vbal, selected: 0 };
+        impact[vid].selected += outstanding;
       total += outstanding;
     });
     if (countEl) countEl.textContent = count;
     if (totalEl) totalEl.textContent = total.toFixed(2);
+    if (submitBtn) submitBtn.disabled = total <= 0;
+    if (impactEl) {
+      if (!Object.keys(impact).length) {
+        impactEl.textContent = "Select invoices to see vendor-level impact.";
+      } else {
+        const lines = Object.values(impact).map((v) => {
+          const projected = v.current - v.selected;
+          const badge = projected < 0 ? `<span class="badge bg-danger ms-1">Overpaid?</span>` : "";
+          return `<div class="mb-1"><strong>${v.name}</strong>: now ${v.current.toFixed(2)} → after pay ${projected.toFixed(2)} ${badge}</div>`;
+        });
+        impactEl.innerHTML = lines.join("");
+      }
+    }
   };
 
   checkboxes.forEach((input) => input.addEventListener("change", updateSummary));

@@ -1689,6 +1689,12 @@ class Vendor(models.Model):
     notes = models.TextField(blank=True)
     metadata = models.JSONField(default=dict, blank=True)
     credit_limit = models.DecimalField(max_digits=19, decimal_places=4, null=True, blank=True)
+    ap_outstanding_balance = models.DecimalField(
+        max_digits=19,
+        decimal_places=4,
+        default=Decimal("0.00"),
+        help_text="Cached outstanding AP balance across posted vendor bills minus executed payments.",
+    )
     on_hold = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -1715,6 +1721,21 @@ class Vendor(models.Model):
 
     def __str__(self):
         return f"{self.code} - {self.display_name}"
+
+    def recompute_outstanding_balance(self):
+        """Recalculate and cache vendor AP outstanding balance from posted invoices."""
+        invoices = self.purchase_invoices.exclude(status__in={'cancelled'})
+        # Only credit-mode invoices contribute to vendor outstanding
+        invoices = invoices.filter(payment_mode__in=['credit', '', None])
+        outstanding = Decimal("0")
+        for invoice in invoices:
+            outstanding += invoice.outstanding_amount()
+        outstanding = outstanding.quantize(Decimal("0.01"))
+        if outstanding != self.ap_outstanding_balance:
+            self.ap_outstanding_balance = outstanding
+            self.updated_at = timezone.now()
+            self.save(update_fields=['ap_outstanding_balance', 'updated_at'])
+        return self.ap_outstanding_balance
 
     def primary_address(self):
         return self.addresses.filter(is_primary=True).first() or self.addresses.first()
@@ -2110,16 +2131,19 @@ class PurchaseInvoice(models.Model):
         return self.total - totals['paid'] - totals['discount']
 
     def refresh_payment_status(self):
+        status_changed = False
         outstanding = self.outstanding_amount()
         if outstanding <= 0 and self.status not in {'paid', 'cancelled', 'draft'}:
             self.status = 'paid'
             self.save(update_fields=['status', 'updated_at'])
-            return True
+            status_changed = True
         if outstanding > 0 and self.status == 'paid':
             self.status = 'posted'
             self.save(update_fields=['status', 'updated_at'])
-            return True
-        return False
+            status_changed = True
+        if self.vendor_id:
+            self.vendor.recompute_outstanding_balance()
+        return status_changed
 
     def clean(self):
         super().clean()
@@ -2138,6 +2162,8 @@ class PurchaseInvoice(models.Model):
                 document_date=document_date,
             )
         super().save(*args, **kwargs)
+        if self.vendor_id and self.status != 'cancelled':
+            self.vendor.recompute_outstanding_balance()
 
 
 class PurchaseInvoiceLine(models.Model):

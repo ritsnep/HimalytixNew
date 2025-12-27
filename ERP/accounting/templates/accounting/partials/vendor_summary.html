@@ -1,13 +1,29 @@
 <div class="card shadow-sm">
   <div class="card-body">
     {% if vendor %}
-    <div class="d-flex justify-content-between">
-      <h5 class="card-title">{{ vendor.display_name }}</h5>
-      <span class="badge bg-{% if vendor.is_active %}success{% else %}secondary{% endif %}">
-        {{ vendor.get_status_display }}
-      </span>
+    <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+      <div>
+        <h5 class="card-title mb-1">{{ vendor.display_name }}</h5>
+        <div class="small text-muted">{{ vendor.code }}</div>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        <span class="badge bg-{% if vendor.is_active %}success{% else %}secondary{% endif %}">
+          {{ vendor.get_status_display }}
+        </span>
+        {% if vendor.on_hold %}
+          <span class="badge bg-warning text-dark">On Hold</span>
+        {% endif %}
+        {% if vendor.credit_limit %}
+          {% with available=vendor.credit_limit|add:"-"|add:vendor.ap_outstanding_balance %}
+            {% if available < 0 %}
+              <span class="badge bg-danger">Over Credit</span>
+            {% endif %}
+          {% endwith %}
+        {% endif %}
+      </div>
     </div>
     <p class="mb-1"><strong>Tax ID</strong>: {{ vendor.tax_id|default:"-" }}</p>
+    <p class="mb-1"><strong>PAN No</strong>: {{ vendor.tax_id|default:"-" }}</p>
     <p class="mb-1">
       <strong>Payment Term</strong>:
       {% if vendor.payment_term %}
@@ -16,12 +32,23 @@
         Default
       {% endif %}
     </p>
-    <p class="mb-3">
+    <p class="mb-1">
       <strong>Default Currency</strong>:
       {% if vendor.default_currency %}
         {{ vendor.default_currency.currency_code|default:"-" }}
       {% else %}
         -
+      {% endif %}
+    </p>
+    <p class="mb-3">
+      <strong>AP Outstanding</strong>:
+      <span class="badge bg-info text-dark">{{ vendor.ap_outstanding_balance|default:"0.00" }}</span>
+      {% if vendor.credit_limit %}
+        {% with available=vendor.credit_limit|add:"-"|add:vendor.ap_outstanding_balance %}
+          <span class="ms-2 badge {% if available < 0 %}bg-danger{% else %}bg-success{% endif %}">
+            Available {{ available|floatformat:2|default:"0.00" }}
+          </span>
+        {% endwith %}
       {% endif %}
     </p>
     <div class="row">

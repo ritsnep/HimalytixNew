@@ -474,16 +474,17 @@ class ValidationService:
             if item_data['rate'] < pricing['party_price'] * 0.9:  # Allow 10% variance
                 errors['rate'] = 'Rate significantly below party price'
 
-        # Validate stock if warehouse specified
-        if 'product_id' in item_data and 'quantity' in item_data and 'warehouse_id' in item_data:
-            try:
-                stock_check = ProductService.validate_product_for_transaction(
-                    item_data['product_id'], item_data['quantity'], item_data['warehouse_id']
-                )
-                if not stock_check['valid']:
-                    errors['stock'] = stock_check['message']
-            except Exception as exc:  # Defensive: never let stock validation crash entry
-                errors['stock'] = f"Stock validation failed: {exc}"
+        # Validate stock if warehouse specified (skip for purchase/inbound flows)
+        if not item_data.get('transaction_type') == 'purchase':
+            if 'product_id' in item_data and 'quantity' in item_data and 'warehouse_id' in item_data:
+                try:
+                    stock_check = ProductService.validate_product_for_transaction(
+                        item_data['product_id'], item_data['quantity'], item_data['warehouse_id']
+                    )
+                    if not stock_check['valid']:
+                        errors['stock'] = stock_check['message']
+                except Exception as exc:  # Defensive: never let stock validation crash entry
+                    errors['stock'] = f"Stock validation failed: {exc}"
 
         return errors
 

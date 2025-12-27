@@ -61,6 +61,73 @@ def _sum_payment_amounts(payment_formset):
 def purchase_invoice_new_enhanced(request):
     """Enhanced purchase invoice form with HTMX integration"""
     organization = request.user.get_active_organization()
+    can_post_invoice = (
+        request.user.has_perm('accounting.post_purchase_invoice') or
+        request.user.has_perm('purchasing.post_purchase_invoice')
+    )
+
+    def _mark_empty_purchase_lines_for_delete(data, prefix="items"):
+        """Auto-mark truly empty item rows so validation doesn't drop PO-applied lines.
+
+        A row is considered empty if it has no product, no description, and zero/blank qty+rate.
+        """
+        try:
+            total = int(data.get(f"{prefix}-TOTAL_FORMS", "0"))
+        except Exception:
+            total = 0
+        for idx in range(total):
+            prod = (data.get(f"{prefix}-{idx}-product") or "").strip()
+            desc = (data.get(f"{prefix}-{idx}-description") or "").strip()
+            qty = data.get(f"{prefix}-{idx}-quantity")
+            rate = data.get(f"{prefix}-{idx}-unit_cost")
+            if prod or desc:
+                continue
+            # Treat missing/zero qty + rate as empty
+            def _is_blank_num(val):
+                if val in (None, "", "0", "0.0", "0.00"):
+                    return True
+                try:
+                    return float(val) == 0
+                except Exception:
+                    return False
+            if _is_blank_num(qty) and _is_blank_num(rate):
+                data[f"{prefix}-{idx}-DELETE"] = "on"
+        return data
+
+    def _relax_validation_for_deleted_forms(formset):
+        """Ensure forms marked for deletion don't block validation."""
+        if not formset:
+            return
+        for idx, form in enumerate(formset.forms):
+            # Ensure cleaned_data exists to satisfy Django's delete check even if form isn't validated yet
+            if not hasattr(form, "cleaned_data"):
+                form.cleaned_data = {}
+            try:
+                delete_val = form.data.get(f"{form.prefix}-DELETE") or form.data.get(f"{formset.prefix}-{idx}-DELETE")
+            except Exception:
+                delete_val = None
+            if str(delete_val).lower() in ('on', 'true', '1', 'yes'):
+                form.empty_permitted = True
+                form._errors = {}
+        return formset
+
+    def _has_non_deleted_lines(data, prefix="items"):
+        """Return True if any line has content and is not marked for delete."""
+        try:
+            total = int(data.get(f"{prefix}-TOTAL_FORMS", "0"))
+        except Exception:
+            total = 0
+        for idx in range(total):
+            if data.get(f"{prefix}-{idx}-DELETE"):
+                continue
+            if (
+                (data.get(f"{prefix}-{idx}-product") or "").strip()
+                or (data.get(f"{prefix}-{idx}-description") or "").strip()
+                or (data.get(f"{prefix}-{idx}-quantity") not in (None, "", "0", "0.0", "0.00"))
+                or (data.get(f"{prefix}-{idx}-unit_cost") not in (None, "", "0", "0.0", "0.00"))
+            ):
+                return True
+        return False
 
     def _build_payment_formset(data=None, invoice_date=None):
         account_choices, cash_bank_accounts = _get_cash_bank_choices(organization)
@@ -96,6 +163,7 @@ def purchase_invoice_new_enhanced(request):
             'cash_bank_accounts': cash_bank_accounts,
             'agents': AgentService.get_agents_for_dropdown(organization),
             'areas': AgentService.get_areas_for_dropdown(organization),
+            'can_post_invoice': can_post_invoice,
         }
         return render(request, 'accounting/purchase/new_enhanced.html', context)
     
@@ -108,6 +176,41 @@ def purchase_invoice_new_enhanced(request):
                 data['organization'] = str(getattr(organization, 'id', getattr(organization, 'pk', '')))
         except Exception:
             data['organization'] = ''
+
+        # Auto-mark placeholder/blank item rows for deletion so PO-imported lines stay intact
+        data = _mark_empty_purchase_lines_for_delete(data, prefix="items")
+
+        # If no usable lines exist yet but an order reference is present, auto-import lines
+        order_ref = (
+            data.get('order_reference')
+            or data.get('purchase_order')
+            or data.get('order_reference_id')
+            or data.get('purchase_order_id')
+        )
+        if order_ref and not _has_non_deleted_lines(data, prefix="items"):
+            try:
+                from accounting.services.order_import_service import import_purchase_order_lines
+                imported = import_purchase_order_lines(organization, order_ref)
+            except Exception:
+                imported = []
+            try:
+                total = int(data.get("items-TOTAL_FORMS", "0") or 0)
+            except Exception:
+                total = 0
+            for offset, item in enumerate(imported):
+                idx = total + offset
+                data[f"items-{idx}-product"] = item.get("product_id") or ""
+                data[f"items-{idx}-product_code"] = item.get("product_code") or ""
+                data[f"items-{idx}-description"] = item.get("description") or ""
+                data[f"items-{idx}-quantity"] = item.get("quantity") or ""
+                data[f"items-{idx}-unit_cost"] = item.get("unit_cost") or ""
+                data[f"items-{idx}-unit_display"] = item.get("unit") or ""
+                data[f"items-{idx}-warehouse"] = item.get("godown") or ""
+                data[f"items-{idx}-vat_rate"] = item.get("vat_rate") or ""
+                data[f"items-{idx}-input_vat_account"] = item.get("input_vat_account") or ""
+                data[f"items-{idx}-account"] = item.get("account_id") or ""
+                data[f"items-{idx}-po_reference"] = item.get("po_line_id") or item.get("po_reference") or ""
+            data["items-TOTAL_FORMS"] = str(total + len(imported))
 
         def _coerce_field(post_dict, name):
             # If AD value already present, leave it
@@ -211,15 +314,22 @@ def purchase_invoice_new_enhanced(request):
             instance=invoice_stub,
             form_kwargs={'organization': organization},
         )
+        _relax_validation_for_deleted_forms(line_formset)
 
         lines_valid = line_formset.is_valid()
         payments_valid = payments_formset.is_valid()
         calc_totals = {}
 
+        auto_post_requested = False
+        if can_post_invoice:
+            auto_post_requested = str(request.POST.get('auto_post', '')).lower() in ('on', 'true', '1', 'yes')
+
         if form_valid and lines_valid and payments_valid:
+            # Consider any non-deleted line with cleaned data, even if it matches initial
+            # (e.g., lines imported from a PO that haven't been edited yet).
             valid_lines = [
                 f for f in line_formset.forms
-                if f.cleaned_data and not f.cleaned_data.get('DELETE') and f.has_changed()
+                if getattr(f, "cleaned_data", None) and not f.cleaned_data.get('DELETE')
             ]
             if not valid_lines:
                 form.add_error(None, "At least one line item is required.")
@@ -254,6 +364,7 @@ def purchase_invoice_new_enhanced(request):
                 validation_line = {
                     'quantity': qty,
                     'rate': rate,
+                    'transaction_type': 'purchase',
                 }
                 if product:
                     validation_line['product_id'] = product.pk
@@ -342,12 +453,18 @@ def purchase_invoice_new_enhanced(request):
                         instance=invoice,
                         form_kwargs={'organization': organization},
                     )
+                    _relax_validation_for_deleted_forms(line_formset)
                     if line_formset.is_valid():
                         # Save lines
                         line_objects = line_formset.save(commit=False)
+                        # Fallback: if line account is missing, default to header purchase account
+                        header_account = form.cleaned_data.get('purchase_account')
+                        header_account_id = getattr(header_account, 'pk', None) or header_account
                         for i, obj in enumerate(line_objects, start=1):
                             obj.line_number = i
                             obj.invoice = invoice
+                            if not getattr(obj, 'account_id', None) and header_account_id:
+                                obj.account_id = header_account_id
                             obj.save()
                         # Handle deletions
                         for obj in line_formset.deleted_objects:
@@ -407,20 +524,43 @@ def purchase_invoice_new_enhanced(request):
                     # Recompute totals from persisted lines to keep GL/posting in sync
                     invoice.recompute_totals(save=True)
 
+                    posted_invoice = None
+                    auto_post_error = None
+                    if auto_post_requested:
+                        try:
+                            from purchasing.services.procurement import post_purchase_invoice
+                            posted_invoice = post_purchase_invoice(invoice)
+                        except Exception as exc:
+                            auto_post_error = str(exc)
+                            logger.exception("Auto-post purchase invoice failed: %s", exc)
+
                     # Success
+                    success_form = PurchaseInvoiceForm(organization=organization)
+                    configure_form_date_fields(success_form, organization=organization)
+                    empty_line_formset = PurchaseInvoiceLineFormSet(prefix='items', form_kwargs={'organization': organization})
+                    invoice_date = timezone.now().date()
+                    empty_payments_formset, cash_bank_accounts, _ = _build_payment_formset(invoice_date=invoice_date)
+                    success_message = 'Purchase Invoice created successfully.'
+                    if posted_invoice:
+                        success_message = 'Purchase Invoice created and posted successfully.'
+                    elif auto_post_error:
+                        success_message = f'Invoice saved, but auto-post failed: {auto_post_error}'
                     context = {
-                        'form': form,
+                        'form': success_form,
                         'line_items': PurchaseInvoiceLine.objects.none(),
-                        'line_formset': line_formset,
-                        'payments_formset': payments_formset,
+                        'line_formset': empty_line_formset,
+                        'payments_formset': empty_payments_formset,
                         'cash_bank_accounts': cash_bank_accounts,
                         'agents': AgentService.get_agents_for_dropdown(organization),
                         'areas': AgentService.get_areas_for_dropdown(organization),
-                        'alert_message': 'Purchase Invoice created successfully.',
-                        'alert_level': 'success',
+                        'alert_message': success_message,
+                        'alert_level': 'success' if not auto_post_error else 'warning',
+                        'can_post_invoice': can_post_invoice,
                     }
-                    response = render(request, 'accounting/purchase/new_enhanced.html', context)
-                    response['HX-Trigger'] = 'purchaseInvoiceSaved'
+                    template_name = 'accounting/purchase/_purchase_form_panel.html' if _is_htmx(request) else 'accounting/purchase/new_enhanced.html'
+                    response = render(request, template_name, context)
+                    if _is_htmx(request):
+                        response['HX-Trigger'] = 'purchaseInvoiceSaved'
                     return response
             except Exception as e:
                 form.add_error(None, f"Error saving invoice: {str(e)}")
@@ -455,6 +595,7 @@ def purchase_invoice_new_enhanced(request):
             'areas': AgentService.get_areas_for_dropdown(organization),
             'alert_message': 'Please correct the errors highlighted in the form.',
             'alert_level': 'danger',
+            'can_post_invoice': can_post_invoice,
             'debug_info': {
                 'form_errors': getattr(form, 'errors', None),
                 'line_errors': getattr(line_formset, 'errors', None),
@@ -462,7 +603,8 @@ def purchase_invoice_new_enhanced(request):
             },
         }
         status = 422
-        response = render(request, 'accounting/purchase/new_enhanced.html', context, status=status)
+        template_name = 'accounting/purchase/_purchase_form_panel.html' if _is_htmx(request) else 'accounting/purchase/new_enhanced.html'
+        response = render(request, template_name, context, status=status)
         if _is_htmx(request):
             response['HX-Trigger'] = 'purchaseInvoiceSaveFailed'
         return response
@@ -524,9 +666,29 @@ def purchase_recalc_hx(request):
     organization = request.user.get_active_organization()
     from accounting.forms import PurchaseInvoiceForm, PurchaseInvoiceLineForm
     prefix_val = request.POST.get('prefix') or request.GET.get('prefix') or 'items'
-    header_form = PurchaseInvoiceForm(data=request.POST, organization=organization)
+    post_data = request.POST.copy()
+    # Drop placeholder blank lines so totals aren't skewed and imports remain
+    try:
+        total_forms = int(post_data.get(f'{prefix_val}-TOTAL_FORMS', '0'))
+    except Exception:
+        total_forms = 0
+    for idx in range(total_forms):
+        prod = (post_data.get(f"{prefix_val}-{idx}-product") or "").strip()
+        desc = (post_data.get(f"{prefix_val}-{idx}-description") or "").strip()
+        qty = post_data.get(f"{prefix_val}-{idx}-quantity")
+        rate = post_data.get(f"{prefix_val}-{idx}-unit_cost")
+        def _is_blank_num(val):
+            if val in (None, "", "0", "0.0", "0.00"):
+                return True
+            try:
+                return float(val) == 0
+            except Exception:
+                return False
+        if not prod and not desc and _is_blank_num(qty) and _is_blank_num(rate):
+            post_data[f"{prefix_val}-{idx}-DELETE"] = "on"
+    header_form = PurchaseInvoiceForm(data=post_data, organization=organization)
     PurchaseInvoiceLineFormSet_local = forms.formset_factory(PurchaseInvoiceLineForm, can_delete=True)
-    line_formset = PurchaseInvoiceLineFormSet_local(data=request.POST, prefix=prefix_val)
+    line_formset = PurchaseInvoiceLineFormSet_local(data=post_data, prefix=prefix_val)
 
     # Extract data for calculator
     header_data = header_form.cleaned_data if header_form.is_valid() else {}
@@ -636,7 +798,15 @@ def purchase_apply_order_hx(request):
         request.GET.get('order_reference') or
         request.GET.get('purchase_order')
     )
-    form_count = request.POST.get('form_count') or request.GET.get('form_count') or '0'
+    prefix = request.POST.get('prefix') or request.GET.get('prefix') or 'items'
+    form_count = (
+        request.POST.get('form_count')
+        or request.GET.get('form_count')
+        or request.POST.get(f'{prefix}-TOTAL_FORMS')
+        or request.GET.get(f'{prefix}-TOTAL_FORMS')
+        or '0'
+    )
+    variant = request.POST.get('variant') or request.GET.get('variant') or 'default'
     try:
         start_index = int(form_count)
     except Exception:
@@ -648,22 +818,40 @@ def purchase_apply_order_hx(request):
         imported = import_purchase_order_lines(organization, order_ref)
 
     forms = []
+    new_total = start_index
     for idx, item in enumerate(imported):
         fi = start_index + idx
-        form = VoucherFormFactory.create_blank_line_form(organization=organization, form_index=fi)
-        # Populate initial values expected by line form
-        form.initial.update({
+        from accounting.forms import PurchaseInvoiceLineForm
+        form_prefix = f"{prefix}-{fi}"
+        form = PurchaseInvoiceLineForm(prefix=form_prefix, organization=organization)
+        initial_vals = {
+            'product': item.get('product_id'),
+            'product_code': item.get('product_code'),
+            'description': item.get('description', ''),
             'quantity': item.get('quantity', 0),
-            'rate': item.get('unit_cost', 0),
-            'unit': item.get('unit'),
-            'godown': item.get('godown'),
+            'unit_cost': item.get('unit_cost', 0),
+            'unit_display': item.get('unit'),
+            'warehouse': item.get('godown'),
+            'vat_rate': item.get('vat_rate'),
+            'input_vat_account': item.get('input_vat_account'),
+            'account': item.get('account_id'),
             'po_reference': item.get('po_line_id') or item.get('po_reference'),
-        })
+        }
+        form.initial.update({k: v for k, v in initial_vals.items() if v is not None})
         forms.append({'form': form, 'form_index': fi})
+        new_total += 1
 
-    context = {'import_forms': forms}
+    context = {
+        'import_forms': forms,
+        'prefix': prefix,
+        'new_total': new_total,
+        'variant': variant,
+    }
     # Return partial with rows and an auto-triggered recalc loader
-    return render(request, 'accounting/partials/_purchase_import_rows_and_recalc.html', context)
+    template_name = 'accounting/partials/_purchase_import_rows_and_recalc.html'
+    if variant == 'enhanced':
+        template_name = 'accounting/purchase/_purchase_import_rows_and_recalc_new.html'
+    return render(request, template_name, context)
 
 
 @require_http_methods(["POST"])
@@ -787,10 +975,25 @@ def purchase_payment_recalc_hx(request):
 
     remaining = grand_total - payment_sum
 
+    vendor = None
+    vendor_outstanding = None
+    projected_outstanding = None
+    try:
+        vendor_id = request.POST.get('vendor') or request.POST.get('supplier')
+        if vendor_id:
+            vendor = Vendor.objects.get(pk=vendor_id, organization=organization)
+            vendor_outstanding = vendor.recompute_outstanding_balance()
+            projected_outstanding = (vendor_outstanding or Decimal('0')) + remaining
+    except Exception:
+        vendor = None
+
     context = {
         'payment_formset': payment_formset,
         'remaining': remaining,
         'totals': result['totals'],
+        'vendor': vendor,
+        'vendor_outstanding': vendor_outstanding,
+        'projected_outstanding': projected_outstanding,
     }
     # Return combined payments table and remaining balance partials (wrapper partial)
     return render(request, 'accounting/partials/_purchase_payments_region.html', context)
@@ -808,24 +1011,20 @@ def purchase_supplier_summary_hx(request):
         except Vendor.DoesNotExist:
             vendor = None
 
-    # Use aging service to compute outstanding if vendor present
     balance = None
     outstanding = None
     last_invoice = None
     credit_limit = None
+    available_credit = None
     if vendor:
-        from accounting.services.ap_aging_service import APAgingService
-        aging = APAgingService(organization)
-        rows = aging.build()
-        # find row for vendor
-        vendor_row = next((r for r in rows if r.vendor_id == vendor.vendor_id), None)
-        outstanding = vendor_row.total if vendor_row else 0
-        # current balance: positive outstanding means vendor is owed (Dr)
+        outstanding = vendor.recompute_outstanding_balance()
         balance = outstanding
+        credit_limit = vendor.credit_limit
+        if credit_limit is not None:
+            available_credit = credit_limit - outstanding
         last_invoice = (
             PurchaseInvoice.objects.filter(organization=organization, vendor=vendor).order_by('-invoice_date').first()
         )
-        credit_limit = vendor.credit_limit
 
     context = {
         'vendor': vendor,
@@ -833,8 +1032,13 @@ def purchase_supplier_summary_hx(request):
         'outstanding': outstanding,
         'last_invoice': last_invoice,
         'credit_limit': credit_limit,
+        'available_credit': available_credit,
     }
-    return render(request, 'accounting/partials/_supplier_summary_panel.html', context)
+    response = render(request, 'accounting/partials/_supplier_summary_panel.html', context)
+    # Also update the header credit banner via OOB swap
+    oob = render(request, 'accounting/partials/_vendor_credit_banner.html', context)
+    response.content += oob.content
+    return response
 from decimal import Decimal
 
 from django import forms
@@ -924,7 +1128,8 @@ class VendorBillCreateView(AccountsPayablePermissionMixin, View):
                 lines=lines,
                 payment_term=form.cleaned_data.get("payment_term"),
                 due_date=form.cleaned_data.get("due_date"),
-                metadata={},
+                payment_mode=form.cleaned_data.get("payment_mode") or "credit",
+                metadata=getattr(form.instance, "metadata", {}) or {},
             )
             invoice.external_reference = form.cleaned_data.get("external_reference") or ""
             invoice.po_number = form.cleaned_data.get("po_number") or ""

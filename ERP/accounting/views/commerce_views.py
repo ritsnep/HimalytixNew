@@ -1,5 +1,5 @@
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.forms import inlineformset_factory
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
@@ -15,7 +15,7 @@ from accounting.forms import (
     VendorForm,
 )
 from accounting.mixins import PermissionRequiredMixin, UserOrganizationMixin
-from accounting.models import APPayment, APPaymentLine, Currency, Customer, Vendor
+from accounting.models import APPayment, APPaymentLine, Currency, Customer, Vendor, PaymentTerm
 from usermanagement.utils import PermissionUtils
 from accounting.views.base_views import SmartListMixin
 
@@ -114,6 +114,14 @@ class VendorListView(PermissionRequiredMixin, SmartListMixin, UserOrganizationMi
         context.setdefault("page_title", "Vendors")
         context["status_choices"] = Vendor.STATUS_CHOICES
         context["currency_choices"] = Currency.objects.filter(is_active=True)
+        context["payment_terms"] = PaymentTerm.objects.filter(is_active=True)
+        qs = context.get("vendors") or self.get_queryset()
+        agg = qs.aggregate(total_outstanding=Sum("ap_outstanding_balance"))
+        total_outstanding = agg.get("total_outstanding") or 0
+        over_credit = [v for v in qs if v.credit_limit and v.ap_outstanding_balance > v.credit_limit]
+        context["total_outstanding"] = total_outstanding
+        context["over_credit_count"] = len(over_credit)
+        context["on_hold_count"] = qs.filter(on_hold=True).count()
         return context
 
 

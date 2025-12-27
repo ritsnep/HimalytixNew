@@ -22,39 +22,37 @@ def api_vendor_summary(request, vendor_id):
     except Vendor.DoesNotExist:
         return JsonResponse({'error': 'Vendor not found'}, status=404)
     
-    # Calculate outstanding balance from AP records
-    outstanding_balance = Decimal('0.00')
-    try:
-        from accounting.models import PurchaseInvoice
-        outstanding = PurchaseInvoice.objects.filter(
-            vendor=vendor,
-            is_posted=True,
-            status='open'
-        ).aggregate(total=Sum('grand_total'))
-        outstanding_balance = outstanding.get('total') or Decimal('0.00')
-    except Exception:
-        pass
-    
+    # Calculate outstanding balance from cached value (recompute to be fresh)
+    outstanding_balance = vendor.recompute_outstanding_balance()
+    available_credit = None
+    if vendor.credit_limit is not None:
+        available_credit = (vendor.credit_limit - outstanding_balance).quantize(Decimal("0.01"))
+
     # Get payment terms
     payment_term = vendor.payment_term.name if vendor.payment_term else 'Net'
-    
+    payment_term_id = vendor.payment_term_id
+
     # Get last invoice date
+    from accounting.models import PurchaseInvoice
     last_invoice_date = '-'
-    try:
-        from accounting.models import PurchaseInvoice
-        last_inv = PurchaseInvoice.objects.filter(
-            vendor=vendor,
-        ).order_by('-invoice_date').first()
-        if last_inv:
-            last_invoice_date = last_inv.invoice_date.strftime('%d %b %Y')
-    except Exception:
-        pass
-    
+    last_inv = (
+        PurchaseInvoice.objects.filter(vendor=vendor)
+        .order_by('-invoice_date')
+        .first()
+    )
+    if last_inv:
+        last_invoice_date = last_inv.invoice_date.strftime('%d %b %Y')
+
     return JsonResponse({
         'outstanding_balance': str(outstanding_balance),
+        'available_credit': str(available_credit) if available_credit is not None else None,
+        'credit_limit': str(vendor.credit_limit) if vendor.credit_limit is not None else None,
+        'tax_id': vendor.tax_id or '',
         'payment_terms': payment_term,
+        'payment_term_id': payment_term_id,
         'last_invoice_date': last_invoice_date,
-        'status': 'Active' if vendor.is_active else 'Inactive',
+        'status': vendor.get_status_display(),
+        'on_hold': vendor.on_hold,
     })
 
 

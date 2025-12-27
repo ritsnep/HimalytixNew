@@ -72,9 +72,30 @@ class FieldConfigSerializer(serializers.ModelSerializer):
 
 
 class VendorSerializer(serializers.ModelSerializer):
+    ap_outstanding_balance = serializers.DecimalField(max_digits=19, decimal_places=4, read_only=True)
+    available_credit = serializers.SerializerMethodField()
+
+    def get_available_credit(self, obj: Vendor):
+        if obj.credit_limit is None:
+            return None
+        bal = obj.ap_outstanding_balance or Decimal("0.00")
+        return (obj.credit_limit - bal).quantize(Decimal("0.01"))
+
     class Meta:
         model = Vendor
-        fields = ['vendor_id', 'code', 'display_name', 'status', 'payment_term', 'accounts_payable_account']
+        fields = [
+            'vendor_id',
+            'code',
+            'display_name',
+            'status',
+            'payment_term',
+            'accounts_payable_account',
+            'credit_limit',
+            'ap_outstanding_balance',
+            'available_credit',
+            'on_hold',
+            'default_currency',
+        ]
 
 
 class CustomerSerializer(serializers.ModelSerializer):

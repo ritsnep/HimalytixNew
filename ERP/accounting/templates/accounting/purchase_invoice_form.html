@@ -16,6 +16,11 @@
         <input type="hidden" name="config_id" value="{{ config.pk }}">
 
     <div id="purchase-invoice-panel">
+      <div id="vendor-credit-banner">
+        <div class="alert alert-light border py-2 px-3 mb-3">
+          Select a vendor to view credit and outstanding balance.
+        </div>
+      </div>
       <div class="card mb-3">
         <div class="card-body">
           <div class="row g-3">
@@ -88,6 +93,12 @@
                 <select class="form-select form-select-sm"><option>Cash</option></select>
               {% endif %}
             </div>
+            <div class="col-12 col-md-3 d-flex align-items-end">
+              <div class="form-check">
+                {{ header_form.allow_credit_override|add_class:"form-check-input" }}
+                <label class="form-check-label" for="{{ header_form.allow_credit_override.id_for_label }}">Allow credit override</label>
+              </div>
+            </div>
 
             <div class="col-12 col-md-3">
               <label class="form-label">Order Reference</label>
@@ -96,6 +107,7 @@
                   {{ header_form.order_reference|add_class:"form-select form-select-sm" }}
                   <button type="button" class="btn btn-sm btn-outline-primary" 
                     hx-post="{% url 'accounting:purchase_apply_order_hx' %}"
+                    hx-vals='{"prefix":"items","variant":"default"}'
                     hx-include="#purchase-invoice-form"
                     hx-target="#purchase-lines tbody"
                     hx-swap="beforeend">Apply</button>

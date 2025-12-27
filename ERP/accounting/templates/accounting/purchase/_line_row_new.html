@@ -57,9 +57,10 @@
   <td class="col-total">
     <input type="text" class="form-control form-control-sm text-end line-total" readonly value="0.00">
   </td>
-  <td class="text-center" width="40">
-    <button type="button" class="btn btn-sm btn-outline-danger btn-delete-row" title="Remove" data-row-index="{{ form_index }}">
-      <i class="bi bi-x-lg"></i>
+  <td class="text-center" width="70">
+    <button type="button" class="btn btn-sm btn-outline-danger btn-delete-row d-inline-flex align-items-center gap-1"
+            title="Remove line" data-row-index="{{ form_index }}">
+      <i class="bi bi-x-lg"></i><span class="d-none d-md-inline">Delete</span>
     </button>
     <div class="d-none">
       {{ form.account }}
@@ -71,7 +72,9 @@
       {{ form.dimension_value }}
       {{ form.po_reference }}
       {{ form.receipt_reference }}
-      {% if form.DELETE %}{{ form.DELETE }}{% endif %}
+      {% if form.DELETE %}{{ form.DELETE }}{% else %}
+        <input type="hidden" name="items-{{ form_index }}-DELETE" value="">
+      {% endif %}
       {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
     </div>
   </td>

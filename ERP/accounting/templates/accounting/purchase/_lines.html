@@ -1,0 +1,86 @@
+<!-- Items Section (Left) -->
+<div class="col-lg-8">
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-light border-bottom">
+      <div class="d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-list-check"></i> Line Items</h6>
+        <button type="button" class="btn btn-sm btn-outline-primary" id="btn-add-line">
+          <i class="bi bi-plus-circle"></i> Add Item
+        </button>
+      </div>
+    </div>
+
+    <div class="card-body p-0" id="pi-lines">
+      {% if line_formset and line_formset.non_form_errors %}
+        <div class="alert alert-danger m-3">
+          {{ line_formset.non_form_errors }}
+        </div>
+      {% endif %}
+
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 px-3 pt-3">
+        <div class="small text-muted">Columns</div>
+        <div class="btn-group" role="group" aria-label="Column toggles">
+          <input type="checkbox" class="btn-check" id="chip_code" autocomplete="off">
+          <label class="btn btn-outline-secondary btn-sm" for="chip_code">Code</label>
+
+          <input type="checkbox" class="btn-check" id="chip_description" autocomplete="off" checked>
+          <label class="btn btn-outline-secondary btn-sm" for="chip_description">Description</label>
+
+          <input type="checkbox" class="btn-check" id="chip_discount" autocomplete="off">
+          <label class="btn btn-outline-secondary btn-sm" for="chip_discount">Discount</label>
+
+          <input type="checkbox" class="btn-check" id="chip_net" autocomplete="off">
+          <label class="btn btn-outline-secondary btn-sm" for="chip_net">Net</label>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="sticky-header">
+            <tr class="border-bottom">
+              <th class="text-muted small" width="30">#</th>
+              <th class="text-muted small">Product</th>
+              <th class="text-muted small col-code">Code</th>
+              <th class="text-muted small col-description">Description</th>
+              <th class="text-muted small">Qty/Unit</th>
+              <th class="text-muted small">Warehouse</th>
+              <th class="text-muted small">Rate</th>
+              <th class="text-muted small">VAT%</th>
+              <th class="text-muted small">VAT Acct</th>
+              <th class="text-muted small col-discount">Discount</th>
+              <th class="text-muted small text-end col-net">Net</th>
+              <th class="text-muted small text-end">Total</th>
+              <th width="40"></th>
+            </tr>
+          </thead>
+          <tbody id="items-tbody">
+            {% if line_formset and line_formset.forms %}
+              {% for form in line_formset.forms %}
+                {% include "accounting/purchase/_line_row_new.html" with form=form form_index=forloop.counter0 %}
+              {% endfor %}
+            {% else %}
+              <tr id="item-row-empty" class="item-row">
+                <td class="text-center text-muted small" width="30">1</td>
+                <td colspan="11" class="text-muted small py-3">
+                  <em>No items yet. Add items using the "Add Item" button above</em>
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+      <div style="display:none;">
+        {% if line_formset %}
+          {% for f in line_formset.management_form %}
+            {{ f }}
+          {% endfor %}
+        {% else %}
+          <input type="hidden" name="items-TOTAL_FORMS" value="0">
+          <input type="hidden" name="items-INITIAL_FORMS" value="0">
+          <input type="hidden" name="items-MIN_NUM_FORMS" value="0">
+          <input type="hidden" name="items-MAX_NUM_FORMS" value="1000">
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>

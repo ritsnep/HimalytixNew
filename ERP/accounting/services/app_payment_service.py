@@ -75,6 +75,12 @@ class APPaymentService:
         total = sum((alloc.amount + alloc.discount) for alloc in allocations)
         if total <= 0:
             raise ValidationError("Payment amount must be greater than zero.")
+        for alloc in allocations:
+            outstanding = alloc.invoice.outstanding_amount(include_pending=True)
+            if alloc.amount > outstanding:
+                raise ValidationError(
+                    f"Payment for invoice {alloc.invoice.invoice_number} exceeds outstanding balance ({alloc.amount} > {outstanding})."
+                )
 
         payment = APPayment.objects.create(
             organization=organization,
@@ -133,6 +139,11 @@ class APPaymentService:
         vendor_account = payment.vendor.accounts_payable_account
         if vendor_account is None:
             raise ValidationError("Vendor is missing an Accounts Payable account.")
+        # Currency alignment: bank account currency (if present) must match payment currency
+        bank_currency = getattr(payment.bank_account, "currency", None)
+        bank_currency_id = getattr(bank_currency, "pk", None)
+        if bank_currency_id and payment.currency_id and bank_currency_id != payment.currency.pk:
+            raise ValidationError("Bank account currency must match payment currency.")
 
         period = AccountingPeriod.get_current_period(payment.organization)
         if not period:
@@ -179,8 +190,11 @@ class APPaymentService:
             payment.batch.updated_by = self.user
             payment.batch.save(update_fields=['status', 'updated_by', 'updated_at'])
         invoice_ids = payment.lines.values_list('invoice_id', flat=True).distinct()
-        for invoice in PurchaseInvoice.objects.filter(invoice_id__in=invoice_ids):
+        invoices = PurchaseInvoice.objects.filter(invoice_id__in=invoice_ids)
+        for invoice in invoices:
             invoice.refresh_payment_status()
+        if payment.vendor_id:
+            payment.vendor.recompute_outstanding_balance()
         emit_integration_event(
             'ap_payment_executed',
             payment,
